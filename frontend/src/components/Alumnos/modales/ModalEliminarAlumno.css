@@ -1,0 +1,104 @@
+/* styles/ModalEliminarSocio.css */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.modal-contenido {
+  background-color: var(--soc-glass);
+  padding: 2rem;
+  border-radius: var(--soc-border-radius);
+  box-shadow: var(--soc-shadow-lg);
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal-contenido h3 {
+  color: var(--soc-dark);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.modal-contenido p {
+  color: var(--soc-gray);
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+.botones-modal {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn-cancelar {
+  border-radius: var(--soc-border-radius);
+  border: 1px solid var(--soc-gray);
+  background-color: transparent;
+  color: var(--soc-gray);
+  cursor: pointer;
+  transition: var(--soc-transition);
+  font-weight: 500;
+}
+
+.btn-cancelar:hover {
+  background-color: rgba(107, 114, 128, 0.1);
+}
+
+.btn-aceptar {
+  border-radius: var(--soc-border-radius);
+  border: none;
+  background-color: var(--soc-danger);
+  color: white;
+  cursor: pointer;
+  transition: var(--soc-transition);
+  font-weight: 500;
+}
+
+.btn-aceptar:hover {
+  background-color: #dc2626;
+}
+.btn-cancelar, .btn-aceptar{
+    width: 200px;
+    padding: 1rem;
+}
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .modal-contenido {
+    width: 95%;
+    padding: 1.5rem;
+  }
+  
+  .botones-modal {
+    flex-direction: column;
+  }
+  
+  .btn-cancelar,
+  .btn-aceptar {
+    width: 100%;
+  }
+}

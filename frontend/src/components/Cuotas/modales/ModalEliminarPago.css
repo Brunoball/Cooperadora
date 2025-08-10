@@ -1,0 +1,53 @@
+.modal-eliminar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998; /* BAJAMOS este valor para que el toast quede encima */
+}
+
+.modal-eliminar-contenido {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.modal-eliminar-botones {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.btn-cancelar {
+  background: #ccc;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-confirmar {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* NUEVO contenedor fijo para toast */
+.toast-fixed-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999; /* por encima de todos los modales */
+}

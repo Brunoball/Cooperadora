@@ -1,0 +1,191 @@
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Content */
+.modal-contenido {
+  background: white;
+  border-radius: var(--soc-border-radius);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  transform: scale(0.95) translateY(-10px);
+  animation: slideIn 0.2s ease-out forwards;
+}
+
+@keyframes slideIn {
+  to {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Typography */
+.modal-contenido h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--soc-dark);
+  margin: 0 0 16px 0;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+
+.modal-contenido p {
+  font-size: 15px;
+  color: var(--soc-gray);
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+.modal-contenido p strong {
+  color: var(--soc-dark);
+  font-weight: 600;
+}
+
+/* Buttons Container */
+.modal-botones {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+/* Base Button Styles */
+.modal-botones button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.025em;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Cancel Button */
+.btn-cancelar {
+  background: white;
+  color: var(--soc-gray);
+  border: 1px solid #E5E7EB;
+}
+
+.btn-cancelar:hover {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+}
+
+.btn-cancelar:active {
+  background: #E5E7EB;
+}
+
+/* Confirm Button */
+.btn-confirmar {
+  background: #EF4444;
+  color: white;
+  border: 1px solid transparent;
+  box-shadow: var(--soc-shadow-sm);
+}
+
+.btn-confirmar:hover {
+  background: #DC2626;
+}
+
+.btn-confirmar:active {
+  background: #B91C1C;
+  transform: translateY(1px);
+}
+
+/* Focus States */
+.modal-botones button:focus-visible {
+  outline: 2px solid var(--soc-primary);
+  outline-offset: 2px;
+}
+
+.btn-confirmar:focus-visible {
+  outline-color: var(--soc-danger);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .modal-contenido {
+    padding: 24px;
+    margin: 16px;
+    width: calc(100% - 32px);
+  }
+  
+  .modal-contenido h2 {
+    font-size: 18px;
+  }
+  
+  .modal-contenido p {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  
+  .modal-botones {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  
+  .modal-botones button {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .modal-contenido {
+    border: 2px solid var(--soc-dark);
+  }
+  
+  .btn-cancelar {
+    border-color: var(--soc-dark) !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-contenido,
+  .modal-botones button {
+    animation: none;
+    transition: none;
+  }
+  
+  .modal-botones button:hover {
+    transform: none;
+  }
+}

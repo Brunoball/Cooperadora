@@ -1,0 +1,326 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-container {
+  background: var(--princ-glass);
+  border-radius: var(--princ-border-radius-xl);
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  box-shadow: var(--princ-shadow-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+/* Eliminado completamente el pseudo-elemento que causaba el reborde blanco */
+.modal-container::before {
+  display: none;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: linear-gradient(90deg, var(--princ-primary), var(--princ-secondary));
+  color: white;
+  border-top-left-radius: var(--princ-border-radius-xl);
+  border-top-right-radius: var(--princ-border-radius-xl);
+  /* Asegurar que no hay overflow visual */
+  position: relative;
+  z-index: 1;
+}
+
+.modal-header-content {
+  flex: 1;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: white;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.modal-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  opacity: 0.9;
+  font-weight: 400;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  margin-left: 16px;
+  border-radius: 50%;
+  transition: var(--princ-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+.modal-content {
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+}
+
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--princ-glass-border);
+  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.tab {
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--princ-gray-600);
+  cursor: pointer;
+  position: relative;
+  transition: var(--princ-transition);
+}
+
+.tab:hover {
+  color: var(--princ-primary);
+}
+
+.tab.active {
+  color: var(--princ-primary-dark);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--princ-primary), var(--princ-secondary));
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: none;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.info-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+  border-radius: var(--princ-border-radius-lg);
+  padding: 16px;
+  border: 1px solid var(--princ-glass-border);
+  box-shadow: var(--princ-shadow-md);
+}
+
+.info-card-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--princ-gray-900);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--princ-glass-border);
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-weight: 600;
+  color: var(--princ-gray-600);
+  font-size: 0.875rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.info-value {
+  font-weight: 500;
+  color: var(--princ-dark);
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.info-comment {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+  border-radius: var(--princ-border-radius-lg);
+  padding: 16px;
+  border: 1px solid var(--princ-glass-border);
+  box-shadow: var(--princ-shadow-md);
+}
+
+.info-comment-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--princ-gray-900);
+}
+
+.info-comment-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--princ-gray-600);
+  line-height: 1.5;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Hace que la tarjeta de Cobranza ocupe todo el ancho */
+.info-card-full {
+  grid-column: span 2;
+}
+
+/* Estilo modificado para comentario en línea */
+.info-item.comentario {
+  flex-direction: row;
+  align-items: center;
+}
+
+.info-item.comentario .info-label {
+  margin-right: 12px;
+}
+
+.info-item.comentario .info-value {
+  text-align: left;
+  word-break: break-word;
+  white-space: pre-line;
+}
+
+/* En móviles o pantallas pequeñas, vuelve al ancho normal */
+@media (max-width: 768px) {
+  .info-card-full {
+    grid-column: span 1;
+  }
+  
+  .modal-container {
+    width: 95%;
+    max-height: 85vh;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-tabs {
+    overflow-x: auto;
+    padding: 0 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab {
+    white-space: nowrap;
+  }
+  
+  .modal-title {
+    font-size: 1.3rem;
+  }
+  
+  .modal-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  /* En móvil, comentario en columna para mejor legibilidad */
+  .info-item.comentario {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .info-item.comentario .info-label {
+    margin-bottom: 4px;
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .modal-header {
+    padding: 16px;
+  }
+  
+  .modal-title {
+    font-size: 1.2rem;
+  }
+  
+  .tab-content {
+    padding: 16px;
+  }
+  
+  .info-card {
+    padding: 12px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
