@@ -1,89 +1,69 @@
 <?php
+// modules/pagos/registrar_pago.php
 require_once __DIR__ . '/../../config/db.php';
-
 header("Access-Control-Allow-Origin: http://localhost:3000");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-header('Content-Type: application/json');
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json; charset=utf-8");
 
-// Permitir preflight de CORS
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-// Validar método
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['exito' => false, 'mensaje' => 'Método no permitido']);
-    exit;
-}
-
-// Leer y validar entrada
-$input = json_decode(file_get_contents("php://input"), true);
-$id_socio = $input['id_socio'] ?? null;
-$periodos = $input['periodos'] ?? [];
-
-if (!$id_socio || !is_array($periodos) || empty($periodos)) {
-    echo json_encode(['exito' => false, 'mensaje' => 'Datos incompletos para registrar el pago']);
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 try {
+    if ($pdo instanceof PDO) {
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } else {
+        throw new RuntimeException('Conexión PDO no disponible');
+    }
+
+    $payload = json_decode(file_get_contents('php://input'), true);
+    $idAlumno = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
+    $periodos = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
+
+    if ($idAlumno <= 0) {
+        echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido']);
+        exit;
+    }
+    if (empty($periodos)) {
+        echo json_encode(['exito' => false, 'mensaje' => 'No se enviaron meses a registrar']);
+        exit;
+    }
+
+    // (Opcional) Evitar duplicados lógicos: asegurá un índice único (id_alumno, id_mes) en DB.
+    // Mientras tanto, validamos en app.
     $pdo->beginTransaction();
-    $fecha = date('Y-m-d');
 
-    $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM pagos WHERE id_socio = ? AND id_periodo = ?");
-    $insertStmt = $pdo->prepare("INSERT INTO pagos (id_socio, id_periodo, fecha_pago) VALUES (?, ?, ?)");
+    // Meses ya pagados (evitar duplicar)
+    $stmtExist = $pdo->prepare("SELECT id_mes FROM pagos WHERE id_alumno = :id");
+    $stmtExist->execute([':id' => $idAlumno]);
+    $yaPagados = array_map('intval', $stmtExist->fetchAll(PDO::FETCH_COLUMN));
+    $yaPagadosSet = array_flip($yaPagados);
 
-    $yaPagados = [];
-    $nuevosPagos = 0;
+    $stmtIns = $pdo->prepare("
+        INSERT INTO pagos (id_alumno, id_mes, fecha_pago)
+        VALUES (:id_alumno, :id_mes, CURDATE())
+    ");
 
-    foreach ($periodos as $id_periodo) {
-        $checkStmt->execute([$id_socio, $id_periodo]);
-        if ($checkStmt->fetchColumn() > 0) {
-            $yaPagados[] = $id_periodo;
-            continue;
-        }
+    $insertados = 0;
+    foreach ($periodos as $mesId) {
+        $mes = (int)$mesId;
+        if ($mes < 1 || $mes > 12) continue;          // validación básica
+        if (isset($yaPagadosSet[$mes])) continue;     // evitar duplicado
 
-        $insertStmt->execute([$id_socio, $id_periodo, $fecha]);
-        $nuevosPagos++;
+        $stmtIns->execute([
+            ':id_alumno' => $idAlumno,
+            ':id_mes'    => $mes,
+        ]);
+        $insertados++;
     }
 
     $pdo->commit();
 
-    // Respuestas personalizadas
-    if ($nuevosPagos > 0 && count($yaPagados) === 0) {
-        echo json_encode([
-            'exito' => true,
-            'mensaje' => 'Pago registrado correctamente'
-        ]);
-    } elseif ($nuevosPagos > 0 && count($yaPagados) > 0) {
-        echo json_encode([
-            'exito' => true,
-            'mensaje' => 'Algunos períodos ya estaban registrados, otros se guardaron correctamente',
-            'ya_pagados' => $yaPagados
-        ]);
-    } elseif ($nuevosPagos === 0 && count($yaPagados) > 0) {
-        $mensaje = count($yaPagados) === 1
-            ? 'Este período ya fue registrado anteriormente'
-            : 'Estos períodos ya fueron registrados anteriormente';
-
-        echo json_encode([
-            'exito' => false,
-            'mensaje' => $mensaje,
-            'ya_pagados' => $yaPagados
-        ]);
+    if ($insertados > 0) {
+        echo json_encode(['exito' => true, 'insertados' => $insertados]);
     } else {
-        echo json_encode([
-            'exito' => false,
-            'mensaje' => 'No se registraron pagos'
-        ]);
+        echo json_encode(['exito' => false, 'mensaje' => 'No se insertaron pagos (posibles duplicados)']);
     }
-
-} catch (PDOException $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    echo json_encode([
-        'exito' => false,
-        'mensaje' => 'Error al registrar pagos: ' . $e->getMessage()
-    ]);
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+    echo json_encode(['exito' => false, 'mensaje' => 'Error al registrar pagos']);
 }

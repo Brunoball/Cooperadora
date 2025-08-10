@@ -92,6 +92,19 @@ switch ($action) {
         include_module($M . '/global/obtener_listas.php');
         break;
 
+    /* CUOTAS (ALUMNOS) */
+    case 'cuotas': // GET: lista de cuotas (pagados/deudores) segun pagos y mes/año actual
+        include_module($M . '/cuotas/cuotas.php');
+        break;
+
+    case 'periodos_pagados':
+        require_once("$M/cuotas/periodos_pagados.php");
+        break;
+
+    case 'registrar_pago':
+        require_once("$M/cuotas/registrar_pago.php");
+        break;
+
     default:
         http_response_code(400);
         echo json_encode(['exito' => false, 'mensaje' => 'Acción no válida.']);

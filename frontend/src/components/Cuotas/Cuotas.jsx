@@ -1,3 +1,4 @@
+// src/components/Cuotas/Cuotas.jsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
@@ -29,53 +30,116 @@ import { imprimirRecibos } from '../../utils/imprimirRecibos';
 import Toast from '../Global/Toast';
 import './Cuotas.css';
 
+const normalizar = (s = '') =>
+  String(s)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+
 const Cuotas = () => {
   const [cuotas, setCuotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPrint, setLoadingPrint] = useState(false);
+
+  // 🔎 búsqueda libre
   const [busqueda, setBusqueda] = useState('');
+
+  // 🧭 tabs: deudor/pagado
   const [estadoPagoSeleccionado, setEstadoPagoSeleccionado] = useState('deudor');
-  const [estadoSocioSeleccionado, setEstadoSocioSeleccionado] = useState('');
-  const [medioPagoSeleccionado, setMedioPagoSeleccionado] = useState('');
-  const [periodoSeleccionado, setPeriodoSeleccionado] = useState('');
-  const [mediosPago, setMediosPago] = useState([]);
-  const [periodos, setPeriodos] = useState([]);
-  const [estados, setEstados] = useState([]);
-  const [mostrarModalPagos, setMostrarModalPagos] = useState(false);
-  const [mostrarModalCodigoBarras, setMostrarModalCodigoBarras] = useState(false);
-  const [mostrarModalEliminarPago, setMostrarModalEliminarPago] = useState(false);
-  const [socioParaPagar, setSocioParaPagar] = useState(null);
+
+  // 🧰 filtros (listas de obtener_listas.php)
+  const [anioSeleccionado, setAnioSeleccionado] = useState('');
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
+  const [divisionSeleccionada, setDivisionSeleccionada] = useState('');
+  const [mesSeleccionado, setMesSeleccionado] = useState('');
+
+  // listas para selects
+  const [anios, setAnios] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [divisiones, setDivisiones] = useState([]);
+  const [meses, setMeses] = useState([]);
+
+  // UI
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(true);
   const [orden, setOrden] = useState({ campo: 'nombre', ascendente: true });
   const [toastVisible, setToastVisible] = useState(false);
   const [toastTipo, setToastTipo] = useState('exito');
   const [toastMensaje, setToastMensaje] = useState('');
+
+  const [mostrarModalPagos, setMostrarModalPagos] = useState(false);
+  const [mostrarModalCodigoBarras, setMostrarModalCodigoBarras] = useState(false);
+  const [mostrarModalEliminarPago, setMostrarModalEliminarPago] = useState(false);
+  const [socioParaPagar, setSocioParaPagar] = useState(null);
+
   const navigate = useNavigate();
+
+  // Helpers para tolerar distintos nombres de campos del backend
+  const getIdMesFromCuota = (c) =>
+    c?.id_mes ?? c?.id_periodo ?? c?.mes_id ?? c?.periodo_id ?? '';
+
+  const getIdAnioFromCuota = (c) =>
+    c?.id_anio ?? c?.id_año ?? c?.anio_id ?? '';
+
+  const getIdCategoriaFromCuota = (c) =>
+    c?.id_categoria ?? c?.categoria_id ?? '';
+
+  const getIdDivisionFromCuota = (c) =>
+    c?.id_division ?? c?.division_id ?? '';
+
+  const getNombreCuota = (c) => c?.nombre ?? c?.socio ?? '';
+  const getDomicilioCuota = (c) => c?.domicilio ?? '';
+  const getDocumentoCuota = (c) => c?.documento ?? c?.dni ?? '';
+
+  // Mapear IDs a nombres para globos
+  const getNombreAnio = (id) => {
+    const a = anios.find(x => String(x.id) === String(id));
+    return a ? a.nombre : '';
+  };
+  const getNombreDivision = (id) => {
+    const d = divisiones.find(x => String(x.id) === String(id));
+    return d ? d.nombre : '';
+  };
+  const getNombreCategoria = (id) => {
+    const c = categorias.find(x => String(x.id) === String(id));
+    return c ? c.nombre : '';
+  };
 
   const obtenerCuotasYListas = async () => {
     try {
       setLoading(true);
+
+      // Si está en “Pagados”, pedimos con ?pagados=1
+      const cuotasUrl = `${BASE_URL}/api.php?action=cuotas${
+        estadoPagoSeleccionado === 'pagado' ? '&pagados=1' : ''
+      }`;
+
       const [resCuotas, resListas] = await Promise.all([
-        fetch(`${BASE_URL}/api.php?action=cuotas${estadoPagoSeleccionado === 'pagado' ? '&pagados=1' : ''}`),
-        fetch(`${BASE_URL}/api.php?action=listas`),
+        fetch(cuotasUrl),
+        fetch(`${BASE_URL}/api.php?action=obtener_listas`),
       ]);
 
-      const dataCuotas = await resCuotas.json();
-      const dataListas = await resListas.json();
+      const dataCuotas = await resCuotas.json().catch(() => ({}));
+      const dataListas = await resListas.json().catch(() => ({}));
 
-      if (dataCuotas.exito) {
-        setCuotas(dataCuotas.cuotas);
+      if (dataCuotas?.exito) {
+        setCuotas(Array.isArray(dataCuotas.cuotas) ? dataCuotas.cuotas : []);
+      } else {
+        setCuotas([]);
       }
-      if (dataListas.exito) {
-        setMediosPago(dataListas.listas.cobradores.map(c => c.nombre));
-        setPeriodos(dataListas.listas.periodos.map(p => ({
-          id: p.id,
-          nombre: p.nombre
-        })));
-        setEstados(dataListas.listas.estados.map(e => e.descripcion));
+
+      if (dataListas?.exito) {
+        const L = dataListas.listas || {};
+        setAnios(Array.isArray(L.anios) ? L.anios : []);
+        setCategorias(Array.isArray(L.categorias) ? L.categorias : []);
+        setDivisiones(Array.isArray(L.divisiones) ? L.divisiones : []);
+        setMeses(Array.isArray(L.meses) ? L.meses : []);
+      } else {
+        setAnios([]); setCategorias([]); setDivisiones([]); setMeses([]);
       }
     } catch (error) {
       console.error('Error al conectar con el servidor:', error);
+      setCuotas([]);
+      setAnios([]); setCategorias([]); setDivisiones([]); setMeses([]);
     } finally {
       setLoading(false);
     }
@@ -83,62 +147,118 @@ const Cuotas = () => {
 
   useEffect(() => {
     obtenerCuotasYListas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estadoPagoSeleccionado]);
 
+  const coincideBusquedaLibre = (c) => {
+    if (!busqueda) return true;
+    const q = normalizar(busqueda);
+    return (
+      normalizar(getNombreCuota(c)).includes(q) ||
+      normalizar(getDomicilioCuota(c)).includes(q) ||
+      normalizar(getDocumentoCuota(c)).includes(q)
+    );
+  };
+
+  const coincideAnio = (c) =>
+    !anioSeleccionado ||
+    String(getIdAnioFromCuota(c)) === String(anioSeleccionado) ||
+    normalizar(c?.anio ?? c?.año ?? '').includes(
+      normalizar(
+        anios.find(a => String(a.id) === String(anioSeleccionado))?.nombre || ''
+      )
+    );
+
+  const coincideCategoria = (c) =>
+    !categoriaSeleccionada ||
+    String(getIdCategoriaFromCuota(c)) === String(categoriaSeleccionada) ||
+    normalizar(c?.categoria ?? '').includes(
+      normalizar(
+        categorias.find(a => String(a.id) === String(categoriaSeleccionada))?.nombre || ''
+      )
+    );
+
+  const coincideDivision = (c) =>
+    !divisionSeleccionada ||
+    String(getIdDivisionFromCuota(c)) === String(divisionSeleccionada) ||
+    normalizar(c?.division ?? '').includes(
+      normalizar(
+        divisiones.find(a => String(a.id) === String(divisionSeleccionada))?.nombre || ''
+      )
+    );
+
+  const coincideMes = (c) =>
+    !mesSeleccionado ||
+    String(getIdMesFromCuota(c)) === String(mesSeleccionado) ||
+    normalizar(c?.mes ?? c?.periodo ?? '').includes(
+      normalizar(
+        meses.find(m => String(m.id) === String(mesSeleccionado))?.nombre || ''
+      )
+    );
+
+  const coincideEstadoPago = (c) => {
+    if (!estadoPagoSeleccionado) return true;
+    return String(c?.estado_pago ?? '').toLowerCase() === estadoPagoSeleccionado;
+  };
+
+  const ordenarPor = (a, b, campo, asc) => {
+    let va = '';
+    let vb = '';
+    switch (campo) {
+      case 'nombre':
+        va = getNombreCuota(a); vb = getNombreCuota(b); break;
+      case 'domicilio':
+        va = getDomicilioCuota(a); vb = getDomicilioCuota(b); break;
+      case 'dni':
+        va = String(getDocumentoCuota(a)); vb = String(getDocumentoCuota(b)); break;
+      default:
+        va = getNombreCuota(a); vb = getNombreCuota(b);
+    }
+    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+  };
+
   const cuotasFiltradas = useMemo(() => {
-    if (!periodoSeleccionado) return [];
+    if (!mesSeleccionado) return []; // hasta que elijan mes
 
-    const cuotasFiltradas = cuotas
-      .filter((c) => String(c.id_periodo) === String(periodoSeleccionado))
-      .filter((c) => {
-        const coincideBusqueda = busqueda === '' || 
-          c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          c.domicilio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-          c.documento?.toLowerCase().includes(busqueda.toLowerCase());
-        const coincideEstadoSocio = estadoSocioSeleccionado === '' || c.estado === estadoSocioSeleccionado;
-        const coincideMedio = medioPagoSeleccionado === '' || c.medio_pago === medioPagoSeleccionado;
-        const coincideEstadoPago = estadoPagoSeleccionado === '' || c.estado_pago === estadoPagoSeleccionado;
+    const data = cuotas
+      .filter(coincideEstadoPago)
+      .filter(coincideBusquedaLibre)
+      .filter(coincideAnio)
+      .filter(coincideCategoria)
+      .filter(coincideDivision)
+      .filter(coincideMes);
 
-        return coincideBusqueda && coincideEstadoSocio && coincideMedio && coincideEstadoPago;
-      });
+    return data.sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
+  }, [
+    cuotas,
+    busqueda,
+    anioSeleccionado,
+    categoriaSeleccionada,
+    divisionSeleccionada,
+    mesSeleccionado,
+    estadoPagoSeleccionado,
+    orden
+  ]);
 
-    return cuotasFiltradas.sort((a, b) => {
-      const campoA = orden.campo === 'nombre' ? a.nombre : a.domicilio || '';
-      const campoB = orden.campo === 'nombre' ? b.nombre : b.domicilio || '';
-      
-      if (orden.ascendente) {
-        return campoA.localeCompare(campoB);
-      } else {
-        return campoB.localeCompare(campoA);
-      }
-    });
-  }, [cuotas, busqueda, estadoSocioSeleccionado, medioPagoSeleccionado, periodoSeleccionado, estadoPagoSeleccionado, orden]);
-
-  const cantidadFiltradaDeudores = useMemo(() => {
-    return cuotas.filter(c => 
-      String(c.id_periodo) === String(periodoSeleccionado) &&
-      (busqueda === '' || 
-        c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        c.domicilio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        c.documento?.toLowerCase().includes(busqueda.toLowerCase())) &&
-      (estadoSocioSeleccionado === '' || c.estado === estadoSocioSeleccionado) &&
-      (medioPagoSeleccionado === '' || c.medio_pago === medioPagoSeleccionado) &&
-      c.estado_pago === 'deudor'
+  const contarConFiltros = (estadoPago) =>
+    cuotas.filter((c) =>
+      String((getIdMesFromCuota(c))) === String(mesSeleccionado || '') &&
+      coincideBusquedaLibre(c) &&
+      coincideAnio(c) &&
+      coincideCategoria(c) &&
+      coincideDivision(c) &&
+      (String(c?.estado_pago ?? '').toLowerCase() === estadoPago)
     ).length;
-  }, [cuotas, busqueda, estadoSocioSeleccionado, medioPagoSeleccionado, periodoSeleccionado]);
 
-  const cantidadFiltradaPagados = useMemo(() => {
-    return cuotas.filter(c => 
-      String(c.id_periodo) === String(periodoSeleccionado) &&
-      (busqueda === '' || 
-        c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        c.domicilio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        c.documento?.toLowerCase().includes(busqueda.toLowerCase())) &&
-      (estadoSocioSeleccionado === '' || c.estado === estadoSocioSeleccionado) &&
-      (medioPagoSeleccionado === '' || c.medio_pago === medioPagoSeleccionado) &&
-      c.estado_pago === 'pagado'
-    ).length;
-  }, [cuotas, busqueda, estadoSocioSeleccionado, medioPagoSeleccionado, periodoSeleccionado]);
+  const cantidadFiltradaDeudores = useMemo(
+    () => contarConFiltros('deudor'),
+    [cuotas, busqueda, anioSeleccionado, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado]
+  );
+
+  const cantidadFiltradaPagados = useMemo(
+    () => contarConFiltros('pagado'),
+    [cuotas, busqueda, anioSeleccionado, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado]
+  );
 
   const toggleOrden = (campo) => {
     setOrden(prev => ({
@@ -153,10 +273,9 @@ const Cuotas = () => {
       alert('Por favor deshabilita el bloqueador de ventanas emergentes para esta página');
       return;
     }
-    
     setLoadingPrint(true);
     try {
-      await imprimirRecibos(cuotasFiltradas, periodoSeleccionado, ventanaImpresion);
+      await imprimirRecibos(cuotasFiltradas, mesSeleccionado, ventanaImpresion);
     } catch (error) {
       console.error('Error al imprimir:', error);
       ventanaImpresion.close();
@@ -167,56 +286,74 @@ const Cuotas = () => {
 
   const limpiarFiltros = () => {
     setBusqueda('');
-    setEstadoSocioSeleccionado('');
-    setMedioPagoSeleccionado('');
-
+    setAnioSeleccionado('');
+    setCategoriaSeleccionada('');
+    setDivisionSeleccionada('');
+    // mes NO se limpia para no vaciar la lista
     setToastTipo('exito');
     setToastMensaje('Filtros limpiados correctamente');
     setToastVisible(true);
   };
 
-  const toggleFiltros = () => {
-    setFiltrosExpandidos(!filtrosExpandidos);
-  };
+  const toggleFiltros = () => setFiltrosExpandidos(!filtrosExpandidos);
 
   const Row = ({ index, style, data }) => {
     const cuota = data[index];
-    
-    const claseEstado = {
-      activo: 'cuo_estado-activo',
-      pasivo: 'cuo_estado-pasivo'
-    }[cuota.estado?.toLowerCase()] || 'cuo_badge-warning';
 
-    const claseMedioPago = {
-      cobrador: 'cuo_pago-cobrador',
-      oficina: 'cuo_pago-oficina',
-      transferencia: 'cuo_pago-transferencia'
-    }[cuota.medio_pago?.toLowerCase()] || 'cuo_badge-warning';
+    const idAnio = getIdAnioFromCuota(cuota);
+    const idDiv  = getIdDivisionFromCuota(cuota);
+    const idCat  = getIdCategoriaFromCuota(cuota);
+
+    const nombreAnio = getNombreAnio(idAnio);
+    const nombreDiv  = getNombreDivision(idDiv);
+    const nombreCat  = getNombreCategoria(idCat);
 
     return (
-      <div 
-        style={style} 
+      <div
+        style={style}
         className={`cuo_tabla-fila cuo_grid-container ${index % 2 === 0 ? 'cuo_fila-par' : 'cuo_fila-impar'}`}
       >
+        {/* Alumno */}
         <div className="cuo_col-nombre">
-          <div className="cuo_nombre-socio">{cuota.nombre}</div>
-          {cuota.documento && <div className="cuo_documento">Doc: {cuota.documento}</div>}
+          <div className="cuo_nombre-socio">{getNombreCuota(cuota)}</div>
         </div>
-        <div className="cuo_col-domicilio">{cuota.domicilio || '-'}</div>
-        <div className="cuo_col-estado">
-          <span className={`cuo_badge ${claseEstado}`}>
-            {cuota.estado}
+
+        {/* DNI */}
+        <div className="cuo_col-dni">
+          {getDocumentoCuota(cuota) || '—'}
+        </div>
+
+        {/* Domicilio */}
+        <div className="cuo_col-domicilio">
+          {getDomicilioCuota(cuota) || '—'}
+        </div>
+
+        {/* Curso (Año) */}
+        <div className="cuo_col-curso">
+          <span className="cuo_badge cuo_badge-info">
+            {nombreAnio || '—'}
           </span>
         </div>
-        <div className="cuo_col-medio-pago">
-          <span className={`cuo_badge ${claseMedioPago}`}>
-            {cuota.medio_pago || 'Sin especificar'}
+
+        {/* División */}
+        <div className="cuo_col-division">
+          <span className="cuo_badge cuo_badge-primary">
+            {nombreDiv || '—'}
           </span>
         </div>
+
+        {/* Categoría */}
+        <div className="cuo_col-categoria">
+          <span className="cuo_badge cuo_badge-success">
+            {nombreCat || '—'}
+          </span>
+        </div>
+
+        {/* Acciones */}
         <div className="cuo_col-acciones">
           <div className="cuo_acciones-cell">
             {estadoPagoSeleccionado === 'deudor' ? (
-              <button 
+              <button
                 className="cuo_boton-accion cuo_boton-accion-success"
                 onClick={() => {
                   setSocioParaPagar(cuota);
@@ -238,12 +375,12 @@ const Cuotas = () => {
                 <FaTimes />
               </button>
             )}
-            <button 
+            <button
               className="cuo_boton-accion cuo_boton-accion-primary"
               onClick={() => {
                 const ventanaImpresion = window.open('', '_blank');
                 if (ventanaImpresion) {
-                  imprimirRecibos([cuota], periodoSeleccionado, ventanaImpresion);
+                  imprimirRecibos([cuota], mesSeleccionado, ventanaImpresion);
                 } else {
                   alert('Por favor deshabilita el bloqueador de ventanas emergentes para imprimir');
                 }
@@ -258,9 +395,9 @@ const Cuotas = () => {
     );
   };
 
-  const getNombrePeriodo = (id) => {
-    const periodo = periodos.find(p => String(p.id) === String(id));
-    return periodo ? periodo.nombre : id;
+  const getNombreMes = (id) => {
+    const m = meses.find(p => String(p.id) === String(id));
+    return m ? m.nombre : id;
   };
 
   return (
@@ -272,7 +409,7 @@ const Cuotas = () => {
             Filtros Avanzados
           </h3>
           <div className="cuo_filtros-controles">
-            <button 
+            <button
               className="cuo_boton cuo_boton-icono cuo_boton-toggle-horizontal"
               onClick={toggleFiltros}
               title={filtrosExpandidos ? 'Ocultar filtros' : 'Mostrar filtros'}
@@ -284,24 +421,83 @@ const Cuotas = () => {
 
         {filtrosExpandidos && (
           <>
+            {/* MES (obligatorio para listar) */}
             <div className="cuo_filtro-grupo">
               <label className="cuo_filtro-label">
                 <FaCalendarAlt className="cuo_filtro-icono" />
-                Período
+                Mes
               </label>
-              <select 
-                value={periodoSeleccionado} 
-                onChange={(e) => setPeriodoSeleccionado(e.target.value)} 
+              <select
+                value={mesSeleccionado}
+                onChange={(e) => setMesSeleccionado(e.target.value)}
                 className="cuo_filtro-select"
                 disabled={loading}
               >
-                <option value="">Seleccionar período</option>
-                {periodos.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                <option value="">Seleccionar mes</option>
+                {meses.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nombre}</option>
                 ))}
               </select>
             </div>
 
+            {/* AÑO / CURSO */}
+            <div className="cuo_filtro-grupo">
+              <label className="cuo_filtro-label">
+                <FaFilter className="cuo_filtro-icono" />
+                Año (curso)
+              </label>
+              <select
+                value={anioSeleccionado}
+                onChange={(e) => setAnioSeleccionado(e.target.value)}
+                className="cuo_filtro-select"
+                disabled={loading}
+              >
+                <option value="">Todos</option>
+                {anios.map((a) => (
+                  <option key={a.id} value={a.id}>{a.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* CATEGORÍA */}
+            <div className="cuo_filtro-grupo">
+              <label className="cuo_filtro-label">
+                <FaFilter className="cuo_filtro-icono" />
+                Categoría
+              </label>
+              <select
+                value={categoriaSeleccionada}
+                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+                className="cuo_filtro-select"
+                disabled={loading}
+              >
+                <option value="">Todas</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* DIVISIÓN */}
+            <div className="cuo_filtro-grupo">
+              <label className="cuo_filtro-label">
+                <FaFilter className="cuo_filtro-icono" />
+                División
+              </label>
+              <select
+                value={divisionSeleccionada}
+                onChange={(e) => setDivisionSeleccionada(e.target.value)}
+                className="cuo_filtro-select"
+                disabled={loading}
+              >
+                <option value="">Todas</option>
+                {divisiones.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* TABS de ESTADO DE PAGO */}
             <div className="cuo_tabs-container">
               <label className="cuo_filtro-label">
                 <FaFilter className="cuo_filtro-icono" />
@@ -313,63 +509,43 @@ const Cuotas = () => {
                   onClick={() => setEstadoPagoSeleccionado('deudor')}
                   disabled={loading}
                 >
-                  Deudores <span style={{ display: 'inline-block',  textAlign: 'right' }}>({cantidadFiltradaDeudores})</span>
+                  Deudores <span style={{ display: 'inline-block', textAlign: 'right' }}>({cantidadFiltradaDeudores})</span>
                 </button>
                 <button
                   className={`cuo_tab ${estadoPagoSeleccionado === 'pagado' ? 'cuo_tab-activo' : ''}`}
                   onClick={() => setEstadoPagoSeleccionado('pagado')}
                   disabled={loading}
                 >
-                  Pagados <span style={{ display: 'inline-block',  textAlign: 'right' }}>({cantidadFiltradaPagados})</span>
+                  Pagados <span style={{ display: 'inline-block', textAlign: 'right' }}>({cantidadFiltradaPagados})</span>
                 </button>
               </div>
             </div>
 
+            {/* BÚSQUEDA + ACCIONES DE FILTRO */}
             <div className="cuo_filtro-grupo">
               <label className="cuo_filtro-label">
-                <FaFilter className="cuo_filtro-icono" />
-                Estado del Socio
+                <FaSearch className="cuo_filtro-icono" />
+                Buscar
               </label>
-              <select 
-                value={estadoSocioSeleccionado} 
-                onChange={(e) => setEstadoSocioSeleccionado(e.target.value)} 
-                className="cuo_filtro-select"
+              <input
+                type="text"
+                placeholder="Nombre, documento o dirección..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="cuo_buscador-input"
                 disabled={loading}
-              >
-                <option value="">Todos los estados</option>
-                {estados.map((estado, i) => (
-                  <option key={i} value={estado}>{estado}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="cuo_filtro-grupo">
-              <label className="cuo_filtro-label">
-                <FaFilter className="cuo_filtro-icono" />
-                Medio de Pago
-              </label>
-              <select 
-                value={medioPagoSeleccionado} 
-                onChange={(e) => setMedioPagoSeleccionado(e.target.value)} 
-                className="cuo_filtro-select"
-                disabled={loading}
-              >
-                <option value="">Todos los medios</option>
-                {mediosPago.map((m, i) => (
-                  <option key={i} value={m}>{m}</option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="cuo_filtro-acciones" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button 
+              <button
                 className="cuo_boton cuo_boton-light cuo_boton-limpiar"
                 onClick={limpiarFiltros}
                 disabled={loading}
               >
                 Limpiar Filtros
               </button>
-              <button 
+              <button
                 className="cuo_boton cuo_boton-secondary"
                 onClick={() => navigate('/panel')}
                 disabled={loading}
@@ -395,40 +571,28 @@ const Cuotas = () => {
         <div className="cuo_content-header">
           <div className="cuo_header-top">
             <h2 className="cuo_content-title">
-              Gestión de Cuotas 
-              {periodoSeleccionado && (
-                <span className="cuo_periodo-seleccionado"> - {getNombrePeriodo(periodoSeleccionado)}</span>
+              Gestión de Cuotas
+              {mesSeleccionado && (
+                <span className="cuo_periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>
               )}
             </h2>
-            
+
             <div className="cuo_contador-socios">
               <div className="cuo_contador-icono">
                 <FaUsers />
               </div>
               <div className="cuo_contador-texto">
-                {cuotasFiltradas.length} {cuotasFiltradas.length === 1 ? 'socio' : 'socios'}
+                {cuotasFiltradas.length} {cuotasFiltradas.length === 1 ? 'alumno' : 'alumnos'}
               </div>
             </div>
           </div>
 
           <div className="cuo_header-bottom">
-            <div className="cuo_buscador-container">
-              <FaSearch className="cuo_buscador-icono" />
-              <input
-                type="text"
-                placeholder="Buscar socio por nombre, documento o dirección..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="cuo_buscador-input"
-                disabled={loading}
-              />
-            </div>
-
             <div className="cuo_content-actions">
               <button
                 className="cuo_boton cuo_boton-success"
                 onClick={() => setMostrarModalCodigoBarras(true)}
-                disabled={loading}
+                disabled={loading || !mesSeleccionado}
               >
                 <FaBarcode /> Código de Barras
               </button>
@@ -436,7 +600,7 @@ const Cuotas = () => {
               <button
                 className={`cuo_boton cuo_boton-primary ${loadingPrint ? 'cuo_boton-loading' : ''}`}
                 onClick={handleImprimirTodos}
-                disabled={loadingPrint || !periodoSeleccionado || cuotasFiltradas.length === 0 || loading}
+                disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
               >
                 {loadingPrint ? (
                   <>
@@ -454,30 +618,43 @@ const Cuotas = () => {
 
         <div className="cuo_tabla-container">
           <div className="cuo_tabla-wrapper">
+            {/* Encabezado de la nueva tabla */}
             <div className="cuo_tabla-header cuo_grid-container">
-              <div 
-                className="cuo_col-nombre" 
+              <div
+                className="cuo_col-nombre"
                 onClick={() => toggleOrden('nombre')}
               >
-                Socio 
+                Alumno
                 <FaSort className={`cuo_icono-orden ${orden.campo === 'nombre' ? 'cuo_icono-orden-activo' : ''}`} />
                 {orden.campo === 'nombre' && (orden.ascendente ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)}
               </div>
-              <div 
+
+              <div
+                className="cuo_col-dni"
+                onClick={() => toggleOrden('dni')}
+              >
+                DNI
+                <FaSort className={`cuo_icono-orden ${orden.campo === 'dni' ? 'cuo_icono-orden-activo' : ''}`} />
+                {orden.campo === 'dni' && (orden.ascendente ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)}
+              </div>
+
+              <div
                 className="cuo_col-domicilio"
                 onClick={() => toggleOrden('domicilio')}
               >
-                Dirección
+                Domicilio
                 <FaSort className={`cuo_icono-orden ${orden.campo === 'domicilio' ? 'cuo_icono-orden-activo' : ''}`} />
                 {orden.campo === 'domicilio' && (orden.ascendente ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)}
               </div>
-              <div className="cuo_col-estado">Estado</div>
-              <div className="cuo_col-medio-pago">Medio de Pago</div>
+
+              <div className="cuo_col-curso">Curso</div>
+              <div className="cuo_col-division">División</div>
+              <div className="cuo_col-categoria">Categoría</div>
               <div className="cuo_col-acciones">Acciones</div>
             </div>
 
             <div className="cuo_list-container">
-              {loading && periodoSeleccionado ? (
+              {loading && mesSeleccionado ? (
                 <div className="cuo_estado-container">
                   <FaSpinner className="cuo_spinner" size={24} />
                   <p className="cuo_estado-mensaje">Cargando cuotas...</p>
@@ -485,9 +662,9 @@ const Cuotas = () => {
               ) : !loading && cuotasFiltradas.length === 0 ? (
                 <div className="cuo_estado-container">
                   <p className="cuo_estado-mensaje">
-                    {periodoSeleccionado 
-                      ? 'No se encontraron resultados con los filtros actuales' 
-                      : 'Seleccione un período para mostrar las cuotas'}
+                    {mesSeleccionado
+                      ? 'No se encontraron resultados con los filtros actuales'
+                      : 'Seleccioná un mes para mostrar las cuotas'}
                   </p>
                 </div>
               ) : (
@@ -523,8 +700,8 @@ const Cuotas = () => {
       {mostrarModalCodigoBarras && (
         <ModalCodigoBarras
           onClose={() => setMostrarModalCodigoBarras(false)}
-          periodo={getNombrePeriodo(periodoSeleccionado)}
-          periodoId={periodoSeleccionado}
+          periodo={getNombreMes(mesSeleccionado)}
+          periodoId={mesSeleccionado}
           onPagoRealizado={obtenerCuotasYListas}
         />
       )}
@@ -532,7 +709,7 @@ const Cuotas = () => {
       {mostrarModalEliminarPago && (
         <ModalEliminarPago
           socio={socioParaPagar}
-          periodo={periodoSeleccionado}
+          periodo={mesSeleccionado}
           onClose={() => setMostrarModalEliminarPago(false)}
           onEliminado={obtenerCuotasYListas}
         />
