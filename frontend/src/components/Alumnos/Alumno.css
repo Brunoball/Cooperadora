@@ -366,7 +366,7 @@
 .soc-tabla-header {
   display: grid;
   border-radius: 14px 14px 0 0;
-  grid-template-columns: 60px 1.5fr 1.5fr 1fr 140px;
+  grid-template-columns: 1fr 1fr 1fr 1fr 70px 70px 140px;
   background: var(--soc-gradient-primary);
   color: white;
   font-weight: 600;
@@ -402,7 +402,7 @@
 /* Estilo zebra para las filas */
 .soc-tabla-fila {
   display: grid;
-  grid-template-columns: 60px 1.5fr 1.5fr 1fr 140px;
+  grid-template-columns: 1fr 1fr 1fr 1fr 70px 70px 140px;
   padding: 10px 0;
   border-bottom: 1px solid rgba(237, 242, 247, 0.7);
   align-items: center;
@@ -1003,4 +1003,9 @@
 /* Ocultar botones del scrollbar */
 .soc-tabla-container ::-webkit-scrollbar-button {
   display: none;
+}
+
+
+.soc-col-division{
+   justify-content: center;
 }

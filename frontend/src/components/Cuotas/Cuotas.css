@@ -197,6 +197,7 @@ body {
   height: 100vh;
   overflow: hidden;
   background-color: var(--soc-gray-100);
+  min-width: 0; /* Necesario para que funcione el overflow */
 }
 
 .cuo_content-header {
@@ -528,8 +529,30 @@ body {
     minmax(180px, 2fr) 
     minmax(120px, 1fr) 
     minmax(150px, 1.5fr) 
+    minmax(120px, 1fr)
+    minmax(120px, 1fr)
     minmax(120px, 1fr);
   align-items: center;
+}
+
+@media (max-width: 1600px) {
+  .cuo_grid-container {
+    grid-template-columns: 
+      minmax(200px, 2.5fr) 
+      minmax(100px, 1fr) 
+      minmax(120px, 1fr) 
+      minmax(90px, 1fr) 
+      minmax(90px, 1fr)
+      minmax(90px, 1fr)
+      minmax(110px, 1fr);
+  }
+  
+  .cuo_col-acciones {
+    position: sticky;
+    right: 0;
+    background: inherit;
+    z-index: 2;
+  }
 }
 
 .cuo_tabla-header {
@@ -623,6 +646,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Para un scroll suave en dispositivos móviles */
 }
 
 .cuo_list-container {
@@ -917,4 +942,9 @@ body {
   .cuo_buscador-container {
     max-width: none;
   }
+}
+
+/* Ajustes cuando el panel está abierto */
+.cuo_filtros-panel:not(.cuo_filtros-colapsado) + .cuo_main-content .cuo_tabla-container {
+  margin: 1rem 0.5rem;
 }

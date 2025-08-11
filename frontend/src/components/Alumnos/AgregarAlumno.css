@@ -40,21 +40,22 @@
 }
 
 /* Contenedor principal */
-.add-socio-container {
+.add-alumno-container {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   box-sizing: border-box;
   background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   border-radius: var(--add-border-radius-lg);
   box-shadow: var(--add-shadow-xl);
   overflow: hidden;
+  padding: 2rem;
 }
 
-.add-socio-container::before {
+.add-alumno-container::before {
   content: '';
   position: absolute;
   top: -50%;
@@ -73,18 +74,19 @@
   to { transform: rotate(360deg); }
 }
 
-.add-socio-box {
+.add-alumno-box {
   position: relative;
-  width: 90%;
-  height: 90vh;
+  width: 100%;
+  max-width: 1200px;
   background: rgba(255, 255, 255, 0.7);
   border-radius: var(--add-border-radius-lg);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--add-shadow-xl);
 }
 
-.add-socio-form {
+.add-alumno-form {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -92,12 +94,13 @@
   padding: 0 1.5rem 1.3rem;
 }
 
-.add-socio-sections {
+.add-alumno-sections {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
-  overflow-y: hidden;
+  overflow-y: auto;
+  padding: 1rem;
 }
 
 .add-header {
@@ -150,37 +153,35 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-.add-socio-section {
-  height: 68vh;
-  margin: auto 0;
+.add-alumno-section {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
   padding: 1.5rem;
   border-radius: var(--add-border-radius-lg);
   transition: var(--add-transition);
+  box-shadow: var(--add-shadow-sm);
 }
 
-.add-socio-section-title {
+.add-alumno-section-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--add-primary-dark);
   margin-bottom: 1.2rem;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid rgba(59, 130, 246, 0.1);
-  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.add-socio-section-content {
+.add-alumno-section-content {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
 }
 
-.add-socio-input-wrapper {
+.add-input-wrapper {
   position: relative;
   width: 100%;
 }
 
-.add-socio-label {
+.add-label {
   position: absolute;
   top: 0.8rem;
   left: 1rem;
@@ -193,27 +194,25 @@
   transform-origin: left center;
 }
 
-.add-socio-input {
+.add-input {
   width: 100%;
-  height: 8vh;
   padding: 0.8rem 1rem;
   font-size: 0.95rem;
   border-radius: var(--add-border-radius);
   border: 1px solid var(--add-gray-300);
   background: rgba(255, 255, 255, 0.8);
   transition: var(--add-transition);
-  font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--add-gray-800);
 }
 
-.add-socio-input:focus {
+.add-input:focus {
   outline: none;
   border-color: var(--add-primary-light);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   background: rgba(255, 255, 255, 0.95);
 }
 
-.add-socio-input-highlight {
+.add-input-highlight {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -223,12 +222,12 @@
   transition: var(--add-transition);
 }
 
-.add-socio-input:focus ~ .add-socio-input-highlight {
+.add-input:focus ~ .add-input-highlight {
   width: 100%;
 }
 
-.add-socio-input-wrapper.has-value .add-socio-label,
-.add-socio-input:focus ~ .add-socio-label {
+.add-input-wrapper.has-value .add-label,
+.add-input:focus ~ .add-label {
   transform: translateY(-1.4rem) scale(0.85);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
   color: var(--add-primary);
@@ -237,14 +236,14 @@
   left: 0.8rem;
 }
 
-.add-socio-input-wrapper textarea.add-socio-input {
+.add-input-wrapper textarea.add-input {
   max-width: 100%;
   min-height: 100px;
   max-height: 180px;
   resize: vertical;
 }
 
-.add-socio-input-wrapper select.add-socio-input {
+.add-input-wrapper select.add-input {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
@@ -253,7 +252,7 @@
   padding-right: 2.5rem;
 }
 
-.add-socio-error {
+.add-error {
   position: absolute;
   bottom: -1.2rem;
   left: 0;
@@ -264,17 +263,15 @@
   border-radius: 0 0 var(--add-border-radius) var(--add-border-radius);
 }
 
-.add-socio-buttons-container {
+.add-alumno-buttons-container {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  position: absolute;
-  right: 2rem;
-  bottom: 2rem;
+  padding: 1.5rem;
+  margin-top: auto;
 }
 
-.add-socio-button {
+.add-alumno-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -285,7 +282,6 @@
   border-radius: var(--add-border-radius);
   cursor: pointer;
   transition: var(--add-transition);
-  font-family: 'Plus Jakarta Sans', sans-serif;
   border: none;
   position: relative;
   overflow: hidden;
@@ -294,31 +290,31 @@
   box-shadow: var(--add-shadow-md);
 }
 
-.add-socio-button:hover:not(:disabled) {
+.add-alumno-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: var(--add-shadow-lg);
 }
 
-.add-socio-button:active:not(:disabled) {
+.add-alumno-button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: var(--add-shadow-md);
 }
 
-.add-socio-button:disabled {
+.add-alumno-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.add-socio-icon-button {
+.add-icon-button {
   font-size: 0.9rem;
 }
 
-.add-socio-button-text {
+.add-button-text {
   position: relative;
   z-index: 2;
 }
 
-.add-socio-button:active::after {
+.add-alumno-button:active::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -345,40 +341,29 @@
 }
 
 /* Grupo de inputs */
-.add-socio-group {
+.add-group {
   display: flex;
   gap: 1rem;
   width: 100%;
 }
 
-.add-socio-group .add-socio-input-wrapper {
-  margin-bottom: 0;
-}
-
-/* Grupo de domicilio */
-.add-socio-address-group {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
-}
-
-.add-socio-address-group .add-socio-input-wrapper {
+.add-group .add-input-wrapper {
   margin-bottom: 0;
 }
 
 /* Estilos para inputs numéricos */
-.add-socio-input[type="number"]::-webkit-outer-spin-button,
-.add-socio-input[type="number"]::-webkit-inner-spin-button,
-.add-socio-input[type="tel"]::-webkit-outer-spin-button,
-.add-socio-input[type="tel"]::-webkit-inner-spin-button,
-.add-socio-input[inputmode="numeric"]::-webkit-outer-spin-button,
-.add-socio-input[inputmode="numeric"]::-webkit-inner-spin-button {
+.add-input[type="number"]::-webkit-outer-spin-button,
+.add-input[type="number"]::-webkit-inner-spin-button,
+.add-input[type="tel"]::-webkit-outer-spin-button,
+.add-input[type="tel"]::-webkit-inner-spin-button,
+.add-input[inputmode="numeric"]::-webkit-outer-spin-button,
+.add-input[inputmode="numeric"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
 @media (max-width: 992px) {
-  .add-socio-container {
+  .add-alumno-container {
     width: 90vw;
     height: auto;
     min-height: 80vh;
@@ -386,32 +371,34 @@
 }
 
 @media (max-width: 768px) {
-  .add-socio-container {
+  .add-alumno-container {
     width: 95vw;
     margin: 1vh auto;
+    padding: 1rem;
   }
   
-  .add-socio-sections {
+  .add-alumno-sections {
     grid-template-columns: 1fr;
   }
 
-  .add-socio-group,
-  .add-socio-address-group {
+  .add-group {
     flex-direction: column;
     gap: 1.2rem;
   }
 }
 
 @media (max-width: 576px) {
-  .add-socio-container {
+  .add-alumno-container {
     width: 100vw;
     height: 100vh;
     margin: 0;
     border-radius: 0;
+    padding: 0;
   }
   
-  .add-socio-box {
+  .add-alumno-box {
     border-radius: 0;
+    height: 100vh;
   }
   
   .add-header {
@@ -422,33 +409,33 @@
     font-size: 1.25rem;
   }
   
-  .add-socio-input-wrapper.has-value .add-socio-label,
-  .add-socio-input:focus ~ .add-socio-label {
+  .add-input-wrapper.has-value .add-label,
+  .add-input:focus ~ .add-label {
     transform: translateY(-1.2rem) scale(0.8);
     left: 0.5rem;
   }
   
-  .add-socio-button {
+  .add-alumno-button {
     width: 100%;
     padding: 0.85rem 1.5rem;
   }
   
-  .add-socio-form {
+  .add-alumno-form {
     padding-bottom: 3rem;
   }
 }
 
 @media (max-width: 400px) {
-  .add-socio-input {
+  .add-input {
     font-size: 0.9rem;
     padding: 0.7rem 0.9rem;
   }
   
-  .add-socio-label {
+  .add-label {
     font-size: 0.8rem;
   }
   
-  .add-socio-section-title {
+  .add-alumno-section-title {
     font-size: 1rem;
   }
 }
