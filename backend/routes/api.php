@@ -105,6 +105,11 @@ switch ($action) {
         require_once("$M/cuotas/registrar_pago.php");
         break;
 
+    case 'eliminar_pago':
+        include_module($M . '/cuotas/eliminar_pago.php');
+        break;
+
+
     default:
         http_response_code(400);
         echo json_encode(['exito' => false, 'mensaje' => 'Acción no válida.']);

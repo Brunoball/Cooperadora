@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
 import './inicio.css';
 import logoRH from '../../imagenes/Escudo.png';
+
+const STORAGE_KEYS = {
+  rememberFlag: 'rememberLogin',
+  user: 'remember_nombre',
+  pass: 'remember_contrasena', // base64
+};
 
 const Inicio = () => {
   const [nombre, setNombre] = useState('');
@@ -10,7 +16,48 @@ const Inicio = () => {
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
+
   const navigate = useNavigate();
+
+  // Cargar datos recordados
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.rememberFlag) === '1';
+    if (saved) {
+      const savedUser = localStorage.getItem(STORAGE_KEYS.user) || '';
+      const savedPassB64 = localStorage.getItem(STORAGE_KEYS.pass) || '';
+      let savedPass = '';
+      try {
+        savedPass = savedPassB64 ? atob(savedPassB64) : '';
+      } catch {
+        savedPass = '';
+      }
+      setRemember(true);
+      setNombre(savedUser);
+      setContrasena(savedPass);
+    }
+  }, []);
+
+  // Guardar/quitar en localStorage según el check
+  const persistRemember = (user, pass, flag) => {
+    if (flag) {
+      localStorage.setItem(STORAGE_KEYS.rememberFlag, '1');
+      localStorage.setItem(STORAGE_KEYS.user, user ?? '');
+      localStorage.setItem(STORAGE_KEYS.pass, btoa(pass ?? ''));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.rememberFlag);
+      localStorage.removeItem(STORAGE_KEYS.user);
+      localStorage.removeItem(STORAGE_KEYS.pass);
+    }
+  };
+
+  // Si está activo "recordar", persiste a medida que se escribe
+  useEffect(() => {
+    if (remember) {
+      persistRemember(nombre, contrasena, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nombre, contrasena, remember]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -31,7 +78,7 @@ const Inicio = () => {
       const respuesta = await fetch(`${BASE_URL}/api.php?action=inicio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, contrasena })
+        body: JSON.stringify({ nombre, contrasena }),
       });
 
       const data = await respuesta.json();
@@ -39,6 +86,10 @@ const Inicio = () => {
       if (data.exito) {
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         localStorage.setItem('token', data.token);
+
+        // Mantener o limpiar recordatorio según el check
+        persistRemember(nombre, contrasena, remember);
+
         navigate('/panel');
       } else {
         setMensaje(data.mensaje || 'Credenciales incorrectas');
@@ -107,6 +158,18 @@ const Inicio = () => {
                 )}
               </svg>
             </button>
+          </div>
+
+          {/* Recordar cuenta */}
+          <div className="ini_campo ini_recordar">
+            <label className="ini_recordar-label">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <span>Recordar cuenta</span>
+            </label>
           </div>
 
           <div className="ini_footer">

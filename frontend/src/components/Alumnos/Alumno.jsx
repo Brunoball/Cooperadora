@@ -146,7 +146,7 @@ const BarraSuperior = React.memo(({
       <div className="soc-buscador-container">
         <input
           type="text"
-          placeholder="Buscar por nombre, apellido o DNI..."
+          placeholder="Buscar por apellido, nombre o DNI"
           value={busqueda}
           onChange={(e) => {
             setFiltros(prev => ({

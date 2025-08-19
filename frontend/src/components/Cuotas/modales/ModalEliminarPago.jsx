@@ -3,7 +3,7 @@ import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalEliminarPago.css';
 
-const ModalEliminarPago = ({ socio, periodo, onClose, onEliminado }) => {
+const ModalEliminarPago = ({ socio, periodoId, periodoNombre, onClose, onEliminado }) => {
   const [toast, setToast] = useState(null);
   const [cargando, setCargando] = useState(false);
 
@@ -14,24 +14,28 @@ const ModalEliminarPago = ({ socio, periodo, onClose, onEliminado }) => {
   const handleEliminar = async () => {
     setCargando(true);
     try {
+      // Tolerancia por si el objeto viene con otras claves (id_socio/id)
+      const id_alumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? 0;
+      const id_mes    = periodoId ?? socio?.id_mes ?? socio?.id_periodo ?? 0;
+
       const res = await fetch(`${BASE_URL}/api.php?action=eliminar_pago`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_socio: socio.id_socio,
-          id_periodo: periodo
+          id_alumno,   // <-- nombres que espera el backend real
+          id_mes       // <-- tinyint del mes (1..12)
         })
       });
 
       const data = await res.json();
       if (data.exito) {
-        mostrarToast('exito', 'Pago eliminado correctamente');
+        mostrarToast('exito', data.mensaje || 'Pago eliminado correctamente');
         setTimeout(() => {
-          onEliminado({ ...socio, estado_pago: 'deudor', medio_pago: '' });
-          onClose();
-        }, 1000);
+          onEliminado?.();
+          onClose?.();
+        }, 800);
       } else {
-        mostrarToast('error', 'Error: ' + data.mensaje);
+        mostrarToast('error', 'Error: ' + (data.mensaje || 'No se pudo eliminar'));
       }
     } catch (err) {
       console.error(err);
@@ -43,7 +47,7 @@ const ModalEliminarPago = ({ socio, periodo, onClose, onEliminado }) => {
 
   return (
     <>
-      {/* Toast debe estar fuera del overlay */}
+      {/* Toast fuera del overlay para que no se tape */}
       <div className="toast-fixed-container">
         {toast && (
           <Toast
@@ -59,8 +63,8 @@ const ModalEliminarPago = ({ socio, periodo, onClose, onEliminado }) => {
         <div className="modal-eliminar-contenido">
           <h3>¿Eliminar pago?</h3>
           <p>
-            ¿Deseás eliminar el pago del socio <strong>{socio.nombre}</strong> 
-            para el período <strong>{periodo}</strong>?
+            ¿Deseás eliminar el pago del alumno <strong>{socio?.nombre ?? '—'}</strong>{' '}
+            para el período <strong>{periodoNombre ?? periodoId}</strong>?
           </p>
           <div className="modal-eliminar-botones">
             <button className="btn-cancelar" onClick={onClose} disabled={cargando}>Cancelar</button>
