@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoRH from '../../imagenes/Escudo.png';
 import './principal.css';
@@ -11,17 +11,114 @@ import {
   faMoneyBillWave,
   faTags,
   faUserPlus,
-  faSignOutAlt
+  faSignOutAlt,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
+
+/* ===========
+   Modal simple
+============= */
+const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
+  const cancelBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // Foco inicial en "Cancelar"
+    cancelBtnRef.current?.focus();
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  // Estilos mínimos inline para que funcione sin CSS extra
+  const backdropStyle = {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(15,23,42,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  };
+  const modalStyle = {
+    width: 'min(520px, 92vw)',
+    background: 'var(--soc-light, #fff)',
+    color: 'var(--soc-dark, #0f172a)',
+    borderRadius: '16px',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+    padding: '22px'
+  };
+  const headerStyle = { display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 };
+  const titleStyle = { margin: 0, fontSize: 20, fontWeight: 700 };
+  const textStyle = { margin: '8px 0 18px', lineHeight: 1.5, color: 'var(--soc-gray-600,#475569)' };
+  const actionsStyle = { display: 'flex', justifyContent: 'flex-end', gap: 12 };
+
+  return (
+    <div style={backdropStyle} onMouseDown={onClose} aria-modal="true" role="dialog" aria-labelledby="logout-title">
+      <div style={modalStyle} onMouseDown={(e) => e.stopPropagation()}>
+        <div style={headerStyle}>
+          <FontAwesomeIcon icon={faExclamationTriangle} style={{ fontSize: 22, color: '#F59E0B' }} />
+          <h3 id="logout-title" style={titleStyle}>¿Cerrar sesión?</h3>
+        </div>
+        <p style={textStyle}>
+          Vas a salir del sistema y se borrarán los datos de tu sesión en este navegador.
+        </p>
+        <div style={actionsStyle}>
+          <button
+            ref={cancelBtnRef}
+            onClick={onClose}
+            className="princ-modal-btn-sec"
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: '1px solid var(--soc-gray-300,#cbd5e1)',
+              background: 'transparent',
+              cursor: 'pointer'
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="princ-modal-btn-primary"
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: 'none',
+              background: 'var(--soc-danger,#ef4444)',
+              color: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Principal = () => {
   const usuario = JSON.parse(localStorage.getItem('usuario'));
   const navigate = useNavigate();
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  const cerrarSesion = () => {
+  const handleClickCerrar = () => {
+    setShowConfirm(true);
+  };
+
+  const confirmarCerrarSesion = () => {
     localStorage.removeItem('usuario');
+    setShowConfirm(false);
     navigate('/');
   };
+
+  const cancelarCerrarSesion = () => setShowConfirm(false);
 
   const redirectTo3Devs = () => {
     window.open('https://3devsnet.com', '_blank');
@@ -31,7 +128,7 @@ const Principal = () => {
     <div className="princ-contenedor-padre">
       <div className="princ-contenedor">
         <div className="princ-glass-effect"></div>
-        
+
         <div className="princ-encabezado">
           <div className="princ-logo-container">
             <img src={logoRH} alt="Logo IPET 50" className="princ-logo" />
@@ -39,7 +136,7 @@ const Principal = () => {
           </div>
           <h1>Sistema de Gestión <span>Cooperadora IPET 50</span></h1>
           <p className="princ-subtitulo">Panel de administración integral para la gestión eficiente de tu organización</p>
-          
+
           <div className="princ-usuario-info">
             <h2>Bienvenido, <span>{usuario?.Nombre_Completo || 'Usuario'}</span></h2>
             <div className="princ-usuario-status"></div>
@@ -95,7 +192,7 @@ const Principal = () => {
         <div className="princ-footer">
           <div className="princ-footer-container">
             <div className="princ-creditos-container">
-              <p 
+              <p
                 className="princ-creditos"
                 onClick={redirectTo3Devs}
               >
@@ -103,7 +200,7 @@ const Principal = () => {
               </p>
             </div>
             <div className="princ-boton-salir-container">
-              <button onClick={cerrarSesion} className="princ-boton-salir">
+              <button onClick={handleClickCerrar} className="princ-boton-salir">
                 <FontAwesomeIcon icon={faSignOutAlt} className="princ-boton-salir-icono" />
                 <span>Cerrar Sesión</span>
               </button>
@@ -111,6 +208,13 @@ const Principal = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de confirmación */}
+      <ConfirmLogoutModal
+        open={showConfirm}
+        onClose={cancelarCerrarSesion}
+        onConfirm={confirmarCerrarSesion}
+      />
     </div>
   );
 };
