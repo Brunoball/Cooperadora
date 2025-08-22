@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import BASE_URL from '../../config/config';
 import {
   FaInfoCircle,
@@ -29,6 +30,9 @@ import { saveAs } from 'file-saver';
 import Toast from '../Global/Toast';
 import '../Global/roots.css';
 
+/* ================================
+   Utils
+================================ */
 const normalizar = (str = '') =>
   str
     .toString()
@@ -51,6 +55,9 @@ const combinarNombre = (a) => {
   return partes || (a?.nombre ?? '');
 };
 
+/* ================================
+   Componentes puros
+================================ */
 const BotonesInferiores = React.memo(({
   cargando,
   navigate,
@@ -239,6 +246,9 @@ const BarraSuperior = React.memo(({
   );
 });
 
+/* ================================
+   Página Alumnos
+================================ */
 const Alumnos = () => {
   const [alumnos, setAlumnos] = useState([]);
   const [alumnosDB, setAlumnosDB] = useState([]);
@@ -278,6 +288,9 @@ const Alumnos = () => {
 
   const { busqueda, letraSeleccionada, filtroActivo } = filtros;
 
+  /* ================================
+     Derivados y filtros
+  ================================= */
   const alumnosFiltrados = useMemo(() => {
     let resultados = [...alumnos];
 
@@ -311,6 +324,9 @@ const Alumnos = () => {
     return resultados;
   }, [alumnos, busqueda, letraSeleccionada, filtroActivo]);
 
+  /* ================================
+     Efectos
+  ================================= */
   useEffect(() => {
     if (alumnosFiltrados.length > 0) {
       const timer = setTimeout(() => {
@@ -387,6 +403,9 @@ const Alumnos = () => {
     localStorage.setItem('filtros_alumnos', JSON.stringify(filtros));
   }, [filtros]);
 
+  /* ================================
+     Handlers
+  ================================= */
   const manejarSeleccion = useCallback((alumno) => {
     if (bloquearInteraccion || animacionActiva) return;
     setAlumnoSeleccionado(prev =>
@@ -418,7 +437,7 @@ const Alumnos = () => {
     }
   }, [mostrarToast]);
 
-  // >>>>>>>>>> DAR DE BAJA (con motivo) <<<<<<<<<<
+  // Dar de baja con motivo
   const darDeBajaAlumno = useCallback(async (id, motivo) => {
     try {
       const response = await fetch(`${BASE_URL}/api.php?action=dar_baja_alumno`, {
@@ -429,7 +448,6 @@ const Alumnos = () => {
       const data = await response.json();
 
       if (data.exito) {
-        // Sacamos al alumno de la lista visible si ahora está inactivo
         setAlumnos(prev => prev.filter((a) => a.id_alumno !== id));
         setAlumnosDB(prev => prev.map(a => (
           a.id_alumno === id ? { ...a, activo: 0, motivo, ingreso: data.fecha || a.ingreso } : a
@@ -445,7 +463,6 @@ const Alumnos = () => {
       setAlumnoDarBaja(null);
     }
   }, [mostrarToast]);
-  // >>>>>>>>>>>> FIN DAR DE BAJA <<<<<<<<<<<<<<<<
 
   const construirDomicilio = useCallback((domicilio) => {
     return (domicilio || '').trim();
@@ -497,6 +514,9 @@ const Alumnos = () => {
     setTimeout(() => setAnimacionActiva(false), 500);
   }, [setFiltros]);
 
+  /* ================================
+     Fila virtualizada
+  ================================= */
   const Row = React.memo(({ index, style, data }) => {
     const alumno = data[index];
     const esFilaPar = index % 2 === 0;
@@ -504,6 +524,7 @@ const Alumnos = () => {
 
     const nombreMostrado = combinarNombre(alumno) || alumno?.nombre || '';
     const localidad = alumno?.localidad ?? '';
+    const navigate = useNavigate(); // Para usar navigate adentro de la fila
 
     return (
       <div
@@ -575,6 +596,9 @@ const Alumnos = () => {
     );
   });
 
+  /* ================================
+     Render
+  ================================= */
   return (
     <div className={`soc-main-container ${animacionActiva ? 'soc-cascade-animation' : ''}`}>
       <div className="soc-container">
@@ -642,23 +666,29 @@ const Alumnos = () => {
           ) : alumnosFiltrados.length === 0 ? (
             <div className="soc-sin-resultados">No hay resultados con los filtros actuales</div>
           ) : (
-            <List
-              height={2000}
-              itemCount={alumnosFiltrados.length}
-              itemSize={45}
-              width="100%"
-              itemData={alumnosFiltrados}
-              overscanCount={10}
-              key={`list-${busqueda}-${letraSeleccionada}`}
-            >
-              {Row}
-            </List>
+            <div style={{ height: '55vh', width: '100%' }}>
+              <AutoSizer>
+                {({ height, width }) => (
+                  <List
+                    height={height}
+                    width={width}
+                    itemCount={alumnosFiltrados.length}
+                    itemSize={45}
+                    itemData={alumnosFiltrados}
+                    overscanCount={10}
+                    key={`list-${busqueda}-${letraSeleccionada}`}
+                  >
+                    {Row}
+                  </List>
+                )}
+              </AutoSizer>
+            </div>
           )}
         </div>
 
         <BotonesInferiores
           cargando={cargando}
-          navigate={navigate}
+          navigate={useNavigate()}
           alumnosFiltrados={alumnosFiltrados}
           alumnos={alumnos}
           exportarExcel={exportarExcel}
@@ -699,7 +729,7 @@ const Alumnos = () => {
               setMostrarModalDarBaja(false);
               setAlumnoDarBaja(null);
             }}
-            onDarBaja={darDeBajaAlumno} // <- pasa (id_alumno, motivo)
+            onDarBaja={darDeBajaAlumno}
           />,
           document.body
         )}

@@ -1,3 +1,4 @@
+// src/components/inicio/Inicio.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
@@ -20,7 +21,7 @@ const Inicio = () => {
 
   const navigate = useNavigate();
 
-  // Cargar datos recordados
+  // Cargar datos recordados al montar
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.rememberFlag) === '1';
     if (saved) {
@@ -38,7 +39,7 @@ const Inicio = () => {
     }
   }, []);
 
-  // Guardar/quitar en localStorage según el check
+  // Persistir/limpiar localStorage
   const persistRemember = (user, pass, flag) => {
     if (flag) {
       localStorage.setItem(STORAGE_KEYS.rememberFlag, '1');
@@ -53,18 +54,17 @@ const Inicio = () => {
 
   // Si está activo "recordar", persiste a medida que se escribe
   useEffect(() => {
-    if (remember) {
-      persistRemember(nombre, contrasena, true);
-    }
+    if (remember) persistRemember(nombre, contrasena, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nombre, contrasena, remember]);
 
   const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+    setShowPassword((v) => !v);
   };
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
+    if (cargando) return; // evita doble submit
     setCargando(true);
     setMensaje('');
 
@@ -81,9 +81,14 @@ const Inicio = () => {
         body: JSON.stringify({ nombre, contrasena }),
       });
 
+      // Manejo de HTTP no-OK
+      if (!respuesta.ok) {
+        throw new Error(`HTTP ${respuesta.status}`);
+      }
+
       const data = await respuesta.json();
 
-      if (data.exito) {
+      if (data?.exito) {
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         localStorage.setItem('token', data.token);
 
@@ -92,7 +97,7 @@ const Inicio = () => {
 
         navigate('/panel');
       } else {
-        setMensaje(data.mensaje || 'Credenciales incorrectas');
+        setMensaje(data?.mensaje || 'Credenciales incorrectas');
       }
     } catch (err) {
       console.error('Error al iniciar sesión:', err);
@@ -114,7 +119,7 @@ const Inicio = () => {
 
         {mensaje && <p className="ini_mensaje">{mensaje}</p>}
 
-        <form onSubmit={manejarEnvio} className="ini_formulario">
+        <form onSubmit={manejarEnvio} className="ini_formulario" noValidate>
           <div className="ini_campo">
             <input
               type="text"
@@ -124,6 +129,7 @@ const Inicio = () => {
               required
               className="ini_input"
               autoComplete="username"
+              inputMode="text"
             />
           </div>
 
@@ -173,8 +179,21 @@ const Inicio = () => {
           </div>
 
           <div className="ini_footer">
-            <button type="submit" className="ini_boton" disabled={cargando}>
-              {cargando ? 'Iniciando...' : 'Iniciar Sesión'}
+            <button
+              type="submit"
+              className="ini_boton"
+              disabled={cargando}
+              aria-busy={cargando ? 'true' : 'false'}
+              aria-live="polite"
+            >
+              {cargando ? (
+                <>
+                  <span className="ini_spinner" aria-hidden="true"></span>
+                  Iniciando...
+                </>
+              ) : (
+                'Iniciar Sesión'
+              )}
             </button>
           </div>
         </form>
