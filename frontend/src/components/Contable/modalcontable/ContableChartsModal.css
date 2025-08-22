@@ -1,0 +1,234 @@
+/* ContableChartsModal.css */
+/* =========================
+   MODAL DE GRÁFICOS (aislado)
+   ========================= */
+
+:root {
+  /* Altura base charts */
+  --chart-h-line: clamp(260px, 34vw, 360px);   /* line chart */
+  --chart-h-pie: clamp(220px, 28vw, 300px);    /* pie chart más chico */
+}
+
+.contable-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 999;
+}
+
+.contable-modal {
+  width: min(1100px, 96vw);
+  max-height: 90vh;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.22);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.contable-modal * {
+  box-sizing: border-box;
+}
+
+.contable-modal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contable-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.contable-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #444;
+}
+
+.contable-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+}
+
+.contable-chart-card {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  height: 100%;
+}
+
+.contable-chart-card h4 {
+  margin: 0;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Alturas diferenciadas */
+.contable-chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: var(--chart-h-line);
+}
+
+.contable-chart-wrapper--pie {
+  position: relative;
+  width: 100%;
+  height: var(--chart-h-pie);
+}
+
+/* 🔽 Ajuste: bajar más el gráfico de círculo para alinear textos/footers */
+.contable-chart-card:nth-of-type(2) .contable-chart-wrapper--pie {
+  margin-top: 28px; /* ← ajustá acá (22–36px) según tu gusto */
+}
+
+.contable-chart-wrapper canvas,
+.contable-chart-wrapper--pie canvas {
+  display: block;
+  max-width: 100% !important;
+  height: 100% !important;
+}
+
+.contable-chart-footnote {
+  color: #6b7280;
+  font-size: .85rem;
+}
+
+/* ====== Totales YTD bajo el pie ====== */
+.contable-pie-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.contable-pie-totals__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contable-pie-totals__item .label {
+  font-size: 0.9rem;
+  color: #555;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contable-pie-totals__item .value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: .2px;
+}
+
+/* Acentos de color */
+.contable-pie-totals__item.socios .value { color: #0369a1; }
+.contable-pie-totals__item.empresas .value { color: #047857; }
+.contable-pie-totals__item.total .value { color: #7c2d12; }
+
+/* ======= Responsive ======= */
+@media (max-width: 992px) {
+  .contable-modal-body {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  :root {
+    --chart-h-line: clamp(240px, 48vw, 320px);
+    --chart-h-pie: clamp(200px, 40vw, 260px);
+  }
+
+  /* En stack vertical lo dejamos un poco menos agresivo */
+  .contable-chart-card:nth-of-type(2) .contable-chart-wrapper--pie {
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .contable-modal-overlay {
+    padding: 12px;
+  }
+
+  .contable-modal {
+    width: 96vw;
+    max-height: 92vh;
+    border-radius: 12px;
+  }
+
+  .contable-modal-header {
+    padding: 12px 14px;
+  }
+
+  .contable-modal-body {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .contable-pie-totals {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  :root {
+    --chart-h-line: clamp(220px, 58vw, 300px);
+    --chart-h-pie: clamp(180px, 50vw, 240px);
+  }
+
+  .contable-chart-card:nth-of-type(2) .contable-chart-wrapper--pie {
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .contable-modal-header h3 {
+    font-size: 1rem;
+    gap: 6px;
+  }
+
+  .contable-chart-card {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  :root {
+    --chart-h-line: clamp(210px, 66vw, 280px);
+    --chart-h-pie: clamp(170px, 60vw, 220px);
+  }
+
+  .contable-chart-card:nth-of-type(2) .contable-chart-wrapper--pie {
+    margin-top: 10px;
+  }
+}

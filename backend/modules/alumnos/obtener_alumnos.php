@@ -1,15 +1,16 @@
 <?php
 // backend/modules/alumnos/obtener_alumnos.php
 
+declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../config/db.php'; // Debe definir $pdo (PDO)
 
 try {
-    // Forzar excepciones en PDO
+    // Forzar excepciones en PDO y charset
     if ($pdo instanceof PDO) {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        // Opcional: asegurar charset
         $pdo->exec("SET NAMES utf8mb4");
     } else {
         throw new RuntimeException('Conexión PDO no disponible.');
@@ -19,8 +20,14 @@ try {
     $q  = isset($_GET['q'])  ? trim((string)$_GET['q']) : '';
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    // Consulta base
-    // Si tu DB no usa "ñ" en los nombres, reemplazá `id_año` por id_anio y `nombre_año` por nombre_anio.
+    /**
+     * NOTA sobre nombres con ñ:
+     * Si tu esquema usa columnas/tablas sin "ñ", reemplazá:
+     *   - `id_año` por `id_anio`
+     *   - `nombre_año` por `nombre_anio`
+     * y lo mismo en los JOIN/SELECT de abajo.
+     */
+
     $sql = "
         SELECT
             a.id_alumno,
@@ -32,6 +39,7 @@ try {
             a.`id_año`,
             a.`id_division`,
             a.`id_categoria`,
+            a.`ingreso`,                      -- <<< AÑADIDO: fecha de ingreso (DATE, YYYY-MM-DD)
             an.`nombre_año`        AS anio_nombre,
             d.`nombre_division`    AS division_nombre,
             c.`nombre_categoria`   AS categoria_nombre
@@ -46,7 +54,7 @@ try {
     $where  = [];
     $params = [];
 
-    // 🔒 Siempre traer solo activos
+    // Solo activos
     $where[] = "a.activo = 1";
 
     if ($id > 0) {

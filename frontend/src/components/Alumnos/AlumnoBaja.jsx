@@ -1,10 +1,19 @@
 // src/components/Alumnos/AlumnoBaja.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
-import { FaUserCheck, FaTrashAlt } from 'react-icons/fa';
+import { FaUserCheck, FaTrashAlt, FaCalendarAlt } from 'react-icons/fa';
 import Toast from '../Global/Toast';
 import './AlumnoBaja.css';
+
+// ==== Utils ====
+const TZ_CBA = 'America/Argentina/Cordoba';
+const hoyISO = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_CBA, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date()); // YYYY-MM-DD
+
+const esFechaISO = (val) => /^\d{4}-\d{2}-\d{2}$/.test(val);
 
 const normalizar = (str = '') =>
   str.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -43,10 +52,14 @@ const AlumnoBaja = () => {
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [toast, setToast] = useState({ show: false, tipo: '', mensaje: '' });
+
+  // Alta
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
   const [mostrarConfirmacionAlta, setMostrarConfirmacionAlta] = useState(false);
+  const [fechaAlta, setFechaAlta] = useState('');
+  const fechaInputRef = useRef(null);
 
-  // Modales de eliminación
+  // Eliminaciones
   const [mostrarConfirmacionEliminarUno, setMostrarConfirmacionEliminarUno] = useState(false);
   const [mostrarConfirmacionEliminarTodos, setMostrarConfirmacionEliminarTodos] = useState(false);
   const [alumnoAEliminar, setAlumnoAEliminar] = useState(null);
@@ -63,7 +76,7 @@ const AlumnoBaja = () => {
     const obtenerAlumnosBaja = async () => {
       setCargando(true);
       try {
-        const res = await fetch(`${BASE_URL}/api.php?action=alumnos_baja`);
+        const res = await fetch(`${BASE_URL}/api.php?action=alumnos_baja&ts=${Date.now()}`);
         const data = await res.json();
         if (data.exito) {
           // Espera: id_alumno, nombre_apellido, domicilio, ingreso, motivo
@@ -80,15 +93,45 @@ const AlumnoBaja = () => {
     obtenerAlumnosBaja();
   }, []);
 
-  const darAltaAlumno = async (id_alumno) => {
+  // ==== Datepicker UX: abrir en todo el contenedor ====
+  const openDatePicker = (e) => {
+    e.preventDefault();
+    const el = fechaInputRef.current;
+    if (!el) return;
     try {
-      const res = await fetch(`${BASE_URL}/api.php?action=dar_alta_alumno`, {
+      if (typeof el.showPicker === 'function') el.showPicker();
+      else { el.focus(); el.click(); }
+    } catch {
+      el.focus(); el.click();
+    }
+  };
+  const handleKeyDownPicker = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') openDatePicker(e);
+  };
+
+  // ==== Dar alta (POST x-www-form-urlencoded con fecha) ====
+  const darAltaAlumno = async (id_alumno) => {
+    if (!esFechaISO(fechaAlta)) {
+      setToast({ show: true, tipo: 'error', mensaje: 'Fecha inválida. Usá AAAA-MM-DD.' });
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      params.set('id_alumno', String(id_alumno));
+      params.set('fecha_ingreso', fechaAlta);
+
+      const res = await fetch(`${BASE_URL}/api.php?action=dar_alta_alumno&ts=${Date.now()}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_alumno }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: params.toString(),
       });
-      const data = await res.json();
-      if (data.exito) {
+
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { exito: false, mensaje: text || 'Respuesta no válida' }; }
+
+      if (res.ok && data.exito) {
         setAlumnos(prev => prev.filter(a => a.id_alumno !== id_alumno));
         setMostrarConfirmacionAlta(false);
         setAlumnoSeleccionado(null);
@@ -101,13 +144,13 @@ const AlumnoBaja = () => {
     }
   };
 
-  // Eliminar definitivamente (solo alumnos inactivos) usando el nuevo endpoint eliminar_bajas
+  // ==== Eliminar definitivamente (solo inactivos) ====
   const eliminarAlumnoDefinitivo = async (id_alumno) => {
     try {
-      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas`, {
+      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // este endpoint YA filtra activo=0, no hace falta enviar flags
+        // este endpoint YA filtra activo=0
         body: JSON.stringify({ id_alumno }),
       });
       const data = await res.json();
@@ -133,10 +176,9 @@ const AlumnoBaja = () => {
       return;
     }
     try {
-      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas`, {
+      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // borra todos los visibles (inactivos) de una
         body: JSON.stringify({ ids }),
       });
       const data = await res.json();
@@ -191,16 +233,7 @@ const AlumnoBaja = () => {
           onChange={(e) => setBusqueda(e.target.value)}
         />
         <div className="soc-buscador-iconos-baja">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
@@ -259,10 +292,11 @@ const AlumnoBaja = () => {
                         className="soc-icono-baja"
                         onClick={() => {
                           setAlumnoSeleccionado(a);
+                          setFechaAlta(hoyISO()); // por defecto HOY en Córdoba
                           setMostrarConfirmacionAlta(true);
                         }}
                       />
-                      {/* Eliminar definitivamente (ícono por fila) */}
+                      {/* Eliminar definitivamente */}
                       <FaTrashAlt
                         title="Eliminar definitivamente"
                         className="soc-icono-baja soc-icono-eliminar"
@@ -280,7 +314,7 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Confirmar DAR ALTA */}
+      {/* Confirmar DAR ALTA (con fecha) */}
       {mostrarConfirmacionAlta && alumnoSeleccionado && (
         <div className="soc-modal-overlay-baja">
           <div className="soc-modal-contenido-baja">
@@ -288,12 +322,36 @@ const AlumnoBaja = () => {
               ¿Deseás dar de alta nuevamente al alumno{' '}
               <strong>{combinarNombre(alumnoSeleccionado)}</strong>?
             </h3>
+
+            {/* Campo fecha con contenedor clickeable */}
+            <div className="soc-campo-fecha-alta">
+              <label htmlFor="fecha_alta_alumno" className="soc-label-fecha-alta">Fecha de alta</label>
+              <div
+                className="soc-input-fecha-container"
+                role="button"
+                tabIndex={0}
+                onMouseDown={openDatePicker}
+                onKeyDown={handleKeyDownPicker}
+                aria-label="Abrir selector de fecha"
+              >
+                <input
+                  id="fecha_alta_alumno"
+                  ref={fechaInputRef}
+                  type="date"
+                  className="soc-input-fecha-alta"
+                  value={fechaAlta}
+                  onChange={(e) => setFechaAlta(e.target.value)}
+                />
+                <FaCalendarAlt className="soc-icono-calendario" aria-hidden="true" />
+              </div>
+            </div>
+
             <div className="soc-modal-botones-baja">
               <button
                 className="soc-boton-confirmar-baja"
                 onClick={() => darAltaAlumno(alumnoSeleccionado.id_alumno)}
               >
-                Sí, dar de alta
+                Confirmar
               </button>
               <button
                 className="soc-boton-cancelar-baja"

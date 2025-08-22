@@ -37,6 +37,24 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
     [onClose]
   );
 
+  // ---- Formateador de fechas (YYYY-MM-DD -> DD/MM/YYYY) ----
+  const formatearFecha = useCallback((val) => {
+    if (!val) return '-';
+    // Si ya viene como YYYY-MM-DD
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
+    if (m) {
+      const [, yyyy, mm, dd] = m;
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    // Intento genérico
+    const d = new Date(val.includes('T') ? val : `${val}T00:00:00`);
+    if (isNaN(d.getTime())) return '-';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }, []);
+
   // No render si no corresponde
   if (!mostrar || !alumno) return null;
 
@@ -47,6 +65,7 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
   const anio = alumno?.anio_nombre || alumno?.anio || '-';
   const division = alumno?.division_nombre || alumno?.division || '-';
   const categoria = alumno?.categoria_nombre || alumno?.id_categoria || '-';
+  const ingreso = formatearFecha(alumno?.ingreso); // <<--- NUEVO
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
@@ -118,6 +137,11 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                   <div className="info-item">
                     <span className="info-label">DNI:</span>
                     <span className="info-value">{dni}</span>
+                  </div>
+                  {/* NUEVO: Ingreso */}
+                  <div className="info-item">
+                    <span className="info-label">Ingreso:</span>
+                    <span className="info-value">{ingreso}</span>
                   </div>
                 </div>
               </div>

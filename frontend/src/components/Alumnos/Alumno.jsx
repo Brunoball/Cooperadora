@@ -514,6 +514,27 @@ const Alumnos = () => {
     setTimeout(() => setAnimacionActiva(false), 500);
   }, [setFiltros]);
 
+  // === NUEVO: obtener alumno por ID para asegurar ingreso (y más campos) ===
+  const cargarAlumnoConDetalle = useCallback(async (alumnoBase) => {
+    try {
+      const res = await fetch(`${BASE_URL}/api.php?action=alumnos&id=${encodeURIComponent(alumnoBase.id_alumno)}&ts=${Date.now()}`);
+      const data = await res.json();
+      if (data?.exito && Array.isArray(data.alumnos) && data.alumnos.length > 0) {
+        // merge: lo del detalle pisa lo de la lista
+        const conDetalle = { ...alumnoBase, ...data.alumnos[0] };
+        setAlumnoInfo(conDetalle);
+      } else {
+        // fallback: abrimos con lo que tenemos
+        setAlumnoInfo(alumnoBase);
+      }
+      setMostrarModalInfo(true);
+    } catch {
+      // En error de red, abrir con lo que tengamos
+      setAlumnoInfo(alumnoBase);
+      setMostrarModalInfo(true);
+    }
+  }, []);
+
   /* ================================
      Fila virtualizada
   ================================= */
@@ -524,7 +545,7 @@ const Alumnos = () => {
 
     const nombreMostrado = combinarNombre(alumno) || alumno?.nombre || '';
     const localidad = alumno?.localidad ?? '';
-    const navigate = useNavigate(); // Para usar navigate adentro de la fila
+    const navigateRow = useNavigate(); // Ok: Row es un componente React
 
     return (
       <div
@@ -556,10 +577,10 @@ const Alumnos = () => {
             <div className="soc-iconos-acciones">
               <FaInfoCircle
                 title="Ver información"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  setAlumnoInfo(alumno);
-                  setMostrarModalInfo(true);
+                  // NUEVO: antes de abrir, traemos detalle por ID para asegurar ingreso
+                  await cargarAlumnoConDetalle(alumno);
                 }}
                 className="soc-icono"
               />
@@ -567,7 +588,7 @@ const Alumnos = () => {
                 title="Editar"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/alumnos/editar/${alumno.id_alumno}`);
+                  navigateRow(`/alumnos/editar/${alumno.id_alumno}`);
                 }}
                 className="soc-icono"
               />
@@ -688,7 +709,7 @@ const Alumnos = () => {
 
         <BotonesInferiores
           cargando={cargando}
-          navigate={useNavigate()}
+          navigate={navigate} 
           alumnosFiltrados={alumnosFiltrados}
           alumnos={alumnos}
           exportarExcel={exportarExcel}

@@ -166,14 +166,14 @@ const Principal = () => {
             </div>
           </button>
 
-          {/* Categorías (WIP) */}
-          <button className="princ-opcion princ-opcion-categorias" disabled>
+          {/* Contable (antes Categorías) -> Navega al Dashboard Contable */}
+          <button className="princ-opcion princ-opcion-categorias" onClick={() => navigate('/contable')}>
             <div className="princ-opcion-content">
               <div className="princ-opcion-icono-container">
                 <FontAwesomeIcon icon={faTags} className="princ-opcion-icono" />
               </div>
-              <span className="princ-opcion-texto">Gestionar Categorías</span>
-              <span className="princ-opcion-desc">Próximamente</span>
+              <span className="princ-opcion-texto">Gestión Contable</span>
+              <span className="princ-opcion-desc">Dashboard contable y reportes</span>
             </div>
           </button>
 

@@ -10,10 +10,13 @@ import Registro from './components/Login/Registro';
 import Alumnos from './components/Alumnos/Alumno';
 import AgregarAlumno from './components/Alumnos/AgregarAlumno';
 import EditarAlumno from './components/Alumnos/EditarAlumno';
-import AlumnoBaja from './components/Alumnos/AlumnoBaja'; // <- coincide con el archivo
+import AlumnoBaja from './components/Alumnos/AlumnoBaja';
 
 // 💵 Cuotas
 import Cuotas from './components/Cuotas/Cuotas';
+
+// 📊 Contable (Dashboard)
+import DashboardContable from './components/Contable/DashboardContable'; // asegúrate del nombre del archivo
 
 function App() {
   return (
@@ -32,6 +35,9 @@ function App() {
 
         {/* Rutas de Cuotas */}
         <Route path="/cuotas" element={<RutaProtegida componente={<Cuotas />} />} />
+
+        {/* Ruta del Dashboard Contable */}
+        <Route path="/contable" element={<RutaProtegida componente={<DashboardContable />} />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

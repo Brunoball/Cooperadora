@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSave, faArrowLeft, faUserEdit } from '@fortawesome/free-solid-svg-icons';
+import { faSave, faArrowLeft, faUserEdit, faCalendarDays } from '@fortawesome/free-solid-svg-icons';
 import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import './EditarAlumno.css';
@@ -10,10 +10,22 @@ import '../Global/roots.css';
 
 const aMayus = (v) => (typeof v === 'string' ? v.toUpperCase() : v);
 
+// Zona horaria fija (Córdoba) para evitar desfasajes
+const TZ_CBA = 'America/Argentina/Cordoba';
+
+// Hoy en formato YYYY-MM-DD en TZ Córdoba
+const hoyISO = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_CBA, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+
+const esFechaISO = (val) => /^\d{4}-\d{2}-\d{2}$/.test(val);
+
 const EditarAlumno = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const formRef = useRef(null);
+  const fechaInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     apellido_nombre: '',
@@ -24,6 +36,7 @@ const EditarAlumno = () => {
     id_anio: '',
     id_division: '',
     id_categoria: '1',
+    ingreso: '', // <<< NUEVO
   });
 
   const [listas, setListas] = useState({
@@ -44,6 +57,19 @@ const EditarAlumno = () => {
     const { name, value } = e.target;
     const numericValue = value.replace(/[^0-9]/g, '');
     setFormData(prev => ({ ...prev, [name]: numericValue }));
+  };
+
+  // Abrir datepicker desde todo el contenedor
+  const openDatePicker = (e) => {
+    e.preventDefault();
+    const el = fechaInputRef.current;
+    if (!el) return;
+    try {
+      if (typeof el.showPicker === 'function') el.showPicker();
+      else { el.focus(); el.click(); }
+    } catch {
+      el.focus(); el.click();
+    }
   };
 
   useEffect(() => {
@@ -71,9 +97,10 @@ const EditarAlumno = () => {
             domicilio: a.domicilio ?? '',
             localidad: a.localidad ?? '',
             telefono: a.telefono ?? '',
-            id_anio: a.id_anio ?? '',         // <- backend devuelve alias id_anio
+            id_anio: a.id_anio ?? '',         // backend devuelve alias id_anio
             id_division: a.id_division ?? '',
             id_categoria: a.id_categoria ?? '1',
+            ingreso: a.ingreso ?? '',         // <<< NUEVO (YYYY-MM-DD)
           };
           setFormData(mapeado);
           setDatosOriginales(mapeado);
@@ -92,6 +119,11 @@ const EditarAlumno = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'ingreso') {
+      // no upper-case; validación sencilla
+      setFormData(prev => ({ ...prev, ingreso: value }));
+      return;
+    }
     const v = ['apellido_nombre', 'domicilio', 'localidad'].includes(name) ? aMayus(value) : value;
     setFormData(prev => ({ ...prev, [name]: v }));
   };
@@ -107,6 +139,12 @@ const EditarAlumno = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validar ingreso si viene cargado
+    if (formData.ingreso && !esFechaISO(formData.ingreso)) {
+      showToast('La fecha de ingreso debe tener formato AAAA-MM-DD.', 'error');
+      return;
+    }
 
     const formN = normalizar(formData);
     const originalN = normalizar(datosOriginales);
@@ -297,6 +335,37 @@ const EditarAlumno = () => {
                     <span className="edit-socio-input-highlight"></span>
                   </div>
                 </div>
+
+                {/* NUEVO: Fecha de Ingreso con datepicker y zona horaria Cba */}
+                <div className="edit-socio-group-row">
+                  <div className={`edit-socio-input-wrapper ${formData.ingreso || activeField === 'ingreso' ? 'has-value' : ''}`} style={{ maxWidth: 260 }}>
+                    <label className="edit-socio-label">Ingreso</label>
+                    <div
+                      className="edit-socio-date-container"
+                      role="button"
+                      tabIndex={0}
+                      onMouseDown={openDatePicker}
+                      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openDatePicker(e)}
+                      aria-label="Abrir selector de fecha"
+                    >
+                      <input
+                        ref={fechaInputRef}
+                        type="date"
+                        name="ingreso"
+                        className="edit-socio-input"
+                        value={formData.ingreso || ''}
+                        onChange={handleChange}
+                        onFocus={() => handleFocus('ingreso')}
+                        onBlur={handleBlur}
+                        max="9999-12-31"
+                        placeholder={hoyISO()}
+                      />
+                      <FontAwesomeIcon icon={faCalendarDays} className="edit-socio-date-icon" />
+                    </div>
+                    <span className="edit-socio-input-highlight"></span>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>

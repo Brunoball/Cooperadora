@@ -110,6 +110,14 @@ switch ($action) {
         break;
 
 
+    
+    // === NUEVOS CASOS PARA EL PANEL CONTABLE ===
+    case 'contable':
+        // Endpoint NUEVO que agrupa pagos por periodo y aplica descuento 6x
+        require_once(__DIR__ . '/../modules/contable/contable_socios.php');
+        break;
+
+
     default:
         http_response_code(400);
         echo json_encode(['exito' => false, 'mensaje' => 'Acción no válida.']);
