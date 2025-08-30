@@ -1,55 +1,76 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
-import './ModalEliminarAlumno.css';
+import React, { useEffect, useMemo } from "react";
+import { FaTrash } from "react-icons/fa";
+import "./ModalEliminarAlumno.css";
 
 const ModalEliminarAlumno = ({ mostrar, alumno, onClose, onEliminar }) => {
-  // Hook siempre al tope (sin returns antes)
+  // 🔑 Cerrar con ESC (misma lógica que el modal de empresa)
   useEffect(() => {
-    if (!mostrar) return; // si no está visible, no agregamos el listener
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose();
+    if (!mostrar) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
+        e.preventDefault();
+        onClose?.();
+      }
     };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [mostrar, onClose]);
 
   const nombreMostrado = useMemo(() => {
-    if (!alumno) return '';
+    if (!alumno) return "";
     const partes = [
-      alumno?.apellido ?? '',
-      alumno?.nombre ?? '',
-      alumno?.nombre_completo ?? '',
-      alumno?.nombreyapellido ?? '',
-      alumno?.nyap ?? '',
+      alumno?.apellido ?? "",
+      alumno?.nombre ?? "",
+      alumno?.nombre_completo ?? "",
+      alumno?.nombreyapellido ?? "",
+      alumno?.nyap ?? "",
     ]
       .filter(Boolean)
-      .join(' ')
+      .join(" ")
       .trim();
 
-    return partes || alumno?.nombre || '';
+    return partes || alumno?.nombre || "";
   }, [alumno]);
 
-  const handleOverlayClick = useCallback(
-    (e) => {
-      if (e.target.classList.contains('modal-overlay')) onClose();
-    },
-    [onClose]
-  );
-
-  // Ahora sí, si no hay que mostrar o no hay alumno, no renderizamos
   if (!mostrar || !alumno) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-contenido" onClick={(e) => e.stopPropagation()}>
-        <h3>¿Deseás eliminar a {nombreMostrado}?</h3>
-        <p>Esta acción no se puede deshacer.</p>
+    <div
+      className="empdel-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="aludel-title"
+      onClick={onClose} // conservar cierre por click fuera (comportamiento alumnos)
+    >
+      <div
+        className="empdel-modal empdel-modal--danger"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="empdel-modal__icon" aria-hidden="true">
+          <FaTrash />
+        </div>
 
-        <div className="botones-modal">
-          <button className="btn-cancelar" onClick={onClose}>
+        <h3 id="aludel-title" className="empdel-modal__title">
+          Eliminar permanentemente
+        </h3>
+
+        <p className="empdel-modal__body">
+          ¿Deseás eliminar a <strong>{nombreMostrado}</strong>? Esta acción no se
+          puede deshacer.
+        </p>
+
+        <div className="empdel-modal__actions">
+          <button
+            type="button"
+            className="empdel-btn empdel-btn--ghost"
+            onClick={onClose}
+          >
             Cancelar
           </button>
+
           <button
-            className="btn-aceptar"
+            type="button"
+            className="empdel-btn empdel-btn--solid-danger"
             onClick={() => onEliminar(alumno.id_alumno)}
           >
             Eliminar

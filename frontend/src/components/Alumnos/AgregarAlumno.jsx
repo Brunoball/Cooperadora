@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// src/components/Alumnos/AgregarAlumno.jsx
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faArrowLeft, faUserPlus } from '@fortawesome/free-solid-svg-icons';
@@ -24,14 +25,18 @@ const AgregarAlumno = () => {
     telefono: '',
     id_año: '',
     id_division: '',
-    id_categoria: '1', // default 1 (requerido por la tabla)
+    id_categoria: '1', // default 1
   });
 
-  const [errores, setErrores] = useState({});
-  const [mostrarErrores, setMostrarErrores] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'exito' });
   const [loading, setLoading] = useState(false);
   const [activeField, setActiveField] = useState(null);
+
+  // Pasos UI
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // 👇 Bandera para cancelar el keyup del Enter cuando se usa para avanzar de paso
+  const enterBloqueadoRef = useRef(false);
 
   const showToast = (message, type = 'exito', duracion = 3000) => {
     setToast({ show: true, message, type });
@@ -71,7 +76,6 @@ const AgregarAlumno = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   const validarCampo = (name, value) => {
     const soloNumeros = /^[0-9]+$/;
     const telValido = /^[0-9+\-\s]+$/;
@@ -79,99 +83,167 @@ const AgregarAlumno = () => {
 
     switch (name) {
       case 'apellido_nombre':
-        if (!value || !value.trim()) return 'El apellido y nombre es obligatorio';
-        if (!/^[A-ZÑa-zñáéíóúÁÉÍÓÚ\s.]+$/u.test(value)) return 'Solo letras, espacios y puntos';
-        if (value.length > 100) return 'Máximo 100 caracteres';
+        if (!value || !value.trim()) return 'obligatorio';
+        if (!/^[A-ZÑa-zñáéíóúÁÉÍÓÚ\s.]+$/u.test(value)) return 'formato inválido';
+        if (value.length > 100) return 'máximo 100 caracteres';
         break;
-
       case 'dni':
-        if (!value || !value.trim()) return 'El DNI es obligatorio';
-        if (!soloNumeros.test(value)) return 'Solo números';
-        if (value.length > 15) return 'Máximo 15 caracteres';
+        if (!value || !value.trim()) return 'obligatorio';
+        if (!soloNumeros.test(value)) return 'solo números';
+        if (value.length > 15) return 'máximo 15 caracteres';
         break;
-
       case 'domicilio':
-        if (value && !textoValido.test(value)) return 'Caracteres inválidos';
-        if (value && value.length > 150) return 'Máximo 150 caracteres';
+        if (value && !textoValido.test(value)) return 'caracteres inválidos';
+        if (value && value.length > 150) return 'máximo 150 caracteres';
         break;
-
       case 'localidad':
-        if (value && !textoValido.test(value)) return 'Caracteres inválidos';
-        if (value && value.length > 100) return 'Máximo 100 caracteres';
+        if (value && !textoValido.test(value)) return 'caracteres inválidos';
+        if (value && value.length > 100) return 'máximo 100 caracteres';
         break;
-
       case 'telefono':
-        if (value && !telValido.test(value)) return 'Solo números, espacios y guiones';
-        if (value && value.length > 20) return 'Máximo 20 caracteres';
+        if (value && !telValido.test(value)) return 'formato inválido';
+        if (value && value.length > 20) return 'máximo 20 caracteres';
         break;
-
       case 'id_año':
       case 'id_division':
       case 'id_categoria':
-        if (!value) return 'Campo obligatorio';
-        if (isNaN(Number(value))) return 'Valor inválido';
+        if (!value) return 'obligatorio';
+        if (isNaN(Number(value))) return 'valor inválido';
         break;
-
       default:
         return null;
     }
     return null;
   };
 
+  // ✅ Validación de Paso 1 (solo toast)
+  const validarPaso1 = () => {
+    const errorNombre = validarCampo('apellido_nombre', formData.apellido_nombre);
+    const errorDni = validarCampo('dni', formData.dni);
+
+    if (errorNombre || errorDni) {
+      const faltantes = [];
+      const invalidos = [];
+
+      if (!formData.apellido_nombre?.trim()) faltantes.push('Apellido y Nombre');
+      else if (errorNombre) invalidos.push('Apellido y Nombre');
+
+      if (!formData.dni?.trim()) faltantes.push('DNI');
+      else if (errorDni) invalidos.push('DNI');
+
+      const partes = [];
+      if (faltantes.length) partes.push(`Completá: ${faltantes.join(' y ')}`);
+      if (invalidos.length) partes.push(`Revisá: ${invalidos.join(' y ')}`);
+
+      showToast(partes.join(' | '), 'error');
+      return false; // ❌ bloqueo avance
+    }
+    return true; // ✅ permite avanzar
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // Campos de texto a MAYÚSCULAS (excepto dni/telefono que quedan tal cual)
     const toUpper = (v) => (typeof v === 'string' ? v.toUpperCase() : v);
     const nextVal =
       ['apellido_nombre', 'domicilio', 'localidad'].includes(name) ? toUpper(value) : value;
 
     setFormData(prev => ({ ...prev, [name]: nextVal }));
-
-    // Limpiar error puntual si el usuario corrige
-    const error = validarCampo(name, nextVal);
-    setErrores(prev => ({ ...prev, [name]: error || undefined }));
   };
 
   const handleFocus = (fieldName) => setActiveField(fieldName);
   const handleBlur = () => setActiveField(null);
 
+  // ✅ Navegación de pasos con validación del Paso 1
+  const handleNextStep = () => {
+    if (currentStep === 1 && !validarPaso1()) return;
+    setCurrentStep(s => Math.min(3, s + 1));
+  };
+  const handlePrevStep = () => setCurrentStep(s => Math.max(1, s - 1));
+
+  // Enter para avanzar pasos (y evitar submit fantasma al soltar la tecla)
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // bloquea submit nativo
+      if (currentStep < 3) {
+        e.stopPropagation();
+        enterBloqueadoRef.current = true; // marcamos para cancelar el keyup
+        handleNextStep();
+      }
+      // En paso 3 mantenemos bloqueado el Enter para no enviar con Enter
+    }
+  };
+
+  const handleFormKeyUp = (e) => {
+    if (e.key === 'Enter' && enterBloqueadoRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      enterBloqueadoRef.current = false; // limpiamos la marca
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMostrarErrores(true);
 
-    const nuevosErrores = {};
-    Object.entries(formData).forEach(([key, val]) => {
-      const err = validarCampo(key, val);
-      if (err) nuevosErrores[key] = err;
+    // 🚧 Por seguridad, ignoramos cualquier submit fuera del Paso 3
+    if (currentStep !== 3) return;
+
+    // 🧠 Etiquetas legibles
+    const labels = {
+      apellido_nombre: 'Apellido y Nombre',
+      dni: 'DNI',
+      domicilio: 'Domicilio',
+      localidad: 'Localidad',
+      telefono: 'Teléfono',
+      id_año: 'Año',
+      id_division: 'División',
+      id_categoria: 'Categoría',
+    };
+
+    const obligatorios = ['apellido_nombre', 'dni', 'id_año', 'id_division', 'id_categoria'];
+
+    const faltantes = [];
+    const invalidos = [];
+
+    // Faltantes (obligatorios)
+    obligatorios.forEach((k) => {
+      const val = formData[k];
+      if (!val || !String(val).trim()) {
+        faltantes.push(labels[k]);
+      }
     });
 
-    if (Object.keys(nuevosErrores).length > 0) {
-      setErrores(nuevosErrores);
+    // Inválidos (cualquier campo con valor inválido)
+    Object.entries(formData).forEach(([k, v]) => {
+      const err = validarCampo(k, v);
+      // Solo marcamos inválido si hay valor (o si es obligatorio y tiene formato inválido)
+      if (err && (v || obligatorios.includes(k))) {
+        invalidos.push(labels[k] || k);
+      }
+    });
+
+    if (faltantes.length || invalidos.length) {
+      const partes = [];
+      if (faltantes.length) partes.push(`Completá: ${faltantes.join(', ')}`);
+      if (invalidos.length) partes.push(`Revisá: ${invalidos.join(', ')}`);
+      showToast(partes.join(' | '), 'error');
       return;
     }
 
     try {
       setLoading(true);
-
       const response = await fetch(`${BASE_URL}/api.php?action=agregar_alumno`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-
       const data = await response.json();
 
       if (data.exito) {
         showToast('Alumno agregado correctamente', 'exito');
         setTimeout(() => navigate('/alumnos'), 1800);
       } else {
-        if (data.errores) {
-          setErrores(data.errores);
-          showToast('Revisá los campos marcados.', 'error');
-        } else {
-          showToast('Error: ' + (data.mensaje || 'No se pudo guardar'), 'error');
-        }
+        // Si el backend envía errores, mostramos un toast genérico
+        showToast('Revisá los datos e intentá nuevamente.', 'error');
       }
     } catch (error) {
       showToast('Error de conexión con el servidor', 'error');
@@ -179,6 +251,29 @@ const AgregarAlumno = () => {
       setLoading(false);
     }
   };
+
+  // Barra de pasos
+  const ProgressSteps = () => (
+    <div className="progress-steps">
+      {[1, 2, 3].map((step) => (
+        <div
+          key={step}
+          className={`progress-step ${currentStep === step ? 'active' : ''} ${currentStep > step ? 'completed' : ''}`}
+          onClick={() => currentStep > step && setCurrentStep(step)}
+        >
+          <div className="step-number">{step}</div>
+          <div className="step-label">
+            {step === 1 && 'Datos del Alumno'}
+            {step === 2 && 'Contacto y Domicilio'}
+            {step === 3 && 'Datos Académicos'}
+          </div>
+        </div>
+      ))}
+      <div className="progress-bar">
+        <div className="progress-bar-fill" style={{ width: `${((currentStep - 1) / 2) * 100}%` }} />
+      </div>
+    </div>
+  );
 
   return (
     <div className="add-alumno-container">
@@ -192,6 +287,7 @@ const AgregarAlumno = () => {
           />
         )}
 
+        {/* Header */}
         <div className="add-header">
           <div className="add-icon-title">
             <FontAwesomeIcon icon={faUserPlus} className="add-icon" />
@@ -212,11 +308,18 @@ const AgregarAlumno = () => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="add-alumno-form">
-          <div className="add-alumno-sections">
-            {/* Información básica */}
+        <ProgressSteps />
+
+        <form
+          onSubmit={handleSubmit}
+          className="add-alumno-form"
+          onKeyDown={handleFormKeyDown}
+          onKeyUp={handleFormKeyUp}
+        >
+          {/* PASO 1: Datos del Alumno */}
+          {currentStep === 1 && (
             <div className="add-alumno-section">
-              <h3 className="add-alumno-section-title">Información Básica</h3>
+              <h3 className="add-alumno-section-title">Datos del Alumno</h3>
               <div className="add-alumno-section-content">
 
                 <div className={`add-input-wrapper ${formData.apellido_nombre || activeField === 'apellido_nombre' ? 'has-value' : ''}`}>
@@ -229,9 +332,7 @@ const AgregarAlumno = () => {
                     onBlur={handleBlur}
                     className="add-input"
                   />
-                  {mostrarErrores && errores.apellido_nombre && (
-                    <span className="add-error">{errores.apellido_nombre}</span>
-                  )}
+                  <span className="add-input-highlight" />
                 </div>
 
                 <div className="add-group">
@@ -248,11 +349,21 @@ const AgregarAlumno = () => {
                       inputMode="numeric"
                       pattern="[0-9]*"
                     />
-                    {mostrarErrores && errores.dni && (
-                      <span className="add-error">{errores.dni}</span>
-                    )}
+                    <span className="add-input-highlight" />
                   </div>
+                </div>
 
+              </div>
+            </div>
+          )}
+
+          {/* PASO 2: Contacto y Domicilio */}
+          {currentStep === 2 && (
+            <div className="add-alumno-section">
+              <h3 className="add-alumno-section-title">Contacto y Domicilio</h3>
+              <div className="add-alumno-section-content">
+
+                <div className="add-group">
                   <div className={`add-input-wrapper ${formData.telefono || activeField === 'telefono' ? 'has-value' : ''}`} style={{ flex: 1 }}>
                     <label className="add-label">Teléfono</label>
                     <input
@@ -264,9 +375,7 @@ const AgregarAlumno = () => {
                       className="add-input"
                       type="tel"
                     />
-                    {mostrarErrores && errores.telefono && (
-                      <span className="add-error">{errores.telefono}</span>
-                    )}
+                    <span className="add-input-highlight" />
                   </div>
                 </div>
 
@@ -281,9 +390,7 @@ const AgregarAlumno = () => {
                       onBlur={handleBlur}
                       className="add-input"
                     />
-                    {mostrarErrores && errores.domicilio && (
-                      <span className="add-error">{errores.domicilio}</span>
-                    )}
+                    <span className="add-input-highlight" />
                   </div>
 
                   <div className={`add-input-wrapper ${formData.localidad || activeField === 'localidad' ? 'has-value' : ''}`} style={{ flex: 1 }}>
@@ -296,21 +403,22 @@ const AgregarAlumno = () => {
                       onBlur={handleBlur}
                       className="add-input"
                     />
-                    {mostrarErrores && errores.localidad && (
-                      <span className="add-error">{errores.localidad}</span>
-                    )}
+                    <span className="add-input-highlight" />
                   </div>
                 </div>
 
               </div>
             </div>
+          )}
 
-            {/* Académico */}
+          {/* PASO 3: Datos Académicos */}
+          {currentStep === 3 && (
             <div className="add-alumno-section">
               <h3 className="add-alumno-section-title">Datos Académicos</h3>
               <div className="add-alumno-section-content">
+
                 <div className="add-group">
-                  <div className="add-input-wrapper has-value" style={{ flex: 1 }}>
+                  <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
                     <label className="add-label">Año *</label>
                     <select
                       name="id_año"
@@ -326,12 +434,9 @@ const AgregarAlumno = () => {
                         <option key={a.id} value={a.id}>{a.nombre}</option>
                       ))}
                     </select>
-                    {mostrarErrores && errores.id_año && (
-                      <span className="add-error">{errores.id_año}</span>
-                    )}
                   </div>
 
-                  <div className="add-input-wrapper has-value" style={{ flex: 1 }}>
+                  <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
                     <label className="add-label">División *</label>
                     <select
                       name="id_division"
@@ -347,13 +452,10 @@ const AgregarAlumno = () => {
                         <option key={d.id} value={d.id}>{d.nombre}</option>
                       ))}
                     </select>
-                    {mostrarErrores && errores.id_division && (
-                      <span className="add-error">{errores.id_division}</span>
-                    )}
                   </div>
                 </div>
 
-                <div className="add-input-wrapper has-value" style={{ maxWidth: 420 }}>
+                <div className="add-input-wrapper always-active" style={{ maxWidth: 420 }}>
                   <label className="add-label">Categoría *</label>
                   <select
                     name="id_categoria"
@@ -369,19 +471,52 @@ const AgregarAlumno = () => {
                       <option key={c.id} value={c.id}>{c.nombre}</option>
                     ))}
                   </select>
-                  {mostrarErrores && errores.id_categoria && (
-                    <span className="add-error">{errores.id_categoria}</span>
-                  )}
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
+          {/* Botonera inferior */}
           <div className="add-alumno-buttons-container">
-            <button type="submit" className="add-alumno-button" disabled={loading}>
-              <FontAwesomeIcon icon={faSave} className="add-icon-button" />
-              <span className="add-button-text">{loading ? 'Guardando...' : 'Guardar Alumno'}</span>
-            </button>
+            {currentStep > 1 && (
+              <button
+                key="prev"
+                type="button"
+                className="add-alumno-button prev-step"
+                onClick={handlePrevStep}
+                data-mobile-label="Volver"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} className="add-icon-button" />
+                <span className="add-button-text">Anterior</span>
+              </button>
+            )}
+
+            {currentStep < 3 ? (
+              <button
+                key="next" // 👈 fuerza remount
+                type="button"
+                className="add-alumno-button next-step"
+                onClick={(e) => {
+                  // 👇 evita que el click termine en submit cuando el botón se "convierte"
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleNextStep();
+                }}
+              >
+                <span className="add-button-text">Siguiente</span>
+              </button>
+            ) : (
+              <button
+                key="submit" // 👈 distinto al "next"
+                type="submit"
+                className="add-alumno-button"
+                disabled={loading}
+                data-mobile-label="Guardar"
+              >
+                <FontAwesomeIcon icon={faSave} className="add-icon-button" />
+                <span className="add-button-text">{loading ? 'Guardando...' : 'Guardar Alumno'}</span>
+              </button>
+            )}
           </div>
         </form>
       </div>

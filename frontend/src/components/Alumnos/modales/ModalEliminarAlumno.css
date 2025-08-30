@@ -1,104 +1,150 @@
-/* styles/ModalEliminarSocio.css */
+/* ===== Variables (coinciden con tu sistema --soc-*) ===== */
+:root {
+  --soc-primary: #2563EB;
+  --soc-primary-dark: #1D4ED8;
+  --soc-success: #10B981;
+  --soc-danger: #EF4444;
+  --soc-gray-100: #F1F5F9;
+  --soc-gray-200: #E2E8F0;
+  --soc-gray-300: #CBD5E1;
+  --soc-gray-700: #334155;
+  --soc-dark: #0F172A;
 
-.modal-overlay {
+  --soc-border-radius: 12px;
+  --soc-border-radius-lg: 16px;
+  --soc-shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1),
+                   0 10px 10px -5px rgba(0,0,0,0.04);
+  --soc-shadow-md: 0 10px 18px rgba(0,0,0,0.12);
+  --soc-transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Overlay reutilizable ===== */
+.empdel-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0,0,0,.5);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
+  padding: 1.25rem;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  animation: empdel-fadeIn .2s ease-out;
 }
 
-.modal-contenido {
-  background-color: var(--soc-glass);
+/* ===== Caja base del modal ===== */
+.empdel-modal {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: var(--soc-border-radius-lg);
+  box-shadow: var(--soc-shadow-xl);
   padding: 2rem;
-  border-radius: var(--soc-border-radius);
-  box-shadow: var(--soc-shadow-lg);
-  width: 90%;
-  max-width: 500px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  animation: modalFadeIn 0.3s ease-out;
+  text-align: center;
+  position: relative;
+  animation: empdel-pop .18s ease-out;
 }
 
-.modal-contenido h3 {
-  color: var(--soc-dark);
+/* Variante semántica (danger) */
+.empdel-modal--danger {
+  border-top: 4px solid var(--soc-danger);
+}
+
+/* ===== Encabezado con icono grande ===== */
+.empdel-modal__icon {
+  font-size: 2.5rem;
+  color: var(--soc-danger);
   margin-bottom: 1rem;
-  font-size: 1.5rem;
+}
+
+.empdel-modal__title {
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
   font-weight: 600;
+  color: var(--soc-danger);
 }
 
-.modal-contenido p {
-  color: var(--soc-gray);
-  margin-bottom: 2rem;
-  font-size: 1rem;
+/* ===== Cuerpo ===== */
+.empdel-modal__body {
+  color: var(--soc-gray-700);
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
 }
 
-.botones-modal {
+/* ===== Botonera ===== */
+.empdel-modal__actions {
   display: flex;
+  flex-direction: row;     /* siempre en fila */
+  align-items: stretch;
   justify-content: center;
   gap: 1rem;
+  margin-top: 1.25rem;
+  flex-wrap: nowrap;       /* evita salto en móviles comunes */
 }
 
-.btn-cancelar {
+.empdel-btn {
+  flex: 1 1 0;             /* botones equivalentes */
+  max-width: 200px;
+  padding: .75rem 1.25rem;
   border-radius: var(--soc-border-radius);
-  border: 1px solid var(--soc-gray);
-  background-color: transparent;
-  color: var(--soc-gray);
+  font-weight: 600;
   cursor: pointer;
   transition: var(--soc-transition);
-  font-weight: 500;
+  border: 1px solid transparent;
+  user-select: none;
 }
 
-.btn-cancelar:hover {
-  background-color: rgba(107, 114, 128, 0.1);
+/* Botón primario peligro */
+empdel-btn--solid-danger,
+.empdel-btn--solid-danger {
+  background: var(--soc-danger);
+  color: #fff;
+  border-color: var(--soc-danger);
+}
+.empdel-btn--solid-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--soc-shadow-md);
+  filter: brightness(.95);
 }
 
-.btn-aceptar {
-  border-radius: var(--soc-border-radius);
-  border: none;
-  background-color: var(--soc-danger);
-  color: white;
-  cursor: pointer;
-  transition: var(--soc-transition);
-  font-weight: 500;
+/* Botón secundario neutro (ghost) */
+.empdel-btn--ghost {
+  background: #fff;
+  color: var(--soc-gray-700);
+  border-color: var(--soc-gray-300);
+}
+.empdel-btn--ghost:hover {
+  background: var(--soc-gray-100);
+  transform: translateY(-2px);
+  box-shadow: var(--soc-shadow-md);
 }
 
-.btn-aceptar:hover {
-  background-color: #dc2626;
+/* ===== Animaciones ===== */
+@keyframes empdel-fadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
 }
-.btn-cancelar, .btn-aceptar{
-    width: 200px;
-    padding: 1rem;
+@keyframes empdel-pop {
+  from { transform: translateY(4px); opacity: .98 }
+  to   { transform: translateY(0);   opacity: 1 }
 }
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
+
+/* ===== Responsive ===== */
+@media (max-width: 576px) {
+  .empdel-modal { padding: 1.25rem; }
+
+  .empdel-modal__actions {
+    gap: .75rem;           /* un poco menos de espacio en mobile */
+    flex-wrap: nowrap;     /* mantener lado a lado */
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .empdel-btn {
+    max-width: none;       /* ocupar el ancho disponible equitativamente */
   }
 }
 
-/* Responsive */
-@media (max-width: 480px) {
-  .modal-contenido {
-    width: 95%;
-    padding: 1.5rem;
-  }
-  
-  .botones-modal {
-    flex-direction: column;
-  }
-  
-  .btn-cancelar,
-  .btn-aceptar {
-    width: 100%;
-  }
+/* Pantallas MUY estrechas: permitir wrap en 2 columnas si no entra */
+@media (max-width: 340px) {
+  .empdel-modal__actions { flex-wrap: wrap; }
+  .empdel-btn { flex: 1 1 calc(50% - .5rem); }
 }

@@ -1,908 +1,1196 @@
-
-
-/* Scrollbar general para todo el sitio (WebKit) */
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-*::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-*::-webkit-scrollbar-thumb {
-  background-color: #888;
-  border-radius: 4px;
-  border: 2px solid transparent;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background-color: #555;
-}
-
-*::-webkit-scrollbar-button {
-  display: none;
-}
-
-/* Estilos base */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-body {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  color: var(--soc-gray-800);
-  line-height: 1.6;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* Layout principal */
-.cuo_app-container {
-  display: grid;
-  width: 100%;
-  grid-template-columns: auto 1fr;
-  width: 100%;
-  height: 100vh;
-  transition: var(--soc-transition);
-}
-
-/* Panel de filtros */
-.cuo_filtros-panel {
-  background: var(--soc-gray-900);
-  padding: 1.5rem;
-  border-right: 1px solid var(--soc-gray-800);
-  box-shadow: var(--soc-shadow-md);
-  transition: var(--soc-transition);
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  color: white;
-  overflow-y: auto;
-  height: 100vh;
-  width: 320px;
-  min-width: 320px;
-  transform: translateX(0);
-  transition: transform 0.4s ease, width 0.4s ease;
-}
-
-.cuo_filtros-colapsado {
-  transform: translateX(-100%);
-  transition: transform 0.4s ease, width 0.4s ease;
-  width: 0;
-  min-width: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.cuo_filtros-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--soc-gray-700);
-}
-
-.cuo_filtros-titulo {
-  font-size: 1.25rem;
-  font-weight: 600;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: white;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.cuo_filtros-controles {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Botón de toggle horizontal */
-.cuo_boton-toggle-horizontal {
-  background-color: transparent;
-  color: white;
-  box-shadow: none;
-  border: 1px solid var(--soc-gray-700);
-  transition: var(--soc-transition);
-  border-radius: var(--soc-border-radius);
-}
-
-.cuo_boton-toggle-horizontal:hover {
-  background-color: var(--soc-gray-700);
-  color: white;
-}
-
-/* Botón flotante para abrir filtros */
-.cuo_boton-flotante-abrir {
-  position: fixed;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  z-index: 20;
-  background-color: var(--soc-primary);
-  color: white;
-  border: none;
-  border-radius: 0 var(--soc-border-radius) var(--soc-border-radius) 0;
-  width: 42px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--soc-shadow-md);
-  cursor: pointer;
-  transition: var(--soc-transition);
-}
-
-.cuo_boton-flotante-abrir:hover {
-  background-color: var(--soc-primary-light);
-  width: 48px;
-}
-
-.cuo_flotante-fuera {
-  left: 0;
-}
-
-/* Contenido principal */
-.cuo_main-content {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  background-color: var(--soc-gray-100);
-  min-width: 0; /* Necesario para que funcione el overflow */
-}
-
-.cuo_content-header {
-  background-color: var(--soc-glass);
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--soc-gray-200);
-  box-shadow: var(--soc-shadow-sm);
-  backdrop-filter: blur(8px);
-}
-
-.cuo_header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.cuo_header-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.cuo_content-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--soc-gray-900);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.cuo_periodo-seleccionado {
-  font-weight: 500;
-  color: var(--soc-gray-600);
-  font-size: 1.25rem;
-}
-
-/* Contador de socios */
-.cuo_contador-socios {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: var(--soc-gray-200);
-  padding: 0.5rem 1rem;
-  border-radius: 50px;
-  font-weight: 600;
-  color: var(--soc-gray-800);
-}
-
-.cuo_contador-icono {
-  color: var(--soc-primary);
-  font-size: 0.9rem;
-}
-
-.cuo_contador-texto {
-  font-size: 0.9rem;
-}
-
-/* Buscador */
-.cuo_buscador-container {
-  position: relative;
-  flex: 1;
-  max-width: 400px;
-}
-
-.cuo_buscador-icono {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--soc-gray-400);
-  font-size: 0.9rem;
-}
-
-.cuo_buscador-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 1px solid var(--soc-gray-300);
-  border-radius: var(--soc-border-radius);
-  font-size: 0.875rem;
-  transition: var(--soc-transition);
-  background-color: white;
-}
-
-.cuo_buscador-input:focus {
-  outline: none;
-  border-color: var(--soc-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-}
-
-/* Acciones */
-.cuo_content-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-/* Filtros */
-.cuo_filtro-grupo {
-  margin-bottom: 0.5rem;
-}
-
-.cuo_filtro-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: white;
-}
-
-.cuo_filtro-icono {
-  color: var(--soc-primary-light);
-  font-size: 0.9rem;
-}
-
-.cuo_filtro-select, .cuo_filtro-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--soc-gray-700);
-  border-radius: var(--soc-border-radius);
-  font-size: 0.875rem;
-  transition: var(--soc-transition);
-  background-color: var(--soc-gray-800);
-  color: white;
-}
-
-.cuo_filtro-select:focus, .cuo_filtro-input:focus {
-  outline: none;
-  border-color: var(--soc-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-  background-color: var(--soc-gray-700);
-}
-
-.cuo_filtro-select option {
-  background-color: var(--soc-gray-900);
-  color: white;
-}
-
-/* Tabs estado de pago */
-.cuo_tabs-container {
-  margin-bottom: 1rem;
-}
-
-.cuo_tabs-estado-pago {
-  display: flex;
-  border-radius: var(--soc-border-radius);
-  overflow: hidden;
-  border: 1px solid var(--soc-gray-700);
-  background-color: var(--soc-gray-800);
-}
-
-.cuo_tab {
-  width: 100%;
-  text-align: center;
-  padding: 0.75rem;
-  border: none;
-  background-color: transparent;
-  color: var(--soc-gray-400);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--soc-transition);
-  white-space: nowrap;
-}
-
-.cuo_tab:hover {
-  background-color: var(--soc-gray-700);
-  color: white;
-}
-
-.cuo_tab-activo {
-  background-color: var(--soc-primary);
-  color: white;
-}
-
-/* Botones */
-.cuo_boton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border: none;
-  border-radius: var(--soc-border-radius);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--soc-transition);
-  white-space: nowrap;
-  box-shadow: var(--soc-shadow-sm);
-  font-family: 'Inter', sans-serif;
-}
-
-.cuo_boton:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--soc-shadow-md);
-}
-
-.cuo_boton-primary {
-  background-color: var(--soc-primary);
-  color: white;
-}
-
-.cuo_boton-primary:hover {
-  background-color: var(--soc-primary-dark);
-}
-
-.cuo_boton-success {
-  background-color: var(--soc-success);
-  color: white;
-}
-
-.cuo_boton-success:hover {
-  background-color: #0e9f6e;
-}
-
-.cuo_boton-warning {
-  background-color: var(--soc-warning);
-  color: white;
-}
-
-.cuo_boton-warning:hover {
-  background-color: #e07815;
-}
-
-.cuo_boton-danger {
-  background-color: var(--soc-danger);
-  color: white;
-}
-
-.cuo_boton-danger:hover {
-  background-color: #dc2626;
-}
-
-.cuo_boton-secondary {
-  background-color: var(--soc-gray-500);
-  color: white;
-}
-
-.cuo_boton-secondary:hover {
-  background-color: var(--soc-gray-600);
-}
-
-.cuo_boton-light {
-  background-color: var(--soc-gray-100);
-  color: var(--soc-gray-800);
-  box-shadow: none;
-  border: 1px solid var(--soc-gray-200);
-}
-
-.cuo_boton-light:hover {
-  background-color: white;
-  box-shadow: none;
-  transform: none;
-  border-color: var(--soc-gray-300);
-}
-
-.cuo_boton-limpiar {
-  font-weight: 600;
-  color: white;
-  background-color: transparent;
-  border: 1px solid var(--soc-gray-600);
-}
-
-.cuo_boton-limpiar:hover {
-  background-color: var(--soc-gray-700);
-}
-
-.cuo_boton:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.cuo_boton-icono {
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cuo_boton-toggle {
-  background-color: transparent;
-  color: white;
-  box-shadow: none;
-  border: 1px solid var(--soc-gray-600);
-}
-
-.cuo_boton-toggle:hover {
-  background-color: var(--soc-gray-700);
-  color: white;
-}
-
-/* Spinner para botones */
-.cuo_boton-spinner {
-  animation: cuo_spin 1s linear infinite;
-  margin-right: 8px;
-}
-
-.cuo_boton-loading {
-  position: relative;
-  opacity: 0.8;
-}
-
-.cuo_boton-loading::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.3);
-  border-radius: var(--soc-border-radius);
-}
-
-/* Estilos Grid para la tabla */
-.cuo_grid-container {
-  display: grid;
-  grid-template-columns: 
-    minmax(220px, 3fr) 
-    minmax(180px, 2fr) 
-    minmax(120px, 1fr) 
-    minmax(150px, 1.5fr) 
-    minmax(120px, 1fr)
-    minmax(120px, 1fr)
-    minmax(120px, 1fr);
-  align-items: center;
-}
-
-@media (max-width: 1600px) {
-  .cuo_grid-container {
-    grid-template-columns: 
-      minmax(200px, 2.5fr) 
-      minmax(100px, 1fr) 
-      minmax(120px, 1fr) 
-      minmax(90px, 1fr) 
-      minmax(90px, 1fr)
-      minmax(90px, 1fr)
-      minmax(110px, 1fr);
-  }
+/* ===========================
+   Variables y base (PRIMARIO = GRAY 700)
+   =========================== */
+:root {
+  /* Colores primarios GRAY */
+  --primary-50:  #f8fafc;
+  --primary-100: #f1f5f9;
+  --primary-200: #e2e8f0;
+  --primary-300: #cbd5e1;
+  --primary-400: #94a3b8;
+  --primary-500: #64748b;
+  --primary-600: #475569;
+  --primary-700: #334155; /* principal */
+  --primary-800: #1e293b;
+  --primary-900: #0f172a;
+  --primary-950: #0a0f1a; /* ajuste profundo */
+
+  /* Alias */
+  --primary-color: var(--primary-700);
+  --primary-hover: var(--primary-800);
+  --primary-light: var(--primary-200);
+  --primary-dark: var(--primary-900);
+  --primary-accent: var(--primary-500);
+
+  /* Complementarios (SECUNDARIO = AZUL para contraste) */
+  --secondary-50:  #eff6ff;
+  --secondary-100: #dbeafe;
+  --secondary-200: #bfdbfe;
+  --secondary-300: #93c5fd;
+  --secondary-400: #60a5fa;
+  --secondary-500: #3b82f6;
+  --secondary-600: #2563eb;
+  --secondary-700: #1d4ed8;
+  --secondary-800: #1e40af;
+  --secondary-900: #1e3a8a;
+
+  --secondary-color: var(--secondary-500);
+  --secondary-hover: var(--secondary-600);
+
+  /* Estado */
+  --success-50:  #ecfdf5;
+  --success-100: #d1fae5;
+  --success-200: #a7f3d0;
+  --success-300: #6ee7b7;
+  --success-400: #34d399;
+  --success-500: #10b981;
+  --success-600: #059669;
+  --success-700: #047857;
+
+  --warning-50:  #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-200: #fde68a;
+  --warning-300: #fcd34d;
+  --warning-400: #fbbf24;
+  --warning-500: #f59e0b;
+
+  --danger-50:  #fef2f2;
+  --danger-100: #fee2e2;
+  --danger-200: #fecaca;
+  --danger-300: #fca5a5;
+  --danger-400: #f87171;
+  --danger-500: #ef4444;
+  --danger-600: #dc2626;
+
+  /* Neutros / Superficies */
+  --gray-50:  #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+
+  --background-color: var(--gray-50);
+  --surface-color: #ffffff;
+  --surface-secondary: var(--gray-100);
+  --border-color: var(--gray-200);
+  --border-focus: var(--secondary-500);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-400);
+  --text-on-primary: #ffffff;
+
+  /* Gradientes (basados en PRIMARIO = GRAY) */
+  --gradient-primary: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+  --gradient-hero: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 50%, var(--primary-900) 100%);
+  --gradient-background: linear-gradient(135deg, var(--gray-100) 30%, var(--primary-500) 70%);
+  --gradient-accent: linear-gradient(90deg, var(--primary-500), var(--primary-700));
   
-  .cuo_col-acciones {
-    position: sticky;
-    right: 0;
-    background: inherit;
-    z-index: 2;
-  }
+  --btn-agregar-alumno: #3D4D55;  /* gris azulado medio */
+  --btn-exportar-excel: #A79E9C;  /* gris cálido */
+  --btn-dados-baja:     #B58863;  /* terracota / marrón cálido */
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Radios / Spacings / Transiciones */
+  --border-radius: 8px;
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-full: 9999px;
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Cascada */
+  --cascade-stagger: 50ms;
+  --cascade-duration: .45s;
+  --cascade-ease: cubic-bezier(.2,.7,.2,1);
+
+  /* Safe areas */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
-.cuo_tabla-header {
-  background-color: var(--soc-primary);
-  color: white;
-  font-weight: 600;
-  padding-right: .5rem;
-  padding-bottom: 1rem;
-  padding-top: 1rem;
+/* ===========================
+   ROOT: permitir scroll global 
+   =========================== */
+html, body {
+  height: auto;
+  min-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--background-color);
+  color: var(--text-primary);
+}
+
+/* =========================== 
+   Estilos generales 
+   =========================== */
+
+.gcuotas-container {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--gradient-background);
+}
+
+.gcuotas-box {
+  background-color: var(--surface-color);
+  box-shadow: var(--shadow-lg);
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===========================
+   Sección izquierda - Filtros y controles
+   =========================== */
+
+.gcuotas-left-section {
+  flex: 0 0 340px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-secondary);
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.gcuotas-header-section {
+  min-height: 60px;
+  padding: 0.8rem 1.2rem;
+  background: var(--gradient-primary);
+  color: var(--text-on-primary);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  box-sizing: border-box;
   position: sticky;
   top: 0;
   z-index: 10;
-  border-bottom: 2px solid var(--soc-primary-dark);
-  box-shadow: var(--soc-shadow-sm);
-  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.cuo_tabla-header > div {
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.9);
+.gcuotas-title {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gcuotas-title-icon { font-size: 20px; color: var(--text-on-primary); }
+
+.gcuotas-scrollable-content {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding-bottom: 16px;
+  padding-top: 6px;
+}
+
+.gcuotas-filter-card, .gcuotas-tabs-card, .gcuotas-actions-card {
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  margin: 0 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  margin-top: 12px;
+}
+
+/* ====== FILTROS: Header ====== */
+.gcuotas-filter-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gcuotas-filter-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gcuotas-filter-icon, .gcuotas-tabs-icon, .gcuotas-actions-icon {
+  color: var(--secondary-color);
+  font-size: 14px;
+}
+
+/* Contenido de selects */
+.gcuotas-select-container {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gcuotas-input-group {
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gcuotas-input-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gcuotas-dropdown {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--surface-color);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: var(--transition-smooth);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234a5568%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px;
+}
+.gcuotas-dropdown:hover { border-color: var(--gray-300); }
+.gcuotas-dropdown:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+/* Tabs */
+.gcuotas-tabs-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: none;
+}
+
+.gcuotas-tab-container {
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  margin: 0 12px 12px;
+}
+
+.gcuotas-tab-button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  margin: 0;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: var(--transition-smooth);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-radius: 0;
+}
+.gcuotas-active-tab { background-color: var(--secondary-color); color: var(--text-on-primary); }
+
+.gcuotas-tab-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Botones */
+.gcuotas-actions-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gcuotas-buttons-container {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gcuotas-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--transition-smooth);
+  width: 100%;
+}
+
+.gcuotas-button-back { background-color: var(--primary-color); color: var(--text-on-primary); border: 1px solid var(--primary-hover); }
+.gcuotas-button-back:hover { background-color: var(--primary-hover); border-color: var(--primary-dark); }
+
+.gcuotas-button-export { background-color: var(--success-500); color: var(--text-on-primary); }
+.gcuotas-button-export:hover { background-color: var(--success-600); }
+
+.gcuotas-button-print { background-color: var(--gray-200); color: var(--gray-800); border: 1px solid var(--gray-300); }
+.gcuotas-button-print:hover { background-color: var(--gray-300); border-color: var(--gray-400); }
+
+.gcuotas-button-print-all { background-color: var(--secondary-color); color: var(--text-on-primary); }
+.gcuotas-button-print-all:hover { background-color: var(--secondary-hover); }
+
+.gcuotas-button-loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   Sección derecha - Tabla / listado
+   =========================== */
+
+.gcuotas-right-section {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: var(--surface-color);
+}
+
+.gcuotas-table-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.gcuotas-table-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gcuotas-periodo-seleccionado {
+  font-weight: normal;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.gcuotas-input-group.gcuotas-search-group {
+  max-width: 520px;
+}
+
+.gcuotas-search-integrated { position: relative; width: 100%; }
+.gcuotas-search-integrated input {
+  width: 100%;
+  padding: 8px 10px 8px 34px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+  color: var(--text-primary);
+  background-color: var(--surface-color);
+  box-sizing: border-box;
+  transition: var(--transition-smooth);
+}
+.gcuotas-search-integrated input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+.gcuotas-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.gcuotas-summary-info {
+  display: flex;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.gcuotas-summary-item {
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+}
+
+.gcuotas-table-container {
+  flex: 1;
+  padding: 0 24px;
+}
+
+/* ===========================
+   Tabla virtual (desktop)
+   =========================== */
+
+.gcuotas-virtual-tables {
+  width: 100%;
+  font-size: 15px;
+  margin: 16px 0;
+}
+
+/* Header - centrado + compensación de scrollbar */
+.gcuotas-virtual-header {
+  font-weight: 500;
+  display: flex;
+  background-color: var(--surface-secondary);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  overflow: auto;
+  scrollbar-gutter: stable;
+  cursor: pointer;
+}
+.gcuotas-virtual-header .gcuotas-virtual-cell {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.cuo_tabla-fila {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--soc-gray-200);
-  transition: var(--soc-transition);
-  animation: fadeIn 0.3s ease-out;
-}
-
-.cuo_tabla-fila > div {
-  display: flex;
-  justify-content: center;
-  overflow: hidden;
-}
-
-/* Ajustes específicos para columnas */
-.cuo_col-nombre {
-  justify-content: flex-start;
-  padding-left: 1rem;
-}
-.cuo_col-domicilio, .cuo_col-nombre{
-    font-size: .8rem;
-}
-
-.cuo_col-domicilio {
-  justify-content: flex-start;
-}
-
-.cuo_col-estado,
-.cuo_col-medio-pago,
-.cuo_col-acciones {
-  justify-content: center;
-}
-.cuo_col-acciones {
-  margin-right: .5rem;
-}
-
-.cuo_acciones-cell {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-/* Tabla - Estilos mejorados */
-.cuo_tabla-container {
-  flex: 1;
-  background-color: var(--soc-glass);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  margin: 1rem;
-  border-radius: var(--soc-border-radius-lg);
-  box-shadow: var(--soc-shadow-md);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--soc-glass-border);
-}
-
-.cuo_tabla-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Para un scroll suave en dispositivos móviles */
-}
-
-.cuo_list-container {
-  flex: 1;
-  overflow-y: auto;
-  position: relative;
-}
-
-.cuo_fila-par {
-  background-color: var(--soc-glass);
-}
-
-.cuo_fila-impar {
-  background-color: rgba(248, 250, 252, 0.7);
-}
-
-/* Contenido de las celdas */
-.cuo_nombre-socio {
-  font-weight: 500;
-  color: var(--soc-gray-900);
-  margin-bottom: 0.25rem;
-}
-
-.cuo_documento {
-  font-size: 0.75rem;
-  color: var(--soc-gray-500);
-}
-
-/* Badges - Burbujas de estado mejoradas */
-.cuo_badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: 2px solid transparent;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
-  min-width: 100px;
+/* Celdas: MENOS padding lateral y TODO CENTRADO */
+.gcuotas-virtual-cell {
+  padding: 8px 10px;
   text-align: center;
-  transition: var(--soc-transition);
-}
-
-/* Estados del socio - Burbujas mejoradas */
-.cuo_estado-activo {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--soc-success);
-}
-
-.cuo_estado-pasivo {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--soc-danger);
-}
-
-/* Medios de Pago - Burbujas mejoradas */
-.cuo_pago-cobrador {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--soc-warning);
-}
-
-.cuo_pago-oficina {
-  background-color: rgba(124, 58, 237, 0.1);
-  color: var(--soc-secondary);
-}
-
-.cuo_pago-transferencia {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: var(--soc-primary);
-}
-
-/* Botones de acción */
-.cuo_boton-accion {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  background: var(--soc-danger);
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+  cursor: pointer;
+  font-size: .8rem;
+  color: var(--text-primary);
+}
+
+/* Ajustes de ancho para las 7 columnas */
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(1),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(1) { width: 33%;  }
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(1) {  justify-content:  flex-start;}
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(2),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(2) { width: 9%; }
+
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(3),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(3) { width: 20%; }
+
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(4),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(4) { width: 7%; }
+
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(5),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(5) { width: 8%; }
+
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(6),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(6) { width: 12%; }
+
+.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(7),
+.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(7) { width: 12%; }
+
+/* Filas */
+.gcuotas-virtual-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  background: var(--surface-color);
+}
+.gcuotas-virtual-row:hover { background-color: var(--secondary-50); }
+.gcuotas-selected-row { background-color: var(--secondary-100) !important; }
+
+/* Botones inline de la fila */
+.gcuotas-actions-inline { display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+.gcuotas-action-button {
+  background: none;
   border: none;
   cursor: pointer;
-  transition: var(--soc-transition);
-  color: white;
-  box-shadow: var(--soc-shadow-sm);
+  padding: 6px;
+  border-radius: 8px;
+  transition: var(--transition-smooth);
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+}
+.gcuotas-action-button:hover { background-color: rgba(0,0,0,0.06); }
+.gcuotas-action-button:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+  border-radius: 10px;
 }
 
-.cuo_boton-accion:hover {
-  transform: scale(1.1);
-  box-shadow: var(--soc-shadow-md);
+.gcuotas-payment-button { color: var(--success-600); }
+.gcuotas-payment-button:hover { background-color: var(--success-600); color: var(--text-on-primary); }
+
+.gcuotas-print-button { color: var(--secondary-color); }
+.gcuotas-print-button:hover { background-color: var(--secondary-color); color: var(--text-on-primary); }
+
+/* === Estética específica del botón Eliminar (X) === */
+.gcuotas-deletepay-button {
+  color: var(--danger-600);
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 0 rgba(197,48,48,0);
+}
+.gcuotas-deletepay-button:hover {
+  color: var(--text-on-primary);
+  background-color: var(--danger-500);
+  box-shadow: 0 6px 12px rgba(229, 62, 62, 0.18);
+}
+.gcuotas-deletepay-button:active {
+  transform: translateY(0.5px);
+  background-color: var(--danger-600);
+}
+.gcuotas-deletepay-button:focus-visible {
+  outline: 2px solid rgba(229,62,62,0.35);
+  outline-offset: 2px;
 }
 
-.cuo_boton-accion-primary {
-  background-color: var(--soc-primary);
+/* Iconos de ordenamiento */
+.gcuotas-sort-icon {
+  margin-left: 5px;
+  font-size: 12px;
+  opacity: 0.5;
 }
 
-.cuo_boton-accion-success {
-  background-color: var(--soc-success);
+.gcuotas-sort-active {
+  opacity: 1;
+  color: var(--secondary-color);
 }
 
-.cuo_boton-accion-warning {
-  background-color: var(--soc-warning);
-}
-
-/* Estados de carga y sin resultados */
-.cuo_estado-container {
+/* ===========================
+   Mensajes / Estados
+   =========================== */
+.gcuotas-info-message {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 2rem;
-  color: var(--soc-gray-500);
+  padding: 20px;
   text-align: center;
+  color: var(--text-secondary);
+}
+.gcuotas-info-message svg { margin-bottom: 15px; color: var(--text-muted); }
+.gcuotas-info-message p { font-size: 16px; margin-top: 10px; }
+
+.gcuotas-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
-.cuo_estado-mensaje {
-  margin-top: 1rem;
-  font-size: 1rem;
-  color: var(--soc-gray-500);
-  max-width: 400px;
+.gcuotas-loading-spinner {
+  border: 4px solid rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  border-top: 4px solid var(--primary-color);
+  width: 40px;
+  height: 40px;
+  animation: spin 0.3s linear infinite;
+  margin-bottom: 15px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* ===========================
+   Lista móvil (Cards)
+   =========================== */
+
+.gcuotas-mobile-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.cuo_spinner {
-  animation: cuo_spin 1s linear infinite;
-  color: var(--soc-primary);
+.gcuotas-mobile-card {
+  background: var(--surface-color);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.gcuotas-mobile-card:active { transform: scale(0.995); }
+.gcuotas-selected-card {
+  border: 1px solid var(--secondary-color);
+  background: var(--secondary-50);
+  box-shadow: 0 6px 14px rgba(59,130,246,0.12);
 }
 
-@keyframes cuo_spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Filas de la card */
+.gcuotas-mobile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.gcuotas-mobile-row:last-child { margin-bottom: 0; }
+
+.gcuotas-mobile-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 96px;
 }
 
-/* Acciones de filtros */
-.cuo_filtro-acciones {
+/* Acciones en la card (móvil) */
+.gcuotas-mobile-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.gcuotas-mobile-print-button,
+.gcuotas-mobile-payment-button,
+.gcuotas-mobile-deletepay-button {
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  transition: var(--transition-smooth);
+}
+
+/* Pago en verde con texto/icono blancos */
+.gcuotas-mobile-payment-button {
+  background: var(--success-600) !important;
+  border-color: var(--success-700) !important;
+  color: var(--text-on-primary) !important;
+}
+.gcuotas-mobile-payment-button span,
+.gcuotas-mobile-payment-button svg,
+.gcuotas-mobile-payment-button i,
+.gcuotas-mobile-payment-button .fa,
+.gcuotas-mobile-payment-button .fa-solid {
+  color: var(--text-on-primary) !important;
+  fill: var(--text-on-primary) !important;
+}
+.gcuotas-mobile-payment-button:hover {
+  background: var(--success-700) !important;
+  border-color: #065f46 !important;
+}
+
+/* Eliminar en rojo en móvil */
+.gcuotas-mobile-deletepay-button {
+  background: var(--danger-50);
+  color: var(--danger-600);
+  border-color: var(--danger-100);
+}
+.gcuotas-mobile-deletepay-button:hover {
+  background: var(--danger-500);
+  color: var(--text-on-primary);
+  border-color: var(--danger-500);
+}
+
+/* ===========================
+   MODAL genérico
+   =========================== */
+
+.gcuotas-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.gcuotas-modal {
+  background-color: var(--surface-color);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.gcuotas-modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: auto;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--soc-gray-700);
 }
 
-/* Animaciones */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.gcuotas-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Responsive */
-@media (max-width: 1200px) {
-  .cuo_app-container {
-    grid-template-columns: 280px 1fr;
-  }
-  
-  .cuo_col-domicilio {
-    display: none;
-  }
-  
-  .cuo_tabla-fila > .cuo_col-domicilio {
-    display: none;
-  }
-  
-  .cuo_grid-container {
-    grid-template-columns: 
-      minmax(220px, 3fr) 
-      minmax(120px, 1fr) 
-      minmax(150px, 1.5fr) 
-      minmax(120px, 1fr);
-  }
+.gcuotas-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 16px;
+  padding: 4px;
 }
 
-@media (max-width: 992px) {
-  .cuo_app-container {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+.gcuotas-modal-body {
+  padding: 24px;
+  text-align: center;
+}
+
+.gcuotas-modal-icon { font-size: 48px; color: var(--secondary-color); margin-bottom: 16px; }
+
+.gcuotas-modal-text {
+  margin-bottom: 16px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.gcuotas-modal-details {
+  background-color: var(--surface-secondary);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.gcuotas-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.gcuotas-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.gcuotas-modal-button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+}
+.gcuotas-modal-button.secondary { background-color: var(--surface-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); }
+.gcuotas-modal-button.secondary:hover { background-color: #f1f3f5; }
+.gcuotas-modal-button.primary { background-color: var(--secondary-color); color: var(--text-on-primary); border: none; }
+.gcuotas-modal-button.primary:hover { background-color: var(--secondary-hover); }
+
+/* ===========================
+   MOBILE (≤ 768px)
+   =========================== */
+@media (max-width: 768px) {
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    background: var(--background-color);
   }
-  
-  .cuo_filtros-panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: auto;
-    max-height: 80vh;
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
-    border-right: none;
-    border-bottom: 1px solid var(--soc-gray-700);
-    box-shadow: var(--soc-shadow-lg);
-    width: 100%;
-    min-width: 100%;
-  }
-  
-  .cuo_filtros-expandidos {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-  }
-  
-  .cuo_filtros-colapsado {
-    width: 100%;
-    min-width: 100%;
-  }
-  
-  .cuo_content-header {
+
+  .gcuotas-container {
+    height: auto !important;
+    min-height: 100% !important;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
+    background: var(--surface-secondary);
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    align-items: center;
   }
-  
-  .cuo_header-top, .cuo_header-bottom {
+
+  .gcuotas-box { overflow: visible !important; }
+
+  .gcuotas-left-section,
+  .gcuotas-right-section {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
     width: 100%;
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 12px;
+    padding-right: 12px;
+    border: none;
+    box-shadow: none;
   }
-  
-  .cuo_content-actions {
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-    justify-content: flex-start;
+
+  .gcuotas-left-section {
+    order: 1;
+    margin-top: 0;
+    background: transparent;
   }
-  
-  .cuo_tabla-header {
-    display: none;
+
+  /* Franja superior edge-to-edge solo mobile */
+  .gcuotas-header-section {
+    position: relative !important;
+    padding: 12px;
+    min-height: unset;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-radius: 0;
+    justify-content: center;
+    border-bottom: 2px solid #000; /* línea divisoria visible */
   }
-  
-  .cuo_tabla-fila {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1.25rem;
+
+  .gcuotas-title { font-size: 1.35rem; }
+
+  .gcuotas-filter-card,
+  .gcuotas-tabs-card,
+  .gcuotas-actions-card {
+    margin: 8px 0;
+    border-radius: 10px;
   }
-  
-  .cuo_tabla-fila > div {
-    width: 100%;
+
+  .gcuotas-actions-card { display: none !important; }
+
+  .gcuotas-filter-card { overflow: hidden; }
+  .gcuotas-filter-header { padding: 12px 12px; }
+
+  .gcuotas-select-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+  .gcuotas-input-group { min-width: auto; margin: 0; }
+  .gcuotas-input-group.gcuotas-input-full { grid-column: span 2; }
+
+  /* padding lateral para los botones Pagado/Deudores */
+  .gcuotas-tabs-card { padding: 0 12px; }
+
+  /* FIX de puntas */
+  .gcuotas-tab-container {
+    margin: 8px 0;
     padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: var(--surface-secondary);
+    border: 1px solid var(--border-color);
   }
-  
-  .cuo_acciones-cell {
-    justify-content: flex-end;
+
+  .gcuotas-tab-button { padding: 10px 8px; font-size: 13px; }
+
+  .gcuotas-right-section {
+    order: 2;
+    background: var(--surface-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    margin: 8px auto 0 auto;
+    padding-bottom: 72px;
+  }
+
+  .gcuotas-right-section.gcuotas-has-bottombar { margin-bottom: 0; }
+
+  .gcuotas-table-header {
+    padding: 14px 0 8px;
+    border-bottom: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+  .gcuotas-table-header h3 {
+    font-size: 16px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .gcuotas-input-group.gcuotas-search-group {
+    max-width: 100%;
     width: 100%;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--soc-gray-200);
   }
-  
-  .cuo_col-medio-pago, .cuo_col-estado {
+  .gcuotas-search-integrated input {
+    height: 38px;
+    padding: 8px 10px 8px 34px;
+    font-size: 14px;
+  }
+
+  .gcuotas-summary-info {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
   }
-  
-  .cuo_col-medio-pago::before {
-    content: "Medio:";
-    color: var(--soc-gray-500);
-    margin-right: 0.5rem;
+  .gcuotas-summary-item {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-secondary);
+    border: 1px solid #eceff4;
+    border-radius: 999px;
+    padding: 6px 10px;
   }
-  
-  .cuo_col-estado::before {
-    content: "Estado:";
-    color: var(--soc-gray-500);
-    margin-right: 0.5rem;
+
+  .gcuotas-table-container {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 0 10px;
   }
-  
-  .cuo_grid-container {
+
+  /* Tarjetas móviles */
+  .gcuotas-mobile-card {
+    position: relative;
+    padding: 12px 12px 12px 14px;
+    border-left: 6px solid var(--primary-color);
+  }
+  .gcuotas-selected-card { border-left-color: var(--primary-hover); }
+
+  .gcuotas-mobile-row { 
+    align-items: center; 
+    gap: 12px; 
+    border-bottom: none !important;
+    padding-bottom: 6px;
+  }
+  .gcuotas-mobile-row:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0;
+  }
+
+  .gcuotas-mobile-label {
+    flex: 0 0 40%;
+    min-width: 110px;
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 700;
+  }
+
+  .gcuotas-mobile-row span:last-child {
+    flex: 1 1 auto;
+    text-align: right;
+    color: var(--text-primary);
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .gcuotas-mobile-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .gcuotas-mobile-print-button,
+  .gcuotas-mobile-payment-button,
+  .gcuotas-mobile-deletepay-button {
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    padding: 10px 8px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--surface-color);
+  }
+
+  .gcuotas-divider,
+  .gcuotas-tabs-icon,
+  .gcuotas-filter-icon,
+  .gcuotas-actions-icon { display: none; }
+
+  .gcuotas-tabs-header { padding: 12px 0; font-size: 15px; }
+
+  .gcuotas-virtual-row { animation: none !important; }
+
+  /* Bottom bar */
+  .gcuotas-mobile-bottombar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 64px;
+    background: var(--surface-color);
+    border-top: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 8px 10px;
+    z-index: 1000;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.06);
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
+  .gcuotas-mbar-btn {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 6px;
+    color: var(--text-primary);
+  }
+  .gcuotas-mbar-btn:disabled { opacity: 0.6; }
+
+  .mbar-back    { color: var(--primary-color); border-color: var(--gray-200); }
+  .mbar-excel   { color: var(--success-600); border-color: var(--success-100); }
+  .mbar-barcode { color: var(--secondary-color); border-color: var(--secondary-100); }
+  .mbar-imprimir{ color: var(--gray-700); border-color: var(--gray-200); }
+
+  .App, main, .page, .layout {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
   }
 }
 
-@media (max-width: 576px) {
-  .cuo_boton {
-    padding: 0.75rem;
-    font-size: 0.75rem;
+/* ===========================================================
+   LÍNEAS NEGRAS DIVISORIAS PARA VISUALIZAR LA TABLA Y CABECERAS
+   =========================================================== */
+
+/* Marco general de la tabla virtual */
+.gcuotas-table-container .gcuotas-virtual-tables {
+  border-radius: 4px;
+}
+
+/* En móvil: destacar también con líneas negras para visualizar estructura */
+@media (max-width: 768px) {
+  .gcuotas-mobile-row {
+    border-bottom: 1px dashed #000;
+    padding-bottom: 6px;
   }
-  
-  .cuo_content-title {
-    font-size: 1.25rem;
+  .gcuotas-mobile-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
   }
-  
-  .cuo_periodo-seleccionado {
-    display: none;
+  .gcuotas-right-section {
+    border-radius: 12px;
   }
-  
-  .cuo_contador-socios {
-    padding: 0.5rem;
-  }
-  
-  .cuo_buscador-container {
-    max-width: none;
+  .gcuotas-header-section {
+    border-bottom: 2px solid #000;
   }
 }
 
-/* Ajustes cuando el panel está abierto */
-.cuo_filtros-panel:not(.cuo_filtros-colapsado) + .cuo_main-content .cuo_tabla-container {
-  margin: 1rem 0.5rem;
+.gcuotas-viewport {
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
+
+/* ===========================
+   Animación en cascada filas
+   =========================== */
+@keyframes gcuotasFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gcuotas-cascade {
+  opacity: 0;
+  animation: gcuotasFadeSlide var(--cascade-duration) var(--cascade-ease) forwards;
+}
+
+/* Generamos delays progresivos (0.05s entre fila y fila) */
+.gcuotas-cascade-0  { animation-delay: 0s; }
+.gcuotas-cascade-1  { animation-delay: 0.05s; }
+.gcuotas-cascade-2  { animation-delay: 0.10s; }
+.gcuotas-cascade-3  { animation-delay: 0.15s; }
+.gcuotas-cascade-4  { animation-delay: 0.20s; }
+.gcuotas-cascade-5  { animation-delay: 0.25s; }
+.gcuotas-cascade-6  { animation-delay: 0.30s; }
+.gcuotas-cascade-7  { animation-delay: 0.35s; }
+.gcuotas-cascade-8  { animation-delay: 0.40s; }
+.gcuotas-cascade-9  { animation-delay: 0.45s; }
+.gcuotas-cascade-10 { animation-delay: 0.50s; }
+.gcuotas-cascade-11 { animation-delay: 0.55s; }
+.gcuotas-cascade-12 { animation-delay: 0.60s; }
+.gcuotas-cascade-13 { animation-delay: 0.65s; }
+.gcuotas-cascade-14 { animation-delay: 0.70s; }

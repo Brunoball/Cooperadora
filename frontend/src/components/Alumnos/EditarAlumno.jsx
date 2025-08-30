@@ -1,19 +1,14 @@
-// src/components/Alumnos/EditarAlumno.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSave, faArrowLeft, faUserEdit, faCalendarDays } from '@fortawesome/free-solid-svg-icons';
+import { faSave, faArrowLeft, faUser, faGraduationCap, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import './EditarAlumno.css';
-import '../Global/roots.css';
 
 const aMayus = (v) => (typeof v === 'string' ? v.toUpperCase() : v);
-
-// Zona horaria fija (Córdoba) para evitar desfasajes
 const TZ_CBA = 'America/Argentina/Cordoba';
 
-// Hoy en formato YYYY-MM-DD en TZ Córdoba
 const hoyISO = () =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: TZ_CBA, year: 'numeric', month: '2-digit', day: '2-digit'
@@ -24,361 +19,446 @@ const esFechaISO = (val) => /^\d{4}-\d{2}-\d{2}$/.test(val);
 const EditarAlumno = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const formRef = useRef(null);
+  const [activeTab, setActiveTab] = useState('informacion');
+
+  // Campos
+  const [apellido_nombre, setApellidoNombre] = useState('');
+  const [dni, setDni] = useState('');
+  const [domicilio, setDomicilio] = useState('');
+  const [localidad, setLocalidad] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [id_anio, setIdAnio] = useState('');
+  const [id_division, setIdDivision] = useState('');
+  const [id_categoria, setIdCategoria] = useState('1');
+  const [ingreso, setIngreso] = useState('');
+  const [anios, setAnios] = useState([]);
+  const [divisiones, setDivisiones] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [idAlumno, setIdAlumno] = useState(null);
+
   const fechaInputRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    apellido_nombre: '',
-    dni: '',
-    domicilio: '',
-    localidad: '',
-    telefono: '',
-    id_anio: '',
-    id_division: '',
-    id_categoria: '1',
-    ingreso: '', // <<< NUEVO
-  });
-
-  const [listas, setListas] = useState({
-    anios: [],
-    divisiones: [],
-    categorias: [],
-    loaded: false
-  });
-
-  const [datosOriginales, setDatosOriginales] = useState({});
+  // Toast
   const [toast, setToast] = useState({ show: false, message: '', type: 'exito' });
-  const [activeField, setActiveField] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const showToast = (message, type = 'exito') => setToast({ show: true, message, type });
-
-  const handleNumberChange = (e) => {
-    const { name, value } = e.target;
-    const numericValue = value.replace(/[^0-9]/g, '');
-    setFormData(prev => ({ ...prev, [name]: numericValue }));
+  const showToast = (message, type = 'exito') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  // Abrir datepicker desde todo el contenedor
-  const openDatePicker = (e) => {
-    e.preventDefault();
+  const abrirCalendario = () => {
     const el = fechaInputRef.current;
     if (!el) return;
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return; } catch {}
+    }
+    el.focus();
+    try { el.click(); } catch {}
+  };
+
+  const obtenerAlumno = async (signal) => {
     try {
-      if (typeof el.showPicker === 'function') el.showPicker();
-      else { el.focus(); el.click(); }
-    } catch {
-      el.focus(); el.click();
+      setCargando(true);
+      
+      // Listas globales
+      const resListas = await fetch(`${BASE_URL}/api.php?action=obtener_listas`, { signal });
+      const jsonListas = await resListas.json();
+      
+      if (jsonListas.exito) {
+        setAnios(jsonListas.listas.anios || []);
+        setDivisiones(jsonListas.listas.divisiones || []);
+        setCategorias(jsonListas.listas.categorias || []);
+      } else {
+        showToast('Error al cargar listas: ' + jsonListas.mensaje, 'error');
+      }
+
+      // Datos del alumno
+      const response = await fetch(`${BASE_URL}/api.php?action=editar_alumno&id=${id}`, { signal });
+      const data = await response.json();
+      
+      if (data.exito) {
+        const alumno = data.alumno || {};
+        setIdAlumno(alumno.id_alumno || id);
+        setApellidoNombre(alumno.apellido_nombre || '');
+        setDni(alumno.dni || '');
+        setDomicilio(alumno.domicilio || '');
+        setLocalidad(alumno.localidad || '');
+        setTelefono(alumno.telefono || '');
+        setIdAnio(alumno.id_anio || '');
+        setIdDivision(alumno.id_division || '');
+        setIdCategoria(alumno.id_categoria || '1');
+        setIngreso(alumno.ingreso || '');
+      } else {
+        showToast('Error al cargar datos del alumno: ' + data.mensaje, 'error');
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        showToast('Hubo un error al obtener los datos del alumno: ' + error.message, 'error');
+      }
+    } finally {
+      setCargando(false);
     }
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Listas globales
-        const resListas = await fetch(`${BASE_URL}/api.php?action=obtener_listas`);
-        const jsonListas = await resListas.json();
-        if (jsonListas.exito) {
-          setListas({ ...jsonListas.listas, loaded: true });
-        } else {
-          showToast('Error al cargar listas: ' + jsonListas.mensaje, 'error');
-        }
-
-        // Datos del alumno
-        const resAlumno = await fetch(`${BASE_URL}/api.php?action=editar_alumno&id=${id}`);
-        const dataAlumno = await resAlumno.json();
-        if (dataAlumno.exito) {
-          const a = dataAlumno.alumno || {};
-          const mapeado = {
-            apellido_nombre: a.apellido_nombre ?? '',
-            dni: a.dni ?? '',
-            domicilio: a.domicilio ?? '',
-            localidad: a.localidad ?? '',
-            telefono: a.telefono ?? '',
-            id_anio: a.id_anio ?? '',         // backend devuelve alias id_anio
-            id_division: a.id_division ?? '',
-            id_categoria: a.id_categoria ?? '1',
-            ingreso: a.ingreso ?? '',         // <<< NUEVO (YYYY-MM-DD)
-          };
-          setFormData(mapeado);
-          setDatosOriginales(mapeado);
-        } else {
-          showToast('Error al cargar datos del alumno: ' + dataAlumno.mensaje, 'error');
-        }
-      } catch (err) {
-        showToast('Error de conexión: ' + err.message, 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    const ctrl = new AbortController();
+    if (id) obtenerAlumno(ctrl.signal);
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'ingreso') {
-      // no upper-case; validación sencilla
-      setFormData(prev => ({ ...prev, ingreso: value }));
+  const handleNumberChange = (e, setter) => {
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    setter(value);
+  };
+
+  const guardarAlumno = async () => {
+    if (!apellido_nombre) {
+      showToast('Apellido y Nombre son obligatorios', 'error');
       return;
     }
-    const v = ['apellido_nombre', 'domicilio', 'localidad'].includes(name) ? aMayus(value) : value;
-    setFormData(prev => ({ ...prev, [name]: v }));
-  };
-
-  const handleFocus = (name) => setActiveField(name);
-  const handleBlur = () => setActiveField(null);
-
-  const normalizar = (obj) => {
-    const out = { ...obj };
-    Object.keys(out).forEach(k => { if (out[k] === '') out[k] = null; });
-    return out;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
 
     // Validar ingreso si viene cargado
-    if (formData.ingreso && !esFechaISO(formData.ingreso)) {
+    if (ingreso && !esFechaISO(ingreso)) {
       showToast('La fecha de ingreso debe tener formato AAAA-MM-DD.', 'error');
       return;
     }
 
-    const formN = normalizar(formData);
-    const originalN = normalizar(datosOriginales);
-    if (JSON.stringify(formN) === JSON.stringify(originalN)) {
-      showToast('No se encontraron cambios para realizar', 'advertencia');
-      return;
-    }
-
     try {
-      setLoading(true);
-      const res = await fetch(`${BASE_URL}/api.php?action=editar_alumno`, {
+      const response = await fetch(`${BASE_URL}/api.php?action=editar_alumno`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, id_alumno: id }),
+        body: JSON.stringify({
+          id_alumno: id,
+          apellido_nombre: aMayus(apellido_nombre),
+          dni: dni || '',
+          domicilio: aMayus(domicilio) || '',
+          localidad: aMayus(localidad) || '',
+          telefono: telefono || '',
+          id_anio: id_anio || null,
+          id_division: id_division || null,
+          id_categoria: id_categoria || '1',
+          ingreso: ingreso || null,
+        }),
       });
-      const data = await res.json();
+
+      const data = await response.json();
+
       if (data.exito) {
         showToast('Alumno actualizado correctamente', 'exito');
-        setTimeout(() => navigate('/alumnos'), 1800);
+        setTimeout(() => navigate('/alumnos'), 800);
       } else {
         showToast('Error al actualizar: ' + data.mensaje, 'error');
       }
     } catch (error) {
-      showToast('Error de red: ' + error, 'error');
-    } finally {
-      setLoading(false);
+      showToast('Error en la solicitud: ' + error.message, 'error');
     }
   };
 
+  // --- SKELETON VIEW ---
+  const Header = (
+    <div className="edit-socio-header">
+      {cargando ? (
+        <div className="edit-socio-header-skel">
+          <div className="skel skel-title" />
+          <div className="skel skel-subtitle" />
+        </div>
+      ) : (
+        <>
+          <h2 className="edit-socio-title">Editar Alumno #{idAlumno}</h2>
+          <div className="edit-socio-subtitle">
+            {apellido_nombre}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const Tabs = (
+    <div className="edit-socio-tabs" role="tablist" aria-label="Secciones de edición">
+      {['informacion','escolaridad','otros'].map(tab => (
+        <button
+          key={tab}
+          className={`edit-socio-tab ${activeTab === tab ? 'active' : ''} ${cargando ? 'is-disabled' : ''}`}
+          onClick={() => !cargando && setActiveTab(tab)}
+          role="tab"
+          aria-selected={activeTab === tab}
+          aria-label={tab}
+          title={tab.charAt(0).toUpperCase() + tab.slice(1)}
+          disabled={cargando}
+        >
+          <FontAwesomeIcon
+            icon={
+              tab==='informacion' ? faUser :
+              tab==='escolaridad' ? faGraduationCap : faInfoCircle
+            }
+            className="edit-socio-tab-icon"
+          />
+          <span className="tab-text">
+            {tab==='informacion' ? 'Información' :
+             tab==='escolaridad' ? 'Escolaridad' : 'Otros'}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
+  // Contenido: si cargando -> skeletones
+  const ContentLoading = (
+    <div className="edit-socio-form">
+      <div className="edit-socio-tab-content">
+        <div className="edit-socio-input-group">
+          <div className="skel skel-input" />
+          <div className="skel skel-input" />
+        </div>
+        <div className="edit-socio-input-group">
+          <div className="skel skel-input" />
+          <div className="skel skel-input" />
+        </div>
+        <div className="edit-socio-input-group">
+          <div className="skel skel-input" />
+          <div className="skel skel-input" />
+        </div>
+      </div>
+
+      <div className="edit-socio-buttons-container">
+        <div className="skel skel-btn" />
+        <div className="skel skel-btn" />
+      </div>
+    </div>
+  );
+
   return (
     <div className="edit-socio-container">
-      <div className="edit-socio-box">
-        {toast.show && (
-          <Toast
-            tipo={toast.type}
-            mensaje={toast.message}
-            onClose={() => setToast(prev => ({ ...prev, show: false }))}
-            duracion={3000}
-          />
-        )}
+      {toast.show && (
+        <Toast
+          tipo={toast.type}
+          mensaje={toast.message}
+          onClose={() => setToast(prev => ({ ...prev, show: false }))}
+          duracion={3000}
+        />
+      )}
 
-        <div className="edit-header">
-          <div className="edit-icon-title">
-            <FontAwesomeIcon icon={faUserEdit} className="edit-icon" />
-            <div>
-              <h1>Editar Alumno #{id}</h1>
-              <p>Actualiza la información del alumno</p>
-            </div>
-          </div>
-          <button className="edit-back-btn" onClick={() => navigate('/alumnos')}>
-            <FontAwesomeIcon icon={faArrowLeft} />
-            Volver
-          </button>
-        </div>
+      <div className="edit-socio-box edit-socio-animate-in" role="region" aria-label="Editar alumno">
+        {Header}
+        {Tabs}
 
-        <form onSubmit={handleSubmit} ref={formRef} className="edit-socio-form">
-          <div className="edit-socio-sections">
-            {/* Básicos */}
-            <div className="edit-socio-section">
-              <h3 className="edit-socio-section-title">Datos del Alumno</h3>
-              <div className="edit-socio-section-content">
-                <div className={`edit-socio-input-wrapper ${formData.apellido_nombre || activeField === 'apellido_nombre' ? 'has-value' : ''}`}>
-                  <label className="edit-socio-label">Apellido y Nombre</label>
-                  <input
-                    name="apellido_nombre"
-                    value={formData.apellido_nombre || ''}
-                    onChange={handleChange}
-                    onFocus={() => handleFocus('apellido_nombre')}
-                    onBlur={handleBlur}
-                    className="edit-socio-input"
-                  />
-                  <span className="edit-socio-input-highlight"></span>
-                </div>
-
-                <div className="edit-socio-group-row">
-                  <div className={`edit-socio-input-wrapper ${formData.dni || activeField === 'dni' ? 'has-value' : ''}`}>
-                    <label className="edit-socio-label">DNI</label>
+        {cargando ? (
+          ContentLoading
+        ) : (
+          <form className="edit-socio-form" onSubmit={(e) => e.preventDefault()}>
+            {activeTab === 'informacion' && (
+              <div className="edit-socio-tab-content">
+                <div className="edit-socio-input-group">
+                  <div className="edit-socio-floating-label-wrapper">
                     <input
-                      name="dni"
-                      value={formData.dni || ''}
-                      onChange={handleNumberChange}
-                      onFocus={() => handleFocus('dni')}
-                      onBlur={handleBlur}
+                      type="text"
+                      value={apellido_nombre}
+                      onChange={(e) => setApellidoNombre(e.target.value)}
+                      placeholder=" "
                       className="edit-socio-input"
+                      id="apellido_nombre"
+                      required
+                    />
+                    <label htmlFor="apellido_nombre" className={`edit-socio-floating-label ${apellido_nombre ? 'edit-socio-floating-label-filled' : ''}`}>
+                      Apellido y Nombre
+                    </label>
+                  </div>
+
+                  <div className="edit-socio-floating-label-wrapper">
+                    <input
+                      type="text"
+                      value={dni}
+                      onChange={(e) => handleNumberChange(e, setDni)}
+                      placeholder=" "
+                      className="edit-socio-input"
+                      id="dni"
                       inputMode="numeric"
                     />
-                    <span className="edit-socio-input-highlight"></span>
+                    <label htmlFor="dni" className={`edit-socio-floating-label ${dni ? 'edit-socio-floating-label-filled' : ''}`}>
+                      DNI
+                    </label>
                   </div>
+                </div>
 
-                  <div className={`edit-socio-input-wrapper ${formData.telefono || activeField === 'telefono' ? 'has-value' : ''}`}>
-                    <label className="edit-socio-label">Teléfono</label>
+                <div className="edit-socio-input-group">
+                  <div className="edit-socio-floating-label-wrapper">
                     <input
-                      name="telefono"
-                      value={formData.telefono || ''}
-                      onChange={handleNumberChange}
-                      onFocus={() => handleFocus('telefono')}
-                      onBlur={handleBlur}
+                      type="text"
+                      value={telefono}
+                      onChange={(e) => handleNumberChange(e, setTelefono)}
+                      placeholder=" "
                       className="edit-socio-input"
+                      id="telefono"
                       inputMode="tel"
                     />
-                    <span className="edit-socio-input-highlight"></span>
+                    <label htmlFor="telefono" className={`edit-socio-floating-label ${telefono ? 'edit-socio-floating-label-filled' : ''}`}>
+                      Teléfono
+                    </label>
                   </div>
-                </div>
 
-                <div className="edit-socio-domicilio-group">
-                  <div className={`edit-socio-input-wrapper ${formData.domicilio || activeField === 'domicilio' ? 'has-value' : ''}`} style={{ flex: 2 }}>
-                    <label className="edit-socio-label">Domicilio</label>
+                  <div
+                    className="edit-socio-floating-label-wrapper date-clickable"
+                    onClick={abrirCalendario}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && abrirCalendario()}
+                    aria-label="Fecha de ingreso (abrir calendario)"
+                    title="Fecha de ingreso"
+                  >
                     <input
-                      name="domicilio"
-                      value={formData.domicilio || ''}
-                      onChange={handleChange}
-                      onFocus={() => handleFocus('domicilio')}
-                      onBlur={handleBlur}
-                      className="edit-socio-input"
+                      ref={fechaInputRef}
+                      type="date"
+                      value={ingreso}
+                      onChange={(e) => setIngreso(e.target.value)}
+                      className="edit-socio-input date-no-effect"
+                      id="ingreso"
+                      max="9999-12-31"
+                      placeholder={hoyISO()}
                     />
-                    <span className="edit-socio-input-highlight"></span>
+                    <label htmlFor="ingreso" className="edit-socio-floating-label date-label-fixed">
+                      Fecha de ingreso
+                    </label>
                   </div>
+                </div>
 
-                  <div className={`edit-socio-input-wrapper ${formData.localidad || activeField === 'localidad' ? 'has-value' : ''}`} style={{ flex: 1 }}>
-                    <label className="edit-socio-label">Localidad</label>
+                <div className="edit-socio-input-group">
+                  <div className="edit-socio-floating-label-wrapper">
                     <input
-                      name="localidad"
-                      value={formData.localidad || ''}
-                      onChange={handleChange}
-                      onFocus={() => handleFocus('localidad')}
-                      onBlur={handleBlur}
+                      type="text"
+                      value={domicilio}
+                      onChange={(e) => setDomicilio(e.target.value)}
+                      placeholder=" "
                       className="edit-socio-input"
+                      id="domicilio"
                     />
-                    <span className="edit-socio-input-highlight"></span>
+                    <label htmlFor="domicilio" className={`edit-socio-floating-label ${domicilio ? 'edit-socio-floating-label-filled' : ''}`}>
+                      Domicilio
+                    </label>
+                  </div>
+
+                  <div className="edit-socio-floating-label-wrapper">
+                    <input
+                      type="text"
+                      value={localidad}
+                      onChange={(e) => setLocalidad(e.target.value)}
+                      placeholder=" "
+                      className="edit-socio-input"
+                      id="localidad"
+                    />
+                    <label htmlFor="localidad" className={`edit-socio-floating-label ${localidad ? 'edit-socio-floating-label-filled' : ''}`}>
+                      Localidad
+                    </label>
                   </div>
                 </div>
-
-                <div className="edit-socio-group-row">
-                  <div className={`edit-socio-input-wrapper ${formData.id_anio || activeField === 'id_anio' ? 'has-value' : ''}`}>
-                    <label className="edit-socio-label">Año</label>
-                    <select
-                      name="id_anio"
-                      value={formData.id_anio || ''}
-                      onChange={handleChange}
-                      onFocus={() => handleFocus('id_anio')}
-                      onBlur={handleBlur}
-                      className="edit-socio-input"
-                      disabled={loading || !listas.loaded}
-                    >
-                      <option value="" disabled hidden>Seleccione año</option>
-                      {listas.anios.map(a => (
-                        <option key={a.id} value={a.id}>{a.nombre}</option>
-                      ))}
-                    </select>
-                    <span className="edit-socio-input-highlight"></span>
-                  </div>
-
-                  <div className={`edit-socio-input-wrapper ${formData.id_division || activeField === 'id_division' ? 'has-value' : ''}`}>
-                    <label className="edit-socio-label">División</label>
-                    <select
-                      name="id_division"
-                      value={formData.id_division || ''}
-                      onChange={handleChange}
-                      onFocus={() => handleFocus('id_division')}
-                      onBlur={handleBlur}
-                      className="edit-socio-input"
-                      disabled={loading || !listas.loaded}
-                    >
-                      <option value="" disabled hidden>Seleccione división</option>
-                      {listas.divisiones.map(d => (
-                        <option key={d.id} value={d.id}>{d.nombre}</option>
-                      ))}
-                    </select>
-                    <span className="edit-socio-input-highlight"></span>
-                  </div>
-
-                  <div className={`edit-socio-input-wrapper ${formData.id_categoria || activeField === 'id_categoria' ? 'has-value' : ''}`}>
-                    <label className="edit-socio-label">Categoría</label>
-                    <select
-                      name="id_categoria"
-                      value={formData.id_categoria || ''}
-                      onChange={handleChange}
-                      onFocus={() => handleFocus('id_categoria')}
-                      onBlur={handleBlur}
-                      className="edit-socio-input"
-                      disabled={loading || !listas.loaded}
-                    >
-                      <option value="" disabled hidden>Seleccione categoría</option>
-                      {listas.categorias.map(c => (
-                        <option key={c.id} value={String(c.id)}>{c.nombre}</option>
-                      ))}
-                    </select>
-                    <span className="edit-socio-input-highlight"></span>
-                  </div>
-                </div>
-
-                {/* NUEVO: Fecha de Ingreso con datepicker y zona horaria Cba */}
-                <div className="edit-socio-group-row">
-                  <div className={`edit-socio-input-wrapper ${formData.ingreso || activeField === 'ingreso' ? 'has-value' : ''}`} style={{ maxWidth: 260 }}>
-                    <label className="edit-socio-label">Ingreso</label>
-                    <div
-                      className="edit-socio-date-container"
-                      role="button"
-                      tabIndex={0}
-                      onMouseDown={openDatePicker}
-                      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openDatePicker(e)}
-                      aria-label="Abrir selector de fecha"
-                    >
-                      <input
-                        ref={fechaInputRef}
-                        type="date"
-                        name="ingreso"
-                        className="edit-socio-input"
-                        value={formData.ingreso || ''}
-                        onChange={handleChange}
-                        onFocus={() => handleFocus('ingreso')}
-                        onBlur={handleBlur}
-                        max="9999-12-31"
-                        placeholder={hoyISO()}
-                      />
-                      <FontAwesomeIcon icon={faCalendarDays} className="edit-socio-date-icon" />
-                    </div>
-                    <span className="edit-socio-input-highlight"></span>
-                  </div>
-                </div>
-
               </div>
-            </div>
-          </div>
+            )}
 
-          <div className="edit-socio-buttons-container">
-            <button type="submit" className="edit-socio-button" disabled={loading}>
-              <FontAwesomeIcon icon={faSave} className="edit-socio-icon-button" />
-              <span className="edit-socio-button-text">
-                {loading ? 'Guardando...' : 'Actualizar Alumno'}
-              </span>
-            </button>
-          </div>
-        </form>
+            {activeTab === 'escolaridad' && (
+              <div className="edit-socio-tab-content">
+                <div className="edit-socio-input-group">
+                  {/* === Año con floating label SIEMPRE activo === */}
+                  <div className="edit-fl-wrapper always-active">
+                    <label htmlFor="id_anio" className="edit-fl-label">Año *</label>
+                    <select
+                      id="id_anio"
+                      value={id_anio || ''}
+                      onChange={(e) => setIdAnio(e.target.value)}
+                      className="edit-socio-input edit-select"
+                    >
+                      <option value="" disabled>Seleccione un año</option>
+                      {anios.map((anio) => (
+                        <option key={anio.id} value={anio.id}>
+                          {anio.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* === División con floating label SIEMPRE activo === */}
+                  <div className="edit-fl-wrapper always-active">
+                    <label htmlFor="id_division" className="edit-fl-label">División *</label>
+                    <select
+                      id="id_division"
+                      value={id_division || ''}
+                      onChange={(e) => setIdDivision(e.target.value)}
+                      className="edit-socio-input edit-select"
+                    >
+                      <option value="" disabled>Seleccione una división</option>
+                      {divisiones.map((division) => (
+                        <option key={division.id} value={division.id}>
+                          {division.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="edit-socio-input-group">
+                  {/* === Categoría (Interno / Externo) con floating label SIEMPRE activo === */}
+                  <div className="edit-fl-wrapper always-active">
+                    <label htmlFor="id_categoria" className="edit-fl-label">Categoría *</label>
+                    <select
+                      id="id_categoria"
+                      value={id_categoria || ''}
+                      onChange={(e) => setIdCategoria(e.target.value)}
+                      className="edit-socio-input edit-select"
+                    >
+                      <option value="" disabled>Seleccione una categoría</option>
+                      {categorias.map((categoria) => (
+                        <option key={categoria.id} value={String(categoria.id)}>
+                          {categoria.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'otros' && (
+              <div className="edit-socio-tab-content">
+                <div className="edit-socio-input-group">
+                  <div className="edit-socio-floating-label-wrapper">
+                    <textarea
+                      placeholder=" "
+                      className="edit-socio-input edit-socio-textarea"
+                      id="observacion"
+                      rows="4"
+                      disabled
+                    />
+                    <label htmlFor="observacion" className="edit-socio-floating-label">
+                      Observaciones (no disponible)
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="edit-socio-buttons-container">
+              <button
+                type="button"
+                onClick={guardarAlumno}
+                className="edit-socio-button"
+                aria-label="Guardar"
+                title="Guardar"
+              >
+                <FontAwesomeIcon icon={faSave} className="edit-socio-icon-button" />
+                <span className="btn-text">Guardar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/alumnos')}
+                className="edit-socio-back-button"
+                aria-label="Volver"
+                title="Volver"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} className="edit-socio-icon-button" />
+                <span className="btn-text">Volver</span>
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -1,28 +1,28 @@
 // src/components/Cuotas/Cuotas.jsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faDollarSign,
+  faPrint,
+  faBarcode,
+  faSearch,
+  faCalendarAlt,
+  faFilter,
+  faSort,
+  faUsers,
+  faTimes,
+  faArrowLeft,
+  faFileExcel,
+  faCheckCircle,
+  faExclamationTriangle,
+  faCog,
+  faMoneyCheckAlt,
+  faList
+} from '@fortawesome/free-solid-svg-icons';
 import BASE_URL from '../../config/config';
-import {
-  FaDollarSign,
-  FaPrint,
-  FaSpinner,
-  FaBarcode,
-  FaSearch,
-  FaCalendarAlt,
-  FaFilter,
-  FaUndo,
-  FaSort,
-  FaUsers,
-  FaTimes
-} from 'react-icons/fa';
-import {
-  FiChevronLeft,
-  FiChevronRight,
-  FiChevronUp,
-  FiChevronDown
-} from 'react-icons/fi';
 import ModalPagos from './modales/ModalPagos';
 import ModalCodigoBarras from './modales/ModalCodigoBarras';
 import ModalEliminarPago from './modales/ModalEliminarPago';
@@ -40,40 +40,56 @@ const Cuotas = () => {
   const [cuotas, setCuotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPrint, setLoadingPrint] = useState(false);
-
-  // 🔎 búsqueda libre
   const [busqueda, setBusqueda] = useState('');
-
-  // 🧭 tabs: deudor/pagado
   const [estadoPagoSeleccionado, setEstadoPagoSeleccionado] = useState('deudor');
-
-  // 🧰 filtros (listas de obtener_listas.php)
   const [anioSeleccionado, setAnioSeleccionado] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
   const [divisionSeleccionada, setDivisionSeleccionada] = useState('');
   const [mesSeleccionado, setMesSeleccionado] = useState('');
-
-  // listas para selects
   const [anios, setAnios] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [divisiones, setDivisiones] = useState([]);
   const [meses, setMeses] = useState([]);
-
-  // UI
-  const [filtrosExpandidos, setFiltrosExpandidos] = useState(true);
   const [orden, setOrden] = useState({ campo: 'nombre', ascendente: true });
   const [toastVisible, setToastVisible] = useState(false);
   const [toastTipo, setToastTipo] = useState('exito');
   const [toastMensaje, setToastMensaje] = useState('');
-
   const [mostrarModalPagos, setMostrarModalPagos] = useState(false);
   const [mostrarModalCodigoBarras, setMostrarModalCodigoBarras] = useState(false);
   const [mostrarModalEliminarPago, setMostrarModalEliminarPago] = useState(false);
   const [socioParaPagar, setSocioParaPagar] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [selectedRow, setSelectedRow] = useState(null);
+
+  // ---- Control de animación en cascada ----
+  const [cascadeActive, setCascadeActive] = useState(false);
+  const [cascadeRunId, setCascadeRunId] = useState(0);
+  const cascadeTimerRef = useRef(null);
+
+  const triggerCascade = useCallback(() => {
+    // Activa solo cuando filtrás o buscás; evita que se repita al scrollear
+    setCascadeActive(true);
+    setCascadeRunId(prev => prev + 1); // fuerza remount del List
+    if (cascadeTimerRef.current) clearTimeout(cascadeTimerRef.current);
+    // Duración_total_aprox = último delay (0.70s) + anim (0.40s) ≈ 1.1s
+    cascadeTimerRef.current = setTimeout(() => setCascadeActive(false), 1200);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cascadeTimerRef.current) clearTimeout(cascadeTimerRef.current);
+    };
+  }, []);
 
   const navigate = useNavigate();
 
-  // Helpers para tolerar distintos nombres de campos del backend
+  // Detectar cambios en el tamaño de la ventana
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const getIdMesFromCuota = (c) =>
     c?.id_mes ?? c?.id_periodo ?? c?.mes_id ?? c?.periodo_id ?? '';
 
@@ -90,7 +106,6 @@ const Cuotas = () => {
   const getDomicilioCuota = (c) => c?.domicilio ?? '';
   const getDocumentoCuota = (c) => c?.documento ?? c?.dni ?? '';
 
-  // Mapear IDs a nombres para globos
   const getNombreAnio = (id) => {
     const a = anios.find(x => String(x.id) === String(id));
     return a ? a.nombre : '';
@@ -108,7 +123,6 @@ const Cuotas = () => {
     try {
       setLoading(true);
 
-      // Si está en “Pagados”, pedimos con ?pagados=1
       const cuotasUrl = `${BASE_URL}/api.php?action=cuotas${
         estadoPagoSeleccionado === 'pagado' ? '&pagados=1' : ''
       }`;
@@ -218,7 +232,7 @@ const Cuotas = () => {
   };
 
   const cuotasFiltradas = useMemo(() => {
-    if (!mesSeleccionado) return []; // hasta que elijan mes
+    if (!mesSeleccionado) return [];
 
     const data = cuotas
       .filter(coincideEstadoPago)
@@ -289,403 +303,253 @@ const Cuotas = () => {
     setAnioSeleccionado('');
     setCategoriaSeleccionada('');
     setDivisionSeleccionada('');
-    // mes NO se limpia para no vaciar la lista
     setToastTipo('exito');
     setToastMensaje('Filtros limpiados correctamente');
     setToastVisible(true);
+    triggerCascade(); // es un cambio de filtros, activamos cascada
   };
 
-  const toggleFiltros = () => setFiltrosExpandidos(!filtrosExpandidos);
+  const handleRowClick = useCallback((index) => {
+    if (typeof index !== "number" || index < 0) return;
+    setSelectedRow(prev => (prev === index ? null : index));
+  }, []);
 
-  const Row = ({ index, style, data }) => {
-    const cuota = data[index];
+  const handlePaymentClick = useCallback((item) => {
+    setSocioParaPagar(item);
+    setMostrarModalPagos(true);
+  }, []);
 
-    const idAnio = getIdAnioFromCuota(cuota);
-    const idDiv  = getIdDivisionFromCuota(cuota);
-    const idCat  = getIdCategoriaFromCuota(cuota);
+  const handleDeletePaymentClick = useCallback((item) => {
+    setSocioParaPagar(item);
+    setMostrarModalEliminarPago(true);
+  }, []);
 
-    const nombreAnio = getNombreAnio(idAnio);
-    const nombreDiv  = getNombreDivision(idDiv);
-    const nombreCat  = getNombreCategoria(idCat);
-
-    return (
-      <div
-        style={style}
-        className={`cuo_tabla-fila cuo_grid-container ${index % 2 === 0 ? 'cuo_fila-par' : 'cuo_fila-impar'}`}
-      >
-        {/* Alumno */}
-        <div className="cuo_col-nombre">
-          <div className="cuo_nombre-socio">{getNombreCuota(cuota)}</div>
-        </div>
-
-        {/* DNI */}
-        <div className="cuo_col-dni">
-          {getDocumentoCuota(cuota) || '—'}
-        </div>
-
-        {/* Domicilio */}
-        <div className="cuo_col-domicilio">
-          {getDomicilioCuota(cuota) || '—'}
-        </div>
-
-        {/* Curso (Año) */}
-        <div className="cuo_col-curso">
-          <span className="cuo_badge cuo_badge-info">
-            {nombreAnio || '—'}
-          </span>
-        </div>
-
-        {/* División */}
-        <div className="cuo_col-division">
-          <span className="cuo_badge cuo_badge-primary">
-            {nombreDiv || '—'}
-          </span>
-        </div>
-
-        {/* Categoría */}
-        <div className="cuo_col-categoria">
-          <span className="cuo_badge cuo_badge-success">
-            {nombreCat || '—'}
-          </span>
-        </div>
-
-        {/* Acciones */}
-        <div className="cuo_col-acciones">
-          <div className="cuo_acciones-cell">
-            {estadoPagoSeleccionado === 'deudor' ? (
-              <button
-                className="cuo_boton-accion cuo_boton-accion-success"
-                onClick={() => {
-                  setSocioParaPagar(cuota);
-                  setMostrarModalPagos(true);
-                }}
-                title="Registrar pago"
-              >
-                <FaDollarSign />
-              </button>
-            ) : (
-              <button
-                className="cuo_boton-accion cuo_boton-accion-danger"
-                onClick={() => {
-                  setSocioParaPagar(cuota);
-                  setMostrarModalEliminarPago(true);
-                }}
-                title="Eliminar pago"
-              >
-                <FaTimes />
-              </button>
-            )}
-            <button
-              className="cuo_boton-accion cuo_boton-accion-primary"
-              onClick={() => {
-                const ventanaImpresion = window.open('', '_blank');
-                if (ventanaImpresion) {
-                  imprimirRecibos([cuota], mesSeleccionado, ventanaImpresion);
-                } else {
-                  alert('Por favor deshabilita el bloqueador de ventanas emergentes para imprimir');
-                }
-              }}
-              title="Imprimir recibo"
-            >
-              <FaPrint />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const handlePrintClick = useCallback((item) => {
+    const ventanaImpresion = window.open('', '_blank');
+    if (ventanaImpresion) {
+      imprimirRecibos([item], mesSeleccionado, ventanaImpresion);
+    } else {
+      alert('Por favor deshabilita el bloqueador de ventanas emergentes para imprimir');
+    }
+  }, [mesSeleccionado]);
 
   const getNombreMes = (id) => {
     const m = meses.find(p => String(p.id) === String(id));
     return m ? m.nombre : id;
   };
 
-  return (
-    <div className="cuo_app-container">
-      <div className={`cuo_filtros-panel ${!filtrosExpandidos ? 'cuo_filtros-colapsado' : ''}`}>
-        <div className="cuo_filtros-header">
-          <h3 className="cuo_filtros-titulo">
-            <FaFilter className="cuo_filtro-icono" />
-            Filtros Avanzados
-          </h3>
-          <div className="cuo_filtros-controles">
-            <button
-              className="cuo_boton cuo_boton-icono cuo_boton-toggle-horizontal"
-              onClick={toggleFiltros}
-              title={filtrosExpandidos ? 'Ocultar filtros' : 'Mostrar filtros'}
-            >
-              {filtrosExpandidos ? <FiChevronLeft /> : <FiChevronRight />}
-            </button>
-          </div>
-        </div>
+  const handleExportExcel = useCallback(() => {
+    if (!mesSeleccionado) {
+      setToastTipo('advertencia');
+      setToastMensaje('Por favor seleccione un mes primero');
+      setToastVisible(true);
+      return;
+    }
+    if (loading) {
+      setToastTipo('advertencia');
+      setToastMensaje('Espere a que terminen de cargarse los datos');
+      setToastVisible(true);
+      return;
+    }
+    if (cuotasFiltradas.length === 0) {
+      setToastTipo('advertencia');
+      setToastMensaje('No hay datos para exportar');
+      setToastVisible(true);
+      return;
+    }
 
-        {filtrosExpandidos && (
-          <>
-            {/* MES (obligatorio para listar) */}
-            <div className="cuo_filtro-grupo">
-              <label className="cuo_filtro-label">
-                <FaCalendarAlt className="cuo_filtro-icono" />
-                Mes
-              </label>
-              <select
-                value={mesSeleccionado}
-                onChange={(e) => setMesSeleccionado(e.target.value)}
-                className="cuo_filtro-select"
-                disabled={loading}
-              >
-                <option value="">Seleccionar mes</option>
-                {meses.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nombre}</option>
-                ))}
-              </select>
-            </div>
+    // Aquí iría la lógica para exportar a Excel
+    setToastTipo('exito');
+    setToastMensaje('Exportación a Excel iniciada');
+    setToastVisible(true);
+  }, [mesSeleccionado, loading, cuotasFiltradas.length]);
 
-            {/* AÑO / CURSO */}
-            <div className="cuo_filtro-grupo">
-              <label className="cuo_filtro-label">
-                <FaFilter className="cuo_filtro-icono" />
-                Año (curso)
-              </label>
-              <select
-                value={anioSeleccionado}
-                onChange={(e) => setAnioSeleccionado(e.target.value)}
-                className="cuo_filtro-select"
-                disabled={loading}
-              >
-                <option value="">Todos</option>
-                {anios.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nombre}</option>
-                ))}
-              </select>
-            </div>
+  // Handlers que ACTIVAN la cascada SOLO en filtros y búsqueda
+  const onChangeMes = (e) => { setMesSeleccionado(e.target.value); triggerCascade(); };
+  const onChangeAnio = (e) => { setAnioSeleccionado(e.target.value); triggerCascade(); };
+  const onChangeCategoria = (e) => { setCategoriaSeleccionada(e.target.value); triggerCascade(); };
+  const onChangeDivision = (e) => { setDivisionSeleccionada(e.target.value); triggerCascade(); };
+  const onChangeBusqueda = (e) => { setBusqueda(e.target.value); triggerCascade(); };
 
-            {/* CATEGORÍA */}
-            <div className="cuo_filtro-grupo">
-              <label className="cuo_filtro-label">
-                <FaFilter className="cuo_filtro-icono" />
-                Categoría
-              </label>
-              <select
-                value={categoriaSeleccionada}
-                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-                className="cuo_filtro-select"
-                disabled={loading}
-              >
-                <option value="">Todas</option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
-            </div>
+  // Componente Row para la lista virtual (aplica clases de cascada SOLO si cascadeActive)
+  const Row = ({ index, style, data }) => {
+    const cuota = data[index];
+    const isSelected = selectedRow === index;
 
-            {/* DIVISIÓN */}
-            <div className="cuo_filtro-grupo">
-              <label className="cuo_filtro-label">
-                <FaFilter className="cuo_filtro-icono" />
-                División
-              </label>
-              <select
-                value={divisionSeleccionada}
-                onChange={(e) => setDivisionSeleccionada(e.target.value)}
-                className="cuo_filtro-select"
-                disabled={loading}
-              >
-                <option value="">Todas</option>
-                {divisiones.map((d) => (
-                  <option key={d.id} value={d.id}>{d.nombre}</option>
-                ))}
-              </select>
-            </div>
+    const idAnio = getIdAnioFromCuota(cuota);
+    const idDiv = getIdDivisionFromCuota(cuota);
+    const idCat = getIdCategoriaFromCuota(cuota);
 
-            {/* TABS de ESTADO DE PAGO */}
-            <div className="cuo_tabs-container">
-              <label className="cuo_filtro-label">
-                <FaFilter className="cuo_filtro-icono" />
-                Estado de Pago
-              </label>
-              <div className="cuo_tabs-estado-pago">
-                <button
-                  className={`cuo_tab ${estadoPagoSeleccionado === 'deudor' ? 'cuo_tab-activo' : ''}`}
-                  onClick={() => setEstadoPagoSeleccionado('deudor')}
-                  disabled={loading}
-                >
-                  Deudores <span style={{ display: 'inline-block', textAlign: 'right' }}>({cantidadFiltradaDeudores})</span>
-                </button>
-                <button
-                  className={`cuo_tab ${estadoPagoSeleccionado === 'pagado' ? 'cuo_tab-activo' : ''}`}
-                  onClick={() => setEstadoPagoSeleccionado('pagado')}
-                  disabled={loading}
-                >
-                  Pagados <span style={{ display: 'inline-block', textAlign: 'right' }}>({cantidadFiltradaPagados})</span>
-                </button>
-              </div>
-            </div>
+    const nombreAnio = getNombreAnio(idAnio);
+    const nombreDiv = getNombreDivision(idDiv);
+    const nombreCat = getNombreCategoria(idCat);
 
-            {/* BÚSQUEDA + ACCIONES DE FILTRO */}
-            <div className="cuo_filtro-grupo">
-              <label className="cuo_filtro-label">
-                <FaSearch className="cuo_filtro-icono" />
-                Buscar
-              </label>
-              <input
-                type="text"
-                placeholder="Nombre, documento o dirección..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="cuo_buscador-input"
-                disabled={loading}
-              />
-            </div>
+    const cascadeClass =
+      cascadeActive && index < 15 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
 
-            <div className="cuo_filtro-acciones" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                className="cuo_boton cuo_boton-light cuo_boton-limpiar"
-                onClick={limpiarFiltros}
-                disabled={loading}
-              >
-                Limpiar Filtros
-              </button>
-              <button
-                className="cuo_boton cuo_boton-secondary"
-                onClick={() => navigate('/panel')}
-                disabled={loading}
-              >
-                <FaUndo style={{ marginRight: '5px' }} /> Volver
-              </button>
-            </div>
-          </>
+    const actionButtons = isSelected ? (
+      <div className="gcuotas-actions-inline">
+        <button
+          className="gcuotas-action-button gcuotas-print-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrintClick(cuota);
+          }}
+          title="Imprimir recibo"
+        >
+          <FontAwesomeIcon icon={faPrint} />
+        </button>
+
+        {estadoPagoSeleccionado === 'deudor' ? (
+          <button
+            className="gcuotas-action-button gcuotas-payment-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePaymentClick(cuota);
+            }}
+            title="Registrar pago"
+          >
+            <FontAwesomeIcon icon={faDollarSign} />
+          </button>
+        ) : (
+          <button
+            className="gcuotas-action-button gcuotas-deletepay-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeletePaymentClick(cuota);
+            }}
+            title="Eliminar pago"
+          >
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
         )}
       </div>
+    ) : null;
 
-      {!filtrosExpandidos && (
-        <button
-          className="cuo_boton-flotante-abrir cuo_flotante-fuera"
-          onClick={toggleFiltros}
-          title="Mostrar filtros"
+    if (isMobile) {
+      return (
+        <div
+          style={style}
+          className={`gcuotas-mobile-card ${cascadeClass} ${isSelected ? "gcuotas-selected-card" : ""}`}
+          onClick={() => handleRowClick(index)}
         >
-          <FiChevronRight size={20} />
-        </button>
-      )}
-
-      <div className="cuo_main-content">
-        <div className="cuo_content-header">
-          <div className="cuo_header-top">
-            <h2 className="cuo_content-title">
-              Gestión de Cuotas
-              {mesSeleccionado && (
-                <span className="cuo_periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>
-              )}
-            </h2>
-
-            <div className="cuo_contador-socios">
-              <div className="cuo_contador-icono">
-                <FaUsers />
-              </div>
-              <div className="cuo_contador-texto">
-                {cuotasFiltradas.length} {cuotasFiltradas.length === 1 ? 'alumno' : 'alumnos'}
-              </div>
-            </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">Alumno:</span>
+            <span>{getNombreCuota(cuota)}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">DNI:</span>
+            <span>{getDocumentoCuota(cuota) || '—'}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">Domicilio:</span>
+            <span>{getDomicilioCuota(cuota) || '—'}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">Curso:</span>
+            <span>{nombreAnio || '—'}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">División:</span>
+            <span>{nombreDiv || '—'}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">Categoría:</span>
+            <span>{nombreCat || '—'}</span>
           </div>
 
-          <div className="cuo_header-bottom">
-            <div className="cuo_content-actions">
+          {isSelected && (
+            <div className="gcuotas-mobile-actions">
               <button
-                className="cuo_boton cuo_boton-success"
-                onClick={() => setMostrarModalCodigoBarras(true)}
-                disabled={loading || !mesSeleccionado}
+                className="gcuotas-mobile-print-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrintClick(cuota);
+                }}
               >
-                <FaBarcode /> Código de Barras
+                <FontAwesomeIcon icon={faPrint} />
+                <span>Imprimir</span>
               </button>
 
-              <button
-                className={`cuo_boton cuo_boton-primary ${loadingPrint ? 'cuo_boton-loading' : ''}`}
-                onClick={handleImprimirTodos}
-                disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
-              >
-                {loadingPrint ? (
-                  <>
-                    <FaSpinner className="cuo_boton-spinner" /> Generando cupones...
-                  </>
-                ) : (
-                  <>
-                    <FaPrint /> Imprimir todos
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="cuo_tabla-container">
-          <div className="cuo_tabla-wrapper">
-            {/* Encabezado de la nueva tabla */}
-            <div className="cuo_tabla-header cuo_grid-container">
-              <div
-                className="cuo_col-nombre"
-                onClick={() => toggleOrden('nombre')}
-              >
-                Alumno
-                <FaSort className={`cuo_icono-orden ${orden.campo === 'nombre' ? 'cuo_icono-orden-activo' : ''}`} />
-                {orden.campo === 'nombre' && (orden.ascendente ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)}
-              </div>
-
-              <div
-                className="cuo_col-dni"
-                onClick={() => toggleOrden('dni')}
-              >
-                DNI
-                <FaSort className={`cuo_icono-orden ${orden.campo === 'dni' ? 'cuo_icono-orden-activo' : ''}`} />
-                {orden.campo === 'dni' && (orden.ascendente ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)}
-              </div>
-
-              <div
-                className="cuo_col-domicilio"
-                onClick={() => toggleOrden('domicilio')}
-              >
-                Domicilio
-                <FaSort className={`cuo_icono-orden ${orden.campo === 'domicilio' ? 'cuo_icono-orden-activo' : ''}`} />
-                {orden.campo === 'domicilio' && (orden.ascendente ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />)}
-              </div>
-
-              <div className="cuo_col-curso">Curso</div>
-              <div className="cuo_col-division">División</div>
-              <div className="cuo_col-categoria">Categoría</div>
-              <div className="cuo_col-acciones">Acciones</div>
-            </div>
-
-            <div className="cuo_list-container">
-              {loading && mesSeleccionado ? (
-                <div className="cuo_estado-container">
-                  <FaSpinner className="cuo_spinner" size={24} />
-                  <p className="cuo_estado-mensaje">Cargando cuotas...</p>
-                </div>
-              ) : !loading && cuotasFiltradas.length === 0 ? (
-                <div className="cuo_estado-container">
-                  <p className="cuo_estado-mensaje">
-                    {mesSeleccionado
-                      ? 'No se encontraron resultados con los filtros actuales'
-                      : 'Seleccioná un mes para mostrar las cuotas'}
-                  </p>
-                </div>
+              {estadoPagoSeleccionado === 'deudor' ? (
+                <button
+                  className="gcuotas-mobile-payment-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePaymentClick(cuota);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faDollarSign} />
+                  <span>Registrar Pago</span>
+                </button>
               ) : (
-                <AutoSizer>
-                  {({ height, width }) => (
-                    <List
-                      height={height}
-                      itemCount={cuotasFiltradas.length}
-                      itemSize={60}
-                      width={width}
-                      itemData={cuotasFiltradas}
-                    >
-                      {Row}
-                    </List>
-                  )}
-                </AutoSizer>
+                <button
+                  className="gcuotas-mobile-deletepay-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeletePaymentClick(cuota);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTimes} />
+                  <span>Eliminar</span>
+                </button>
               )}
             </div>
-          </div>
+          )}
         </div>
+      );
+    }
+
+    return (
+      <div
+        style={style}
+        className={`gcuotas-virtual-row ${cascadeClass} ${isSelected ? "gcuotas-selected-row" : ""}`}
+        onClick={() => handleRowClick(index)}
+      >
+        <div className="gcuotas-virtual-cell">{getNombreCuota(cuota)}</div>
+        <div className="gcuotas-virtual-cell">{getDocumentoCuota(cuota) || '—'}</div>
+        <div className="gcuotas-virtual-cell">{getDomicilioCuota(cuota) || '—'}</div>
+        <div className="gcuotas-virtual-cell">{nombreAnio || '—'}</div>
+        <div className="gcuotas-virtual-cell">{nombreDiv || '—'}</div>
+        <div className="gcuotas-virtual-cell">{nombreCat || '—'}</div>
+        <div className="gcuotas-virtual-cell gcuotas-virtual-actions">{actionButtons}</div>
       </div>
+    );
+  };
+
+  // Componentes de estado
+  const LoadingIndicator = () => (
+    <div className="gcuotas-loading-container">
+      <div className="gcuotas-loading-spinner"></div>
+      <p>Cargando datos...</p>
+    </div>
+  );
+
+  const NoMonthSelected = () => (
+    <div className="gcuotas-info-message">
+      <FontAwesomeIcon icon={faCalendarAlt} size="3x" />
+      <p>Por favor seleccione un mes para ver los datos</p>
+    </div>
+  );
+
+  const NoDataFound = () => (
+    <div className="gcuotas-info-message">
+      <FontAwesomeIcon icon={faExclamationTriangle} size="3x" />
+      <p>No se encontraron datos para los filtros seleccionados</p>
+    </div>
+  );
+
+  // Render principal
+  return (
+    <div className="gcuotas-container">
+      {toastVisible && (
+        <Toast
+          tipo={toastTipo}
+          mensaje={toastMensaje}
+          onClose={() => setToastVisible(false)}
+          duracion={3000}
+        />
+      )}
 
       {mostrarModalPagos && (
         <ModalPagos
@@ -715,13 +579,310 @@ const Cuotas = () => {
         />
       )}
 
-      {toastVisible && (
-        <Toast
-          tipo={toastTipo}
-          mensaje={toastMensaje}
-          duracion={3000}
-          onClose={() => setToastVisible(false)}
-        />
+      <div className="gcuotas-left-section gcuotas-box">
+        <div className="gcuotas-header-section">
+          <h2 className="gcuotas-title">
+            <FontAwesomeIcon icon={faMoneyCheckAlt} className="gcuotas-title-icon" />
+            Gestión de Cuotas
+          </h2>
+          <div className="gcuotas-divider"></div>
+        </div>
+
+        <div className="gcuotas-scrollable-content">
+          <div className="gcuotas-top-section">
+            <div className="gcuotas-filter-card">
+              <div className="gcuotas-filter-header">
+                <div className="gcuotas-filter-header-left">
+                  <FontAwesomeIcon icon={faFilter} className="gcuotas-filter-icon" />
+                  <span>Filtros</span>
+                </div>
+              </div>
+
+              <div className="gcuotas-select-container">
+                <div className="gcuotas-input-group">
+                  <label htmlFor="meses" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faCalendarAlt} /> Mes
+                  </label>
+                  <select
+                    id="meses"
+                    value={mesSeleccionado}
+                    onChange={onChangeMes}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
+                    <option value="">Seleccione un Mes</option>
+                    {meses.map((mes, index) => (
+                      <option key={index} value={mes.id}>{mes.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="gcuotas-input-group">
+                  <label htmlFor="anio" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> Año (curso)
+                  </label>
+                  <select
+                    id="anio"
+                    value={anioSeleccionado}
+                    onChange={onChangeAnio}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
+                    <option value="">Todos</option>
+                    {anios.map((anio, index) => (
+                      <option key={index} value={anio.id}>{anio.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="gcuotas-input-group">
+                  <label htmlFor="categoria" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> Categoría
+                  </label>
+                  <select
+                    id="categoria"
+                    value={categoriaSeleccionada}
+                    onChange={onChangeCategoria}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
+                    <option value="">Todas</option>
+                    {categorias.map((categoria, index) => (
+                      <option key={index} value={categoria.id}>{categoria.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="gcuotas-input-group">
+                  <label htmlFor="division" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> División
+                  </label>
+                  <select
+                    id="division"
+                    value={divisionSeleccionada}
+                    onChange={onChangeDivision}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
+                    <option value="">Todas</option>
+                    {divisiones.map((division, index) => (
+                      <option key={index} value={division.id}>{division.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="gcuotas-tabs-card">
+              <div className="gcuotas-tabs-header">
+                <FontAwesomeIcon icon={faList} className="gcuotas-tabs-icon" />
+                <span>Estado de cuotas</span>
+              </div>
+              <div className="gcuotas-tab-container">
+                <button
+                  className={`gcuotas-tab-button ${estadoPagoSeleccionado === 'deudor' ? "gcuotas-active-tab" : ""}`}
+                  onClick={() => setEstadoPagoSeleccionado('deudor')}
+                  disabled={loading}
+                >
+                  <FontAwesomeIcon icon={faExclamationTriangle} />
+                  Deudores
+                  <span className="gcuotas-tab-badge">{cantidadFiltradaDeudores}</span>
+                </button>
+                <button
+                  className={`gcuotas-tab-button ${estadoPagoSeleccionado === 'pagado' ? "gcuotas-active-tab" : ""}`}
+                  onClick={() => setEstadoPagoSeleccionado('pagado')}
+                  disabled={loading}
+                >
+                  <FontAwesomeIcon icon={faCheckCircle} />
+                  Pagados
+                  <span className="gcuotas-tab-badge">{cantidadFiltradaPagados}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="gcuotas-actions-card">
+            <div className="gcuotas-actions-header">
+              <FontAwesomeIcon icon={faCog} className="gcuotas-actions-icon" />
+              <span>Acciones</span>
+            </div>
+            <div className="gcuotas-buttons-container">
+              <button
+                className="gcuotas-button gcuotas-button-back"
+                onClick={() => navigate('/panel')}
+                disabled={loading}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+                <span>Volver</span>
+              </button>
+              <button
+                className="gcuotas-button gcuotas-button-export"
+                onClick={handleExportExcel}
+                disabled={loading}
+              >
+                <FontAwesomeIcon icon={faFileExcel} />
+                <span>Excel</span>
+              </button>
+
+              <button
+                className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
+                onClick={handleImprimirTodos}
+                disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
+              >
+                <FontAwesomeIcon icon={faPrint} />
+                <span>{loadingPrint ? 'Generando...' : 'Imprimir Todos'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={`gcuotas-right-section gcuotas-box ${isMobile ? 'gcuotas-has-bottombar' : ''}`}>
+        <div className="gcuotas-table-header">
+          <h3>
+            <FontAwesomeIcon icon={estadoPagoSeleccionado === 'pagado' ? faCheckCircle : faExclamationTriangle} />
+            {estadoPagoSeleccionado === 'pagado' ? "Cuotas Pagadas" : "Cuotas Pendientes"}
+            {mesSeleccionado && (
+              <span className="gcuotas-periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>
+            )}
+          </h3>
+          <div className="gcuotas-input-group gcuotas-search-group">
+            <div className="gcuotas-search-integrated">
+              <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
+              <input
+                type="text"
+                placeholder="Buscar alumno..."
+                value={busqueda}
+                onChange={onChangeBusqueda} // <-- activa cascada solo al buscar
+                disabled={loading || !mesSeleccionado}
+              />
+            </div>
+          </div>
+          <div className="gcuotas-summary-info">
+            <span className="gcuotas-summary-item">
+              <FontAwesomeIcon icon={faUsers} />
+              Total: {mesSeleccionado ? cuotasFiltradas.length : 0}
+            </span>
+          </div>
+        </div>
+
+        <div className="gcuotas-table-container">
+          {loading ? (
+            <LoadingIndicator />
+          ) : !mesSeleccionado ? (
+            <NoMonthSelected />
+          ) : cuotasFiltradas.length === 0 ? (
+            <NoDataFound />
+          ) : isMobile ? (
+            <div className="gcuotas-mobile-list">
+              {cuotasFiltradas.map((item, index) => (
+                <Row
+                  key={`${cascadeRunId}-${index}`} // asegura re-render cuando hay cascada
+                  index={index}
+                  style={{}}
+                  data={cuotasFiltradas}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="gcuotas-virtual-tables" style={{ height: "75vh" }}>
+              <div className="gcuotas-virtual-header">
+                <div
+                  className="gcuotas-virtual-cell"
+                  onClick={() => toggleOrden('nombre')}
+                >
+                  Alumno
+                  <FontAwesomeIcon
+                    icon={faSort}
+                    className={`gcuotas-sort-icon ${orden.campo === 'nombre' ? 'gcuotas-sort-active' : ''}`}
+                  />
+                  {orden.campo === 'nombre' && (orden.ascendente ? ' ↑' : ' ↓')}
+                </div>
+                <div
+                  className="gcuotas-virtual-cell"
+                  onClick={() => toggleOrden('dni')}
+                >
+                  DNI
+                  <FontAwesomeIcon
+                    icon={faSort}
+                    className={`gcuotas-sort-icon ${orden.campo === 'dni' ? 'gcuotas-sort-active' : ''}`}
+                  />
+                  {orden.campo === 'dni' && (orden.ascendente ? ' ↑' : ' ↓')}
+                </div>
+                <div
+                  className="gcuotas-virtual-cell"
+                  onClick={() => toggleOrden('domicilio')}
+                >
+                  Domicilio
+                  <FontAwesomeIcon
+                    icon={faSort}
+                    className={`gcuotas-sort-icon ${orden.campo === 'domicilio' ? 'gcuotas-sort-active' : ''}`}
+                  />
+                  {orden.campo === 'domicilio' && (orden.ascendente ? ' ↑' : ' ↓')}
+                </div>
+                <div className="gcuotas-virtual-cell">Curso</div>
+                <div className="gcuotas-virtual-cell">División</div>
+                <div className="gcuotas-virtual-cell">Categoría</div>
+                <div className="gcuotas-virtual-cell">Acciones</div>
+              </div>
+
+              <AutoSizer>
+                {({ height, width }) => (
+                  <List
+                    key={`list-${cascadeRunId}`} // remonta la lista SOLO cuando hay cascada
+                    height={height}
+                    itemCount={cuotasFiltradas.length}
+                    itemSize={60}
+                    width={width}
+                    itemData={cuotasFiltradas}
+                  >
+                    {Row}
+                  </List>
+                )}
+              </AutoSizer>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isMobile && (
+        <div className="gcuotas-mobile-bottombar">
+          <button
+            className="gcuotas-mbar-btn mbar-back"
+            onClick={() => navigate('/panel')}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+            <span>Volver</span>
+          </button>
+
+          <button
+            className="gcuotas-mbar-btn mbar-excel"
+            onClick={handleExportExcel}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faFileExcel} />
+            <span>Excel</span>
+          </button>
+
+          <button
+            className="gcuotas-mbar-btn mbar-barcode"
+            onClick={() => setMostrarModalCodigoBarras(true)}
+            disabled={loading || !mesSeleccionado}
+          >
+            <FontAwesomeIcon icon={faBarcode} />
+            <span>Barras</span>
+          </button>
+
+          <button
+            className="gcuotas-mbar-btn mbar-imprimir"
+            onClick={handleImprimirTodos}
+            disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
+          >
+            <FontAwesomeIcon icon={faPrint} />
+            <span>Imprimir</span>
+          </button>
+        </div>
       )}
     </div>
   );

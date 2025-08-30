@@ -1,428 +1,364 @@
+/* EditarAlumno.css - Estilos específicos para el componente EditarAlumno */
 
-body {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-}
-
-/* Contenedor principal - Ajustado a 80vh de altura y 90vh de ancho */
+/* Reutilizamos los mismos estilos de EditarSocio ya que queremos el mismo diseño */
 .edit-socio-container {
-  position: relative;
+  min-height: 100vh;
+  padding: 2rem 1rem;
   display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100vh;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  border-radius: var(--edit-border-radius-xl);
-  backdrop-filter: blur(16px) saturate(180%);
-  overflow: hidden;
+  background: linear-gradient(135deg, #dcdcdc 30%, #ff6e00 70%);
 }
 
-/* Caja del formulario - Ajustar para que quepa dentro del contenedor */
 .edit-socio-box {
-  position: relative;
-  transform: scale(.9);
-  width: 95%;
-  height: 100vh;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: var(--edit-border-radius-lg);
-  box-shadow: var(--edit-shadow-md);
-  overflow-y: auto;
-}
-
-/* Encabezado */
-.edit-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background-color: var(--edit-primary);
-  color: white;
-  border-radius: var(--edit-border-radius-lg) var(--edit-border-radius-lg) 0 0;
-}
-
-.edit-icon-title {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.edit-icon-title h1 {
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  margin: 0;
-}
-
-.edit-icon-title p {
-  font-size: var(--font-size-sm);
-  opacity: 0.9;
-  margin: 0;
-}
-
-.edit-icon {
-  font-size: 1.75rem;
-}
-
-.edit-back-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--edit-border-radius);
-  color: white;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: var(--transition-fast);
-}
-
-.edit-back-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Formulario */
-.edit-socio-form {
-  display: flex;
-  flex-direction: column;
-  height: calc(100% - 120px);
-  padding: var(--spacing-lg);
-}
-
-/* Secciones del formulario */
-.edit-socio-sections {
-  display: flex;
-  gap: 1.5rem;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.edit-socio-section {
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
   width: 100%;
-  height: 50vh;
-  margin: auto;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-  padding: 1rem;
-  border-radius: var(--edit-border-radius-lg);
-  transition: var(--edit-transition);
+  max-width: 920px;
+  overflow: hidden;
+  transition: var(--transition);
+  will-change: transform, opacity;
+}
+.edit-socio-box:hover { box-shadow: var(--box-shadow-hover); }
+
+/* Animación de entrada */
+.edit-socio-animate-in {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: editSocio_fadeSlideIn .5s ease forwards;
+}
+@keyframes editSocio_fadeSlideIn {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .edit-socio-animate-in { animation: none; opacity: 1; transform: none; }
 }
 
-.edit-socio-section-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--edit-primary-dark);
-  margin-bottom: 1.2rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.1);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+/* =========================================================
+   Header con gradiente naranja
+========================================================= */
+.edit-socio-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, var(--surface-grad-a), var(--surface-grad-b));
+  color: #fff;
 }
+.edit-socio-title {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin-bottom: 0.25rem;
+}
+.edit-socio-subtitle { font-size: 1rem; opacity: 0.95; }
 
-.edit-socio-section-content {
+/* --- Skeleton en header --- */
+.edit-socio-header-skel .skel-title { height: 24px; width: 280px; border-radius: 8px; }
+.edit-socio-header-skel .skel-subtitle { height: 14px; width: 180px; margin-top: 10px; border-radius: 6px; }
+
+/* =========================================================
+   Tabs
+========================================================= */
+.edit-socio-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  gap: .25rem;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.25rem 0.75rem;
+  background: #fff3e6;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
+.edit-socio-tabs::-webkit-scrollbar { height: 6px; }
 
-/* Inputs - Estilo moderno con efecto de focus */
-.edit-socio-input-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.edit-socio-label {
-  position: absolute;
-  top: 0.8rem;
-  left: 1rem;
-  font-size: 0.85rem;
-  color: var(--edit-gray-500);
-  pointer-events: none;
-  transition: var(--edit-transition);
+.edit-socio-tab {
+  padding: 0.9rem 1.25rem;
   background: transparent;
-  padding: 0 0.3rem;
-  transform-origin: left center;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  position: relative;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 8px 8px 0 0;
+  white-space: nowrap;
 }
+.edit-socio-tab:hover { color: var(--primary-color); background: rgba(255, 110, 0, 0.08); }
+.edit-socio-tab.active { color: var(--primary-color); background: #fff; }
+.edit-socio-tab.active::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 12px; right: 12px; height: 3px;
+  background: var(--primary-color); border-radius: 3px 3px 0 0;
+}
+.edit-socio-tab.is-disabled { opacity: .6; cursor: not-allowed; }
+.edit-socio-tab-icon { font-size: 0.9rem; }
+.tab-text { display: inline; }
+
+/* =========================================================
+   Form & contenidos
+========================================================= */
+.edit-socio-form { padding: 1.5rem 2rem; }
+
+.edit-socio-tab-content {
+  margin-bottom: 1.25rem;
+  animation: fadeIn 0.25s ease;
+  will-change: transform, opacity;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.edit-socio-input-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+@media (min-width: 640px) {
+  .edit-socio-input-group { grid-template-columns: 1fr 1fr; }
+}
+
+.edit-socio-floating-label-wrapper { position: relative; width: 100%; }
 
 .edit-socio-input {
   width: 100%;
-  height: 8vh;
-  padding: 0.8rem 1rem;
-  font-size: 0.95rem;
-  border-radius: var(--edit-border-radius);
-  border: 1px solid var(--edit-gray-300);
-  background: rgba(255, 255, 255, 0.8);
-  transition: var(--edit-transition);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--edit-gray-800);
-}
-
-.edit-socio-input:focus {
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 1rem;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  transition: var(--transition);
   outline: none;
-  border-color: var(--edit-primary-light);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  background: rgba(255, 255, 255, 0.95);
+  font-family: inherit;
+}
+.edit-socio-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 110, 0, 0.15);
 }
 
-.edit-socio-input-highlight {
+.edit-socio-floating-label {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--edit-primary), var(--edit-secondary));
-  transition: var(--edit-transition);
+  top: 50%; left: 1rem;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: var(--transition);
+  background: var(--surface-color);
+  padding: 0 0.25rem;
+}
+.edit-socio-input:focus + .edit-socio-floating-label,
+.edit-socio-input:not(:placeholder-shown) + .edit-socio-floating-label,
+.edit-socio-floating-label-filled {
+  top: 0; font-size: 0.8rem; color: var(--primary-color);
+  transform: translateY(-50%) scale(0.94);
 }
 
-.edit-socio-input:focus ~ .edit-socio-input-highlight {
+.edit-socio-textarea { min-height: 120px; resize: vertical; padding-top: 1.5rem; }
+
+/* Flechita de selects base */
+select.edit-socio-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236a5c53' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 1rem center;
+  background-repeat: no-repeat;
+  background-size: 1.2em 1.2em;
+  padding-right: 2.75rem;
+  cursor: pointer;
+}
+select.edit-socio-input:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ff6e00' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* =========================================================
+   Estilos específicos para FECHA
+========================================================= */
+.date-clickable { cursor: pointer; user-select: none; }
+.date-clickable .date-no-effect { cursor: pointer; }
+.date-clickable .date-no-effect:focus { box-shadow: none; border-color: var(--border-color); }
+.date-clickable .date-no-effect:focus + .edit-socio-floating-label { color: var(--text-secondary); }
+.date-label-fixed {
+  top: 0; font-size: 0.8rem; color: var(--text-secondary);
+  transform: translateY(-50%) scale(0.94); transition: none !important;
+}
+.date-clickable .edit-socio-floating-label { background: var(--surface-color); }
+
+/* =========================================================
+   Botones
+========================================================= */
+.edit-socio-buttons-container {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+.edit-socio-button,
+.edit-socio-back-button {
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.edit-socio-button { background: var(--primary-color); color: #fff; }
+.edit-socio-button:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: var(--box-shadow-hover); }
+.edit-socio-back-button { background: #fff; color: var(--text-secondary); border: 1px solid var(--border-color); }
+.edit-socio-back-button:hover { background: #fff2e6; border-color: #f2d6bf; color: var(--text-primary); }
+.btn-text { display: inline; }
+
+/* =========================================================
+   Skeletons
+========================================================= */
+@keyframes skelPulse {
+  0% { opacity: 1; }
+  50% { opacity: .5; }
+  100% { opacity: 1; }
+}
+@keyframes skelShine {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skel {
+  background: linear-gradient(90deg, var(--skel-base), var(--skel-shine), var(--skel-base));
+  background-size: 200% 100%;
+  animation: skelShine 1.4s ease-in-out infinite;
+}
+.skel.slow { animation-duration: 2s; }
+
+.skel-input { height: 48px; border-radius: 10px; }
+.skel-btn { height: 44px; width: 170px; border-radius: 10px; }
+
+.edit-socio-tab-content .skel { will-change: background-position, opacity; }
+
+/* =========================================================
+   Responsive
+========================================================= */
+@media (max-width: 768px) {
+  .edit-socio-container { padding: 1rem; }
+  .edit-socio-header { padding: 1.1rem 1.25rem; }
+  .edit-socio-form { padding: 1.1rem 1.25rem; }
+  .edit-socio-tabs { padding: 0.25rem 0.5rem; }
+
+  .edit-socio-buttons-container {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: .6rem;
+  }
+  .edit-socio-button,
+  .edit-socio-back-button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.75rem 0.85rem;
+    justify-content: center;
+    text-align: center;
+  }
+  .tab-text { display: none; }
+}
+
+@media (max-width: 420px) {
+  .btn-text { display: none; }
+  .edit-socio-button,
+  .edit-socio-back-button { padding: 0.7rem 0.75rem; }
+}
+
+@media (max-width: 360px) {
+  .edit-socio-title { font-size: 1.5rem; }
+  .edit-socio-input { font-size: .95rem; padding: 0.85rem 0.9rem; }
+}
+
+/* Accesibilidad: reducir movimiento */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* =========================================================
+   Variables (paleta LALCEC – naranjas, sin azules)
+========================================================= */
+:root {
+  --primary-color: #ff6e00;
+  --primary-hover: #ff8800;
+  --primary-dark: #e55f00;
+  --accent-color: #ffa64d;
+  --surface-grad-a: #ff7e1a;
+  --surface-grad-b: #ff5e00;
+
+  --success-color: #4CAF50;
+  --danger-color: #F44336;
+
+  --background-color: #fff7f0; /* Fondo principal */
+  --surface-color: #ffffff;
+  --border-color: #e9e2da;
+
+  --text-primary: #2b1f17;
+  --text-secondary: #6a5c53;
+  --text-disabled: #9c8f87;
+
+  --border-radius: 12px;
+  --transition: all 0.25s ease;
+  --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --box-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.12);
+
+  --skel-base: #f0eee9;
+  --skel-shine: #e7e3dc;
+}
+
+/* =========================================================
+   Floating label SIEMPRE ACTIVO para SELECTS (Año/División/Categoría)
+========================================================= */
+.edit-fl-wrapper {
+  position: relative;
   width: 100%;
 }
 
-/* Efecto para inputs con valor (floating labels) */
-.edit-socio-input-wrapper.has-value .edit-socio-label,
-.edit-socio-input:focus ~ .edit-socio-label {
-  transform: translateY(-1.4rem) scale(0.85);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-  color: var(--edit-primary);
-  font-weight: 500;
-  padding: 0 0.5rem;
-  left: 0.8rem;
-}
-
-.edit-socio-input-wrapper textarea.edit-socio-input {
-  min-height: 100px;
-  resize: vertical;
-}
-
-/* Select - Estilo coherente */
-.edit-socio-input-wrapper select.edit-socio-input {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1rem;
-  padding-right: 2.5rem;
-}
-
-/* Botones - Estilo similar a Principal */
-.edit-socio-buttons-container {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  margin-top: auto;
-}
-
-.edit-socio-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: var(--edit-border-radius);
-  cursor: pointer;
-  transition: var(--edit-transition);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  border: none;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--edit-primary), var(--edit-secondary));
-  color: white;
-  box-shadow: var(--edit-shadow-md);
-}
-
-.edit-socio-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--edit-shadow-lg);
-}
-
-.edit-socio-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--edit-shadow-md);
-}
-
-.edit-socio-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.edit-socio-icon-button {
-  font-size: 0.9rem;
-}
-
-.edit-socio-button-text {
-  position: relative;
+.edit-fl-label {
+  position: absolute;
+  top: 0;
+  left: 0.9rem;
+  transform: translateY(-50%) scale(0.94);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--surface-color);
+  padding: 0 0.35rem;
+  pointer-events: none;
+  transition: var(--transition);
   z-index: 2;
 }
 
-/* Efecto de onda al hacer clic (como en Principal) */
-.edit-socio-button:active::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.6);
-  opacity: 0.6;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%, -50%);
-  transform-origin: 50% 50%;
-  animation: edit-onda 0.6s ease-out;
+/* Forzamos estado “flotante” permanente */
+.edit-fl-wrapper.always-active .edit-fl-label {
+  color: var(--primary-color);
 }
 
-@keyframes edit-onda {
-  0% {
-    transform: scale(1, 1) translate(-50%, -50%);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(30, 30) translate(-50%, -50%);
-    opacity: 0;
-  }
+/* Dar aire arriba para que no se pisen label y borde */
+.edit-fl-wrapper.always-active .edit-select.edit-socio-input {
+  padding-top: 1.35rem; /* ajustable: 1.25–1.5rem según gusto */
 }
 
-/* Grupo de domicilio y número - estilo en línea */
-.edit-socio-domicilio-group {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
+/* Flecha y focus del select dentro del wrapper */
+.edit-fl-wrapper .edit-select.edit-socio-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236a5c53' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 1rem center;
+  background-repeat: no-repeat;
+  background-size: 1.2em 1.2em;
+  padding-right: 2.75rem;
+  cursor: pointer;
 }
-
-/* Textarea para comentarios */
-.edit-socio-textarea {
-  width: 100%;
-  max-width: 100%;
-  min-height: 100px;
-  max-height: 180px;
-  padding: 0.8rem 1rem;
-  font-size: 0.95rem;
-  border-radius: var(--edit-border-radius);
-  border: 1px solid var(--edit-gray-300);
-  background: rgba(255, 255, 255, 0.8);
-  transition: var(--edit-transition);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--edit-gray-800);
-  resize: vertical;
-}
-
-.edit-socio-textarea:focus {
-  outline: none;
-  border-color: var(--edit-primary-light);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  background: rgba(255, 255, 255, 0.95);
-}
-
-/* Ajuste para el label del textarea cuando tiene valor */
-.edit-socio-input-wrapper.has-value textarea ~ .edit-socio-label,
-.edit-socio-textarea:focus ~ .edit-socio-label {
-  transform: translateY(-1.4rem) scale(0.85);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-  color: var(--edit-primary);
-  font-weight: 500;
-  padding: 0 0.5rem;
-  left: 0.8rem;
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-  .edit-socio-container {
-    width: 95vw;
-    height: 85vh;
-    margin: 7.5vh auto;
-  }
-  
-  .edit-header {
-    padding: var(--spacing-md) var(--spacing-lg);
-  }
-  
-  .edit-icon-title h1 {
-    font-size: 1.3rem;
-  }
-  
-  .edit-icon-title p {
-    font-size: 0.85rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .edit-socio-container {
-    width: 98vw;
-    height: 90vh;
-    margin: 5vh auto;
-  }
-  
-  .edit-socio-sections {
-    grid-template-columns: 1fr;
-  }
-  
-  .edit-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-  }
-  
-  .edit-back-btn {
-    width: 100%;
-    justify-content: center;
-    margin-top: var(--spacing-sm);
-  }
-}
-
-@media (max-width: 576px) {
-  .edit-socio-container {
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    border-radius: 0;
-  }
-  
-  .edit-socio-box {
-    transform: none;
-    border-radius: 0;
-  }
-  
-  .edit-socio-form {
-    padding: var(--spacing-md);
-  }
-  
-  .edit-socio-section {
-    padding: 1.2rem;
-  }
-  
-  .edit-socio-input {
-    padding: 0.7rem 0.9rem;
-    font-size: 0.9rem;
-  }
-  
-  .edit-socio-input-wrapper.has-value .edit-socio-label,
-  .edit-socio-input:focus ~ .edit-socio-label {
-    transform: translateY(-1.2rem) scale(0.8);
-  }
-}
-
-/* MODIFICACIONES IMPLEMENTADAS */
-/* Grupo de inputs en fila */
-.edit-socio-group-row {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
-}
-
-.edit-socio-group-row > .edit-socio-input-wrapper {
-  flex: 1;
-}
-
-/* Ajustes para inputs numéricos */
-.edit-socio-input[inputMode="numeric"],
-.edit-socio-input[inputMode="tel"] {
-  font-family: 'Roboto Mono', monospace;
-}
-
-/* Ajustes responsivos para grupos en fila */
-@media (max-width: 768px) {
-  .edit-socio-group-row {
-    flex-direction: column;
-    gap: 1.2rem;
-  }
+.edit-fl-wrapper .edit-select.edit-socio-input:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ff6e00' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 }
