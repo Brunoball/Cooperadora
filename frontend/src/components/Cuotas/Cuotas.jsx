@@ -730,7 +730,7 @@ const Cuotas = () => {
                 disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
               >
                 <FontAwesomeIcon icon={faPrint} />
-                <span>{loadingPrint ? 'Generando...' : 'Imprimir Todos'}</span>
+                <span>{loadingPrint ? 'Generando...' : 'Imprimir'}</span>
               </button>
             </div>
           </div>

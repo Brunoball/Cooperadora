@@ -7,6 +7,11 @@
   width: 100%;
   margin: 0 auto;
   padding: 20px 0;
+  background:linear-gradient(
+      rgba(0, 0, 0, 0.2),
+      rgba(0, 0, 0, 0.2)
+    ),
+    url(http://localhost:3000/static/media/img_fondo.8132e67a1f74f8fbb605.png) center center / cover no-repeat fixed;
 }
 
 /* Contenedor principal */

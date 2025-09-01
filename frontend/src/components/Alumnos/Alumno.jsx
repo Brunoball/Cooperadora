@@ -1,5 +1,12 @@
 // src/components/Alumnos/Alumnos.jsx
-import React, { useEffect, useState, useMemo, useRef, useCallback, useDeferredValue } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+  useDeferredValue,
+} from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
@@ -113,6 +120,8 @@ const Alumnos = () => {
 
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [bloquearInteraccion, setBloquearInteraccion] = useState(true);
+
+  // ⬇️ flag de cascada
   const [animacionActiva, setAnimacionActiva] = useState(false);
 
   const filtrosRef = useRef(null);
@@ -139,7 +148,6 @@ const Alumnos = () => {
   });
 
   const { busqueda, letraSeleccionada, filtroActivo, anioSeleccionado } = filtros;
-
   const busquedaDefer = useDeferredValue(busqueda);
 
   const hayFiltros = !!(
@@ -186,12 +194,15 @@ const Alumnos = () => {
   /* ================================
      Animación en cascada (helper)
   ================================= */
-  const dispararCascadaUnaVez = useCallback((duracionMs = 400) => {
-    // Evita re-disparar si ya está activa
+  const dispararCascadaUnaVez = useCallback((duracionMs) => {
+    // Si no me pasan duración, calculo una segura:
+    // base 400ms + (MAX_CASCADE_ITEMS-1)*30ms de delay + 300ms buffer
+    const safeMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
+    const total = typeof duracionMs === 'number' ? duracionMs : safeMs;
+
     if (animacionActiva) return;
     setAnimacionActiva(true);
-    // apaga sola
-    window.setTimeout(() => setAnimacionActiva(false), duracionMs);
+    window.setTimeout(() => setAnimacionActiva(false), total);
   }, [animacionActiva]);
 
   /* ================================
@@ -413,7 +424,7 @@ const Alumnos = () => {
     mostrarToast('Exportación completada.', 'exito');
   }, [puedeExportar, alumnosFiltrados, filtroActivo, mostrarToast, construirDomicilio]);
 
-  // Mostrar todos (🔔 ahora dispara cascada también)
+  // ✅ Mostrar todos — ahora garantiza cascada tras el re-render
   const handleMostrarTodos = useCallback(() => {
     setFiltros({
       busqueda: '',
@@ -421,8 +432,14 @@ const Alumnos = () => {
       anioSeleccionado: null,
       filtroActivo: 'todos',
     });
-    // ✅ Disparar cascada al mostrar todos
-    dispararCascadaUnaVez();
+
+    // Aseguramos disparar la animación después de aplicar el estado y re-pintar
+    // (doble rAF = siguiente frame del browser tras el commit)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        dispararCascadaUnaVez();
+      });
+    });
   }, [dispararCascadaUnaVez]);
 
   // Handlers filtros
@@ -676,7 +693,7 @@ const Alumnos = () => {
                 <div
                   className="alu-filtros-menu-item alu-mostrar-todas"
                   onClick={() => {
-                    handleMostrarTodos();
+                    handleMostrarTodos(); // ✅ activa cascada
                     setMostrarFiltros(false);
                   }}
                 >
@@ -764,7 +781,7 @@ const Alumnos = () => {
             </div>
           </div>
 
-        {/* TABLA (solo desktop) */}
+          {/* TABLA (solo desktop) */}
           {!isMobile && (
             <div className="alu-box-table">
               <div className="alu-header">
@@ -935,7 +952,7 @@ const Alumnos = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setAlumnoDarBaja(alumno);
-                          setMostrarModalDarBaja(true);
+                            setMostrarModalDarBaja(true);
                           }}
                         >
                           <FaUserMinus />

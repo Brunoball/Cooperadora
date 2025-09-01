@@ -625,9 +625,9 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-alumno-button p { margin: 0; display: inline; }
 
 /* desktop colors */
-.alu-volver-atras { background: var(--gradient-primary) !important; }
+.alu-volver-atras { background: var(--primary-color) !important; }
 .alu-alumno-button:nth-child(1) { background: var(--btn-agregar-alumno); }
-.alu-alumno-button:nth-child(2) { background: var(--btn-exportar-excel); }
+.alu-alumno-button:nth-child(2) { background: #3B82F6; }
 .alu-btn-baja-nav { background: var(--btn-dados-baja) !important; }
 
 .alu-alumno-icon-button { width: 16px; height: 16px; }

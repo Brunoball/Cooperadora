@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BASE_URL from "../../config/config";
-import { FaUserCheck, FaTrashAlt, FaCalendarAlt,FaArrowLeft } from "react-icons/fa";
+import { FaUserCheck, FaTrashAlt, FaCalendarAlt, FaArrowLeft } from "react-icons/fa";
 import Toast from "../Global/Toast";
 import "./AlumnoBaja.css";
 
-/* ========= Utils (sin cambios funcionales) ========= */
+/* ========= Utils ========= */
 const TZ_CBA = "America/Argentina/Cordoba";
 const hoyISO = () =>
   new Intl.DateTimeFormat("en-CA", {
@@ -26,7 +26,7 @@ const normalizar = (str = "") =>
     .trim();
 
 const combinarNombre = (a = {}) => {
-  if (a?.nombre_apellido) return a.nombre_apellido; // viene así desde backend para bajas
+  if (a?.nombre_apellido) return a.nombre_apellido;
   const partes = [
     a?.apellido ?? "",
     a?.nombre ?? "",
@@ -67,45 +67,33 @@ const AlumnoBaja = () => {
   const fechaInputRef = useRef(null);
 
   // Eliminaciones
-  const [mostrarConfirmacionEliminarUno, setMostrarConfirmacionEliminarUno] =
-    useState(false);
-  const [mostrarConfirmacionEliminarTodos, setMostrarConfirmacionEliminarTodos] =
-    useState(false);
+  const [mostrarConfirmacionEliminarUno, setMostrarConfirmacionEliminarUno] = useState(false);
+  const [mostrarConfirmacionEliminarTodos, setMostrarConfirmacionEliminarTodos] = useState(false);
   const [alumnoAEliminar, setAlumnoAEliminar] = useState(null);
 
   const navigate = useNavigate();
 
-  /* ============ Filtrado (igual) ============ */
+  /* ============ Filtrado ============ */
   const alumnosFiltrados = useMemo(() => {
     if (!busqueda) return alumnos;
     const q = normalizar(busqueda);
     return alumnos.filter((a) => normalizar(combinarNombre(a)).includes(q));
   }, [alumnos, busqueda]);
 
-  /* ============ Carga inicial (igual) ============ */
+  /* ============ Carga inicial ============ */
   useEffect(() => {
     const obtenerAlumnosBaja = async () => {
       setCargando(true);
       try {
-        const res = await fetch(
-          `${BASE_URL}/api.php?action=alumnos_baja&ts=${Date.now()}`
-        );
+        const res = await fetch(`${BASE_URL}/api.php?action=alumnos_baja&ts=${Date.now()}`);
         const data = await res.json();
         if (data.exito) {
           setAlumnos(Array.isArray(data.alumnos) ? data.alumnos : []);
         } else {
-          setToast({
-            show: true,
-            tipo: "error",
-            mensaje: data.mensaje || "Error al cargar",
-          });
+          setToast({ show: true, tipo: "error", mensaje: data.mensaje || "Error al cargar" });
         }
       } catch {
-        setToast({
-          show: true,
-          tipo: "error",
-          mensaje: "Error de conexión al cargar alumnos",
-        });
+        setToast({ show: true, tipo: "error", mensaje: "Error de conexión al cargar alumnos" });
       } finally {
         setCargando(false);
       }
@@ -113,7 +101,7 @@ const AlumnoBaja = () => {
     obtenerAlumnosBaja();
   }, []);
 
-  /* ============ UX: abrir datepicker (igual) ============ */
+  /* ============ UX: abrir datepicker ============ */
   const openDatePicker = (e) => {
     e.preventDefault();
     const el = fechaInputRef.current;
@@ -133,32 +121,22 @@ const AlumnoBaja = () => {
     if (e.key === "Enter" || e.key === " ") openDatePicker(e);
   };
 
-  /* ============ Dar alta (igual) ============ */
+  /* ============ Dar alta ============ */
   const darAltaAlumno = async (id_alumno) => {
     if (!esFechaISO(fechaAlta)) {
-      setToast({
-        show: true,
-        tipo: "error",
-        mensaje: "Fecha inválida. Usá AAAA-MM-DD.",
-      });
+      setToast({ show: true, tipo: "error", mensaje: "Fecha inválida. Usá AAAA-MM-DD." });
       return;
     }
-
     try {
       const params = new URLSearchParams();
       params.set("id_alumno", String(id_alumno));
       params.set("fecha_ingreso", fechaAlta);
 
-      const res = await fetch(
-        `${BASE_URL}/api.php?action=dar_alta_alumno&ts=${Date.now()}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-          },
-          body: params.toString(),
-        }
-      );
+      const res = await fetch(`${BASE_URL}/api.php?action=dar_alta_alumno&ts=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: params.toString(),
+      });
 
       const text = await res.text();
       let data;
@@ -172,110 +150,65 @@ const AlumnoBaja = () => {
         setAlumnos((prev) => prev.filter((a) => a.id_alumno !== id_alumno));
         setMostrarConfirmacionAlta(false);
         setAlumnoSeleccionado(null);
-        setToast({
-          show: true,
-          tipo: "exito",
-          mensaje: "Alumno dado de alta correctamente",
-        });
+        setToast({ show: true, tipo: "exito", mensaje: "Alumno dado de alta correctamente" });
       } else {
-        setToast({
-          show: true,
-          tipo: "error",
-          mensaje: data.mensaje || "No se pudo dar de alta",
-        });
+        setToast({ show: true, tipo: "error", mensaje: data.mensaje || "No se pudo dar de alta" });
       }
     } catch {
-      setToast({
-        show: true,
-        tipo: "error",
-        mensaje: "Error de red al dar de alta",
-      });
+      setToast({ show: true, tipo: "error", mensaje: "Error de red al dar de alta" });
     }
   };
 
-  /* ============ Eliminar uno (igual) ============ */
+  /* ============ Eliminar uno ============ */
   const eliminarAlumnoDefinitivo = async (id_alumno) => {
     try {
-      const res = await fetch(
-        `${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // este endpoint YA filtra activo=0
-          body: JSON.stringify({ id_alumno }),
-        }
-      );
+      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_alumno }),
+      });
       const data = await res.json();
       if (data.exito) {
         setAlumnos((prev) => prev.filter((a) => a.id_alumno !== id_alumno));
-        setToast({
-          show: true,
-          tipo: "exito",
-          mensaje: "Alumno eliminado definitivamente",
-        });
+        setToast({ show: true, tipo: "exito", mensaje: "Alumno eliminado definitivamente" });
       } else {
-        setToast({
-          show: true,
-          tipo: "error",
-          mensaje: data.mensaje || "No se pudo eliminar",
-        });
+        setToast({ show: true, tipo: "error", mensaje: data.mensaje || "No se pudo eliminar" });
       }
     } catch {
-      setToast({
-        show: true,
-        tipo: "error",
-        mensaje: "Error de red al eliminar",
-      });
+      setToast({ show: true, tipo: "error", mensaje: "Error de red al eliminar" });
     } finally {
       setMostrarConfirmacionEliminarUno(false);
       setAlumnoAEliminar(null);
     }
   };
 
-  /* ============ Eliminar visibles (igual) ============ */
+  /* ============ Eliminar visibles ============ */
   const eliminarTodosDefinitivo = async () => {
     const ids = alumnosFiltrados.map((a) => a.id_alumno);
     if (ids.length === 0) {
-      setToast({
-        show: true,
-        tipo: "info",
-        mensaje: "No hay registros para eliminar.",
-      });
+      setToast({ show: true, tipo: "info", mensaje: "No hay registros para eliminar." });
       setMostrarConfirmacionEliminarTodos(false);
       return;
     }
     try {
-      const res = await fetch(
-        `${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
-        }
-      );
+      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
       const data = await res.json();
       if (data.exito) {
         setAlumnos((prev) => prev.filter((a) => !ids.includes(a.id_alumno)));
         setToast({
           show: true,
           tipo: "exito",
-          mensaje: `Se eliminaron definitivamente ${
-            data.eliminados ?? ids.length
-          } alumno(s).`,
+          mensaje: `Se eliminaron definitivamente ${data.eliminados ?? ids.length} alumno(s).`,
         });
       } else {
-        setToast({
-          show: true,
-          tipo: "error",
-          mensaje: data.mensaje || "No se pudo eliminar",
-        });
+        setToast({ show: true, tipo: "error", mensaje: data.mensaje || "No se pudo eliminar" });
       }
     } catch {
-      setToast({
-        show: true,
-        tipo: "error",
-        mensaje: "Error de red al eliminar",
-      });
+      setToast({ show: true, tipo: "error", mensaje: "Error de red al eliminar" });
     } finally {
       setMostrarConfirmacionEliminarTodos(false);
     }
@@ -284,7 +217,7 @@ const AlumnoBaja = () => {
   /* ============ Cerrar toast ============ */
   const closeToast = () => setToast((s) => ({ ...s, show: false }));
 
-  /* ============ ESC para cerrar modales (igual que Empresas) ============ */
+  /* ============ ESC para cerrar modales ============ */
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === "Escape") {
@@ -303,33 +236,29 @@ const AlumnoBaja = () => {
     };
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
-  }, [
-    mostrarConfirmacionAlta,
-    mostrarConfirmacionEliminarUno,
-    mostrarConfirmacionEliminarTodos,
-  ]);
+  }, [mostrarConfirmacionAlta, mostrarConfirmacionEliminarUno, mostrarConfirmacionEliminarTodos]);
 
   return (
     <div className="emp-baja-container">
-      {/* Glass independiente (no encierra la barra) */}
-      <div className="emp-baja-glass" >
-              {/* ===== Barra superior ===== */}
-      <div className="emp-baja-barra-superior">
-        <div className="emp-baja-titulo-container">
-          <h2 className="emp-baja-titulo">Alumnos Dados de Baja</h2>
+      {/* Franja superior */}
+      <div className="emp-baja-glass">
+        <div className="emp-baja-barra-superior">
+          <div className="emp-baja-titulo-container">
+            <h2 className="emp-baja-titulo">Alumnos Dados de Baja</h2>
+          </div>
+
+          {/* Volver (solo desktop) */}
+          <button
+            className="emp-baja-boton-volver-top"
+            onClick={() => navigate("/alumnos")}
+          >
+            <FaArrowLeft className="icon-button-baja" />
+            Volver
+          </button>
         </div>
-
-        {/* Volver visible en desktop (oculto en móvil con .arriva) */}
-        <button
-          className="emp-baja-boton-volver arriva"
-          onClick={() => navigate("/alumnos")}
-        ><FaArrowLeft className="icon-button-baja" />
-           Volver
-        </button>
-      </div>
       </div>
 
-      {/* ===== Buscador ===== */}
+      {/* Buscador */}
       <div className="emp-baja-buscador-container">
         <input
           type="text"
@@ -339,38 +268,24 @@ const AlumnoBaja = () => {
           onChange={(e) => setBusqueda(e.target.value)}
         />
         <div className="emp-baja-buscador-icono">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </div>
       </div>
 
-      {/* ===== Toast ===== */}
+      {/* Toast */}
       {toast.show && (
-        <Toast
-          tipo={toast.tipo}
-          mensaje={toast.mensaje}
-          onClose={closeToast}
-          duracion={3000}
-        />
+        <Toast tipo={toast.tipo} mensaje={toast.mensaje} onClose={closeToast} duracion={3000} />
       )}
 
-      {/* ===== Tabla / Lista ===== */}
+      {/* Tabla / Lista */}
       {cargando ? (
         <p className="emp-baja-cargando">Cargando alumnos dados de baja...</p>
       ) : (
         <div className="emp-baja-tabla-container">
-          {/* Contador + botón eliminar todos (aquí) */}
           <div className="emp-baja-controles-superiores">
             <div className="emp-baja-contador">
               Mostrando <strong>{alumnosFiltrados.length}</strong> alumnos
@@ -408,18 +323,10 @@ const AlumnoBaja = () => {
               alumnosFiltrados.map((a) => (
                 <div className="emp-baja-fila" key={a.id_alumno}>
                   <div className="emp-baja-col-id">{a.id_alumno}</div>
-                  <div className="emp-baja-col-nombre">
-                    {combinarNombre(a)}
-                  </div>
-                  <div className="emp-baja-col-fecha">
-                    {formatearFecha(a.ingreso)}
-                  </div>
-                  <div className="emp-baja-col-domicilio">
-                    {(a.domicilio || "").trim() || "—"}
-                  </div>
-                  <div className="emp-baja-col-motivo">
-                    {(a.motivo || "").trim() || "—"}
-                  </div>
+                  <div className="emp-baja-col-nombre">{combinarNombre(a)}</div>
+                  <div className="emp-baja-col-fecha">{formatearFecha(a.ingreso)}</div>
+                  <div className="emp-baja-col-domicilio">{(a.domicilio || "").trim() || "—"}</div>
+                  <div className="emp-baja-col-motivo">{(a.motivo || "").trim() || "—"}</div>
                   <div className="emp-baja-col-acciones">
                     <div className="emp-baja-iconos">
                       <FaUserCheck
@@ -427,7 +334,7 @@ const AlumnoBaja = () => {
                         className="emp-baja-icono"
                         onClick={() => {
                           setAlumnoSeleccionado(a);
-                          setFechaAlta(hoyISO()); // HOY por defecto
+                          setFechaAlta(hoyISO());
                           setMostrarConfirmacionAlta(true);
                         }}
                       />
@@ -448,46 +355,25 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* ===== Modal DAR ALTA ===== */}
+      {/* Modal DAR ALTA */}
       {mostrarConfirmacionAlta && alumnoSeleccionado && (
-        <div
-          className="emp-baja-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-alta-alumno-title"
-        >
+        <div className="emp-baja-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-alta-alumno-title">
           <div className="emp-baja-modal emp-baja-modal--success">
             <div className="emp-baja-modal__icon" aria-hidden="true">
               <FaUserCheck />
             </div>
-
-            <h3
-              id="modal-alta-alumno-title"
-              className="emp-baja-modal__title emp-baja-modal__title--success"
-            >
+            <h3 id="modal-alta-alumno-title" className="emp-baja-modal__title emp-baja-modal__title--success">
               Reactivar alumno
             </h3>
-
             <p className="emp-baja-modal__body">
-              ¿Deseás dar de alta nuevamente a{" "}
-              <strong>{combinarNombre(alumnoSeleccionado)}</strong>?
+              ¿Deseás dar de alta nuevamente a <strong>{combinarNombre(alumnoSeleccionado)}</strong>?
             </p>
 
             <div className="soc-campo-fecha-alta">
-              <label
-                htmlFor="fecha_alta_alumno"
-                className="soc-label-fecha-alta"
-              >
-                Fecha de alta
-              </label>
-              <div
-                className="soc-input-fecha-container"
-                role="button"
-                tabIndex={0}
-                onMouseDown={openDatePicker}
-                onKeyDown={handleKeyDownPicker}
-                aria-label="Abrir selector de fecha"
-              >
+              <label htmlFor="fecha_alta_alumno" className="soc-label-fecha-alta">Fecha de alta</label>
+              <div className="soc-input-fecha-container" role="button" tabIndex={0}
+                   onMouseDown={openDatePicker} onKeyDown={handleKeyDownPicker}
+                   aria-label="Abrir selector de fecha">
                 <input
                   id="fecha_alta_alumno"
                   ref={fechaInputRef}
@@ -510,11 +396,8 @@ const AlumnoBaja = () => {
               >
                 Cancelar
               </button>
-
-              <button
-                className="emp-baja-btn emp-baja-btn--solid-success"
-                onClick={() => darAltaAlumno(alumnoSeleccionado.id_alumno)}
-              >
+              <button className="emp-baja-btn emp-baja-btn--solid-success"
+                      onClick={() => darAltaAlumno(alumnoSeleccionado.id_alumno)}>
                 Confirmar
               </button>
             </div>
@@ -522,52 +405,26 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* ===== Modal ELIMINAR UNO ===== */}
+      {/* Modal ELIMINAR UNO */}
       {mostrarConfirmacionEliminarUno && alumnoAEliminar && (
-        <div
-          className="emp-baja-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-eliminar-alumno-title"
-        >
+        <div className="emp-baja-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-alumno-title">
           <div className="emp-baja-modal emp-baja-modal--danger">
-            <div
-              className="emp-baja-modal__icon emp-baja-modal__icon--danger"
-              aria-hidden="true"
-            >
+            <div className="emp-baja-modal__icon emp-baja-modal__icon--danger" aria-hidden="true">
               <FaTrashAlt />
             </div>
-
-            <h3
-              id="modal-eliminar-alumno-title"
-              className="emp-baja-modal__title emp-baja-modal__title--danger"
-            >
+            <h3 id="modal-eliminar-alumno-title" className="emp-baja-modal__title emp-baja-modal__title--danger">
               Eliminar permanentemente
             </h3>
-
             <p className="emp-baja-modal__body">
-              ¿Eliminar definitivamente al alumno{" "}
-              <strong>{combinarNombre(alumnoAEliminar)}</strong>? Esta acción no
-              se puede deshacer.
+              ¿Eliminar definitivamente al alumno <strong>{combinarNombre(alumnoAEliminar)}</strong>? Esta acción no se puede deshacer.
             </p>
-
             <div className="emp-baja-modal__actions">
-              <button
-                className="emp-baja-btn emp-baja-btn--ghost"
-                onClick={() => {
-                  setMostrarConfirmacionEliminarUno(false);
-                  setAlumnoAEliminar(null);
-                }}
-              >
+              <button className="emp-baja-btn emp-baja-btn--ghost"
+                      onClick={() => { setMostrarConfirmacionEliminarUno(false); setAlumnoAEliminar(null); }}>
                 Cancelar
               </button>
-
-              <button
-                className="emp-baja-btn emp-baja-btn--solid-danger"
-                onClick={() =>
-                  eliminarAlumnoDefinitivo(alumnoAEliminar.id_alumno)
-                }
-              >
+              <button className="emp-baja-btn emp-baja-btn--solid-danger"
+                      onClick={() => eliminarAlumnoDefinitivo(alumnoAEliminar.id_alumno)}>
                 Sí, eliminar
               </button>
             </div>
@@ -575,46 +432,25 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* ===== Modal ELIMINAR TODOS ===== */}
+      {/* Modal ELIMINAR TODOS */}
       {mostrarConfirmacionEliminarTodos && (
-        <div
-          className="emp-baja-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-eliminar-todos-title"
-        >
+        <div className="emp-baja-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-todos-title">
           <div className="emp-baja-modal emp-baja-modal--danger">
-            <div
-              className="emp-baja-modal__icon emp-baja-modal__icon--danger"
-              aria-hidden="true"
-            >
+            <div className="emp-baja-modal__icon emp-baja-modal__icon--danger" aria-hidden="true">
               <FaTrashAlt />
             </div>
-
-            <h3
-              id="modal-eliminar-todos-title"
-              className="emp-baja-modal__title emp-baja-modal__title--danger"
-            >
+            <h3 id="modal-eliminar-todos-title" className="emp-baja-modal__title emp-baja-modal__title--danger">
               Eliminar permanentemente
             </h3>
-
             <p className="emp-baja-modal__body">
-              ¿Eliminar definitivamente <strong>todos</strong> los alumnos
-              actualmente visibles? Esta acción no se puede deshacer.
+              ¿Eliminar definitivamente <strong>todos</strong> los alumnos actualmente visibles? Esta acción no se puede deshacer.
             </p>
-
             <div className="emp-baja-modal__actions">
-              <button
-                className="emp-baja-btn emp-baja-btn--ghost"
-                onClick={() => setMostrarConfirmacionEliminarTodos(false)}
-              >
+              <button className="emp-baja-btn emp-baja-btn--ghost"
+                      onClick={() => setMostrarConfirmacionEliminarTodos(false)}>
                 Cancelar
               </button>
-
-              <button
-                className="emp-baja-btn emp-baja-btn--solid-danger"
-                onClick={eliminarTodosDefinitivo}
-              >
+              <button className="emp-baja-btn emp-baja-btn--solid-danger" onClick={eliminarTodosDefinitivo}>
                 Sí, eliminar todos
               </button>
             </div>
@@ -622,12 +458,13 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* ===== Barra inferior móvil solo con Volver ===== */}
+      {/* Barra inferior móvil: Volver (solo mobile) */}
       <div className="emp-baja-navbar-mobile">
         <button
-          className="emp-baja-boton-volver"
+          className="emp-baja-boton-volver-mobile"
           onClick={() => navigate("/alumnos")}
-        ><FaArrowLeft className="alu-alumno-icon-button" />
+        >
+          <FaArrowLeft className="alu-alumno-icon-button" />
           Volver
         </button>
       </div>
