@@ -67,11 +67,9 @@ const Cuotas = () => {
   const cascadeTimerRef = useRef(null);
 
   const triggerCascade = useCallback(() => {
-    // Activa solo cuando filtrás o buscás; evita que se repita al scrollear
     setCascadeActive(true);
-    setCascadeRunId(prev => prev + 1); // fuerza remount del List
+    setCascadeRunId(prev => prev + 1); // fuerza remount del List / render en móvil
     if (cascadeTimerRef.current) clearTimeout(cascadeTimerRef.current);
-    // Duración_total_aprox = último delay (0.70s) + anim (0.40s) ≈ 1.1s
     cascadeTimerRef.current = setTimeout(() => setCascadeActive(false), 1200);
   }, []);
 
@@ -274,12 +272,17 @@ const Cuotas = () => {
     [cuotas, busqueda, anioSeleccionado, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado]
   );
 
-  const toggleOrden = (campo) => {
-    setOrden(prev => ({
-      campo,
-      ascendente: prev.campo === campo ? !prev.ascendente : true
-    }));
-  };
+  // Dispara cascada también cuando cambia el orden
+  const toggleOrden = useCallback((campo) => {
+    setOrden(prev => {
+      const next = {
+        campo,
+        ascendente: prev.campo === campo ? !prev.ascendente : true
+      };
+      return next;
+    });
+    triggerCascade();
+  }, [triggerCascade]);
 
   const handleImprimirTodos = async () => {
     const ventanaImpresion = window.open('', '_blank');
@@ -306,7 +309,7 @@ const Cuotas = () => {
     setToastTipo('exito');
     setToastMensaje('Filtros limpiados correctamente');
     setToastVisible(true);
-    triggerCascade(); // es un cambio de filtros, activamos cascada
+    triggerCascade();
   };
 
   const handleRowClick = useCallback((index) => {
@@ -371,7 +374,7 @@ const Cuotas = () => {
   const onChangeDivision = (e) => { setDivisionSeleccionada(e.target.value); triggerCascade(); };
   const onChangeBusqueda = (e) => { setBusqueda(e.target.value); triggerCascade(); };
 
-  // Componente Row para la lista virtual (aplica clases de cascada SOLO si cascadeActive)
+  // Componente Row (zebra + chip de categoría + cascada)
   const Row = ({ index, style, data }) => {
     const cuota = data[index];
     const isSelected = selectedRow === index;
@@ -384,8 +387,12 @@ const Cuotas = () => {
     const nombreDiv = getNombreDivision(idDiv);
     const nombreCat = getNombreCategoria(idCat);
 
+    const isInterno = normalizar(nombreCat) === 'interno';
+
     const cascadeClass =
       cascadeActive && index < 15 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
+
+    const zebraClass = index % 2 === 0 ? 'gcuotas-row-even' : 'gcuotas-row-odd';
 
     const actionButtons = isSelected ? (
       <div className="gcuotas-actions-inline">
@@ -455,7 +462,11 @@ const Cuotas = () => {
           </div>
           <div className="gcuotas-mobile-row">
             <span className="gcuotas-mobile-label">Categoría:</span>
-            <span>{nombreCat || '—'}</span>
+            <span>
+              <span className={`gcuotas-chip ${isInterno ? 'gcuotas-chip--interno' : 'gcuotas-chip--default'}`}>
+                {nombreCat || '—'}
+              </span>
+            </span>
           </div>
 
           {isSelected && (
@@ -503,7 +514,7 @@ const Cuotas = () => {
     return (
       <div
         style={style}
-        className={`gcuotas-virtual-row ${cascadeClass} ${isSelected ? "gcuotas-selected-row" : ""}`}
+        className={`gcuotas-virtual-row ${zebraClass} ${cascadeClass} ${isSelected ? "gcuotas-selected-row" : ""}`}
         onClick={() => handleRowClick(index)}
       >
         <div className="gcuotas-virtual-cell">{getNombreCuota(cuota)}</div>
@@ -511,8 +522,14 @@ const Cuotas = () => {
         <div className="gcuotas-virtual-cell">{getDomicilioCuota(cuota) || '—'}</div>
         <div className="gcuotas-virtual-cell">{nombreAnio || '—'}</div>
         <div className="gcuotas-virtual-cell">{nombreDiv || '—'}</div>
-        <div className="gcuotas-virtual-cell">{nombreCat || '—'}</div>
-        <div className="gcuotas-virtual-cell gcuotas-virtual-actions">{actionButtons}</div>
+        <div className="gcuotas-virtual-cell">
+          <span className={`gcuotas-chip ${isInterno ? 'gcuotas-chip--interno' : 'gcuotas-chip--default'}`}>
+            {nombreCat || '—'}
+          </span>
+        </div>
+        <div className="gcuotas-virtual-cell gcuotas-virtual-actions">
+          {actionButtons}
+        </div>
       </div>
     );
   };
@@ -753,7 +770,7 @@ const Cuotas = () => {
                 type="text"
                 placeholder="Buscar alumno..."
                 value={busqueda}
-                onChange={onChangeBusqueda} // <-- activa cascada solo al buscar
+                onChange={onChangeBusqueda}
                 disabled={loading || !mesSeleccionado}
               />
             </div>
@@ -777,7 +794,7 @@ const Cuotas = () => {
             <div className="gcuotas-mobile-list">
               {cuotasFiltradas.map((item, index) => (
                 <Row
-                  key={`${cascadeRunId}-${index}`} // asegura re-render cuando hay cascada
+                  key={`${cascadeRunId}-${index}`}
                   index={index}
                   style={{}}
                   data={cuotasFiltradas}
@@ -829,7 +846,7 @@ const Cuotas = () => {
               <AutoSizer>
                 {({ height, width }) => (
                   <List
-                    key={`list-${cascadeRunId}`} // remonta la lista SOLO cuando hay cascada
+                    key={`list-${cascadeRunId}`} // remonta la lista cuando hay cascada
                     height={height}
                     itemCount={cuotasFiltradas.length}
                     itemSize={60}

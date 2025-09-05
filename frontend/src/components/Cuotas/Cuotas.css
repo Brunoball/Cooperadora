@@ -133,14 +133,7 @@
 /* ===========================
    ROOT: permitir scroll global 
    =========================== */
-html, body {
-  height: auto;
-  min-height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  background: var(--background-color);
-  color: var(--text-primary);
-}
+
 
 /* =========================== 
    Estilos generales 
@@ -182,7 +175,7 @@ html, body {
 
 .gcuotas-header-section {
   min-height: 60px;
-  padding: 0.8rem 1.2rem;
+  padding: 1rem 1.2rem;
   background: var(--gradient-primary);
   color: var(--text-on-primary);
   display: flex;
@@ -1194,3 +1187,58 @@ flex-wrap: nowrap;
 .gcuotas-cascade-12 { animation-delay: 0.60s; }
 .gcuotas-cascade-13 { animation-delay: 0.65s; }
 .gcuotas-cascade-14 { animation-delay: 0.70s; }
+/* Cuotas.css — solo lo nuevo/relevante añadido para tu pedido */
+
+/* ====== ZEBRA (escalonado) en filas desktop ====== */
+.gcuotas-virtual-row.gcuotas-row-even {
+  background-color: var(--surface-color);
+}
+.gcuotas-virtual-row.gcuotas-row-odd {
+  background-color: var(--secondary-50); /* gris/azul muy suave */
+}
+
+/* Hover y seleccionado por encima del zebra */
+.gcuotas-virtual-row:hover {
+  background-color: var(--secondary-100);
+}
+.gcuotas-selected-row {
+  background-color: var(--secondary-200) !important;
+  box-shadow: inset 0 0 0 1px var(--secondary-300);
+}
+
+/* ====== CHIP / BADGE para Categoría ====== */
+.gcuotas-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid transparent;
+  letter-spacing: .2px;
+}
+.gcuotas-chip--default {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border-color: var(--gray-200);
+}
+.gcuotas-chip--interno {
+  background: var(--secondary-100);
+  color: var(--secondary-800);
+  border-color: var(--secondary-300);
+  text-transform: uppercase;
+}
+
+/* Puntito decorativo opcional delante del texto */
+.gcuotas-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: currentColor;
+  opacity: .6;
+}
+
+/* (El resto de tus estilos previos permanecen igual) */
