@@ -1,5 +1,7 @@
 <?php
 // backend/modules/alumnos/alumnos_baja.php
+declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../../config/db.php'; // Debe definir $pdo (PDO)
@@ -9,21 +11,26 @@ try {
         throw new RuntimeException('Conexión PDO no disponible.');
     }
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec("SET NAMES utf8mb4");
 
     // Filtros opcionales (?q=texto | ?id=123)
     $q  = isset($_GET['q'])  ? trim((string)$_GET['q']) : '';
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
     /**
-     * Igual que en el archivo de activos:
-     * - Si usás `apellido` y `nombre` separados, reemplazá a.apellido_nombre por CONCAT_WS(' ', a.apellido, a.nombre)
+     * Esquema actual de alumnos (columnas usadas):
+     *  - id_alumno (PK)
+     *  - apellido  (NOT NULL)
+     *  - nombre    (NULL)
+     *  - activo    (0 = dado de baja)
+     *  - ingreso   (DATE)  -> usamos esta fecha como "Fecha de Baja"
+     *  - motivo    (TEXT)  -> motivo de baja
      */
     $sql = "
         SELECT
             a.id_alumno,
-            a.apellido_nombre AS nombre_apellido,
-            a.apellido_nombre AS apellido_nombre,  -- por compatibilidad con tu front
-            a.domicilio,
+            a.apellido,
+            a.nombre,
             a.ingreso,
             a.motivo
         FROM alumnos a
@@ -31,17 +38,19 @@ try {
         ORDER BY a.id_alumno ASC
     ";
 
-    $where  = ["a.activo = 0"];  // SOLO DADOS DE BAJA
+    $where  = ["a.activo = 0"];  // Solo los dados de baja
     $params = [];
 
     if ($id > 0) {
-        $where[]        = "a.id_alumno = :id";
-        $params[':id']  = $id;
+        $where[]       = "a.id_alumno = :id";
+        $params[':id'] = $id;
     } elseif ($q !== '') {
-        $where[]        = "a.apellido_nombre LIKE :q";
-        $params[':q']   = "%{$q}%";
+        // Búsqueda por combinación de apellido y nombre
+        $where[]       = "CONCAT_WS(' ', a.apellido, a.nombre) LIKE :q";
+        $params[':q']  = "%{$q}%";
     }
 
+    // Armar WHERE final
     if (!empty($where)) {
         $sql = str_replace('/**WHERE**/', 'WHERE ' . implode(' AND ', $where), $sql);
     } else {

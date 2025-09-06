@@ -77,6 +77,14 @@ const extraerAnioNum = (valor) => {
 
 const MAX_CASCADE_ITEMS = 15; // ✅ solo primeros 15
 
+const formatearFechaISO = (v) => {
+  // espera AAAA-MM-DD y devuelve DD/MM/AAAA
+  if (!v || typeof v !== 'string') return '';
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return v;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+};
+
 // Hook simple para detectar mobile
 function useIsMobile(breakpoint = 768) {
   const getMatch = () =>
@@ -195,8 +203,7 @@ const Alumnos = () => {
      Animación en cascada (helper)
   ================================= */
   const dispararCascadaUnaVez = useCallback((duracionMs) => {
-    // Si no me pasan duración, calculo una segura:
-    // base 400ms + (MAX_CASCADE_ITEMS-1)*30ms de delay + 300ms buffer
+    // base 400ms + (MAX_CASCADE_ITEMS-1)*30ms + 300ms buffer
     const safeMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
     const total = typeof duracionMs === 'number' ? duracionMs : safeMs;
 
@@ -306,7 +313,6 @@ const Alumnos = () => {
     if (prev === '' && ahora !== '') {
       dispararCascadaUnaVez();
     }
-    // actualiza ref
     prevBusquedaRef.current = ahora;
   }, [busquedaDefer, dispararCascadaUnaVez]);
 
@@ -379,33 +385,70 @@ const Alumnos = () => {
 
   const construirDomicilio = useCallback((domicilio) => (domicilio || '').trim(), []);
 
-  // Exporta SOLO lo visible en tabla/tarjetas
+  // =============================
+  // Exporta SOLO lo visible pero con TODOS los campos de Editar
+  // =============================
   const exportarExcel = useCallback(() => {
     if (!puedeExportar) {
       mostrarToast('No hay filas visibles para exportar.', 'error');
       return;
     }
 
+    // Mapeo de los mismos campos que mostras en Editar:
+    // - Información: Apellido, Nombre, Tipo de doc, Nº doc, Sexo, Teléfono, Fecha ingreso, Domicilio, Localidad
+    // - Escolaridad: Año, División, Categoría
     const filas = alumnosFiltrados.map((a) => ({
-      'Apellido y Nombre': combinarNombre(a),
-      'DNI': a?.dni ?? '',
+      'ID Alumno': a?.id_alumno ?? '',
+      'Apellido': a?.apellido ?? '',
+      'Nombre': a?.nombre ?? '',
+      'Tipo de documento': a?.tipo_documento_nombre ?? '',
+      'Sigla': a?.tipo_documento_sigla ?? '',
+      'Nº Documento': a?.num_documento ?? a?.dni ?? '',
+      'Sexo': a?.sexo_nombre ?? '',
+      'Teléfono': a?.telefono ?? '',
+      'Fecha de ingreso': formatearFechaISO(a?.ingreso ?? ''),
       'Domicilio': construirDomicilio(a?.domicilio),
       'Localidad': a?.localidad ?? '',
       'Año': a?.anio_nombre ?? '',
       'División': a?.division_nombre ?? '',
+      'Categoría': a?.categoria_nombre ?? '',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(filas, {
-      header: ['Apellido y Nombre', 'DNI', 'Domicilio', 'Localidad', 'Año', 'División'],
-    });
+    const headers = [
+      'ID Alumno',
+      'Apellido',
+      'Nombre',
+      'Tipo de documento',
+      'Sigla',
+      'Nº Documento',
+      'Sexo',
+      'Teléfono',
+      'Fecha de ingreso',
+      'Domicilio',
+      'Localidad',
+      'Año',
+      'División',
+      'Categoría',
+    ];
 
+    const ws = XLSX.utils.json_to_sheet(filas, { header: headers });
+
+    // Anchos sugeridos
     ws['!cols'] = [
-      { wch: 32 },
-      { wch: 12 },
-      { wch: 30 },
-      { wch: 18 },
-      { wch: 8 },
-      { wch: 10 },
+      { wch: 10 }, // ID
+      { wch: 18 }, // Apellido
+      { wch: 18 }, // Nombre
+      { wch: 22 }, // Tipo doc
+      { wch: 8  }, // Sigla
+      { wch: 14 }, // Nº doc
+      { wch: 10 }, // Sexo
+      { wch: 14 }, // Teléfono
+      { wch: 14 }, // Ingreso
+      { wch: 28 }, // Domicilio
+      { wch: 20 }, // Localidad
+      { wch: 10 }, // Año
+      { wch: 10 }, // División
+      { wch: 16 }, // Categoría
     ];
 
     const wb = XLSX.utils.book_new();
@@ -419,12 +462,13 @@ const Alumnos = () => {
     const mm = String(fecha.getMonth() + 1).padStart(2, '0');
     const dd = String(fecha.getDate()).padStart(2, '0');
 
+    // Después (fecha con separadores seguros)
     const sufijo = filtroActivo === 'todos' ? 'Todos' : 'Filtrados';
-    saveAs(blob, `Alumnos_${sufijo}_${yyyy}${mm}${dd}(${filas.length}).xlsx`);
-    mostrarToast('Exportación completada.', 'exito');
+    const fechaStr = `${yyyy}-${mm}-${dd}`; // --> 2025-09-05
+    saveAs(blob, `Alumnos_${sufijo}_${fechaStr}(${filas.length}).xlsx`);
   }, [puedeExportar, alumnosFiltrados, filtroActivo, mostrarToast, construirDomicilio]);
 
-  // ✅ Mostrar todos — ahora garantiza cascada tras el re-render
+  // ✅ Mostrar todos — garantiza cascada tras el re-render
   const handleMostrarTodos = useCallback(() => {
     setFiltros({
       busqueda: '',
@@ -433,8 +477,6 @@ const Alumnos = () => {
       filtroActivo: 'todos',
     });
 
-    // Aseguramos disparar la animación después de aplicar el estado y re-pintar
-    // (doble rAF = siguiente frame del browser tras el commit)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         dispararCascadaUnaVez();
@@ -449,8 +491,6 @@ const Alumnos = () => {
       next.filtroActivo = (valor?.trim() || prev.letraSeleccionada || prev.anioSeleccionado !== null) ? 'filtros' : null;
       return next;
     });
-    // ❗No disparamos acá para evitar que se repita cada tecla.
-    // Se maneja en el useEffect de transición '' -> texto.
   }, []);
 
   const handleFiltrarPorLetra = useCallback((letra) => {
@@ -460,7 +500,7 @@ const Alumnos = () => {
       return next;
     });
     setMostrarFiltros(false);
-    dispararCascadaUnaVez(); // ✅ cascada una vez
+    dispararCascadaUnaVez();
   }, [dispararCascadaUnaVez]);
 
   const handleFiltrarPorAnio = useCallback((anio) => {
@@ -470,7 +510,7 @@ const Alumnos = () => {
       return next;
     });
     setMostrarFiltros(false);
-    dispararCascadaUnaVez(); // ✅ cascada una vez
+    dispararCascadaUnaVez();
   }, [dispararCascadaUnaVez]);
 
   // Quitar chips individuales
@@ -498,7 +538,7 @@ const Alumnos = () => {
     });
   }, []);
 
-  // Limpieza total de chips activos (opcional)
+  // Limpieza total de chips activos
   const limpiarTodosLosChips = useCallback(() => {
     setFiltros((prev) => ({
       ...prev,
@@ -546,8 +586,8 @@ const Alumnos = () => {
         <div className="alu-column alu-column-nombre" title={combinarNombre(alumno)}>
           {combinarNombre(alumno)}
         </div>
-        <div className="alu-column alu-column-dni" title={alumno.dni}>
-          {alumno.dni}
+        <div className="alu-column alu-column-dni" title={alumno.num_documento ?? alumno.dni}>
+          {alumno.num_documento ?? alumno.dni}
         </div>
         <div className="alu-column alu-column-domicilio" title={construirDomicilio(alumno.domicilio)}>
           {construirDomicilio(alumno.domicilio)}
@@ -894,7 +934,7 @@ const Alumnos = () => {
                       <div className="alu-card-body">
                         <div className="alu-card-row">
                           <span className="alu-card-label">DNI</span>
-                          <span className="alu-card-value alu-mono">{alumno.dni}</span>
+                          <span className="alu-card-value alu-mono">{alumno.num_documento ?? alumno.dni}</span>
                         </div>
                         <div className="alu-card-row">
                           <span className="alu-card-label">Domicilio</span>

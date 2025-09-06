@@ -14,34 +14,46 @@ const AgregarAlumno = () => {
     anios: [],
     divisiones: [],
     categorias: [],
+    tipos_documentos: [],
+    sexos: [],
     loaded: false
   });
 
   const [formData, setFormData] = useState({
-    apellido_nombre: '',
-    dni: '',
+    apellido: '',
+    nombre: '',
+    id_tipo_documento: '',   // ⬅️ se setea a DNI por defecto tras cargar listas
+    num_documento: '',
+    id_sexo: '',
     domicilio: '',
     localidad: '',
     telefono: '',
     id_año: '',
     id_division: '',
-    id_categoria: '1', // default 1
+    id_categoria: '',
+    observaciones: ''
   });
 
   const [toast, setToast] = useState({ show: false, message: '', type: 'exito' });
   const [loading, setLoading] = useState(false);
   const [activeField, setActiveField] = useState(null);
 
-  // Pasos UI
   const [currentStep, setCurrentStep] = useState(1);
-
-  // 👇 Bandera para cancelar el keyup del Enter cuando se usa para avanzar de paso
   const enterBloqueadoRef = useRef(false);
 
   const showToast = (message, type = 'exito', duracion = 3000) => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type }), duracion);
   };
+
+  // Normalizador simple (quita acentos y pasa a mayúsculas)
+  const normalize = (s) =>
+    (s || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim();
 
   useEffect(() => {
     const fetchListas = async () => {
@@ -51,16 +63,27 @@ const AgregarAlumno = () => {
         const json = await res.json();
 
         if (json.exito) {
-          const { anios, divisiones, categorias } = json.listas || {};
+          const { anios, divisiones, categorias, tipos_documentos, sexos } = json.listas || {};
+          const td = Array.isArray(tipos_documentos) ? tipos_documentos : [];
+
           setListas({
             anios: Array.isArray(anios) ? anios : [],
             divisiones: Array.isArray(divisiones) ? divisiones : [],
             categorias: Array.isArray(categorias) ? categorias : [],
+            tipos_documentos: td,
+            sexos: Array.isArray(sexos) ? sexos : [],
             loaded: true
           });
 
-          if (!formData.id_categoria && (categorias || []).some(c => String(c.id) === '1')) {
-            setFormData(prev => ({ ...prev, id_categoria: '1' }));
+          // ⬇️ Preseleccionar DNI si el usuario no eligió nada aún
+          // Coincide por sigla 'DNI' o por descripción que contenga 'DOCUMENTO NACIONAL DE IDENTIDAD'
+          if (!formData.id_tipo_documento && td.length) {
+            const dniOption =
+              td.find(t => (t.sigla || '').toUpperCase() === 'DNI') ||
+              td.find(t => normalize(t.descripcion).includes('DOCUMENTO NACIONAL DE IDENTIDAD'));
+            if (dniOption?.id != null) {
+              setFormData(prev => ({ ...prev, id_tipo_documento: String(dniOption.id) }));
+            }
           }
         } else {
           showToast('Error al cargar listas: ' + (json.mensaje || 'desconocido'), 'error');
@@ -78,19 +101,33 @@ const AgregarAlumno = () => {
 
   const validarCampo = (name, value) => {
     const soloNumeros = /^[0-9]+$/;
-    const telValido = /^[0-9+\-\s]+$/;
+    const telValido = /^[0-9-]+$/; // ✅ solo dígitos y guion
     const textoValido = /^[A-ZÑa-zñáéíóúÁÉÍÓÚ0-9\s.,-]*$/;
 
     switch (name) {
-      case 'apellido_nombre':
+      case 'apellido':
         if (!value || !value.trim()) return 'obligatorio';
         if (!/^[A-ZÑa-zñáéíóúÁÉÍÓÚ\s.]+$/u.test(value)) return 'formato inválido';
         if (value.length > 100) return 'máximo 100 caracteres';
         break;
-      case 'dni':
+      case 'nombre':
+        if (value && !/^[A-ZÑa-zñáéíóúÁÉÍÓÚ\s.]+$/u.test(value)) return 'formato inválido';
+        if (value && value.length > 100) return 'máximo 100 caracteres';
+        break;
+      case 'num_documento':
         if (!value || !value.trim()) return 'obligatorio';
         if (!soloNumeros.test(value)) return 'solo números';
-        if (value.length > 15) return 'máximo 15 caracteres';
+        if (value.length > 20) return 'máximo 20 caracteres';
+        break;
+      case 'id_tipo_documento': // opcional
+      case 'id_sexo':           // opcional
+      case 'id_año':
+      case 'id_division':
+      case 'id_categoria':
+        if (['id_año', 'id_division', 'id_categoria'].includes(name)) {
+          if (!value) return 'obligatorio';
+        }
+        if (value !== '' && isNaN(Number(value))) return 'valor inválido';
         break;
       case 'domicilio':
         if (value && !textoValido.test(value)) return 'caracteres inválidos';
@@ -101,51 +138,61 @@ const AgregarAlumno = () => {
         if (value && value.length > 100) return 'máximo 100 caracteres';
         break;
       case 'telefono':
-        if (value && !telValido.test(value)) return 'formato inválido';
-        if (value && value.length > 20) return 'máximo 20 caracteres';
+        if (value && (!telValido.test(value) || value.length > 20)) return 'solo números y guiones (-), máx 20';
         break;
-      case 'id_año':
-      case 'id_division':
-      case 'id_categoria':
-        if (!value) return 'obligatorio';
-        if (isNaN(Number(value))) return 'valor inválido';
-        break;
+      case 'observaciones':
+        // libre
+        return null;
       default:
         return null;
     }
     return null;
   };
 
-  // ✅ Validación de Paso 1 (solo toast)
   const validarPaso1 = () => {
-    const errorNombre = validarCampo('apellido_nombre', formData.apellido_nombre);
-    const errorDni = validarCampo('dni', formData.dni);
+    const eApe = validarCampo('apellido', formData.apellido);
+    const eDoc = validarCampo('num_documento', formData.num_documento);
 
-    if (errorNombre || errorDni) {
+    if (eApe || eDoc) {
       const faltantes = [];
       const invalidos = [];
 
-      if (!formData.apellido_nombre?.trim()) faltantes.push('Apellido y Nombre');
-      else if (errorNombre) invalidos.push('Apellido y Nombre');
+      if (!formData.apellido?.trim()) faltantes.push('Apellido');
+      else if (eApe) invalidos.push('Apellido');
 
-      if (!formData.dni?.trim()) faltantes.push('DNI');
-      else if (errorDni) invalidos.push('DNI');
+      if (!formData.num_documento?.trim()) faltantes.push('Documento');
+      else if (eDoc) invalidos.push('Documento');
 
       const partes = [];
       if (faltantes.length) partes.push(`Completá: ${faltantes.join(' y ')}`);
       if (invalidos.length) partes.push(`Revisá: ${invalidos.join(' y ')}`);
 
       showToast(partes.join(' | '), 'error');
-      return false; // ❌ bloqueo avance
+      return false;
     }
-    return true; // ✅ permite avanzar
+    return true;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // ✅ Regla especial para teléfono: solo 0-9 y '-'
+    if (name === 'telefono') {
+      const cleaned = value.replace(/[^0-9-]/g, '');
+      if (cleaned !== value) {
+        showToast('Teléfono: solo números y guiones (-).', 'error');
+      }
+      // Limitar a 20 chars por política de validación
+      const limited = cleaned.slice(0, 20);
+      setFormData(prev => ({ ...prev, [name]: limited }));
+      return;
+    }
+
     const toUpper = (v) => (typeof v === 'string' ? v.toUpperCase() : v);
     const nextVal =
-      ['apellido_nombre', 'domicilio', 'localidad'].includes(name) ? toUpper(value) : value;
+      ['apellido', 'nombre', 'domicilio', 'localidad'].includes(name)
+        ? toUpper(value)
+        : value; // observaciones queda libre
 
     setFormData(prev => ({ ...prev, [name]: nextVal }));
   };
@@ -153,23 +200,20 @@ const AgregarAlumno = () => {
   const handleFocus = (fieldName) => setActiveField(fieldName);
   const handleBlur = () => setActiveField(null);
 
-  // ✅ Navegación de pasos con validación del Paso 1
   const handleNextStep = () => {
     if (currentStep === 1 && !validarPaso1()) return;
     setCurrentStep(s => Math.min(3, s + 1));
   };
   const handlePrevStep = () => setCurrentStep(s => Math.max(1, s - 1));
 
-  // Enter para avanzar pasos (y evitar submit fantasma al soltar la tecla)
   const handleFormKeyDown = (e) => {
     if (e.key === 'Enter') {
-      e.preventDefault(); // bloquea submit nativo
+      e.preventDefault();
       if (currentStep < 3) {
         e.stopPropagation();
-        enterBloqueadoRef.current = true; // marcamos para cancelar el keyup
+        enterBloqueadoRef.current = true;
         handleNextStep();
       }
-      // En paso 3 mantenemos bloqueado el Enter para no enviar con Enter
     }
   };
 
@@ -177,34 +221,34 @@ const AgregarAlumno = () => {
     if (e.key === 'Enter' && enterBloqueadoRef.current) {
       e.preventDefault();
       e.stopPropagation();
-      enterBloqueadoRef.current = false; // limpiamos la marca
+      enterBloqueadoRef.current = false;
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // 🚧 Por seguridad, ignoramos cualquier submit fuera del Paso 3
     if (currentStep !== 3) return;
 
-    // 🧠 Etiquetas legibles
     const labels = {
-      apellido_nombre: 'Apellido y Nombre',
-      dni: 'DNI',
+      apellido: 'Apellido',
+      nombre: 'Nombre',
+      id_tipo_documento: 'Tipo de documento',
+      num_documento: 'Documento',
+      id_sexo: 'Sexo',
       domicilio: 'Domicilio',
       localidad: 'Localidad',
       telefono: 'Teléfono',
       id_año: 'Año',
       id_division: 'División',
       id_categoria: 'Categoría',
+      observaciones: 'Observaciones'
     };
 
-    const obligatorios = ['apellido_nombre', 'dni', 'id_año', 'id_division', 'id_categoria'];
+    const obligatorios = ['apellido', 'num_documento', 'id_año', 'id_division', 'id_categoria'];
 
     const faltantes = [];
     const invalidos = [];
 
-    // Faltantes (obligatorios)
     obligatorios.forEach((k) => {
       const val = formData[k];
       if (!val || !String(val).trim()) {
@@ -212,10 +256,8 @@ const AgregarAlumno = () => {
       }
     });
 
-    // Inválidos (cualquier campo con valor inválido)
     Object.entries(formData).forEach(([k, v]) => {
       const err = validarCampo(k, v);
-      // Solo marcamos inválido si hay valor (o si es obligatorio y tiene formato inválido)
       if (err && (v || obligatorios.includes(k))) {
         invalidos.push(labels[k] || k);
       }
@@ -242,8 +284,7 @@ const AgregarAlumno = () => {
         showToast('Alumno agregado correctamente', 'exito');
         setTimeout(() => navigate('/alumnos'), 1800);
       } else {
-        // Si el backend envía errores, mostramos un toast genérico
-        showToast('Revisá los datos e intentá nuevamente.', 'error');
+        showToast(data.mensaje || 'Revisá los datos e intentá nuevamente.', 'error');
       }
     } catch (error) {
       showToast('Error de conexión con el servidor', 'error');
@@ -252,7 +293,6 @@ const AgregarAlumno = () => {
     }
   };
 
-  // Barra de pasos
   const ProgressSteps = () => (
     <div className="progress-steps">
       {[1, 2, 3].map((step) => (
@@ -263,7 +303,7 @@ const AgregarAlumno = () => {
         >
           <div className="step-number">{step}</div>
           <div className="step-label">
-            {step === 1 && 'Datos del Alumno'}
+            {step === 1 && 'Identificación'}
             {step === 2 && 'Contacto y Domicilio'}
             {step === 3 && 'Datos Académicos'}
           </div>
@@ -287,7 +327,6 @@ const AgregarAlumno = () => {
           />
         )}
 
-        {/* Header */}
         <div className="add-header">
           <div className="add-icon-title">
             <FontAwesomeIcon icon={faUserPlus} className="add-icon" />
@@ -316,33 +355,67 @@ const AgregarAlumno = () => {
           onKeyDown={handleFormKeyDown}
           onKeyUp={handleFormKeyUp}
         >
-          {/* PASO 1: Datos del Alumno */}
+          {/* PASO 1 */}
           {currentStep === 1 && (
             <div className="add-alumno-section">
-              <h3 className="add-alumno-section-title">Datos del Alumno</h3>
+              <h3 className="add-alumno-section-title">Identificación</h3>
               <div className="add-alumno-section-content">
+                <div className="add-group">
+                  <div className={`add-input-wrapper ${formData.apellido || activeField === 'apellido' ? 'has-value' : ''}`} style={{ flex: 1 }}>
+                    <label className="add-label">Apellido *</label>
+                    <input
+                      name="apellido"
+                      value={formData.apellido}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('apellido')}
+                      onBlur={handleBlur}
+                      className="add-input"
+                    />
+                    <span className="add-input-highlight" />
+                  </div>
 
-                <div className={`add-input-wrapper ${formData.apellido_nombre || activeField === 'apellido_nombre' ? 'has-value' : ''}`}>
-                  <label className="add-label">Apellido y Nombre *</label>
-                  <input
-                    name="apellido_nombre"
-                    value={formData.apellido_nombre}
-                    onChange={handleChange}
-                    onFocus={() => handleFocus('apellido_nombre')}
-                    onBlur={handleBlur}
-                    className="add-input"
-                  />
-                  <span className="add-input-highlight" />
+                  <div className={`add-input-wrapper ${formData.nombre || activeField === 'nombre' ? 'has-value' : ''}`} style={{ flex: 1 }}>
+                    <label className="add-label">Nombre</label>
+                    <input
+                      name="nombre"
+                      value={formData.nombre}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('nombre')}
+                      onBlur={handleBlur}
+                      className="add-input"
+                    />
+                    <span className="add-input-highlight" />
+                  </div>
                 </div>
 
                 <div className="add-group">
-                  <div className={`add-input-wrapper ${formData.dni || activeField === 'dni' ? 'has-value' : ''}`} style={{ flex: 1 }}>
-                    <label className="add-label">DNI *</label>
-                    <input
-                      name="dni"
-                      value={formData.dni}
+                  <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
+                    <label className="add-label">Tipo de documento</label>
+                    <select
+                      name="id_tipo_documento"
+                      value={formData.id_tipo_documento}
                       onChange={handleChange}
-                      onFocus={() => handleFocus('dni')}
+                      onFocus={() => handleFocus('id_tipo_documento')}
+                      onBlur={handleBlur}
+                      className="add-input"
+                      disabled={loading || !listas.loaded}
+                    >
+                      <option value="">Seleccionar</option>
+                      {listas.tipos_documentos.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.descripcion}{t.sigla ? ` (${t.sigla})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={`add-input-wrapper ${formData.num_documento || activeField === 'num_documento' ? 'has-value' : ''}`} style={{ flex: 1 }}>
+                    <label className="add-label">Documento *</label>
+                    <input
+                      name="num_documento"
+                      value={formData.num_documento}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('num_documento')}
                       onBlur={handleBlur}
                       className="add-input"
                       type="tel"
@@ -351,18 +424,35 @@ const AgregarAlumno = () => {
                     />
                     <span className="add-input-highlight" />
                   </div>
+
+                  <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
+                    <label className="add-label">Sexo</label>
+                    <select
+                      name="id_sexo"
+                      value={formData.id_sexo}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('id_sexo')}
+                      onBlur={handleBlur}
+                      className="add-input"
+                      disabled={loading || !listas.loaded}
+                    >
+                      <option value="">Seleccionar</option>
+                      {listas.sexos.map(s => (
+                        <option key={s.id} value={s.id}>{s.sexo}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
               </div>
             </div>
           )}
 
-          {/* PASO 2: Contacto y Domicilio */}
+          {/* PASO 2 */}
           {currentStep === 2 && (
             <div className="add-alumno-section">
               <h3 className="add-alumno-section-title">Contacto y Domicilio</h3>
               <div className="add-alumno-section-content">
-
                 <div className="add-group">
                   <div className={`add-input-wrapper ${formData.telefono || activeField === 'telefono' ? 'has-value' : ''}`} style={{ flex: 1 }}>
                     <label className="add-label">Teléfono</label>
@@ -374,6 +464,8 @@ const AgregarAlumno = () => {
                       onBlur={handleBlur}
                       className="add-input"
                       type="tel"
+                      inputMode="tel"
+                      pattern="[0-9-]*"     // ✅ sólo números y guión
                     />
                     <span className="add-input-highlight" />
                   </div>
@@ -407,11 +499,28 @@ const AgregarAlumno = () => {
                   </div>
                 </div>
 
+                {/* Observaciones */}
+                <div className="add-group">
+                  <div className="add-input-wrapper always-active" style={{ width: '100%' }}>
+                    <label className="add-label">Observaciones</label>
+                    <textarea
+                      name="observaciones"
+                      value={formData.observaciones}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('observaciones')}
+                      onBlur={handleBlur}
+                      className="add-textarea"
+                      rows={4}
+                      placeholder="Notas internas, aclaraciones, referencias, etc."
+                    />
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
 
-          {/* PASO 3: Datos Académicos */}
+          {/* PASO 3 */}
           {currentStep === 3 && (
             <div className="add-alumno-section">
               <h3 className="add-alumno-section-title">Datos Académicos</h3>
@@ -476,7 +585,6 @@ const AgregarAlumno = () => {
             </div>
           )}
 
-          {/* Botonera inferior */}
           <div className="add-alumno-buttons-container">
             {currentStep > 1 && (
               <button
@@ -493,11 +601,10 @@ const AgregarAlumno = () => {
 
             {currentStep < 3 ? (
               <button
-                key="next" // 👈 fuerza remount
+                key="next"
                 type="button"
                 className="add-alumno-button next-step"
                 onClick={(e) => {
-                  // 👇 evita que el click termine en submit cuando el botón se "convierte"
                   e.preventDefault();
                   e.stopPropagation();
                   handleNextStep();
@@ -507,7 +614,7 @@ const AgregarAlumno = () => {
               </button>
             ) : (
               <button
-                key="submit" // 👈 distinto al "next"
+                key="submit"
                 type="submit"
                 className="add-alumno-button"
                 disabled={loading}

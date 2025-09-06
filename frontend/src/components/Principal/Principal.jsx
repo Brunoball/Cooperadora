@@ -1,3 +1,4 @@
+// src/components/Principal/Principal.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoRH from '../../imagenes/Escudo.png';
@@ -12,30 +13,24 @@ import {
   faTags,
   faUserPlus,
   faSignOutAlt,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faIdCard,           // ⬅️ NUEVO (icono Tipos de documento)
 } from '@fortawesome/free-solid-svg-icons';
 
-/* ===========
-   Modal simple
-============= */
+/* =========== Modal simple ============= */
 const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
   const cancelBtnRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
-    // Foco inicial en "Cancelar"
     cancelBtnRef.current?.focus();
-
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const onKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
   if (!open) return null;
 
-  // Estilos mínimos inline para que funcione sin CSS extra
   const backdropStyle = {
     position: 'fixed',
     inset: 0,
@@ -108,21 +103,14 @@ const Principal = () => {
   const navigate = useNavigate();
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const handleClickCerrar = () => {
-    setShowConfirm(true);
-  };
-
+  const handleClickCerrar = () => setShowConfirm(true);
   const confirmarCerrarSesion = () => {
     localStorage.removeItem('usuario');
     setShowConfirm(false);
     navigate('/');
   };
-
   const cancelarCerrarSesion = () => setShowConfirm(false);
-
-  const redirectTo3Devs = () => {
-    window.open('https://3devsnet.com', '_blank');
-  };
+  const redirectTo3Devs = () => window.open('https://3devsnet.com', '_blank');
 
   return (
     <div className="princ-contenedor-padre">
@@ -166,7 +154,7 @@ const Principal = () => {
             </div>
           </button>
 
-          {/* Contable (antes Categorías) -> Navega al Dashboard Contable */}
+          {/* Contable */}
           <button className="princ-opcion princ-opcion-categorias" onClick={() => navigate('/contable')}>
             <div className="princ-opcion-content">
               <div className="princ-opcion-icono-container">
@@ -187,15 +175,23 @@ const Principal = () => {
               <span className="princ-opcion-desc">Administra accesos al sistema</span>
             </div>
           </button>
+
+          {/* ⬇️ NUEVA CAJA: Tipos de documento */}
+          <button className="princ-opcion princ-opcion-docs" onClick={() => navigate('/tipos-documentos')}>
+            <div className="princ-opcion-content">
+              <div className="princ-opcion-icono-container">
+                <FontAwesomeIcon icon={faIdCard} className="princ-opcion-icono" />
+              </div>
+              <span className="princ-opcion-texto">Tipos de Documento</span>
+              <span className="princ-opcion-desc">ABM de tipos y siglas</span>
+            </div>
+          </button>
         </div>
 
         <div className="princ-footer">
           <div className="princ-footer-container">
             <div className="princ-creditos-container">
-              <p
-                className="princ-creditos"
-                onClick={redirectTo3Devs}
-              >
+              <p className="princ-creditos" onClick={redirectTo3Devs}>
                 Desarrollado por 3devs.solutions
               </p>
             </div>

@@ -25,19 +25,8 @@ const normalizar = (str = "") =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const combinarNombre = (a = {}) => {
-  if (a?.nombre_apellido) return a.nombre_apellido;
-  const partes = [
-    a?.apellido ?? "",
-    a?.nombre ?? "",
-    a?.apellido_nombre ?? "",
-    a?.nombre_completo ?? "",
-    a?.nombreyapellido ?? "",
-    a?.nyap ?? "",
-  ].filter(Boolean);
-  const arm = partes.join(" ").trim();
-  return arm || a?.nombre || "";
-};
+const nombreApellido = (a = {}) =>
+  `${(a.apellido || "").trim()} ${(a.nombre || "").trim()}`.trim();
 
 const formatearFecha = (val) => {
   if (!val) return "—";
@@ -77,7 +66,7 @@ const AlumnoBaja = () => {
   const alumnosFiltrados = useMemo(() => {
     if (!busqueda) return alumnos;
     const q = normalizar(busqueda);
-    return alumnos.filter((a) => normalizar(combinarNombre(a)).includes(q));
+    return alumnos.filter((a) => normalizar(nombreApellido(a)).includes(q));
   }, [alumnos, busqueda]);
 
   /* ============ Carga inicial ============ */
@@ -248,10 +237,7 @@ const AlumnoBaja = () => {
           </div>
 
           {/* Volver (solo desktop) */}
-          <button
-            className="emp-baja-boton-volver-top"
-            onClick={() => navigate("/alumnos")}
-          >
+          <button className="emp-baja-boton-volver-top" onClick={() => navigate("/alumnos")}>
             <FaArrowLeft className="icon-button-baja" />
             Volver
           </button>
@@ -263,13 +249,21 @@ const AlumnoBaja = () => {
         <input
           type="text"
           className="emp-baja-buscador"
-          placeholder="Buscar por nombre..."
+          placeholder="Buscar por apellido o nombre..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
         <div className="emp-baja-buscador-icono">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-               strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
@@ -305,9 +299,8 @@ const AlumnoBaja = () => {
           <div className="emp-baja-tabla-header-container">
             <div className="emp-baja-tabla-header">
               <div className="emp-baja-col-id">ID</div>
-              <div className="emp-baja-col-nombre">Nombre</div>
-              <div className="emp-baja-col-fecha">Ingreso</div>
-              <div className="emp-baja-col-domicilio">Domicilio</div>
+              <div className="emp-baja-col-nombre">Apellido y Nombre</div>
+              <div className="emp-baja-col-fecha">Fecha de Baja</div>
               <div className="emp-baja-col-motivo">Motivo</div>
               <div className="emp-baja-col-acciones">Acciones</div>
             </div>
@@ -323,9 +316,9 @@ const AlumnoBaja = () => {
               alumnosFiltrados.map((a) => (
                 <div className="emp-baja-fila" key={a.id_alumno}>
                   <div className="emp-baja-col-id">{a.id_alumno}</div>
-                  <div className="emp-baja-col-nombre">{combinarNombre(a)}</div>
+                  <div className="emp-baja-col-nombre">{nombreApellido(a) || "—"}</div>
+                  {/* Se usa 'ingreso' porque en la baja se pisa con la fecha de baja */}
                   <div className="emp-baja-col-fecha">{formatearFecha(a.ingreso)}</div>
-                  <div className="emp-baja-col-domicilio">{(a.domicilio || "").trim() || "—"}</div>
                   <div className="emp-baja-col-motivo">{(a.motivo || "").trim() || "—"}</div>
                   <div className="emp-baja-col-acciones">
                     <div className="emp-baja-iconos">
@@ -357,23 +350,39 @@ const AlumnoBaja = () => {
 
       {/* Modal DAR ALTA */}
       {mostrarConfirmacionAlta && alumnoSeleccionado && (
-        <div className="emp-baja-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-alta-alumno-title">
+        <div
+          className="emp-baja-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-alta-alumno-title"
+        >
           <div className="emp-baja-modal emp-baja-modal--success">
             <div className="emp-baja-modal__icon" aria-hidden="true">
               <FaUserCheck />
             </div>
-            <h3 id="modal-alta-alumno-title" className="emp-baja-modal__title emp-baja-modal__title--success">
+            <h3
+              id="modal-alta-alumno-title"
+              className="emp-baja-modal__title emp-baja-modal__title--success"
+            >
               Reactivar alumno
             </h3>
             <p className="emp-baja-modal__body">
-              ¿Deseás dar de alta nuevamente a <strong>{combinarNombre(alumnoSeleccionado)}</strong>?
+              ¿Deseás dar de alta nuevamente a{" "}
+              <strong>{nombreApellido(alumnoSeleccionado)}</strong>?
             </p>
 
             <div className="soc-campo-fecha-alta">
-              <label htmlFor="fecha_alta_alumno" className="soc-label-fecha-alta">Fecha de alta</label>
-              <div className="soc-input-fecha-container" role="button" tabIndex={0}
-                   onMouseDown={openDatePicker} onKeyDown={handleKeyDownPicker}
-                   aria-label="Abrir selector de fecha">
+              <label htmlFor="fecha_alta_alumno" className="soc-label-fecha-alta">
+                Fecha de alta
+              </label>
+              <div
+                className="soc-input-fecha-container"
+                role="button"
+                tabIndex={0}
+                onMouseDown={openDatePicker}
+                onKeyDown={handleKeyDownPicker}
+                aria-label="Abrir selector de fecha"
+              >
                 <input
                   id="fecha_alta_alumno"
                   ref={fechaInputRef}
@@ -396,8 +405,10 @@ const AlumnoBaja = () => {
               >
                 Cancelar
               </button>
-              <button className="emp-baja-btn emp-baja-btn--solid-success"
-                      onClick={() => darAltaAlumno(alumnoSeleccionado.id_alumno)}>
+              <button
+                className="emp-baja-btn emp-baja-btn--solid-success"
+                onClick={() => darAltaAlumno(alumnoSeleccionado.id_alumno)}
+              >
                 Confirmar
               </button>
             </div>
@@ -407,24 +418,40 @@ const AlumnoBaja = () => {
 
       {/* Modal ELIMINAR UNO */}
       {mostrarConfirmacionEliminarUno && alumnoAEliminar && (
-        <div className="emp-baja-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-alumno-title">
+        <div
+          className="emp-baja-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-eliminar-alumno-title"
+        >
           <div className="emp-baja-modal emp-baja-modal--danger">
             <div className="emp-baja-modal__icon emp-baja-modal__icon--danger" aria-hidden="true">
               <FaTrashAlt />
             </div>
-            <h3 id="modal-eliminar-alumno-title" className="emp-baja-modal__title emp-baja-modal__title--danger">
+            <h3
+              id="modal-eliminar-alumno-title"
+              className="emp-baja-modal__title emp-baja-modal__title--danger"
+            >
               Eliminar permanentemente
             </h3>
             <p className="emp-baja-modal__body">
-              ¿Eliminar definitivamente al alumno <strong>{combinarNombre(alumnoAEliminar)}</strong>? Esta acción no se puede deshacer.
+              ¿Eliminar definitivamente al alumno{" "}
+              <strong>{nombreApellido(alumnoAEliminar)}</strong>? Esta acción no se puede deshacer.
             </p>
             <div className="emp-baja-modal__actions">
-              <button className="emp-baja-btn emp-baja-btn--ghost"
-                      onClick={() => { setMostrarConfirmacionEliminarUno(false); setAlumnoAEliminar(null); }}>
+              <button
+                className="emp-baja-btn emp-baja-btn--ghost"
+                onClick={() => {
+                  setMostrarConfirmacionEliminarUno(false);
+                  setAlumnoAEliminar(null);
+                }}
+              >
                 Cancelar
               </button>
-              <button className="emp-baja-btn emp-baja-btn--solid-danger"
-                      onClick={() => eliminarAlumnoDefinitivo(alumnoAEliminar.id_alumno)}>
+              <button
+                className="emp-baja-btn emp-baja-btn--solid-danger"
+                onClick={() => eliminarAlumnoDefinitivo(alumnoAEliminar.id_alumno)}
+              >
                 Sí, eliminar
               </button>
             </div>
@@ -434,20 +461,31 @@ const AlumnoBaja = () => {
 
       {/* Modal ELIMINAR TODOS */}
       {mostrarConfirmacionEliminarTodos && (
-        <div className="emp-baja-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-todos-title">
+        <div
+          className="emp-baja-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-eliminar-todos-title"
+        >
           <div className="emp-baja-modal emp-baja-modal--danger">
             <div className="emp-baja-modal__icon emp-baja-modal__icon--danger" aria-hidden="true">
               <FaTrashAlt />
             </div>
-            <h3 id="modal-eliminar-todos-title" className="emp-baja-modal__title emp-baja-modal__title--danger">
+            <h3
+              id="modal-eliminar-todos-title"
+              className="emp-baja-modal__title emp-baja-modal__title--danger"
+            >
               Eliminar permanentemente
             </h3>
             <p className="emp-baja-modal__body">
-              ¿Eliminar definitivamente <strong>todos</strong> los alumnos actualmente visibles? Esta acción no se puede deshacer.
+              ¿Eliminar definitivamente <strong>todos</strong> los alumnos actualmente visibles? Esta
+              acción no se puede deshacer.
             </p>
             <div className="emp-baja-modal__actions">
-              <button className="emp-baja-btn emp-baja-btn--ghost"
-                      onClick={() => setMostrarConfirmacionEliminarTodos(false)}>
+              <button
+                className="emp-baja-btn emp-baja-btn--ghost"
+                onClick={() => setMostrarConfirmacionEliminarTodos(false)}
+              >
                 Cancelar
               </button>
               <button className="emp-baja-btn emp-baja-btn--solid-danger" onClick={eliminarTodosDefinitivo}>
@@ -460,10 +498,7 @@ const AlumnoBaja = () => {
 
       {/* Barra inferior móvil: Volver (solo mobile) */}
       <div className="emp-baja-navbar-mobile">
-        <button
-          className="emp-baja-boton-volver-mobile"
-          onClick={() => navigate("/alumnos")}
-        >
+        <button className="emp-baja-boton-volver-mobile" onClick={() => navigate("/alumnos")}>
           <FaArrowLeft className="alu-alumno-icon-button" />
           Volver
         </button>

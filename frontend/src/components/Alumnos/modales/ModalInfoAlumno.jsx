@@ -1,3 +1,4 @@
+// src/components/Alumnos/ModalInfoAlumno.jsx
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import './ModalInfoAlumno.css';
 
@@ -5,84 +6,90 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
   // Cerrar con ESC
   useEffect(() => {
     if (!mostrar) return;
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleEsc = (e) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [mostrar, onClose]);
 
-  const [pestania, setPestania] = useState('datos'); // 'datos' | 'contacto' | 'academico'
+  // 'datos' | 'contacto' | 'academico' | 'observaciones'
+  const [pestania, setPestania] = useState('datos');
 
-  const nombreMostrado = useMemo(() => {
+  /* ----------------- Helpers ----------------- */
+  const nombreCompleto = useMemo(() => {
     if (!alumno) return '';
-    const partes = [
-      alumno?.apellido ?? '',
-      alumno?.nombre ?? '',
-      alumno?.nombre_completo ?? '',
-      alumno?.nombreyapellido ?? '',
-      alumno?.nyap ?? '',
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    return partes || alumno?.nombre || '';
+    const ap = (alumno.apellido || '').trim();
+    const no = (alumno.nombre || '').trim();
+    const armado = `${ap} ${no}`.trim();
+    return armado || ap || no || '-';
   }, [alumno]);
 
-  const construirDomicilio = useCallback((v) => (v || '').trim(), []);
-  const handleOverlayClick = useCallback(
-    (e) => {
-      if (e.target.classList.contains('modal-overlay')) onClose();
-    },
-    [onClose]
-  );
-
-  // ---- Formateador de fechas (YYYY-MM-DD -> DD/MM/YYYY) ----
   const formatearFecha = useCallback((val) => {
     if (!val) return '-';
-    // Si ya viene como YYYY-MM-DD
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
     if (m) {
       const [, yyyy, mm, dd] = m;
       return `${dd}/${mm}/${yyyy}`;
     }
-    // Intento genérico
     const d = new Date(val.includes('T') ? val : `${val}T00:00:00`);
-    if (isNaN(d.getTime())) return '-';
+    if (Number.isNaN(d.getTime())) return '-';
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   }, []);
 
+  const texto = (v) =>
+    v === null || v === undefined || String(v).trim() === '' ? '-' : String(v).trim();
+
   // No render si no corresponde
   if (!mostrar || !alumno) return null;
 
-  const dni = alumno?.dni || '-';
-  const domicilio = construirDomicilio(alumno?.domicilio);
-  const localidad = alumno?.localidad || '-';
-  const telefono = alumno?.telefono || alumno?.tel || '-';
-  const anio = alumno?.anio_nombre || alumno?.anio || '-';
-  const division = alumno?.division_nombre || alumno?.division || '-';
-  const categoria = alumno?.categoria_nombre || alumno?.id_categoria || '-';
-  const ingreso = formatearFecha(alumno?.ingreso); // <<--- NUEVO
+  /* ----------------- Extracts (todos ya resueltos por backend) ----------------- */
+  // Documento
+  const tipoDocNombre = alumno.tipo_documento_nombre || '';
+  const tipoDocSigla  = alumno.tipo_documento_sigla ? ` (${alumno.tipo_documento_sigla})` : '';
+  const tipoDoc       = texto(`${tipoDocNombre}${tipoDocSigla}`);
+  const numDoc        = alumno.num_documento || alumno.dni || '-';
+
+  // Sexo
+  const sexo = texto(alumno.sexo_nombre);
+
+  // Contacto / domicilio
+  const domicilio = texto(alumno.domicilio);
+  const localidad = texto(alumno.localidad);
+  const cp        = texto(alumno.cp);
+  const telefono  = texto(alumno.telefono);
+
+  // Nacimiento
+  const lugarNac  = texto(alumno.lugar_nacimiento);
+  const fechaNac  = formatearFecha(alumno.fecha_nacimiento);
+
+  // Académico
+  const anio      = alumno.anio_nombre      || alumno.nombre_año      || alumno.nombre_anio || texto(alumno.id_año);
+  const division  = alumno.division_nombre  || alumno.nombre_division || texto(alumno.id_division);
+  const categoria = alumno.categoria_nombre || alumno.nombre_categoria|| texto(alumno.id_categoria);
+
+  // Estado
+  const ingreso   = formatearFecha(alumno.ingreso);
+
+  // ✅ Observaciones (texto libre, puede venir null/empty)
+  const observaciones = alumno.observaciones; // mostrar tal cual, con pre-wrap
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}
+    >
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="modal-header">
           <div className="modal-header-content">
             <h2 className="modal-title">Información del Alumno</h2>
             <p className="modal-subtitle">
-              ID: {alumno.id_alumno} | {nombreMostrado}
+              ID: {alumno.id_alumno} | {nombreCompleto}
             </p>
           </div>
-          <button
-            className="modal-close-btn"
-            onClick={onClose}
-            aria-label="Cerrar modal"
-          >
+          <button className="modal-close-btn" onClick={onClose} aria-label="Cerrar modal">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="22"
@@ -102,23 +109,17 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
 
         {/* Pestañas */}
         <div className="modal-tabs">
-          <div
-            className={`tab ${pestania === 'datos' ? 'active' : ''}`}
-            onClick={() => setPestania('datos')}
-          >
+          <div className={`tab ${pestania === 'datos' ? 'active' : ''}`} onClick={() => setPestania('datos')}>
             Datos
           </div>
-          <div
-            className={`tab ${pestania === 'contacto' ? 'active' : ''}`}
-            onClick={() => setPestania('contacto')}
-          >
+          <div className={`tab ${pestania === 'contacto' ? 'active' : ''}`} onClick={() => setPestania('contacto')}>
             Contacto
           </div>
-          <div
-            className={`tab ${pestania === 'academico' ? 'active' : ''}`}
-            onClick={() => setPestania('academico')}
-          >
+          <div className={`tab ${pestania === 'academico' ? 'active' : ''}`} onClick={() => setPestania('academico')}>
             Académico
+          </div>
+          <div className={`tab ${pestania === 'observaciones' ? 'active' : ''}`} onClick={() => setPestania('observaciones')}>
+            Observaciones
           </div>
         </div>
 
@@ -127,18 +128,36 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
           {pestania === 'datos' && (
             <div className="tab-content active">
               <div className="info-grid">
-                {/* Datos Personales ocupa todo el ancho */}
                 <div className="info-card info-card-full">
                   <h3 className="info-card-title">Datos Personales</h3>
+
+                  {/* Apellido y Nombre en header */}
+
                   <div className="info-item">
-                    <span className="info-label">Apellido y Nombre:</span>
-                    <span className="info-value">{nombreMostrado}</span>
+                    <span className="info-label">Tipo de Documento:</span>
+                    <span className="info-value">{tipoDoc}</span>
                   </div>
                   <div className="info-item">
-                    <span className="info-label">DNI:</span>
-                    <span className="info-value">{dni}</span>
+                    <span className="info-label">Nº Documento:</span>
+                    <span className="info-value">{texto(numDoc)}</span>
                   </div>
-                  {/* NUEVO: Ingreso */}
+
+                  <div className="info-item">
+                    <span className="info-label">Sexo:</span>
+                    <span className="info-value">{sexo}</span>
+                  </div>
+
+                  <div className="info-item">
+                    <span className="info-label">Lugar de nacimiento:</span>
+                    <span className="info-value">{lugarNac}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Fecha de nacimiento:</span>
+                    <span className="info-value">{fechaNac}</span>
+                  </div>
+
+                  <div className="info-sep" />
+
                   <div className="info-item">
                     <span className="info-label">Ingreso:</span>
                     <span className="info-value">{ingreso}</span>
@@ -155,11 +174,15 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                   <h3 className="info-card-title">Dirección</h3>
                   <div className="info-item">
                     <span className="info-label">Domicilio:</span>
-                    <span className="info-value">{domicilio || '-'}</span>
+                    <span className="info-value">{domicilio}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Localidad:</span>
                     <span className="info-value">{localidad}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">CP:</span>
+                    <span className="info-value">{cp}</span>
                   </div>
                 </div>
 
@@ -181,11 +204,11 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                   <h3 className="info-card-title">Curso</h3>
                   <div className="info-item">
                     <span className="info-label">Año:</span>
-                    <span className="info-value">{anio}</span>
+                    <span className="info-value">{texto(anio)}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">División:</span>
-                    <span className="info-value">{division}</span>
+                    <span className="info-value">{texto(division)}</span>
                   </div>
                 </div>
 
@@ -193,7 +216,26 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                   <h3 className="info-card-title">Categoría</h3>
                   <div className="info-item">
                     <span className="info-label">Categoría:</span>
-                    <span className="info-value">{categoria}</span>
+                    <span className="info-value">{texto(categoria)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {pestania === 'observaciones' && (
+            <div className="tab-content active">
+              <div className="info-grid">
+                <div className="info-card info-card-full">
+                  <h3 className="info-card-title">Observaciones</h3>
+                  <div className="info-item">
+                    <span className="info-label">Notas:</span>
+                    <span
+                      className="info-value"
+                      style={{ whiteSpace: 'pre-wrap' }} // ✅ respeta saltos de línea
+                    >
+                      {texto(observaciones)}
+                    </span>
                   </div>
                 </div>
               </div>

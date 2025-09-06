@@ -2,9 +2,6 @@
 // backend/modules/alumnos/dar_alta_alumno.php
 declare(strict_types=1);
 
-ini_set('display_errors', '0');
-error_reporting(0);
-
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
@@ -16,6 +13,7 @@ try {
         exit;
     }
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec("SET NAMES utf8mb4");
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
@@ -23,18 +21,18 @@ try {
         exit;
     }
 
-    // ==== Leer parámetros (preferir x-www-form-urlencoded) ====
+    // ==== Leer parámetros (x-www-form-urlencoded o JSON) ====
     $id_alumno = 0;
     $fechaIngresada = '';
 
     if (!empty($_POST)) {
-        $id_alumno = isset($_POST['id_alumno']) ? (int)$_POST['id_alumno'] : 0;
+        $id_alumno      = isset($_POST['id_alumno']) ? (int)$_POST['id_alumno'] : 0;
         $fechaIngresada = isset($_POST['fecha_ingreso']) ? trim((string)$_POST['fecha_ingreso']) : '';
     } else {
-        $raw = file_get_contents('php://input');
+        $raw  = file_get_contents('php://input');
         $data = json_decode($raw, true);
         if (is_array($data)) {
-            $id_alumno = isset($data['id_alumno']) ? (int)$data['id_alumno'] : 0;
+            $id_alumno      = isset($data['id_alumno']) ? (int)$data['id_alumno'] : 0;
             $fechaIngresada = isset($data['fecha_ingreso']) ? trim((string)$data['fecha_ingreso']) : '';
         }
     }
@@ -45,55 +43,42 @@ try {
         exit;
     }
 
-    // ==== Normalizar fecha a Y-m-d (acepta Y-m-d o d/m/Y). Null => inválida ====
+    // ==== Normalizar fecha a Y-m-d (acepta Y-m-d o d/m/Y). Si no es válida, usamos ahora (Córdoba) ====
     $fechaValida = normalizarFecha($fechaIngresada);
 
-    // ==== Nombres de tabla/columnas (según esquema que pasaste) ====
-    // Tabla: cooperadora.alumnos (no calificamos el esquema para usar la DB activa del $pdo)
-    $tabla      = '`alumnos`';
-    $colId      = 'id_alumno';
-    $colActivo  = 'activo';
-    $colMotivo  = 'motivo';
-    $colIngreso = 'ingreso';
+    $tz = new DateTimeZone('America/Argentina/Cordoba');
+    $fechaUsar = $fechaValida ?? (new DateTime('now', $tz))->format('Y-m-d');
 
-    if ($fechaValida !== null) {
-        $sql = "UPDATE {$tabla}
-                   SET {$colActivo} = 1,
-                       {$colMotivo} = NULL,
-                       {$colIngreso} = :fecha
-                 WHERE {$colId} = :id
-                 LIMIT 1";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':fecha' => $fechaValida, ':id' => $id_alumno]);
-        $usada = $fechaValida;
-    } else {
-        $sql = "UPDATE {$tabla}
-                   SET {$colActivo} = 1,
-                       {$colMotivo} = NULL,
-                       {$colIngreso} = CURDATE()
-                 WHERE {$colId} = :id
-                 LIMIT 1";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':id' => $id_alumno]);
-        $usada = 'CURDATE()';
-    }
+    // ==== UPDATE: activo=1, motivo=NULL, ingreso=:fecha ====
+    $sql = "UPDATE `alumnos`
+               SET `activo`  = 1,
+                   `motivo`  = NULL,
+                   `ingreso` = :fecha
+             WHERE `id_alumno` = :id
+             LIMIT 1";
 
-    // Si no afectó filas, verificar existencia
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        ':fecha' => $fechaUsar,
+        ':id'    => $id_alumno,
+    ]);
+
+    // Si no afectó filas, verificar existencia (pudo estar ya en ese estado)
     if ($stmt->rowCount() === 0) {
-        $chk = $pdo->prepare("SELECT {$colId} FROM {$tabla} WHERE {$colId} = :id LIMIT 1");
+        $chk = $pdo->prepare("SELECT `id_alumno` FROM `alumnos` WHERE `id_alumno` = :id LIMIT 1");
         $chk->execute([':id' => $id_alumno]);
         if (!$chk->fetch()) {
             http_response_code(404);
             echo json_encode(['exito' => false, 'mensaje' => 'Alumno no encontrado']);
             exit;
         }
-        // Existe pero ya estaba con esos valores; lo tomamos como éxito.
+        // Existe pero sin cambios; lo tomamos como éxito igualmente
     }
 
     echo json_encode([
         'exito'       => true,
         'mensaje'     => 'Alumno dado de alta correctamente',
-        'fecha_usada' => $usada
+        'fecha_usada' => $fechaUsar
     ], JSON_UNESCAPED_UNICODE);
     exit;
 
@@ -108,7 +93,7 @@ try {
 
 /**
  * Convierte una fecha string a 'Y-m-d' si es válida.
- * Acepta 'Y-m-d' o 'd/m/Y'. Devuelve null si no es válida.
+ * Acepta 'Y-m-d' o 'd/m/Y'. Devuelve null si no es válida o cadena vacía.
  */
 function normalizarFecha(string $s): ?string {
     $s = trim($s);

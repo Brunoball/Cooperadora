@@ -16,7 +16,10 @@ import AlumnoBaja from './components/Alumnos/AlumnoBaja';
 import Cuotas from './components/Cuotas/Cuotas';
 
 // 📊 Contable (Dashboard)
-import DashboardContable from './components/Contable/DashboardContable'; // asegúrate del nombre del archivo
+import DashboardContable from './components/Contable/DashboardContable';
+
+// 🪪 ⬅️ NUEVO: Tipos de Documento
+import TiposDocumentos from './components/TiposDocumentos/TiposDocumentos';
 
 function App() {
   return (
@@ -36,8 +39,11 @@ function App() {
         {/* Rutas de Cuotas */}
         <Route path="/cuotas" element={<RutaProtegida componente={<Cuotas />} />} />
 
-        {/* Ruta del Dashboard Contable */}
+        {/* Dashboard Contable */}
         <Route path="/contable" element={<RutaProtegida componente={<DashboardContable />} />} />
+
+        {/* ⬇️ NUEVA RUTA protegida */}
+        <Route path="/tipos-documentos" element={<RutaProtegida componente={<TiposDocumentos />} />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

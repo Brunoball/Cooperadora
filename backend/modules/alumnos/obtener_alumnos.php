@@ -1,52 +1,76 @@
 <?php
 // backend/modules/alumnos/obtener_alumnos.php
-
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/../../config/db.php'; // Debe definir $pdo (PDO)
+require_once __DIR__ . '/../../config/db.php'; // Debe exponer $pdo (PDO)
 
 try {
-    // Forzar excepciones en PDO y charset
-    if ($pdo instanceof PDO) {
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec("SET NAMES utf8mb4");
-    } else {
+    if (!($pdo instanceof PDO)) {
         throw new RuntimeException('Conexión PDO no disponible.');
     }
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Charset
+    $pdo->exec("SET NAMES utf8mb4");
 
-    // Filtros opcionales (?q=texto | ?id=123)
+    /* ===========================
+       Parámetros opcionales
+       =========================== */
     $q  = isset($_GET['q'])  ? trim((string)$_GET['q']) : '';
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-    /**
-     * NOTA sobre nombres con ñ:
-     * Si tu esquema usa columnas/tablas sin "ñ", reemplazá:
-     *   - `id_año` por `id_anio`
-     *   - `nombre_año` por `nombre_anio`
-     * y lo mismo en los JOIN/SELECT de abajo.
-     */
+    /* ============================================================
+       NOTA sobre nombres con ñ (id_año / nombre_año):
+       Si tus tablas usan "anio" en lugar de "año", cambiá:
+         - `id_año` por `id_anio`
+         - `nombre_año` por `nombre_anio`
+       y lo mismo en los JOIN/SELECT.
+       ============================================================ */
 
+    // SELECT con todos los campos que consume el frontend
+    // num_documento -> alias dni (compat)
     $sql = "
         SELECT
             a.id_alumno,
-            a.apellido_nombre      AS nombre,
-            a.dni,
+            a.apellido,
+            a.nombre,
+            CONCAT_WS(' ', a.apellido, a.nombre) AS apellido_nombre,
+            a.num_documento AS dni,
+            a.num_documento,
+            a.id_tipo_documento,
+            a.id_sexo,
             a.domicilio,
             a.localidad,
+            a.cp,
             a.telefono,
+            a.lugar_nacimiento,
+            a.fecha_nacimiento,
             a.`id_año`,
             a.`id_division`,
             a.`id_categoria`,
-            a.`ingreso`,                      -- <<< AÑADIDO: fecha de ingreso (DATE, YYYY-MM-DD)
-            an.`nombre_año`        AS anio_nombre,
-            d.`nombre_division`    AS division_nombre,
-            c.`nombre_categoria`   AS categoria_nombre
+            a.activo,
+            a.motivo,
+            a.ingreso,
+            a.observaciones,
+
+            -- Nombres ya resueltos para UI
+            an.`nombre_año`      AS anio_nombre,
+            d.`nombre_division`  AS division_nombre,
+            c.`nombre_categoria` AS categoria_nombre,
+
+            -- NUEVO: resolver sexo y tipo de documento
+            s.`sexo`             AS sexo_nombre,
+            td.`descripcion`     AS tipo_documento_nombre,
+            td.`sigla`           AS tipo_documento_sigla
+
         FROM alumnos a
-        LEFT JOIN anio an      ON an.`id_año`      = a.`id_año`
-        LEFT JOIN division d   ON d.`id_division`  = a.`id_division`
-        LEFT JOIN categoria c  ON c.`id_categoria` = a.`id_categoria`
+        LEFT JOIN anio an           ON an.`id_año`       = a.`id_año`
+        LEFT JOIN division d        ON d.`id_division`   = a.`id_division`
+        LEFT JOIN categoria c       ON c.`id_categoria`  = a.`id_categoria`
+        LEFT JOIN sexo s            ON s.`id_sexo`       = a.`id_sexo`
+        LEFT JOIN tipos_documentos td
+                                    ON td.`id_tipo_documento` = a.`id_tipo_documento`
         /**WHERE**/
         ORDER BY a.id_alumno ASC
     ";
@@ -54,18 +78,19 @@ try {
     $where  = [];
     $params = [];
 
-    // Solo activos
+    // Solo activos (la grilla principal suele mostrar activos)
     $where[] = "a.activo = 1";
 
     if ($id > 0) {
-        $where[]       = "a.id_alumno = :id";
-        $params[':id'] = $id;
+        $where[]        = "a.id_alumno = :id";
+        $params[':id']  = $id;
     } elseif ($q !== '') {
-        $where[]       = "a.apellido_nombre LIKE :q";
-        $params[':q']  = "%{$q}%";
+        // Busca por Apellido + Nombre (case-insensitive por collation)
+        $where[]        = "CONCAT_WS(' ', a.apellido, a.nombre) LIKE :q";
+        $params[':q']   = "%{$q}%";
     }
 
-    // Armar WHERE final
+    // Inyectar WHERE (si corresponde)
     if (!empty($where)) {
         $sql = str_replace('/**WHERE**/', 'WHERE ' . implode(' AND ', $where), $sql);
     } else {
@@ -78,13 +103,13 @@ try {
 
     echo json_encode([
         'exito'   => true,
-        'alumnos' => $alumnos
+        'alumnos' => $alumnos,
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'exito'   => false,
-        'mensaje' => 'Error al obtener los alumnos: ' . $e->getMessage()
+        'mensaje' => 'Error al obtener los alumnos: ' . $e->getMessage(),
     ], JSON_UNESCAPED_UNICODE);
 }
