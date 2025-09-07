@@ -59,7 +59,7 @@ try {
 
         /* CUOTAS */
         case 'cuotas':             include_module($M . '/cuotas/cuotas.php'); break;
-        case 'periodos_pagados':   include_module($M . '/cuotas/periodos_pagados.php'); break;
+        case 'meses_pagados':   include_module($M . '/cuotas/meses_pagados.php'); break;
         case 'registrar_pago':     include_module($M . '/cuotas/registrar_pago.php'); break;
         case 'eliminar_pago':      include_module($M . '/cuotas/eliminar_pago.php'); break;
 
