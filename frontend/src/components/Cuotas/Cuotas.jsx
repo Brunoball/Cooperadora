@@ -112,7 +112,6 @@ const Cuotas = () => {
       const data = await res.json().catch(() => ({}));
       if (data?.exito && Array.isArray(data.anios)) {
         setAnios(data.anios);
-        // NO forzamos cambio de selección: el año actual ya está por defecto.
       } else {
         setAnios([]);
       }
@@ -157,7 +156,7 @@ const Cuotas = () => {
     } finally {
       setLoading(false);
     }
-  }, [BASE_URL, mesSeleccionado, anioSeleccionado]);
+  }, [mesSeleccionado, anioSeleccionado]);
 
   // Cargar años y luego datos
   useEffect(() => {
@@ -395,7 +394,8 @@ const Cuotas = () => {
       {mostrarModalEliminarPago && (
         <ModalEliminarPago
           socio={socioParaPagar}
-          periodo={mesSeleccionado}
+          periodoId={Number(mesSeleccionado)}
+          periodoNombre={getNombreMes(mesSeleccionado)}
           onClose={() => setMostrarModalEliminarPago(false)}
           onEliminado={resyncAll}
         />
@@ -404,9 +404,8 @@ const Cuotas = () => {
       {mostrarModalEliminarCond && (
         <ModalEliminarCondonacion
           socio={socioParaPagar}
-          periodo={mesSeleccionado}
+          periodo={Number(mesSeleccionado)}
           periodoTexto={getNombreMes(mesSeleccionado)}
-          anio={new Date().getFullYear()} // para el comprobante impreso
           onClose={() => setMostrarModalEliminarCond(false)}
           onEliminado={resyncAll}
         />
@@ -430,7 +429,6 @@ const Cuotas = () => {
                 <div className="gcuotas-input-group">
                   <label htmlFor="anio" className="gcuotas-input-label"><FontAwesomeIcon icon={faFilter} /> Año de pago</label>
                   <select id="anio" value={anioSeleccionado} onChange={onChangeAnio} className="gcuotas-dropdown" disabled={loading}>
-                    {/* Siempre queda seleccionado el año actual por defecto */}
                     {anios.length === 0 && <option value={anioSeleccionado}>{anioSeleccionado}</option>}
                     <option value="">Todos</option>
                     {anios.map((a, idx) => (<option key={idx} value={a.id}>{a.nombre}</option>))}

@@ -59,7 +59,7 @@ try {
 
         /* CUOTAS */
         case 'cuotas':             include_module($M . '/cuotas/cuotas.php'); break;
-        case 'meses_pagados':   include_module($M . '/cuotas/meses_pagados.php'); break;
+        case 'meses_pagados':      include_module($M . '/cuotas/meses_pagados.php'); break;
         case 'registrar_pago':     include_module($M . '/cuotas/registrar_pago.php'); break;
         case 'eliminar_pago':      include_module($M . '/cuotas/eliminar_pago.php'); break;
 
@@ -71,6 +71,15 @@ try {
         case 'td_crear':           include_module($M . '/tipos_documentos/crear_documentos.php'); break;
         case 'td_actualizar':      include_module($M . '/tipos_documentos/editar_documentos.php'); break;
         case 'td_eliminar':        include_module($M . '/tipos_documentos/eliminar_documentos.php'); break;
+
+        /* ✅ CATEGORÍAS */
+        case 'cat_listar':         include_module($M . '/categorias/obtener_categorias.php'); break;
+        case 'cat_crear':          include_module($M . '/categorias/agregar_categoria.php'); break;
+        case 'cat_actualizar':     include_module($M . '/categorias/editar_categoria.php'); break; // solo monto
+        case 'cat_eliminar':       include_module($M . '/categorias/eliminar_categoria.php'); break;
+        case 'cat_historial':      include_module($M . '/categorias/obtener_historial.php'); break; 
+
+        
 
         default:
             http_response_code(200);

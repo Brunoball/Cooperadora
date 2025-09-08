@@ -14,7 +14,8 @@ import {
   faUserPlus,
   faSignOutAlt,
   faExclamationTriangle,
-  faIdCard,           // ⬅️ NUEVO (icono Tipos de documento)
+  faIdCard,
+  faLayerGroup, // ⬅️ NUEVO (icono Categorías)
 } from '@fortawesome/free-solid-svg-icons';
 
 /* =========== Modal simple ============= */
@@ -176,7 +177,7 @@ const Principal = () => {
             </div>
           </button>
 
-          {/* ⬇️ NUEVA CAJA: Tipos de documento */}
+          {/* Tipos de documento */}
           <button className="princ-opcion princ-opcion-docs" onClick={() => navigate('/tipos-documentos')}>
             <div className="princ-opcion-content">
               <div className="princ-opcion-icono-container">
@@ -184,6 +185,17 @@ const Principal = () => {
               </div>
               <span className="princ-opcion-texto">Tipos de Documento</span>
               <span className="princ-opcion-desc">ABM de tipos y siglas</span>
+            </div>
+          </button>
+
+          {/* ⬇️ NUEVA CAJA: Categorías */}
+          <button className="princ-opcion princ-opcion-categorias" onClick={() => navigate('/categorias')}>
+            <div className="princ-opcion-content">
+              <div className="princ-opcion-icono-container">
+                <FontAwesomeIcon icon={faLayerGroup} className="princ-opcion-icono" />
+              </div>
+              <span className="princ-opcion-texto">Categorías</span>
+              <span className="princ-opcion-desc">ABM de categorías y montos</span>
             </div>
           </button>
         </div>

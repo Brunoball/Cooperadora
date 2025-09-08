@@ -18,15 +18,22 @@ import Cuotas from './components/Cuotas/Cuotas';
 // 📊 Contable (Dashboard)
 import DashboardContable from './components/Contable/DashboardContable';
 
-// 🪪 ⬅️ NUEVO: Tipos de Documento
+// 🪪 Tipos de Documento
 import TiposDocumentos from './components/TiposDocumentos/TiposDocumentos';
+
+// 🧩 Categorías
+import Categorias from './components/Categorias/Categorias';
+import CategoriaNueva from './components/Categorias/CategoriaNueva';
+import CategoriaEditar from './components/Categorias/CategoriaEditar';
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Login */}
         <Route path="/" element={<Inicio />} />
 
+        {/* Panel y registro */}
         <Route path="/panel" element={<RutaProtegida componente={<Principal />} />} />
         <Route path="/registro" element={<RutaProtegida componente={<Registro />} />} />
 
@@ -42,8 +49,13 @@ function App() {
         {/* Dashboard Contable */}
         <Route path="/contable" element={<RutaProtegida componente={<DashboardContable />} />} />
 
-        {/* ⬇️ NUEVA RUTA protegida */}
+        {/* Tipos de Documento */}
         <Route path="/tipos-documentos" element={<RutaProtegida componente={<TiposDocumentos />} />} />
+
+        {/* Categorías */}
+        <Route path="/categorias" element={<RutaProtegida componente={<Categorias />} />} />
+        <Route path="/categorias/nueva" element={<RutaProtegida componente={<CategoriaNueva />} />} />
+        <Route path="/categorias/editar/:id" element={<RutaProtegida componente={<CategoriaEditar />} />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -53,8 +65,12 @@ function App() {
 }
 
 function RutaProtegida({ componente }) {
-  const usuario = JSON.parse(localStorage.getItem('usuario'));
-  return usuario ? componente : <Navigate to="/" replace />;
+  try {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    return usuario ? componente : <Navigate to="/" replace />;
+  } catch {
+    return <Navigate to="/" replace />;
+  }
 }
 
 export default App;
