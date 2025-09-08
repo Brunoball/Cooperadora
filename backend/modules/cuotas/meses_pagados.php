@@ -1,96 +1,116 @@
 <?php
-// modules/pagos/periodos_pagados.php
+// backend/modules/cuotas/meses_pagados.php
 require_once __DIR__ . '/../../config/db.php';
 
-header("Access-Control-Allow-Origin: http://localhost:3000");
+// CORS (ajustá el origin si hace falta)
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header("Access-Control-Allow-Origin: $origin");
+header("Vary: Origin");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=utf-8");
 
+// Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
+// Validación básica
+$id_alumno = isset($_GET['id_alumno']) ? (int)$_GET['id_alumno'] : 0;
+$anio      = isset($_GET['anio']) ? (int)$_GET['anio'] : (int)date('Y');
+
+if ($anio < 2000 || $anio > 2100) $anio = (int)date('Y');
+
+if ($id_alumno <= 0) {
+    echo json_encode(['exito' => false, 'mensaje' => 'id_alumno inválido']);
     exit;
 }
 
 try {
-    if (!($pdo instanceof PDO)) {
-        throw new RuntimeException('Conexión PDO no disponible');
-    }
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Usar PDO si está disponible
+    if (isset($pdo) && $pdo instanceof PDO) {
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Acepto id_alumno o id_socio por compatibilidad
-    $idAlumno = 0;
-    if (isset($_GET['id_alumno'])) $idAlumno = (int) $_GET['id_alumno'];
-    if (!$idAlumno && isset($_GET['id_socio'])) $idAlumno = (int) $_GET['id_socio'];
+        // Traemos id_mes y estado del año solicitado
+        $sql = "
+            SELECT p.id_mes, p.estado
+              FROM cooperadora.pagos p
+             WHERE p.id_alumno = :id_alumno
+               AND YEAR(p.fecha_pago) = :anio
+        ";
+        $st = $pdo->prepare($sql);
+        $st->execute([
+            ':id_alumno' => $id_alumno,
+            ':anio'      => $anio
+        ]);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-    // Año a consultar (default: año actual). Valido rango razonable.
-    $anio = isset($_GET['anio']) ? (int) $_GET['anio'] : (int) date('Y');
-    if ($anio < 2000 || $anio > 2100) {
-        $anio = (int) date('Y');
-    }
+        $detalles = [];
+        $ids = [];
+        foreach ($rows as $r) {
+            $id_mes = (int)$r['id_mes'];
+            $estado = isset($r['estado']) ? strtolower((string)$r['estado']) : '';
+            if ($id_mes >= 1 && $id_mes <= 12) {
+                $ids[] = $id_mes;
+                $detalles[] = [
+                    'id_mes' => $id_mes,
+                    'estado' => $estado ?: 'pagado' // fallback
+                ];
+            }
+        }
 
-    if ($idAlumno <= 0) {
-        echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido'], JSON_UNESCAPED_UNICODE);
+        // Si querés mandar fecha de ingreso, buscala aquí (opcional)
+        $ingreso = null;
+        // try {
+        //     $st2 = $pdo->prepare("SELECT fecha_ingreso FROM cooperadora.alumnos WHERE id = :id LIMIT 1");
+        //     $st2->execute([':id' => $id_alumno]);
+        //     $ingreso = $st2->fetchColumn() ?: null;
+        // } catch (Throwable $e) {}
+
+        echo json_encode([
+            'exito'          => true,
+            'meses_pagados'  => array_values(array_unique($ids)), // compatibilidad con frontend viejo
+            'detalles'       => $detalles,                        // NUEVO: devuelve estado por mes
+            'ingreso'        => $ingreso
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    // ── Fecha de ingreso (si existe la columna). Intento varios nombres comunes.
-    $ingreso = null;
-    try {
-        $qIngreso = $pdo->prepare("
-            SELECT 
-                COALESCE(fecha_ingreso, ingreso, fecha_alta) AS f
-            FROM alumnos
-            WHERE id_alumno = :id
-            LIMIT 1
-        ");
-        $qIngreso->execute([':id' => $idAlumno]);
-        $val = $qIngreso->fetchColumn();
-        if ($val) $ingreso = (string) $val;
-    } catch (Throwable $e) {
-        // ignorar si tu tabla/columna difiere; no es crítico
+    // Fallback a mysqli (si tu proyecto lo usa)
+    if (isset($conn) && $conn instanceof mysqli) {
+        $sql = "SELECT id_mes, estado FROM pagos WHERE id_alumno = ? AND YEAR(fecha_pago) = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('ii', $id_alumno, $anio);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $detalles = [];
+        $ids = [];
+        while ($r = $result->fetch_assoc()) {
+            $id_mes = (int)$r['id_mes'];
+            $estado = isset($r['estado']) ? strtolower((string)$r['estado']) : '';
+            if ($id_mes >= 1 && $id_mes <= 12) {
+                $ids[] = $id_mes;
+                $detalles[] = [
+                    'id_mes' => $id_mes,
+                    'estado' => $estado ?: 'pagado'
+                ];
+            }
+        }
+        $stmt->close();
+
+        echo json_encode([
+            'exito'          => true,
+            'meses_pagados'  => array_values(array_unique($ids)),
+            'detalles'       => $detalles,
+            'ingreso'        => null
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
-    // ── Meses registrados para el AÑO solicitado (pagados o condonados)
-    $stmt = $pdo->prepare("
-        SELECT id_mes, estado, fecha_pago
-          FROM pagos
-         WHERE id_alumno = :id_alumno
-           AND YEAR(fecha_pago) = :anio
-           AND estado IN ('pagado','condonado')
-         ORDER BY id_mes ASC
-    ");
-    $stmt->execute([
-        ':id_alumno' => $idAlumno,
-        ':anio'      => $anio,
-    ]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Armo respuesta
-    $periodosIds = [];
-    $detalle     = [];
-    foreach ($rows as $r) {
-        $periodosIds[] = (int) $r['id_mes'];
-        $detalle[] = [
-            'id_mes'     => (int) $r['id_mes'],
-            'estado'     => (string) $r['estado'],
-            'fecha_pago' => (string) $r['fecha_pago'],
-        ];
-    }
-
-    echo json_encode([
-        'exito'             => true,
-        'id_alumno'         => $idAlumno,
-        'anio'              => $anio,
-        'periodos_pagados'  => $periodosIds,  // <- tu modal usa este array para pintar "Pagado"
-        'detalle'           => $detalle,      // opcional, por si luego querés mostrar "Condonado"
-        'ingreso'           => $igreso ?? $ingreso
-    ], JSON_UNESCAPED_UNICODE);
-
+    echo json_encode(['exito' => false, 'mensaje' => 'Conexión a BD no disponible']);
 } catch (Throwable $e) {
-    http_response_code(200);
-    echo json_encode([
-        'exito'   => false,
-        'mensaje' => 'Error al obtener períodos pagados: ' . $e->getMessage(),
-    ], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['exito' => false, 'mensaje' => 'Error interno', 'detalle' => $e->getMessage()]);
 }

@@ -2,11 +2,98 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faUsers, faTags, faSignOutAlt, faUserPlus, faFileInvoiceDollar, faIdCard,
-  faMoneyBillWave, faReceipt, faCreditCard, faCashRegister, faMoneyCheckDollar
-} from "@fortawesome/free-solid-svg-icons";
-import logoRH from "../../imagenes/Escudo.png";
-import "./principal.css";
+
+  faUsers,
+  faMoneyBillWave,
+  faTags,
+  faUserPlus,
+  faSignOutAlt,
+  faExclamationTriangle,
+  faIdCard,
+  faLayerGroup, // ⬅️ NUEVO (icono Categorías)
+} from '@fortawesome/free-solid-svg-icons';
+
+/* =========== Modal simple ============= */
+const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
+  const cancelBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    cancelBtnRef.current?.focus();
+    const onKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const backdropStyle = {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(15,23,42,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  };
+  const modalStyle = {
+    width: 'min(520px, 92vw)',
+    background: 'var(--soc-light, #fff)',
+    color: 'var(--soc-dark, #0f172a)',
+    borderRadius: '16px',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+    padding: '22px'
+  };
+  const headerStyle = { display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 };
+  const titleStyle = { margin: 0, fontSize: 20, fontWeight: 700 };
+  const textStyle = { margin: '8px 0 18px', lineHeight: 1.5, color: 'var(--soc-gray-600,#475569)' };
+  const actionsStyle = { display: 'flex', justifyContent: 'flex-end', gap: 12 };
+
+  return (
+    <div style={backdropStyle} onMouseDown={onClose} aria-modal="true" role="dialog" aria-labelledby="logout-title">
+      <div style={modalStyle} onMouseDown={(e) => e.stopPropagation()}>
+        <div style={headerStyle}>
+          <FontAwesomeIcon icon={faExclamationTriangle} style={{ fontSize: 22, color: '#F59E0B' }} />
+          <h3 id="logout-title" style={titleStyle}>¿Cerrar sesión?</h3>
+        </div>
+        <p style={textStyle}>
+          Vas a salir del sistema y se borrarán los datos de tu sesión en este navegador.
+        </p>
+        <div style={actionsStyle}>
+          <button
+            ref={cancelBtnRef}
+            onClick={onClose}
+            className="princ-modal-btn-sec"
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: '1px solid var(--soc-gray-300,#cbd5e1)',
+              background: 'transparent',
+              cursor: 'pointer'
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="princ-modal-btn-primary"
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: 'none',
+              background: 'var(--soc-danger,#ef4444)',
+              color: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const Principal = () => {
   const navigate = useNavigate();
@@ -113,9 +200,30 @@ const Principal = () => {
               Confirmar cierre de sesión
             </h3>
 
-            <p className="logout-modal-text">
-              ¿Estás seguro de que deseas cerrar la sesión?
-            </p>
+
+          {/* Tipos de documento */}
+          <button className="princ-opcion princ-opcion-docs" onClick={() => navigate('/tipos-documentos')}>
+            <div className="princ-opcion-content">
+              <div className="princ-opcion-icono-container">
+                <FontAwesomeIcon icon={faIdCard} className="princ-opcion-icono" />
+              </div>
+              <span className="princ-opcion-texto">Tipos de Documento</span>
+              <span className="princ-opcion-desc">ABM de tipos y siglas</span>
+            </div>
+          </button>
+
+          {/* ⬇️ NUEVA CAJA: Categorías */}
+          <button className="princ-opcion princ-opcion-categorias" onClick={() => navigate('/categorias')}>
+            <div className="princ-opcion-content">
+              <div className="princ-opcion-icono-container">
+                <FontAwesomeIcon icon={faLayerGroup} className="princ-opcion-icono" />
+              </div>
+              <span className="princ-opcion-texto">Categorías</span>
+              <span className="princ-opcion-desc">ABM de categorías y montos</span>
+            </div>
+          </button>
+        </div>
+
 
             <div className="logout-modal-buttons">
               <button
@@ -134,7 +242,7 @@ const Principal = () => {
               </button>
             </div>
           </div>
-        </div>
+        
       )}
     </div>
   );

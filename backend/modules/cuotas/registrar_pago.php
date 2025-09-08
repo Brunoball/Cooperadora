@@ -20,10 +20,16 @@ try {
 
     $payload = json_decode(file_get_contents('php://input'), true) ?: [];
 
-    $idAlumno  = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
-    $periodos  = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
-    $condonar  = !empty($payload['condonar']);
-    $anioInput = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
+    $idAlumno   = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
+    $periodos   = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
+    $condonar   = !empty($payload['condonar']);
+    $anioInput  = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
+
+    // NUEVO: monto libre por mes (entero). Si no viene o es <= 0, se ignora.
+    $montoLibre = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
+    if ($montoLibre <= 0) {
+        $montoLibre = 0;
+    }
 
     if ($idAlumno <= 0) {
         echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido']);
@@ -68,9 +74,10 @@ try {
         $yaPorMes[(int)$row['id_mes']] = (string)$row['estado'];
     }
 
+    // NUEVO: incluimos la columna 'libre' en el insert
     $stIns = $pdo->prepare("
-        INSERT INTO cooperadora.pagos (id_alumno, id_mes, fecha_pago, estado)
-        VALUES (:id_alumno, :id_mes, :fecha_pago, :estado)
+        INSERT INTO cooperadora.pagos (id_alumno, id_mes, fecha_pago, estado, libre)
+        VALUES (:id_alumno, :id_mes, :fecha_pago, :estado, :libre)
     ");
 
     $insertados = 0;
@@ -79,12 +86,10 @@ try {
     foreach ($periodos as $mesId) {
         $mes = (int)$mesId;
         if ($mes < 1 || $mes > 12) {
-            // ajustar si manejás otros IDs especiales
             continue;
         }
 
         if (array_key_exists($mes, $yaPorMes)) {
-            // ya hay registro para ese mes en el año elegido
             $yaRegistrados[] = [
                 'periodo' => $mes,
                 'estado'  => $yaPorMes[$mes],
@@ -92,11 +97,17 @@ try {
             continue;
         }
 
+        // Si es condonado => libre siempre NULL
+        // Si es modo normal => libre NULL
+        // Si es modo libre => guardar montoLibre (>0) por cada registro
+        $valorLibre = ($condonar ? null : ($montoLibre > 0 ? $montoLibre : null));
+
         $stIns->execute([
             ':id_alumno'  => $idAlumno,
             ':id_mes'     => $mes,
             ':fecha_pago' => $fechaPagoStr,
             ':estado'     => $estadoRegistrar,
+            ':libre'      => $valorLibre,
         ]);
         $insertados++;
     }

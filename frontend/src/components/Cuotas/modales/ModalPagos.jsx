@@ -9,7 +9,6 @@ import './ModalPagos.css';
 import { imprimirRecibos } from '../../../utils/imprimirRecibos.jsx';
 
 /* ====== Config ====== */
-const PRECIO_MENSUAL = 4000;
 const MIN_YEAR = 2025; // el sistema existe desde 2025
 
 const construirListaAnios = (nowYear) => {
@@ -20,11 +19,14 @@ const construirListaAnios = (nowYear) => {
   return arr;
 };
 
+const capitalizar = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : '');
+
 const ModalPagos = ({ socio, onClose }) => {
   const nowYear = new Date().getFullYear();
 
   const [meses, setMeses] = useState([]);                     // [{ id, nombre }]
-  const [periodosPagados, setPeriodosPagados] = useState([]); // [id_mes,...] (del año elegido)
+  const [periodosPagados, setPeriodosPagados] = useState([]); // [id_mes,...] (del año elegido) — fallback simple
+  const [periodosEstado, setPeriodosEstado] = useState({});   // { [id_mes]: 'pagado' | 'condonado' }
   const [seleccionados, setSeleccionados] = useState([]);     // [id_mes,...]
   const [fechaIngreso, setFechaIngreso] = useState('');       // 'YYYY-MM-DD'
   const [cargando, setCargando] = useState(false);
@@ -40,11 +42,20 @@ const ModalPagos = ({ socio, onClose }) => {
   const [showYearPicker, setShowYearPicker] = useState(false);
   const yearOptions = useMemo(() => construirListaAnios(nowYear), [nowYear]);
 
+  // ===== Precio por categoría (dinámico) =====
+  const [precioMensual, setPrecioMensual] = useState(0);
+  const [nombreCategoria, setNombreCategoria] = useState('');
+
+  // ===== Modo libre =====
+  const [libreActivo, setLibreActivo] = useState(false);
+  const [libreValor, setLibreValor] = useState(''); // string para input
+
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
 
   // Tolerancia de ID desde distintas fuentes
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
+  const idCategoria = socio?.id_categoria ?? socio?.categoria_id ?? socio?.id_cat ?? null;
 
   /* ================= Helpers ================= */
   const formatearFecha = (f) => {
@@ -60,7 +71,19 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const mesesDisponibles = useMemo(() => meses, [meses]);
 
-  const total = condonar ? 0 : seleccionados.length * PRECIO_MENSUAL;
+  // === TOTAL: cantidad de meses * precio mensual por categoría o libre (o 0 si condona) ===
+  const precioUnitarioVigente = useMemo(() => {
+    if (condonar) return 0;
+    if (libreActivo) {
+      const v = Number(libreValor);
+      return Number.isFinite(v) && v > 0 ? v : 0;
+    }
+    return Number(precioMensual || 0);
+  }, [condonar, libreActivo, libreValor, precioMensual]);
+
+  const total = useMemo(() => {
+    return condonar ? 0 : seleccionados.length * precioUnitarioVigente;
+  }, [condonar, seleccionados.length, precioUnitarioVigente]);
 
   // Texto tipo “ENE / FEB / MAR 2025”
   const periodoTextoFinal = useMemo(() => {
@@ -74,17 +97,70 @@ const ModalPagos = ({ socio, onClose }) => {
   }, [seleccionados, mesesDisponibles, anioTrabajo]);
 
   /* ================= Efectos ================= */
+
+  // Cargar precio mensual según categoría del alumno
+  useEffect(() => {
+    const cargarPrecioCategoria = async () => {
+      try {
+        if (idCategoria == null) {
+          setPrecioMensual(0);
+          setNombreCategoria('');
+          return;
+        }
+
+        const res = await fetch(`${BASE_URL}/api.php?action=cat_listar`, { method: 'GET' });
+        const data = await res.json().catch(() => ({}));
+
+        let filas = [];
+        if (Array.isArray(data)) filas = data;
+        else if (data?.categorias) filas = data.categorias;
+        else if (data?.exito && Array.isArray(data?.data)) filas = data.data;
+        else if (data?.exito && Array.isArray(data?.rows)) filas = data.rows;
+        else if (data?.exito && Array.isArray(data?.result)) filas = data.result;
+        else filas = data?.resultados || [];
+
+        const norm = filas.map((r) => ({
+          id: r.id ?? r.id_categoria ?? r.ID ?? null,
+          nombre: (r.nombre_categoria ?? r.descripcion ?? r.nombre ?? '').toString(),
+          monto: Number(r.monto ?? r.precio ?? r.Precio_Categoria ?? 0),
+        }));
+
+        const cat = norm.find(x => String(x.id) === String(idCategoria));
+        if (cat) {
+          setPrecioMensual(Number(cat.monto || 0));
+          setNombreCategoria(cat.nombre.toUpperCase());
+        } else {
+          setPrecioMensual(0);
+          setNombreCategoria('');
+        }
+      } catch (e) {
+        console.error('Error al cargar precio por categoría', e);
+        setPrecioMensual(0);
+        setNombreCategoria('');
+      }
+    };
+
+    cargarPrecioCategoria();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idCategoria]);
+
+  // Limpiar selección al cambiar alumno o año
   useEffect(() => { setSeleccionados([]); }, [idAlumno, anioTrabajo]);
 
   useEffect(() => {
     const idsDisponibles = mesesDisponibles
       .map((m) => Number(m.id))
-      .filter((id) => !periodosPagados.includes(Number(id)));
+      .filter((id) => {
+        // deshabilitamos si ya hay estado (pagado/condonado) o si viene en la lista simple
+        if (periodosEstado[id]) return false;
+        return !periodosPagados.includes(Number(id));
+      });
 
     const all = idsDisponibles.length > 0 && idsDisponibles.every((id) => seleccionados.includes(Number(id)));
     setTodosSeleccionados(all);
-  }, [seleccionados, mesesDisponibles, periodosPagados]);
+  }, [seleccionados, mesesDisponibles, periodosPagados, periodosEstado]);
 
+  // Carga de meses y estado de pagos
   useEffect(() => {
     const cargar = async () => {
       if (!idAlumno) {
@@ -119,13 +195,35 @@ const ModalPagos = ({ socio, onClose }) => {
         }
 
         if (dataPagados?.exito) {
-          const arrIds = Array.isArray(dataPagados.meses_pagados)
-            ? dataPagados.meses_pagados
-            : (Array.isArray(dataPagados.periodos_pagados) ? dataPagados.periodos_pagados : []);
-          const ya = arrIds.map(Number);
-          setPeriodosPagados(ya);
+          // 1) Intentamos leer detalle con estado
+          let detalles = [];
+          if (Array.isArray(dataPagados?.detalles)) detalles = dataPagados.detalles;
+          else if (Array.isArray(dataPagados?.items)) detalles = dataPagados.items;
+          else if (Array.isArray(dataPagados?.rows)) detalles = dataPagados.rows;
+          else if (Array.isArray(dataPagados?.data)) detalles = dataPagados.data;
+
+          const mapEstado = {};
+          for (const d of detalles) {
+            const id = Number(d?.id_mes ?? d?.id ?? d?.mes ?? d?.periodo);
+            if (!id) continue;
+            const est = String(d?.estado ?? '').toLowerCase(); // 'pagado' | 'condonado'
+            if (est) mapEstado[id] = est;
+          }
+          setPeriodosEstado(mapEstado);
+
+          // 2) Para compatibilidad, construimos la lista simple de IDs ocupados
+          let ids = Object.keys(mapEstado).map(Number);
+          if (ids.length === 0) {
+            const arrIds = Array.isArray(dataPagados.meses_pagados)
+              ? dataPagados.meses_pagados
+              : (Array.isArray(dataPagados.periodos_pagados) ? dataPagados.periodos_pagados : []);
+            ids = arrIds.map(Number);
+          }
+          setPeriodosPagados(ids);
+
           setFechaIngreso(dataPagados.ingreso || '');
         } else {
+          setPeriodosEstado({});
           setPeriodosPagados([]);
           mostrarToast('advertencia', dataPagados?.mensaje || 'No se pudo cargar el estado de pagos.');
         }
@@ -144,7 +242,8 @@ const ModalPagos = ({ socio, onClose }) => {
   /* ================= Acciones ================= */
   const togglePeriodo = (id) => {
     const idNum = Number(id);
-    if (periodosPagados.includes(idNum)) return;
+    // si ya tiene estado (pagado/condonado) o viene en la lista simple, no permitimos
+    if (periodosEstado[idNum] || periodosPagados.includes(idNum)) return;
     setSeleccionados((prev) =>
       prev.includes(idNum) ? prev.filter((x) => x !== idNum) : [...prev, idNum]
     );
@@ -153,37 +252,67 @@ const ModalPagos = ({ socio, onClose }) => {
   const toggleSeleccionarTodos = () => {
     const idsDisponibles = mesesDisponibles
       .map((m) => Number(m.id))
-      .filter((id) => !periodosPagados.includes(id));
+      .filter((id) => !periodosEstado[id] && !periodosPagados.includes(id));
 
     if (todosSeleccionados) setSeleccionados([]);
     else setSeleccionados(idsDisponibles);
+  };
+
+  const onToggleCondonar = (checked) => {
+    setCondonar(checked);
+    if (checked) {
+      // si condonamos, desactivamos libre
+      setLibreActivo(false);
+      setLibreValor('');
+    }
+  };
+
+  const onToggleLibre = (checked) => {
+    setLibreActivo(checked);
+    if (checked) {
+      // si es libre, no puede ser condonado
+      setCondonar(false);
+    } else {
+      setLibreValor('');
+    }
   };
 
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
     if (seleccionados.length === 0) return mostrarToast('advertencia', 'Seleccioná al menos un mes.');
 
+    if (libreActivo && !condonar) {
+      const v = Number(libreValor);
+      if (!Number.isFinite(v) || v <= 0) {
+        return mostrarToast('error', 'Ingresá un monto libre válido (mayor a 0).');
+      }
+    }
+
     setCargando(true);
     try {
+      const payload = {
+        id_alumno: Number(idAlumno),
+        periodos: seleccionados.map(Number),
+        condonar: !!condonar,
+        anio: Number(anioTrabajo),
+      };
+
+      if (libreActivo && !condonar) {
+        payload.monto_libre = Math.round(Number(libreValor) || 0); // entero
+      }
+
       const res = await fetch(`${BASE_URL}/api.php?action=registrar_pago`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_alumno: Number(idAlumno),
-          periodos: seleccionados.map(Number),
-          condonar: !!condonar,
-          anio: Number(anioTrabajo),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error(`registrar_pago HTTP ${res.status}`);
 
       const data = await res.json().catch(() => ({}));
       if (data?.exito) {
-        // Cambiamos a la pantalla de éxito (no cerramos aún)
         setPagoExitoso(true);
-
-        // Marcamos como pagados en memoria por si vuelve atrás
+        // Marcamos ocupados en memoria
         setPeriodosPagados(prev => {
           const set = new Set(prev);
           seleccionados.forEach(id => set.add(Number(id)));
@@ -205,7 +334,7 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-  // === Impresión usando tu util; NO hacemos win.print() aquí (el util ya lo hace) ===
+  // === Impresión usando tu util
   const handleImprimirComprobante = async () => {
     const periodoCodigo = [...seleccionados].map(Number).sort((a,b)=>a-b)[0] || 0;
 
@@ -215,12 +344,13 @@ const ModalPagos = ({ socio, onClose }) => {
       periodo_texto: periodoTextoFinal,
       importe_total: total,
       anio: anioTrabajo,
+      precio_unitario: precioUnitarioVigente,
+      categoria_nombre: libreActivo ? 'LIBRE' : nombreCategoria,
     };
 
     const win = window.open('', '_blank');
     if (!win) return alert('Habilitá ventanas emergentes para imprimir el comprobante.');
 
-    // El util escribe el HTML y ejecuta window.print() en onload
     await imprimirRecibos([alumnoParaImprimir], periodoCodigo, win);
   };
 
@@ -262,6 +392,11 @@ const ModalPagos = ({ socio, onClose }) => {
               <div className="success-card">
                 <h3 className="success-title">{tituloExito}</h3>
                 <p className="success-sub">{subExito}</p>
+                {!condonar && (
+                  <p className="success-sub" style={{ marginTop: 6 }}>
+                    <strong>Valor por mes:</strong> {formatearARS(precioUnitarioVigente)} — <strong>Meses:</strong> {seleccionados.length} — <strong>Total:</strong> {formatearARS(total)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -327,6 +462,12 @@ const ModalPagos = ({ socio, onClose }) => {
                   </div>
                 )}
               </div>
+              <div className="socio-info-extra">
+                <span className="valor-mes">
+                  <strong>Valor mensual</strong>{' '}
+                  {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioUnitarioVigente)}
+                </span>
+              </div>
             </div>
 
             {/* Caja condonar + selector de año */}
@@ -335,7 +476,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 <input
                   type="checkbox"
                   checked={condonar}
-                  onChange={(e) => setCondonar(e.target.checked)}
+                  onChange={(e) => onToggleCondonar(e.target.checked)}
                   disabled={cargando}
                 />
                 <span className="switch">
@@ -374,6 +515,37 @@ const ModalPagos = ({ socio, onClose }) => {
               </div>
             </div>
 
+            {/* Modo libre */}
+            <div className={`condonar-box ${libreActivo ? 'is-active' : ''}`} style={{ marginTop: 10 }}>
+              <label className="condonar-check">
+                <input
+                  type="checkbox"
+                  checked={libreActivo}
+                  onChange={(e) => onToggleLibre(e.target.checked)}
+                  disabled={cargando}
+                />
+                <span className="switch">
+                  <span className="switch-thumb" />
+                </span>
+                <span className="switch-label">
+                  Usar <strong>monto libre por mes</strong>
+                </span>
+              </label>
+
+              <div className="year-picker" style={{ gap: 10 }}>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Ingresá el monto libre por mes"
+                  value={libreValor}
+                  onChange={(e) => setLibreValor(e.target.value)}
+                  disabled={!libreActivo || cargando}
+                  style={{ padding: 10, borderRadius: 8, border: '1px solid #cbd5e1', width: 220 }}
+                />
+              </div>
+            </div>
+
             {/* Selección de meses */}
             <div className="periodos-section">
               <div className="section-header">
@@ -400,13 +572,14 @@ const ModalPagos = ({ socio, onClose }) => {
                   <div className="periodos-grid">
                     {mesesDisponibles.map((m) => {
                       const idMes = Number(m.id);
-                      const yaPagado = periodosPagados.includes(idMes);
+                      const estado = periodosEstado[idMes]; // 'pagado' | 'condonado' | undefined
+                      const yaOcupado = !!estado || periodosPagados.includes(idMes);
                       const sel = seleccionados.includes(idMes);
 
                       return (
                         <div
                           key={idMes}
-                          className={`periodo-card ${yaPagado ? 'pagado' : ''} ${sel ? 'seleccionado' : ''}`}
+                          className={`periodo-card ${yaOcupado ? 'pagado' : ''} ${sel ? 'seleccionado' : ''}`}
                           role="button"
                           tabIndex={0}
                           onClick={() => !cargando && togglePeriodo(idMes)}
@@ -433,12 +606,12 @@ const ModalPagos = ({ socio, onClose }) => {
                             onClick={(e) => e.preventDefault()}
                           >
                             {m.nombre}
-                            {yaPagado && (
+                            {yaOcupado && (
                               <span className="periodo-status">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                                   <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
-                                Pagado
+                                {estado ? capitalizar(estado) : 'Pagado'}
                               </span>
                             )}
                           </label>
