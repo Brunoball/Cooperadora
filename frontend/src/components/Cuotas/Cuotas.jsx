@@ -46,8 +46,8 @@ const Cuotas = () => {
   // Estado de pestaña (deudor | pagado | condonado)
   const [estadoPagoSeleccionado, setEstadoPagoSeleccionado] = useState('deudor');
 
-  // Año **de pago** (viene de pagos.fecha_pago) — por defecto año actual
-  const [anioSeleccionado, setAnioSeleccionado] = useState(String(CURRENT_YEAR));
+  // Año **de pago** (viene de pagos.fecha_pago). Lo fijamos luego de fetchAnios.
+  const [anioSeleccionado, setAnioSeleccionado] = useState('');
 
   // Otros filtros
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
@@ -110,14 +110,25 @@ const Cuotas = () => {
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`);
       const data = await res.json().catch(() => ({}));
-      if (data?.exito && Array.isArray(data.anios)) {
-        setAnios(data.anios);
+      const lista = (data?.anios && Array.isArray(data.anios)) ? data.anios : [];
+      setAnios(lista);
+
+      // Lógica de selección por defecto:
+      // 1) Si hay pagos en el año actual, seleccionar CURRENT_YEAR.
+      // 2) Si no, pero hay otros años, seleccionar el primero disponible.
+      // 3) Si no hay ninguno, dejar vacío.
+      const hasCurrent = lista.some(a => String(a.id) === String(CURRENT_YEAR));
+      if (hasCurrent) {
+        setAnioSeleccionado(String(CURRENT_YEAR));
+      } else if (lista.length > 0) {
+        setAnioSeleccionado(String(lista[0].id));
       } else {
-        setAnios([]);
+        setAnioSeleccionado('');
       }
     } catch (e) {
       console.error('Error al obtener años:', e);
       setAnios([]);
+      setAnioSeleccionado('');
     }
   }, []);
 
@@ -143,7 +154,6 @@ const Cuotas = () => {
 
       if (dataListas?.exito) {
         const L = dataListas.listas || {};
-        // Los años vienen de listar_anios
         setCategorias(Array.isArray(L.categorias) ? L.categorias : []);
         setDivisiones(Array.isArray(L.divisiones) ? L.divisiones : []);
         setMeses(Array.isArray(L.meses) ? L.meses : []);
@@ -428,10 +438,20 @@ const Cuotas = () => {
                 {/* AÑO DE PAGO (arriba del Mes) */}
                 <div className="gcuotas-input-group">
                   <label htmlFor="anio" className="gcuotas-input-label"><FontAwesomeIcon icon={faFilter} /> Año de pago</label>
-                  <select id="anio" value={anioSeleccionado} onChange={onChangeAnio} className="gcuotas-dropdown" disabled={loading}>
-                    {anios.length === 0 && <option value={anioSeleccionado}>{anioSeleccionado}</option>}
-                    <option value="">Todos</option>
-                    {anios.map((a, idx) => (<option key={idx} value={a.id}>{a.nombre}</option>))}
+                  <select
+                    id="anio"
+                    value={anioSeleccionado}
+                    onChange={onChangeAnio}
+                    className="gcuotas-dropdown"
+                    disabled={loading || anios.length === 0}
+                  >
+                    {anios.length === 0 ? (
+                      <option value="">Sin pagos</option>
+                    ) : (
+                      anios.map((a, idx) => (
+                        <option key={idx} value={a.id}>{a.nombre}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 
