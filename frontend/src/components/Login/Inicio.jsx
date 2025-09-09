@@ -58,9 +58,7 @@ const Inicio = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nombre, contrasena, remember]);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword((v) => !v);
-  };
+  const togglePasswordVisibility = () => setShowPassword((v) => !v);
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
@@ -81,10 +79,7 @@ const Inicio = () => {
         body: JSON.stringify({ nombre, contrasena }),
       });
 
-      // Manejo de HTTP no-OK
-      if (!respuesta.ok) {
-        throw new Error(`HTTP ${respuesta.status}`);
-      }
+      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
 
       const data = await respuesta.json();
 
@@ -112,14 +107,14 @@ const Inicio = () => {
       <div className="ini_contenedor">
         <div className="ini_encabezado">
           <img src={logoRH} alt="Cooperadora IPET 50" className="ini_logo" />
-          <h1 className="ini_titulo">Cooperadora IPET 50</h1>
+          <h1 className="ini_titulo">Iniciar Sesión</h1>
           <p className="ini_subtitulo">Ingresá tus credenciales para acceder al sistema</p>
           <h2 className="ini_bienvenido">Bienvenido</h2>
         </div>
 
         {mensaje && <p className="ini_mensaje">{mensaje}</p>}
 
-        <form onSubmit={manejarEnvio} className="ini_formulario" noValidate>
+        <form onSubmit={manejarEnvio} className="ini_formulario" autoComplete="on" noValidate>
           <div className="ini_campo">
             <input
               type="text"
@@ -166,16 +161,16 @@ const Inicio = () => {
             </button>
           </div>
 
-          {/* Recordar cuenta */}
-          <div className="ini_campo ini_recordar">
-            <label className="ini_recordar-label">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              <span>Recordar cuenta</span>
-            </label>
+          {/* Checkbox Recordar cuenta (igual a LALCEC) */}
+          <div className="ini_check-row">
+            <input
+              id="recordar"
+              type="checkbox"
+              className="ini_checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            <label htmlFor="recordar" className="ini_check-label">Recordar cuenta</label>
           </div>
 
           <div className="ini_footer">
@@ -186,14 +181,7 @@ const Inicio = () => {
               aria-busy={cargando ? 'true' : 'false'}
               aria-live="polite"
             >
-              {cargando ? (
-                <>
-                  <span className="ini_spinner" aria-hidden="true"></span>
-                  Iniciando...
-                </>
-              ) : (
-                'Iniciar Sesión'
-              )}
+              {cargando ? 'Iniciando...' : 'Iniciar Sesión'}
             </button>
           </div>
         </form>

@@ -551,7 +551,7 @@ const Cuotas = () => {
 
                     <AutoSizer>
                       {({ height, width }) => (
-                        <List key={`list-${cascadeRunId}`} height={height} itemCount={cuotasFiltradas.length} itemSize={60} width={width} itemData={cuotasFiltradas}>
+                        <List key={`list-${cascadeRunId}`} height={height} itemCount={cuotasFiltradas.length} itemSize={60} width={width} itemData={cuotasFiltradas}  className="gcuotas-listoverflow" >
                           {Row}
                         </List>
                       )}
