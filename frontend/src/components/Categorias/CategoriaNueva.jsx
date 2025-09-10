@@ -5,6 +5,7 @@ import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faPlus } from '@fortawesome/free-solid-svg-icons';
+import './CategoriaNueva.css';
 
 const normalizar = (s) => (s || '').toString().trim().toUpperCase();
 
@@ -15,9 +16,11 @@ const CategoriaNueva = () => {
   const [monto, setMonto] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '' });
-  const showToast = (mensaje, tipo = 'exito', duracion = 3000) =>
+  // TOAST
+  const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '', duracion: 3000 });
+  const showToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ show: true, tipo, mensaje, duracion });
+  const closeToast = () => setToast((t) => ({ ...t, show: false }));
 
   const nombreRef = useRef(null);
   const montoRef = useRef(null);
@@ -40,12 +43,12 @@ const CategoriaNueva = () => {
     const m = mStr === '' ? 0 : Number(mStr);
 
     if (!n) {
-      showToast('El nombre de la categoría es obligatorio', 'error');
+      showToast('error', 'El nombre de la categoría es obligatorio', 2800);
       nombreRef.current?.focus();
       return;
     }
     if (isNaN(m) || m < 0) {
-      showToast('El monto debe ser un número mayor o igual a 0', 'error');
+      showToast('error', 'El monto debe ser un número mayor o igual a 0', 2800);
       montoRef.current?.focus();
       return;
     }
@@ -60,92 +63,87 @@ const CategoriaNueva = () => {
       const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_crear`, { method: 'POST', body });
       if (!json?.exito) throw new Error(json?.mensaje || 'No se pudo crear');
 
-      showToast('Categoría creada con éxito.', 'exito');
-      // Pequeño delay para que se vea el toast y volver
-      setTimeout(() => navigate('/categorias', { replace: true }), 400);
+      const dur = 2200;
+      showToast('exito', 'Categoría creada con éxito.', dur);
+      setTimeout(() => navigate('/categorias', { replace: true }), dur);
     } catch (e) {
-      showToast(e.message || 'Error al crear la categoría', 'error');
+      showToast('error', e.message || 'Error al crear la categoría', 3000);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="contenedor-modulo" style={{ padding: 16, maxWidth: 700, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-        <button
-          onClick={() => navigate('/categorias')}
-          className="btn-volver"
-          style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}
-        >
-          <FontAwesomeIcon icon={faArrowLeft} />
-          <span>Volver a categorías</span>
-        </button>
-        <h2 style={{ margin: 0 }}>Agregar categoría</h2>
-      </div>
+    <div className="cat_agr_page">
+      <div className="cat_agr_card">
+        <header className="cat_agr_header">
+          <h2 className="cat_agr_title">Nueva categoría</h2>
+        </header>
 
-      <form onSubmit={onSubmit}
-        style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: 6 }}>Nombre *</label>
+        <form className="cat_agr_form" onSubmit={onSubmit}>
+          {/* Nombre (sin asterisco visual, sigue siendo required) */}
+          <div className="cat_agr_form_row">
+            <label className="cat_agr_label">Nombre</label>
             <input
               ref={nombreRef}
+              className="cat_agr_input"
+              type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value.toUpperCase())}
-              placeholder="(ej: INTERNO)"
-              style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1', textTransform: 'uppercase' }}
+              placeholder='Ej: "INTERNO"'
+              maxLength={50}
+              required
+              style={{ textTransform: 'uppercase' }}
               disabled={saving}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: 6 }}>Monto</label>
+
+          {/* Monto — mismo ancho que Nombre */}
+          <div className="cat_agr_form_row">
+            <label className="cat_agr_label">Monto</label>
             <input
               ref={montoRef}
+              className="cat_agr_input"
               type="number"
-              min="0"
-              step="1"
+              inputMode="numeric"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
               placeholder="0"
-              style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid #cbd5e1' }}
+              min="0"
+              step="1"
               disabled={saving}
             />
           </div>
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-          <button
-            type="button"
-            onClick={() => navigate('/categorias')}
-            disabled={saving}
-            style={{
-              padding: '10px 14px', borderRadius: 10, border: '1px solid #cbd5e1',
-              background: 'transparent', cursor: saving ? 'not-allowed' : 'pointer'
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: '10px 14px', borderRadius: 10, border: 'none',
-              background: 'var(--soc-primary,#2563eb)', color: '#fff',
-              minWidth: 140, cursor: saving ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {saving ? 'Guardando…' : (<><FontAwesomeIcon icon={faPlus} /> Guardar</>)}
-          </button>
-        </div>
-      </form>
+          {/* Acciones: Volver (izquierda) + Guardar (derecha) */}
+          <div className="cat_agr_form_actions">
+            <button
+              type="button"
+              className="cat_agr_btn cat_agr_btn_back"
+              onClick={() => navigate('/categorias')}
+              title="Volver"
+              aria-label="Volver"
+              disabled={saving}
+            >
+              <FontAwesomeIcon icon={faArrowLeft} />
+              <span className="cat_agr_btn_text">Volver</span>
+            </button>
 
+            <button type="submit" className="cat_agr_btn cat_agr_btn_primary" disabled={saving}>
+              <FontAwesomeIcon icon={faPlus} />
+              <span className="cat_agr_btn_text">{saving ? 'Guardando…' : 'Guardar'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Toast */}
       {toast.show && (
         <Toast
           tipo={toast.tipo}
           mensaje={toast.mensaje}
-          duracion={toast.duracion ?? 3000}
-          onClose={() => setToast((t) => ({ ...t, show: false }))}
+          duracion={toast.duracion}
+          onClose={closeToast}
         />
       )}
     </div>

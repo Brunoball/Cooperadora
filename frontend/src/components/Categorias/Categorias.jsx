@@ -4,12 +4,22 @@ import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faPlus, faTrash, faEdit, faHistory } from '@fortawesome/free-solid-svg-icons';
+import {
+  faArrowLeft,
+  faPlus,
+  faTrash,
+  faEdit,
+  faTimes,
+  faClockRotateLeft,
+  faArrowTrendUp,
+  faArrowTrendDown,
+} from '@fortawesome/free-solid-svg-icons';
+import './Categorias.css';
 
 /* ===========================
-   Modal base
+   Modal base (accesible)
 =========================== */
-const Modal = ({ open, title, children, onClose }) => {
+const Modal = ({ open, title, onClose, children, width = 720 }) => {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === 'Escape' && onClose?.();
@@ -19,103 +29,123 @@ const Modal = ({ open, title, children, onClose }) => {
 
   if (!open) return null;
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(2,6,23,.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-      }}
-    >
+    <div className="cat_modal" role="dialog" aria-modal="true" aria-labelledby="cat_modal_title" onClick={onClose}>
       <div
+        className="cat_modal_card"
+        style={{ maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 'min(680px, 92vw)', background: '#fff', borderRadius: 14,
-          boxShadow: '0 20px 50px rgba(2,6,23,.25)', padding: 18
-        }}
       >
-        <h3 id="modal-title" style={{ margin: '4px 0 10px', fontSize: 20 }}>{title}</h3>
-        {children}
+        <div className="cat_modal_head">
+          <h3 id="cat_modal_title" className="cat_modal_title">{title}</h3>
+          <button onClick={onClose} className="cat_modal_close" aria-label="Cerrar">
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
+        </div>
+        <div className="cat_modal_body">{children}</div>
       </div>
     </div>
   );
 };
 
 /* ===========================
-   Confirmación (Eliminar)
+   Modal Confirmar Eliminación
 =========================== */
-const ConfirmModal = ({ open, title, message, confirmText = 'Eliminar', cancelText = 'Cancelar', onConfirm, onCancel, loading }) => {
+function ConfirmDeleteModal({ open, categoria, onConfirm, onCancel, loading }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCancel?.();
+      if (e.key === 'Enter') onConfirm?.();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onConfirm, onCancel]);
+
+  if (!open) return null;
+
   return (
-    <Modal open={open} title={title} onClose={loading ? undefined : onCancel}>
-      <p style={{ margin: '0 0 18px', color: '#334155', lineHeight: 1.5 }}>{message}</p>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 10,
-            border: '1px solid #cbd5e1',
-            background: 'transparent',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {cancelText}
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={loading}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 10,
-            border: 'none',
-            background: 'var(--soc-danger,#ef4444)',
-            color: '#fff',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            minWidth: 120
-          }}
-        >
-          {loading ? 'Eliminando…' : confirmText}
-        </button>
+    <div
+      className="catdel-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="catdel-modal-title"
+      onClick={onCancel}
+    >
+      <div
+        className="catdel-modal-container catdel-modal--danger"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="catdel-modal__icon" aria-hidden="true">
+          <FontAwesomeIcon icon={faTrash} />
+        </div>
+
+        <h3 id="catdel-modal-title" className="catdel-modal-title catdel-modal-title--danger">
+          Eliminar categoría
+        </h3>
+
+        <p className="catdel-modal-text">
+          {categoria?.descripcion
+            ? <>¿Seguro que querés eliminar <strong>{categoria.descripcion}</strong>? Esta acción no se puede deshacer.</>
+            : <>¿Seguro que querés eliminar esta categoría? Esta acción no se puede deshacer.</>}
+        </p>
+
+        <div className="catdel-modal-buttons">
+          <button className="catdel-btn catdel-btn--ghost" onClick={onCancel} autoFocus disabled={loading}>
+            Cancelar
+          </button>
+          <button
+            className="catdel-btn catdel-btn--solid-danger"
+            onClick={onConfirm}
+            disabled={loading}
+            aria-busy={loading ? 'true' : 'false'}
+          >
+            {loading ? 'Eliminando…' : 'Confirmar'}
+          </button>
+        </div>
       </div>
-    </Modal>
+    </div>
   );
-};
+}
+
+/* ===========================
+   Utils
+=========================== */
+const fmtARS = (n) =>
+  (n === null || n === undefined || n === '')
+    ? '—'
+    : Number(n).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 
 const formatDate = (iso) => {
-  if (!iso) return '-';
+  if (!iso) return '—';
   const s = iso.toString().slice(0, 10);
   const [y, m, d] = s.split('-');
   return (y && m && d) ? `${d}/${m}/${y}` : s;
 };
 
+/* ===========================
+   Componente principal
+=========================== */
 const Categorias = () => {
   const navigate = useNavigate();
 
   const [lista, setLista] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Toast
-  const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '' });
-  const showToast = (mensaje, tipo = 'exito', duracion = 3000) =>
-    setToast({ show: true, tipo, mensaje, duracion });
-
-  // Eliminar
-  const [eliminarOpen, setEliminarOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [delId, setDelId] = useState(null);
-  const [delNombre, setDelNombre] = useState('');
+  // TOAST
+  const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '', duracion: 3000 });
+  const showToast = (tipo, mensaje, duracion = 3000) => setToast({ show: true, tipo, mensaje, duracion });
+  const closeToast = () => setToast((t) => ({ ...t, show: false }));
 
   // Historial
-  const [histOpen, setHistOpen] = useState(false);
+  const [modalHistOpen, setModalHistOpen] = useState(false);
   const [histLoading, setHistLoading] = useState(false);
-  const [histNombre, setHistNombre] = useState('');
-  const [histRows, setHistRows] = useState([]);
+  const [hist, setHist] = useState([]); // [{precio_anterior, precio_nuevo, fecha}]
+  const [histCategoria, setHistCategoria] = useState({ id: null, nombre: '' });
 
+  // Eliminar
+  const [delState, setDelState] = useState({ open: false, cat: null, loading: false });
+
+  // Helpers API
   const fetchJSON = async (url, options = {}) => {
     const res = await fetch(url, options);
     let data = null;
@@ -129,13 +159,13 @@ const Categorias = () => {
     [...(arr || [])]
       .map((r) => ({
         id: r.id ?? r.id_categoria ?? r.ID ?? null,
-        descripcion: (r.descripcion ?? r.nombre_categoria ?? r.nombre ?? '').toString().toUpperCase(),
+        descripcion: (r.descripcion ?? r.nombre_categoria ?? r.nombre ?? '').toString(),
         precio: r.monto ?? r.precio ?? r.Precio_Categoria ?? null,
         historialCount: r.historial_count ?? r.cant_historial ?? r.tiene_historial ?? 0,
       }))
       .sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
 
-  const cargarCategorias = async () => {
+  const cargar = async () => {
     try {
       setLoading(true);
       const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_listar`);
@@ -152,44 +182,47 @@ const Categorias = () => {
     } catch (e) {
       console.error(e);
       setLista([]);
-      showToast(`No se pudieron cargar las categorías: ${e.message}`, 'error');
+      showToast('error', `No se pudieron cargar las categorías: ${e.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { cargarCategorias(); }, []);
+  useEffect(() => { cargar(); }, []);
 
-  const abrirModalEliminar = (cat) => {
-    setDelId(cat.id);
-    setDelNombre(cat.descripcion || '');
-    setEliminarOpen(true);
+  const filtradas = useMemo(() => lista, [lista]);
+
+  // Abrir modal de confirmación
+  const pedirConfirmacionEliminar = (cat) => {
+    setDelState({ open: true, cat, loading: false });
   };
 
+  // Confirmar eliminación
   const confirmarEliminar = async () => {
-    if (deleting || !delId) return;
+    const cat = delState.cat;
+    if (!cat) return setDelState({ open: false, cat: null, loading: false });
     try {
-      setDeleting(true);
+      setDelState((s) => ({ ...s, loading: true }));
       const body = new FormData();
-      body.append('id', String(delId));
-      const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_eliminar`, { method: 'POST', body });
-      if (!json?.exito) throw new Error(json?.mensaje || 'No se pudo eliminar');
-
-      showToast('Categoría eliminada con éxito.', 'exito');
-      setEliminarOpen(false);
-      await cargarCategorias();
+      body.append('id', String(cat.id));
+      const resp = await fetchJSON(`${BASE_URL}/api.php?action=cat_eliminar`, { method: 'POST', body });
+      if (!resp?.exito) throw new Error(resp?.mensaje || 'No se pudo eliminar');
+      showToast('exito', 'Categoría eliminada.');
+      setDelState({ open: false, cat: null, loading: false });
+      await cargar();
     } catch (e) {
-      showToast(e.message || 'Error al eliminar la categoría', 'error');
-    } finally {
-      setDeleting(false);
+      console.error(e);
+      showToast('error', e.message || 'No se pudo eliminar la categoría.');
+      setDelState((s) => ({ ...s, loading: false }));
     }
   };
 
+  // Historial por categoría (botón en la principal)
   const abrirHistorial = async (cat) => {
     try {
-      setHistNombre(cat.descripcion || '');
-      setHistRows([]);
-      setHistOpen(true);
+      setHistCategoria({ id: cat.id, nombre: cat.descripcion || '' });
+      setHist([]);
+      setModalHistOpen(true);
       setHistLoading(true);
 
       const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_historial&id=${encodeURIComponent(cat.id)}`);
@@ -208,212 +241,186 @@ const Categorias = () => {
         fecha:          (r.fecha_cambio ?? r.fecha ?? '').toString(),
       }));
 
-      if (norm.length === 0) {
-        setHistOpen(false);
-        showToast('Esta categoría no tiene historial aún.', 'exito');
-        return;
-      }
-
-      setHistRows(norm);
+      setHist(norm);
     } catch (e) {
-      setHistOpen(false);
-      showToast(`No se pudo obtener el historial: ${e.message}`, 'error');
+      console.error(e);
+      setModalHistOpen(false);
+      showToast('error', `No se pudo cargar el historial: ${e.message}`);
     } finally {
       setHistLoading(false);
     }
   };
 
-  const filas = useMemo(() => lista, [lista]);
+  const renderCambio = (viejo, nuevo) => {
+    const pv = Number(viejo);
+    const pn = Number(nuevo);
+    if (!(pv > 0)) {
+      return <span className="cat_change_dash">—</span>;
+    }
+    const diff = pn - pv;
+    const pct = (diff / pv) * 100;
+    const sign = diff >= 0 ? '+' : '';
+    const isUp = diff > 0;
+    const isDown = diff < 0;
+
+    return (
+      <span className={`cat_change ${isUp ? 'cat_change_up' : ''} ${isDown ? 'cat_change_down' : ''}`}>
+        <FontAwesomeIcon icon={isUp ? faArrowTrendUp : faArrowTrendDown} className="cat_change_icon" />
+        {sign}{pct.toFixed(1)}%
+      </span>
+    );
+  };
 
   return (
-    <div className="contenedor-modulo" style={{ padding: 16, maxWidth: 1100, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="cat_page">
+      <div className="cat_card">
+        {/* Header */}
+        <header className="cat_header">
+          <h2 className="cat_title">Categorías</h2>
+        </header>
+
+        {/* Lista / Tabla */}
+        <div className="cat_list">
+          <div className="cat_list_head">
+            <div className="cat_col cat_col_name cat_head_cell">Nombre</div>
+            <div className="cat_col cat_col_amount cat_head_cell cat_center">Monto</div>
+            <div className="cat_col cat_col_actions cat_head_cell cat_right">Acciones</div>
+          </div>
+
+          {loading ? (
+            <>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="cat_row cat_row_skeleton">
+                  <span className="cat_skel cat_skel_text" />
+                  <span className="cat_skel cat_skel_text cat_skel_short" />
+                  <span className="cat_skel cat_skel_icon" />
+                </div>
+              ))}
+            </>
+          ) : filtradas.length === 0 ? (
+            <div className="cat_empty">No hay categorías para mostrar.</div>
+          ) : (
+            filtradas.map((c, index) => (
+              <div
+                key={c.id}
+                className="cat_row"
+                style={{ animationDelay: `${index * 0.06}s` }}
+              >
+                <div className="cat_cell cat_col_name">{c.descripcion || '—'}</div>
+                <div className="cat_cell cat_col_amount cat_center">{fmtARS(c.precio)}</div>
+                <div className="cat_cell cat_col_actions cat_right">
+                  {/* Botón de historial SIEMPRE visible, solo icono */}
+                  <button
+                    className="cat_icon_btn"
+                    onClick={() => abrirHistorial(c)}
+                    title="Historial de pagos"
+                    aria-label={`Ver historial de pagos de ${c.descripcion || 'categoría'}`}
+                  >
+                    <FontAwesomeIcon icon={faClockRotateLeft} />
+                  </button>
+
+                  <button
+                    className="cat_icon_btn"
+                    onClick={() => navigate(`/categorias/editar/${c.id}`)}
+                    title="Editar"
+                    aria-label={`Editar categoría ${c.descripcion || ''}`}
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                  <button
+                    className="cat_icon_btn cat_icon_btn_danger"
+                    onClick={() => pedirConfirmacionEliminar(c)}
+                    title="Eliminar"
+                    aria-label={`Eliminar categoría ${c.descripcion || ''}`}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Toolbar */}
+        <section className="cat_toolbar">
           <button
+            className="cat_btn cat_btn_primary cat_btn_back"
             onClick={() => navigate('/panel')}
-            className="btn-volver"
-            style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}
+            title="Volver"
+            aria-label="Volver"
           >
             <FontAwesomeIcon icon={faArrowLeft} />
-            <span>Volver</span>
+            <span className="cat_btn_text">Volver</span>
           </button>
-          <h2 style={{ margin: 0 }}>Categorías</h2>
-        </div>
 
-        <button
-          onClick={() => navigate('/categorias/nueva')}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 10,
-            border: 'none',
-            background: 'var(--soc-primary,#2563eb)',
-            color: '#fff',
-            display: 'inline-flex',
-            gap: 8,
-            alignItems: 'center',
-            cursor: 'pointer'
-          }}
-        >
-          <FontAwesomeIcon icon={faPlus} />
-          Agregar categoría
-        </button>
+          <div className="cat_toolbar_spacer" />
+
+          <button
+            className="cat_btn cat_btn_outline"
+            onClick={() => navigate('/categorias/nueva')}
+          >
+            <FontAwesomeIcon icon={faPlus} />
+            <span className="cat_btn_text">Nueva</span>
+          </button>
+        </section>
       </div>
 
-      {/* Tabla / Lista */}
-      <div
-        style={{
-          background: 'var(--soc-light,#fff)',
-          border: '1px solid var(--soc-gray-200,#e5e7eb)',
-          borderRadius: 12,
-          overflow: 'hidden'
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '100px 1fr 160px 220px',
-            gap: 10,
-            fontWeight: 700,
-            padding: '10px 12px',
-            background: 'var(--soc-gray-50,#f8fafc)',
-            borderBottom: '1px solid var(--soc-gray-200,#e5e7eb)'
-          }}
-        >
-          <div>ID</div>
-          <div>Nombre</div>
-          <div>Monto</div>
-          <div style={{ textAlign: 'right' }}>Acciones</div>
-        </div>
-
-        {loading ? (
-          <div style={{ padding: 16 }}>Cargando...</div>
-        ) : filas.length === 0 ? (
-          <div style={{ padding: 16 }}>No hay categorías cargadas.</div>
-        ) : (
-          filas.map((c) => (
-            <div
-              key={c.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '100px 1fr 160px 220px',
-                gap: 10,
-                padding: '10px 12px',
-                borderTop: '1px solid var(--soc-gray-100,#f1f5f9)',
-                alignItems: 'center'
-              }}
-            >
-              <div>{c.id ?? '-'}</div>
-              <div>{c.descripcion || '-'}</div>
-              <div>{c.precio === null || c.precio === undefined || c.precio === '' ? '-' : `$ ${Number(c.precio).toLocaleString('es-AR')}`}</div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                {Number(c.historialCount) > 0 && (
-                  <button
-                    title="Historial de precios"
-                    onClick={() => abrirHistorial(c)}
-                    style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid #cbd5e1', background: 'transparent', cursor: 'pointer' }}
-                  >
-                    <FontAwesomeIcon icon={faHistory} /> <span style={{ marginLeft: 6 }}>Historial</span>
-                  </button>
-                )}
-                <button
-                  title="Editar"
-                  onClick={() => navigate(`/categorias/editar/${c.id}`)}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid #cbd5e1', background: 'transparent', cursor: 'pointer' }}
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                </button>
-                <button
-                  title="Eliminar"
-                  onClick={() => abrirModalEliminar(c)}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--soc-danger,#ef4444)', background: 'transparent', color: 'var(--soc-danger,#ef4444)', cursor: 'pointer' }}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Modal Eliminar */}
-      <ConfirmModal
-        open={eliminarOpen}
-        title="Eliminar categoría"
-        message={
-          delNombre
-            ? `¿Seguro que querés eliminar la categoría: ${delNombre}? Esta acción no se puede deshacer.`
-            : '¿Seguro que querés eliminar esta categoría? Esta acción no se puede deshacer.'
-        }
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        onConfirm={confirmarEliminar}
-        onCancel={() => setEliminarOpen(false)}
-        loading={deleting}
-      />
-
-      {/* Modal Historial */}
+      {/* Modal Historial (pagos) */}
       <Modal
-        open={histOpen}
-        title={`Historial de precios • ${histNombre}`}
-        onClose={histLoading ? undefined : () => setHistOpen(false)}
+        open={modalHistOpen}
+        onClose={() => setModalHistOpen(false)}
+        title={`Historial de pagos · ${histCategoria.nombre || ''}`}
       >
         {histLoading ? (
-          <div style={{ padding: 10 }}>Cargando…</div>
+          <div className="cat_hist_loading">Cargando historial…</div>
+        ) : hist.length === 0 ? (
+          <div className="cat_hist_empty">Sin pagos registrados.</div>
         ) : (
-          <div style={{ maxHeight: 380, overflow: 'auto' }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 8,
-                fontWeight: 700,
-                padding: '8px 10px',
-                background: '#f8fafc',
-                border: '1px solid #e5e7eb',
-                borderRadius: 10,
-                marginBottom: 8
-              }}
-            >
-              <div>Fecha</div>
-              <div>Precio viejo</div>
-              <div>Precio nuevo</div>
-            </div>
-            {histRows.map((h, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr',
-                  gap: 8,
-                  padding: '8px 10px',
-                  borderBottom: '1px solid #eef2f7'
-                }}
-              >
-                <div>{formatDate(h.fecha)}</div>
-                <div>{isNaN(h.precio_anterior) ? '-' : `$ ${Number(h.precio_anterior).toLocaleString('es-AR')}`}</div>
-                <div>{isNaN(h.precio_nuevo)   ? '-' : `$ ${Number(h.precio_nuevo).toLocaleString('es-AR')}`}</div>
-              </div>
-            ))}
+          <div className="cat_hist_table_wrap">
+            <table className="cat_hist_table">
+              <thead>
+                <tr>
+                  <th className="cat_th_center">#</th>
+                  <th className="cat_th_right">Monto anterior</th>
+                  <th className="cat_th_right">Monto nuevo</th>
+                  <th className="cat_th_center">Cambio</th>
+                  <th className="cat_th_center">Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hist.map((h, i) => (
+                  <tr key={i}>
+                    <td className="cat_td_center" data-label="#"> {i + 1} </td>
+                    <td className="cat_td_right" data-label="Monto anterior">{fmtARS(h.precio_anterior)}</td>
+                    <td className="cat_td_right" data-label="Monto nuevo">{fmtARS(h.precio_nuevo)}</td>
+                    <td className="cat_td_center" data-label="Cambio">
+                      {renderCambio(h.precio_anterior, h.precio_nuevo)}
+                    </td>
+                    <td className="cat_td_center" data-label="Fecha">{formatDate(h.fecha)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-          <button
-            onClick={() => setHistOpen(false)}
-            style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #cbd5e1', background: 'transparent', cursor: 'pointer' }}
-          >
-            Cerrar
-          </button>
-        </div>
       </Modal>
 
-      {/* Toast */}
+      {/* Modal Confirmar Eliminación */}
+      <ConfirmDeleteModal
+        open={delState.open}
+        categoria={delState.cat}
+        onConfirm={confirmarEliminar}
+        onCancel={() => setDelState({ open: false, cat: null, loading: false })}
+        loading={delState.loading}
+      />
+
+      {/* TOAST */}
       {toast.show && (
         <Toast
           tipo={toast.tipo}
           mensaje={toast.mensaje}
-          duracion={toast.duracion ?? 3000}
-          onClose={() => setToast((t) => ({ ...t, show: false }))}
+          duracion={toast.duracion}
+          onClose={closeToast}
         />
       )}
     </div>
