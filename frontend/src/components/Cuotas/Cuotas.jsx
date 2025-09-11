@@ -714,7 +714,7 @@ const Cuotas = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="gcuotas-virtual-tables" style={{ height: "75vh" }}>
+                  <div className="gcuotas-virtual-tables" style={{ height: "80vh" }}>
                     <div className="gcuotas-virtual-header">
                       <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('nombre')}>
                         Alumno <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'nombre' ? 'gcuotas-sort-active' : ''}`} />
@@ -739,7 +739,7 @@ const Cuotas = () => {
                           key={`list-${cascadeRunId}`}
                           height={height}
                           itemCount={cuotasFiltradas.length}
-                          itemSize={60}
+                          itemSize={45}
                           width={width}
                           itemData={cuotasFiltradas}
                           className="gcuotas-listoverflow"

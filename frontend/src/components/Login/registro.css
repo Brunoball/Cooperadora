@@ -92,8 +92,8 @@
 }
 
 .reg_logo {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   border: 2px solid var(--reg-primary);
   object-fit: contain;
@@ -102,8 +102,6 @@
   transition: var(--reg-transition);
   margin-bottom: 2px;
 }
-@media (min-width: 768px) { .reg_logo { width: 96px; height: 96px; margin-bottom: 4px; } }
-.reg_logo:hover { transform: rotate(5deg) scale(1.05); box-shadow: var(--reg-shadow-md), inset 0 0 0 1px rgba(0,0,0,.05); }
 
 .reg_titulo {
   font-size: 1.6rem;

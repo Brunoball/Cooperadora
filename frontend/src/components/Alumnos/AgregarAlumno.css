@@ -144,7 +144,11 @@
   width: 100%;
   height: 100vh;
   box-sizing: border-box;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background:    linear-gradient(
+    135deg,
+    var(--reg-gray-300) 30%,   /* gris suave */
+    var(--reg-primary) 70%     /* rojo principal */
+  );
   box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
@@ -159,6 +163,7 @@
   display: flex;
   flex-direction: column;
   color: var(--text-primary);
+  box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.15);
 }
 
 /* ==============================
@@ -463,3 +468,60 @@
   .add-input { padding: .65rem .75rem; font-size: .88rem; }
   .step-label { display: none; }
 }
+/* ==============================
+   Textarea (Observaciones)
+============================== */
+.add-input-wrapper textarea.add-textarea{
+  width: 100%;
+  min-height: 110px; 
+  max-height: 115px;             /* altura cómoda */
+  padding: .85rem 1rem;           /* mismo padding que los inputs */
+  font-size: .95rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  transition: var(--transition-smooth);
+  resize: vertical;               /* solo vertical */
+}
+
+.add-input-wrapper textarea.add-textarea:focus{
+  outline: none;
+  background: #fff;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.25); /* halo suave como los inputs */
+}
+
+/* Placeholder más suave */
+.add-input-wrapper textarea.add-textarea::placeholder{
+  color: var(--text-secondary);
+  opacity: .65;
+}
+.add-input-wrapper textarea.add-textarea:focus::placeholder{
+  opacity: .4;
+}
+
+/* Chip/etiqueta flotante encima del borde SOLO para el textarea */
+.add-input-wrapper.always-active:has(textarea.add-textarea) .add-label{
+  /* levanta la etiqueta y la hace "chip" */
+  transform: translateY(-1.35rem) scale(.85);
+  left: .8rem;
+  z-index: 2;
+  background: #fff;                     /* fondo sólido para que se lea */
+  padding: 0 .45rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  /* dibuja el pequeño recorte del borde para que no se "corte" la etiqueta */
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+
+/* Ajuste fino en pantallas chicas */
+@media (max-width: 576px){
+  .add-input-wrapper.always-active:has(textarea.add-textarea) .add-label{
+    transform: translateY(-1.2rem) scale(.84);
+    left: .65rem;
+  }
+}
+.add-group > .add-input-wrapper { min-width: 0; }

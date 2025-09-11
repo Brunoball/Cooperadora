@@ -6,30 +6,25 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
   // Cerrar con ESC
   useEffect(() => {
     if (!mostrar) return;
-    const handleEsc = (e) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [mostrar, onClose]);
 
-  // 'datos' | 'contacto' | 'academico' | 'observaciones'
+  // Pestañas: 'datos' | 'contacto' | 'academico' | 'observaciones'
   const [pestania, setPestania] = useState('datos');
 
-  /* ----------------- Helpers ----------------- */
-  const nombreCompleto = useMemo(() => {
-    if (!alumno) return '';
-    const ap = (alumno.apellido || '').trim();
-    const no = (alumno.nombre || '').trim();
-    const armado = `${ap} ${no}`.trim();
-    return armado || ap || no || '-';
-  }, [alumno]);
+  /* ================= Helpers ================= */
+  const texto = useCallback((v) => {
+    const s = v === null || v === undefined ? '' : String(v).trim();
+    return s === '' ? '-' : s;
+  }, []);
 
   const formatearFecha = useCallback((val) => {
     if (!val) return '-';
+    // Soporta "YYYY-MM-DD" o ISO
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
-    if (m) {
-      const [, yyyy, mm, dd] = m;
-      return `${dd}/${mm}/${yyyy}`;
-    }
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
     const d = new Date(val.includes('T') ? val : `${val}T00:00:00`);
     if (Number.isNaN(d.getTime())) return '-';
     const dd = String(d.getDate()).padStart(2, '0');
@@ -38,13 +33,17 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
     return `${dd}/${mm}/${yyyy}`;
   }, []);
 
-  const texto = (v) =>
-    v === null || v === undefined || String(v).trim() === '' ? '-' : String(v).trim();
+  const nombreCompleto = useMemo(() => {
+    if (!alumno) return '';
+    const ap = (alumno.apellido || '').trim();
+    const no = (alumno.nombre || '').trim();
+    const armado = `${ap} ${no}`.trim();
+    return armado || ap || no || '-';
+  }, [alumno]);
 
-  // No render si no corresponde
   if (!mostrar || !alumno) return null;
 
-  /* ----------------- Extracts (todos ya resueltos por backend) ----------------- */
+  /* =============== Extracts (defensivos) =============== */
   // Documento
   const tipoDocNombre = alumno.tipo_documento_nombre || '';
   const tipoDocSigla  = alumno.tipo_documento_sigla ? ` (${alumno.tipo_documento_sigla})` : '';
@@ -72,177 +71,151 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
   // Estado
   const ingreso   = formatearFecha(alumno.ingreso);
 
-  // ✅ Observaciones (texto libre, puede venir null/empty)
-  const observaciones = alumno.observaciones; // mostrar tal cual, con pre-wrap
+  // Observaciones (texto libre)
+  const observaciones = alumno.observaciones;
 
   return (
     <div
-      className="modal-overlay"
-      onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}
+      className="mi-modal__overlay"
+      onClick={(e) => e.target.classList.contains('mi-modal__overlay') && onClose?.()}
     >
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="modal-header">
-          <div className="modal-header-content">
-            <h2 className="modal-title">Información del Alumno</h2>
-            <p className="modal-subtitle">
-              ID: {alumno.id_alumno} | {nombreCompleto}
+      <div className="mi-modal__container" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        {/* Header violeta */}
+        <div className="mi-modal__header">
+          <div className="mi-modal__head-left">
+            <h2 className="mi-modal__title">Información del Alumno</h2>
+            <p className="mi-modal__subtitle">
+              ID: {alumno.id_alumno ?? '-'} &nbsp;|&nbsp; {nombreCompleto}
             </p>
           </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Cerrar modal">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+          <button className="mi-modal__close" onClick={onClose} aria-label="Cerrar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        {/* Pestañas */}
-        <div className="modal-tabs">
-          <div className={`tab ${pestania === 'datos' ? 'active' : ''}`} onClick={() => setPestania('datos')}>
-            Datos
-          </div>
-          <div className={`tab ${pestania === 'contacto' ? 'active' : ''}`} onClick={() => setPestania('contacto')}>
-            Contacto
-          </div>
-          <div className={`tab ${pestania === 'academico' ? 'active' : ''}`} onClick={() => setPestania('academico')}>
-            Académico
-          </div>
-          <div className={`tab ${pestania === 'observaciones' ? 'active' : ''}`} onClick={() => setPestania('observaciones')}>
-            Observaciones
-          </div>
+        {/* Tabs */}
+        <div className="mi-modal__tabs">
+          <button className={`mi-tab ${pestania === 'datos' ? 'is-active' : ''}`} onClick={() => setPestania('datos')}>Datos Generales</button>
+          <button className={`mi-tab ${pestania === 'contacto' ? 'is-active' : ''}`} onClick={() => setPestania('contacto')}>Contacto</button>
+          <button className={`mi-tab ${pestania === 'academico' ? 'is-active' : ''}`} onClick={() => setPestania('academico')}>Académico</button>
+          <button className={`mi-tab ${pestania === 'observaciones' ? 'is-active' : ''}`} onClick={() => setPestania('observaciones')}>Observaciones</button>
         </div>
 
         {/* Contenido */}
-        <div className="modal-content">
+        <div className="mi-modal__content">
           {pestania === 'datos' && (
-            <div className="tab-content active">
-              <div className="info-grid">
-                <div className="info-card info-card-full">
-                  <h3 className="info-card-title">Datos Personales</h3>
+            <section className="mi-tabpanel is-active">
+              <div className="mi-grid">
+                <article className="mi-card mi-card--full">
+                  <h3 className="mi-card__title">Datos Personales</h3>
 
-                  {/* Apellido y Nombre en header */}
-
-                  <div className="info-item">
-                    <span className="info-label">Tipo de Documento:</span>
-                    <span className="info-value">{tipoDoc}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Tipo de Documento</span>
+                    <span className="mi-value">{tipoDoc}</span>
                   </div>
-                  <div className="info-item">
-                    <span className="info-label">Nº Documento:</span>
-                    <span className="info-value">{texto(numDoc)}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Nº Documento</span>
+                    <span className="mi-value">{texto(numDoc)}</span>
                   </div>
 
-                  <div className="info-item">
-                    <span className="info-label">Sexo:</span>
-                    <span className="info-value">{sexo}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Sexo</span>
+                    <span className="mi-value">{sexo}</span>
                   </div>
 
-                  <div className="info-item">
-                    <span className="info-label">Lugar de nacimiento:</span>
-                    <span className="info-value">{lugarNac}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Lugar de nacimiento</span>
+                    <span className="mi-value">{lugarNac}</span>
                   </div>
-                  <div className="info-item">
-                    <span className="info-label">Fecha de nacimiento:</span>
-                    <span className="info-value">{fechaNac}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Fecha de nacimiento</span>
+                    <span className="mi-value">{fechaNac}</span>
                   </div>
 
-                  <div className="info-sep" />
+                  <div className="mi-sep" />
 
-                  <div className="info-item">
-                    <span className="info-label">Ingreso:</span>
-                    <span className="info-value">{ingreso}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Ingreso</span>
+                    <span className="mi-value">{ingreso}</span>
                   </div>
-                </div>
+                </article>
               </div>
-            </div>
+            </section>
           )}
 
           {pestania === 'contacto' && (
-            <div className="tab-content active">
-              <div className="info-grid">
-                <div className="info-card">
-                  <h3 className="info-card-title">Dirección</h3>
-                  <div className="info-item">
-                    <span className="info-label">Domicilio:</span>
-                    <span className="info-value">{domicilio}</span>
+            <section className="mi-tabpanel is-active">
+              <div className="mi-grid">
+                <article className="mi-card">
+                  <h3 className="mi-card__title">Dirección</h3>
+                  <div className="mi-row">
+                    <span className="mi-label">Domicilio</span>
+                    <span className="mi-value">{domicilio}</span>
                   </div>
-                  <div className="info-item">
-                    <span className="info-label">Localidad:</span>
-                    <span className="info-value">{localidad}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">Localidad</span>
+                    <span className="mi-value">{localidad}</span>
                   </div>
-                  <div className="info-item">
-                    <span className="info-label">CP:</span>
-                    <span className="info-value">{cp}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">CP</span>
+                    <span className="mi-value">{cp}</span>
                   </div>
-                </div>
+                </article>
 
-                <div className="info-card">
-                  <h3 className="info-card-title">Contacto</h3>
-                  <div className="info-item">
-                    <span className="info-label">Teléfono:</span>
-                    <span className="info-value">{telefono}</span>
+                <article className="mi-card">
+                  <h3 className="mi-card__title">Contacto</h3>
+                  <div className="mi-row">
+                    <span className="mi-label">Teléfono</span>
+                    <span className="mi-value">{telefono}</span>
                   </div>
-                </div>
+                </article>
               </div>
-            </div>
+            </section>
           )}
 
           {pestania === 'academico' && (
-            <div className="tab-content active">
-              <div className="info-grid">
-                <div className="info-card">
-                  <h3 className="info-card-title">Curso</h3>
-                  <div className="info-item">
-                    <span className="info-label">Año:</span>
-                    <span className="info-value">{texto(anio)}</span>
+            <section className="mi-tabpanel is-active">
+              <div className="mi-grid">
+                <article className="mi-card">
+                  <h3 className="mi-card__title">Curso</h3>
+                  <div className="mi-row">
+                    <span className="mi-label">Año</span>
+                    <span className="mi-value">{texto(anio)}</span>
                   </div>
-                  <div className="info-item">
-                    <span className="info-label">División:</span>
-                    <span className="info-value">{texto(division)}</span>
+                  <div className="mi-row">
+                    <span className="mi-label">División</span>
+                    <span className="mi-value">{texto(division)}</span>
                   </div>
-                </div>
+                </article>
 
-                <div className="info-card">
-                  <h3 className="info-card-title">Categoría</h3>
-                  <div className="info-item">
-                    <span className="info-label">Categoría:</span>
-                    <span className="info-value">{texto(categoria)}</span>
+                <article className="mi-card">
+                  <h3 className="mi-card__title">Categoría</h3>
+                  <div className="mi-row">
+                    <span className="mi-label">Categoría</span>
+                    <span className="mi-value">{texto(categoria)}</span>
                   </div>
-                </div>
+                </article>
               </div>
-            </div>
+            </section>
           )}
 
           {pestania === 'observaciones' && (
-            <div className="tab-content active">
-              <div className="info-grid">
-                <div className="info-card info-card-full">
-                  <h3 className="info-card-title">Observaciones</h3>
-                  <div className="info-item">
-                    <span className="info-label">Notas:</span>
-                    <span
-                      className="info-value"
-                      style={{ whiteSpace: 'pre-wrap' }} // ✅ respeta saltos de línea
-                    >
-                      {texto(observaciones)}
-                    </span>
+            <section className="mi-tabpanel is-active">
+              <div className="mi-grid">
+                <article className="mi-card mi-card--full">
+                  <h3 className="mi-card__title">Observaciones</h3>
+                  <div className="mi-row mi-row--block">
+                    <span className="mi-label">Notas</span>
+                    <span className="mi-value mi-value--multiline">{texto(observaciones)}</span>
                   </div>
-                </div>
+                </article>
               </div>
-            </div>
+            </section>
           )}
         </div>
-
       </div>
     </div>
   );

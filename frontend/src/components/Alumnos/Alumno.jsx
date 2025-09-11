@@ -156,6 +156,13 @@ const Alumnos = () => {
         };
   });
 
+  // ======= Estados para subdividir el panel (ambos colapsables) =======
+  const [openSecciones, setOpenSecciones] = useState({
+    letra: false, // 🔒 SIEMPRE ARRANCA CERRADO
+    anio: false,
+  });
+  const [verMasAnio, setVerMasAnio] = useState(false); // (no usado para expandir en este snippet)
+
   const { busqueda, letraSeleccionada, filtroActivo, anioSeleccionado } = filtros;
   const busquedaDefer = useDeferredValue(busqueda);
 
@@ -204,7 +211,6 @@ const Alumnos = () => {
      Animación en cascada (helper)
   ================================= */
   const dispararCascadaUnaVez = useCallback((duracionMs) => {
-    // base 400ms + (MAX_CASCADE_ITEMS-1)*30ms + 300ms buffer
     const safeMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
     const total = typeof duracionMs === 'number' ? duracionMs : safeMs;
     if (animacionActiva) return;
@@ -212,14 +218,10 @@ const Alumnos = () => {
     window.setTimeout(() => setAnimacionActiva(false), total);
   }, [animacionActiva]);
 
-  // 👇 helper para evitar FOUC / parpadeo
   const triggerCascadaConPreMask = useCallback(() => {
-    // oculto preventivamente los primeros N
     setPreCascada(true);
-    // espero a que React pinte el nuevo estado/layout
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        // ahora disparo la cascada y retiro el velo
         dispararCascadaUnaVez();
         setPreCascada(false);
       });
@@ -317,7 +319,6 @@ const Alumnos = () => {
   }, [filtros]);
 
   // ✅ Dispara cascada SOLO cuando el buscador pasa de '' a no ''
-  //    y con "pre-mask" para evitar parpadeo.
   useEffect(() => {
     const prev = prevBusquedaRef.current || '';
     const ahora = (busquedaDefer || '').trim();
@@ -461,7 +462,7 @@ const Alumnos = () => {
     triggerCascadaConPreMask();
   }, [triggerCascadaConPreMask]);
 
-  // Handlers filtros (también con pre-mask para una experiencia consistente)
+  // Handlers filtros
   const handleBuscarChange = useCallback((valor) => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: valor };
@@ -686,7 +687,16 @@ const Alumnos = () => {
           <div className="alu-filtros-container" ref={filtrosRef}>
             <button
               className="alu-filtros-button"
-              onClick={() => setMostrarFiltros(!mostrarFiltros)}
+              onClick={() => {
+                setMostrarFiltros((prev) => {
+                  const next = !prev;
+                  // 🔒 Al abrir el menú de filtros, forzamos la sección "letra" a cerrada
+                  if (next) {
+                    setOpenSecciones((s) => ({ ...s, letra: false }));
+                  }
+                  return next;
+                });
+              }}
               disabled={cargando}
             >
               <FaFilter className="alu-icon-button" />
@@ -695,45 +705,71 @@ const Alumnos = () => {
             </button>
 
             {mostrarFiltros && (
-              <div className="alu-filtros-menu">
-                {/* Submenú LETRA */}
-                <div className="alu-filtros-submenu">
-                  <div className="alu-alfabeto-filtros">
-                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letra) => (
-                      <button
-                        key={letra}
-                        className={`alu-letra-filtro ${filtros.letraSeleccionada === letra ? 'alu-active' : ''}`}
-                        onClick={() => handleFiltrarPorLetra(letra)}
-                        title={`Filtrar por ${letra}`}
-                      >
-                        {letra}
-                      </button>
-                    ))}
+              <div className="alu-filtros-menu" role="menu">
+                {/* ====== LETRA (acordeón, inicia CERRADO) ====== */}
+                <div className="alu-filtros-group">
+                  <button
+                    type="button"
+                    className={`alu-filtros-group-header ${openSecciones.letra ? 'is-open' : ''}`}
+                    onClick={() => setOpenSecciones((s) => ({ ...s, letra: !s.letra }))}
+                    aria-expanded={openSecciones.letra}
+                  >
+                    <span className="alu-filtros-group-title">Filtrar por letra</span>
+                    <FaChevronDown className="alu-accordion-caret" />
+                  </button>
+
+                  <div className={`alu-filtros-group-body ${openSecciones.letra ? 'is-open' : 'is-collapsed'}`}>
+                    <div className="alu-alfabeto-filtros">
+                      {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letra) => (
+                        <button
+                          key={letra}
+                          className={`alu-letra-filtro ${filtros.letraSeleccionada === letra ? 'alu-active' : ''}`}
+                          onClick={() => handleFiltrarPorLetra(letra)}
+                          title={`Filtrar por ${letra}`}
+                        >
+                          {letra}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Submenú AÑO 1–7 */}
-                <div className="alu-filtros-submenu">
-                  <div className="alu-anio-filtros">
-                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                      <button
-                        key={`anio-${n}`}
-                        className={`alu-anio-filtro ${filtros.anioSeleccionado === n ? 'alu-active' : ''}`}
-                        onClick={() => handleFiltrarPorAnio(n)}
-                        title={`Filtrar por Año ${n}`}
-                      >
-                        {n}
-                      </button>
-                    ))}
+                {/* ====== AÑO (acordeón) ====== */}
+                <div className="alu-filtros-group">
+                  <button
+                    type="button"
+                    className={`alu-filtros-group-header ${openSecciones.anio ? 'is-open' : ''}`}
+                    onClick={() => setOpenSecciones((s) => ({ ...s, anio: !s.anio }))}
+                    aria-expanded={openSecciones.anio}
+                  >
+                    <span className="alu-filtros-group-title">Filtrar por año</span>
+                    <FaChevronDown className="alu-accordion-caret" />
+                  </button>
+
+                  <div className={`alu-filtros-group-body ${openSecciones.anio ? 'is-open' : 'is-collapsed'}`}>
+                    <div className="alu-anio-filtros">
+                      {(verMasAnio ? [1,2,3,4,5,6,7] : [1,2,3,4,5,6,7]).map((n) => (
+                        <button
+                          key={`anio-${n}`}
+                          className={`alu-anio-filtro ${filtros.anioSeleccionado === n ? 'alu-active' : ''}`}
+                          onClick={() => handleFiltrarPorAnio(n)}
+                          title={`Filtrar por Año ${n}`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
+                {/* ====== Acción Mostrar Todos ====== */}
                 <div
                   className="alu-filtros-menu-item alu-mostrar-todas"
                   onClick={() => {
                     handleMostrarTodos();
                     setMostrarFiltros(false);
                   }}
+                  role="menuitem"
                 >
                   <span>Mostrar Todos</span>
                 </div>
@@ -986,6 +1022,7 @@ const Alumnos = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setAlumnoAEliminar(alumno);
+                            setMostrarModalEliminar=true;
                             setMostrarModalEliminar(true);
                           }}
                           aria-label="Eliminar"
@@ -998,7 +1035,7 @@ const Alumnos = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setAlumnoDarBaja(alumno);
-                          setMostrarModalDarBaja(true);
+                            setMostrarModalDarBaja(true);
                           }}
                           aria-label="Dar de baja"
                         >

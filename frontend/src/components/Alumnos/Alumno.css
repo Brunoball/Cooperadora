@@ -132,7 +132,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-alumno-box {
   width: 100%;
   min-height: 100vh;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background: #FDEDED;
   box-shadow: var(--reg-shadow-lg);
   overflow: hidden;
   display: flex;
@@ -341,7 +341,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 }
 .alu-filtros-activos-container.alu-show { max-height: 100px; opacity: 1; margin: 0.5rem 0; }
 
-.alu-alumnos-list { padding: .5rem 1.5rem 0; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);}
+.alu-alumnos-list { padding: .5rem 1.5rem 0; background: #FDEDED}
 
 .alu-filtros-activos {
   display: grid;
@@ -511,10 +511,10 @@ input:-webkit-autofill { background-color: transparent !important; }
 }
 
 /* Variantes de color */
-.alu-iconchip.is-info  { --chip-bg:#e8eef8; --chip-border:#d2dcf0; --chip-icon:#111827; }
-.alu-iconchip.is-edit  { --chip-bg:#eaf1ff; --chip-border:#cfe0ff; --chip-icon:#2563eb; }
+.alu-iconchip.is-info  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
+.alu-iconchip.is-edit  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
 .alu-iconchip.is-delete{ --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
-.alu-iconchip.is-baja  { --chip-bg:#fff3e8; --chip-border:#ffd7ba; --chip-icon:#e26a00; }
+.alu-iconchip.is-baja  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
 
 /* Hover genérico (levanta y sombrea) */
 .alu-iconchip:hover {
@@ -577,7 +577,7 @@ input:-webkit-autofill { background-color: transparent !important; }
    ========================================================= */
 .alu-down-container {
   width: 100%; height: 70px;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background: #FDEDED;
   padding: 0 2.5%;
   display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;
 }
@@ -839,7 +839,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 /* =========================================================
    Filtros por Año (1–7)
    ========================================================= */
-.alu-anio-filtros { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:.5rem; }
+.alu-anio-filtros { display:grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap:.5rem; }
 .alu-anio-filtro {
   border:1px solid var(--reg-red-200); border-radius:6px; padding:.35rem; font-size:.9rem; font-weight:500; cursor:pointer;
   transition: background-color .2s ease, transform .1s ease; color: var(--reg-primary-dark);
@@ -850,3 +850,82 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-anio-filtro.alu-anio-clear:hover { background: linear-gradient(135deg, var(--reg-danger) 0%, var(--reg-primary-dark) 100%); transform: scale(1.02); }
 /* evita FOUC: el “velo” inicial previo a la animación */
 .alu-pre { opacity: 0; transform: translateY(8px); }
+/* ====== Grupos de filtros (acordeón) ====== */
+
+.alu-filtros-group:last-child { border-bottom: none; }
+
+/* Header del grupo */
+.alu-filtros-group-header {
+  width: 100%;
+  background: #fff;
+  border: none;
+  outline: none;
+  padding: 12px 16px;
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.alu-filtros-group-header:hover { background: var(--reg-red-50); }
+.alu-filtros-group-header.is-open { background: var(--reg-red-50); }
+.alu-filtros-group-header.is-static {
+  cursor: default;
+  background: #fff;
+}
+.alu-filtros-group-header.is-static:hover { background: #fff; }
+
+.alu-filtros-group-title {
+  font-weight: 600;
+  color: var(--reg-primary-dark);
+}
+
+
+/* Caret */
+.alu-accordion-caret {
+  transition: transform var(--transition-fast);
+}
+.alu-filtros-group-header.is-open .alu-accordion-caret {
+  transform: rotate(180deg);
+}
+
+/* Body del grupo (colapsable) */
+.alu-filtros-group-body {
+  padding: 10px 14px 14px 14px;
+  transition: grid-template-rows .25s ease, padding .2s ease, opacity .2s ease;
+}
+.alu-filtros-group-body.is-collapsed {
+  padding-top: 0;
+  padding-bottom: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+.alu-filtros-group-body.is-open {
+  opacity: 1;
+}
+
+/* Botón mini "ver más / ver menos" */
+.alu-mini-toggle {
+  margin-top: 8px;
+  background: transparent;
+  border: 1px dashed var(--reg-red-300);
+  color: var(--reg-primary);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.alu-mini-toggle:hover {
+  background: var(--reg-red-50);
+  border-color: var(--reg-red-400);
+}
+
+/* grillas existentes: reusamos tus clases */
+.alu-alfabeto-filtros { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 768px){
+  .alu-alfabeto-filtros { grid-template-columns: repeat(6, 1fr); }
+}

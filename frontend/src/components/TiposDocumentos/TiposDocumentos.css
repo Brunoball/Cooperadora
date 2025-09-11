@@ -239,6 +239,11 @@
   align-items: center;
   gap: 8px;
 }
+.td-modal__icon{font-size: 2.2rem;
+    color: var(--reg-danger);
+    margin-bottom: 0.8rem;}
+
+
 
 .td_list_head{
   padding:12px;

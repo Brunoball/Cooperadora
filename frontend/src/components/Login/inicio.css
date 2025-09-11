@@ -102,8 +102,8 @@ html, body {
 }
 
 .ini_logo {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   border: 2px solid var(--ini-primary);
   object-fit: contain;
@@ -112,8 +112,6 @@ html, body {
   transition: var(--ini-transition);
   margin-bottom: 2px;
 }
-@media (min-width: 768px) { .ini_logo { width: 96px; height: 96px; margin-bottom: 4px; } }
-.ini_logo:hover { transform: rotate(5deg) scale(1.05); box-shadow: var(--ini-shadow-md), inset 0 0 0 1px rgba(0,0,0,.05); }
 
 .ini_titulo {
   font-size: 1.6rem;

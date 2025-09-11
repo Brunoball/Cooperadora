@@ -76,7 +76,6 @@ const AgregarAlumno = () => {
           });
 
           // ⬇️ Preseleccionar DNI si el usuario no eligió nada aún
-          // Coincide por sigla 'DNI' o por descripción que contenga 'DOCUMENTO NACIONAL DE IDENTIDAD'
           if (!formData.id_tipo_documento && td.length) {
             const dniOption =
               td.find(t => (t.sigla || '').toUpperCase() === 'DNI') ||
@@ -176,13 +175,10 @@ const AgregarAlumno = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // ✅ Regla especial para teléfono: solo 0-9 y '-'
+    // ✅ Teléfono: solo 0-9 y '-'
     if (name === 'telefono') {
       const cleaned = value.replace(/[^0-9-]/g, '');
-      if (cleaned !== value) {
-        showToast('Teléfono: solo números y guiones (-).', 'error');
-      }
-      // Limitar a 20 chars por política de validación
+      if (cleaned !== value) showToast('Teléfono: solo números y guiones (-).', 'error');
       const limited = cleaned.slice(0, 20);
       setFormData(prev => ({ ...prev, [name]: limited }));
       return;
@@ -251,16 +247,12 @@ const AgregarAlumno = () => {
 
     obligatorios.forEach((k) => {
       const val = formData[k];
-      if (!val || !String(val).trim()) {
-        faltantes.push(labels[k]);
-      }
+      if (!val || !String(val).trim()) faltantes.push(labels[k]);
     });
 
     Object.entries(formData).forEach(([k, v]) => {
       const err = validarCampo(k, v);
-      if (err && (v || obligatorios.includes(k))) {
-        invalidos.push(labels[k] || k);
-      }
+      if (err && (v || obligatorios.includes(k))) invalidos.push(labels[k] || k);
     });
 
     if (faltantes.length || invalidos.length) {
@@ -453,8 +445,14 @@ const AgregarAlumno = () => {
             <div className="add-alumno-section">
               <h3 className="add-alumno-section-title">Contacto y Domicilio</h3>
               <div className="add-alumno-section-content">
+
+                {/* Teléfono + Domicilio + Localidad en una sola fila */}
                 <div className="add-group">
-                  <div className={`add-input-wrapper ${formData.telefono || activeField === 'telefono' ? 'has-value' : ''}`} style={{ flex: 1 }}>
+                  {/* Teléfono */}
+                  <div
+                    className={`add-input-wrapper ${formData.telefono || activeField === 'telefono' ? 'has-value' : ''}`}
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
                     <label className="add-label">Teléfono</label>
                     <input
                       name="telefono"
@@ -465,14 +463,16 @@ const AgregarAlumno = () => {
                       className="add-input"
                       type="tel"
                       inputMode="tel"
-                      pattern="[0-9-]*"     // ✅ sólo números y guión
+                      pattern="[0-9-]*"
                     />
                     <span className="add-input-highlight" />
                   </div>
-                </div>
 
-                <div className="add-group">
-                  <div className={`add-input-wrapper ${formData.domicilio || activeField === 'domicilio' ? 'has-value' : ''}`} style={{ flex: 1 }}>
+                  {/* Domicilio (más ancho) */}
+                  <div
+                    className={`add-input-wrapper ${formData.domicilio || activeField === 'domicilio' ? 'has-value' : ''}`}
+                    style={{ flex: 2, minWidth: 0 }}
+                  >
                     <label className="add-label">Domicilio</label>
                     <input
                       name="domicilio"
@@ -485,7 +485,11 @@ const AgregarAlumno = () => {
                     <span className="add-input-highlight" />
                   </div>
 
-                  <div className={`add-input-wrapper ${formData.localidad || activeField === 'localidad' ? 'has-value' : ''}`} style={{ flex: 1 }}>
+                  {/* Localidad */}
+                  <div
+                    className={`add-input-wrapper ${formData.localidad || activeField === 'localidad' ? 'has-value' : ''}`}
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
                     <label className="add-label">Localidad</label>
                     <input
                       name="localidad"
@@ -513,6 +517,7 @@ const AgregarAlumno = () => {
                       rows={4}
                       placeholder="Notas internas, aclaraciones, referencias, etc."
                     />
+                    <span className="add-input-highlight" />
                   </div>
                 </div>
 
@@ -526,8 +531,9 @@ const AgregarAlumno = () => {
               <h3 className="add-alumno-section-title">Datos Académicos</h3>
               <div className="add-alumno-section-content">
 
+                {/* Año + División + Categoría en una sola fila */}
                 <div className="add-group">
-                  <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
+                  <div className="add-input-wrapper always-active" style={{ flex: 1, minWidth: 0 }}>
                     <label className="add-label">Año *</label>
                     <select
                       name="id_año"
@@ -545,7 +551,7 @@ const AgregarAlumno = () => {
                     </select>
                   </div>
 
-                  <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
+                  <div className="add-input-wrapper always-active" style={{ flex: 1, minWidth: 0 }}>
                     <label className="add-label">División *</label>
                     <select
                       name="id_division"
@@ -562,25 +568,26 @@ const AgregarAlumno = () => {
                       ))}
                     </select>
                   </div>
+
+                  <div className="add-input-wrapper always-active" style={{ flex: 1, minWidth: 0 }}>
+                    <label className="add-label">Categoría *</label>
+                    <select
+                      name="id_categoria"
+                      value={formData.id_categoria}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('id_categoria')}
+                      onBlur={handleBlur}
+                      className="add-input"
+                      disabled={loading || !listas.loaded}
+                    >
+                      <option value="">Seleccionar categoría</option>
+                      {listas.categorias.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="add-input-wrapper always-active" style={{ maxWidth: 420 }}>
-                  <label className="add-label">Categoría *</label>
-                  <select
-                    name="id_categoria"
-                    value={formData.id_categoria}
-                    onChange={handleChange}
-                    onFocus={() => handleFocus('id_categoria')}
-                    onBlur={handleBlur}
-                    className="add-input"
-                    disabled={loading || !listas.loaded}
-                  >
-                    <option value="">Seleccionar categoría</option>
-                    {listas.categorias.map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
           )}

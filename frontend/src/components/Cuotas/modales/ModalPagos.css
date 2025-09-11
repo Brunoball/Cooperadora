@@ -358,14 +358,16 @@
   right: 0;
   top: calc(100% + 6px);
   z-index: 20;
-  min-width: 240px;
+  min-width: 100px;
+  max-height: 120px;
+  overflow: auto;
   padding: .5rem;
   background: #fff;
   border: 1px solid var(--gray-200);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(1, 1fr);
   gap: .25rem;
 }
 .year-item {
