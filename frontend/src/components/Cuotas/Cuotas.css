@@ -1,138 +1,121 @@
-/* ===========================
-   Variables y base (PRIMARIO = GRAY 700)
-   =========================== */
+/* -----------------------------------------------------------
+   ====== :root ROJO (sin degradados) — variables con prefijo reg- ======
+   (Se agregan como tema + puente de alias para tu UI)
+   ----------------------------------------------------------- */
 :root {
-  /* Colores primarios GRAY */
-  --primary-50:  #f8fafc;
-  --primary-100: #f1f5f9;
-  --primary-200: #e2e8f0;
-  --primary-300: #cbd5e1;
-  --primary-400: #94a3b8;
-  --primary-500: #64748b;
-  --primary-600: #475569;
-  --primary-700: #334155; /* principal */
-  --primary-800: #1e293b;
-  --primary-900: #0f172a;
-  --primary-950: #0a0f1a; /* ajuste profundo */
+  /* 🎨 PALETA ROJA */
+  --reg-primary: #B71C1C;          /* Rojo principal */
+  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
+  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
 
-  /* Alias */
-  --primary-color: var(--primary-700);
-  --primary-hover: var(--primary-800);
-  --primary-light: var(--primary-200);
-  --primary-dark: var(--primary-900);
-  --primary-accent: var(--primary-500);
+  --reg-secondary: #1D428A;        /* Azul secundario opcional */
+  --reg-accent: #C62828;
 
-  /* Complementarios (SECUNDARIO = AZUL para contraste) */
-  --secondary-50:  #eff6ff;
-  --secondary-100: #dbeafe;
-  --secondary-200: #bfdbfe;
-  --secondary-300: #93c5fd;
-  --secondary-400: #60a5fa;
-  --secondary-500: #3b82f6;
-  --secondary-600: #2563eb;
-  --secondary-700: #1d4ed8;
-  --secondary-800: #1e40af;
-  --secondary-900: #1e3a8a;
+  --reg-success: #10B981;
+  --reg-warning: #F59E0B;
+  --reg-danger: #D32F2F;
 
-  --secondary-color: var(--secondary-500);
-  --secondary-hover: var(--secondary-600);
+  --reg-light: #F8FAFC;
+  --reg-dark: #0F172A;
 
-  /* Estado */
-  --success-50:  #ecfdf5;
-  --success-100: #d1fae5;
-  --success-200: #a7f3d0;
-  --success-300: #6ee7b7;
-  --success-400: #34d399;
-  --success-500: #10b981;
-  --success-600: #059669;
-  --success-700: #047857;
+  --reg-gray-100: #F1F5F9;
+  --reg-gray-200: #E2E8F0;
+  --reg-gray-300: #CBD5E1;
+  --reg-gray-400: #94A3B8;
+  --reg-gray-500: #64748B;
+  --reg-gray-600: #475569;
+  --reg-gray-700: #334155;
+  --reg-gray-800: #1E293B;
+  --reg-gray-900: #0F172A;
 
-  --warning-50:  #fffbeb;
-  --warning-100: #fef3c7;
-  --warning-200: #fde68a;
-  --warning-300: #fcd34d;
-  --warning-400: #fbbf24;
-  --warning-500: #f59e0b;
+  --reg-border-radius: 12px;
+  --reg-border-radius-lg: 16px;
+  --reg-border-radius-xl: 20px;
 
-  --danger-50:  #fef2f2;
-  --danger-100: #fee2e2;
-  --danger-200: #fecaca;
-  --danger-300: #fca5a5;
-  --danger-400: #f87171;
-  --danger-500: #ef4444;
-  --danger-600: #dc2626;
+  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Neutros / Superficies */
-  --gray-50:  #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
-
-  --background-color: var(--gray-50);
-  --surface-color: #ffffff;
-  --surface-secondary: var(--gray-100);
-  --border-color: var(--gray-200);
-  --border-focus: var(--secondary-500);
-  --text-primary: var(--gray-900);
-  --text-secondary: var(--gray-600);
-  --text-muted: var(--gray-400);
-  --text-on-primary: #ffffff;
-
-  /* Gradientes (basados en PRIMARIO = GRAY) */
-  --gradient-primary: linear-gradient(135deg, var(--primary-500), var(--primary-700));
-  --gradient-hero: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 50%, var(--primary-900) 100%);
-  --gradient-background: linear-gradient(135deg, var(--gray-100) 30%, var(--primary-500) 70%);
-  --gradient-accent: linear-gradient(90deg, var(--primary-500), var(--primary-700));
-  
-  --btn-agregar-alumno: #3D4D55;  /* gris azulado medio */
-  --btn-exportar-excel: #A79E9C;  /* gris cálido */
-  --btn-dados-baja:     #B58863;  /* terracota / marrón cálido */
-
-  /* Sombras */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-
-  /* Radios / Spacings / Transiciones */
-  --border-radius: 8px;
-  --border-radius-sm: 4px;
-  --border-radius-md: 6px;
-  --border-radius-lg: 12px;
-  --border-radius-xl: 16px;
-  --border-radius-full: 9999px;
-
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-
-  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Cascada */
-  --cascade-stagger: 50ms;
-  --cascade-duration: .45s;
-  --cascade-ease: cubic-bezier(.2,.7,.2,1);
-
-  /* Safe areas */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
+  --reg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* ===========================
-   ROOT: permitir scroll global 
-   =========================== */
+/* -----------------------------------------------------------
+   BRIDGE A REG: reasigna tokens existentes a la paleta --reg-
+   (Activa el tema rojo sin cambiar tus clases)
+   ----------------------------------------------------------- */
+:root {
+  /* —— Primario ahora es ROJO —— */
+  --primary-400: var(--reg-primary-light);
+  --primary-500: var(--reg-primary);
+  --primary-600: var(--reg-primary);
+  --primary-700: var(--reg-primary); /* principal */
+  --primary-800: var(--reg-primary-dark);
+  --primary-900: var(--reg-primary-dark);
+
+  --primary-color: var(--reg-primary);
+  --primary-hover: var(--reg-primary-dark);
+  --primary-light: var(--reg-primary-light);
+  --primary-dark: var(--reg-primary-dark);
+  --primary-accent: var(--reg-accent);
+
+  /* —— Secundario: azul corporativo de reg —— */
+  --secondary-color: var(--reg-secondary);
+  /* mantenemos el scale original de secondary-*** para compatibilidad */
+  /* si deseas, puedes ajustar --secondary-600 = #163372 (más oscuro) */
+
+  /* —— Semánticos —— */
+  --success-500: var(--reg-success);
+  --success-600: #0a9a72;
+  --success-700: #077255;
+
+  --warning-500: var(--reg-warning);
+
+  --danger-500: var(--reg-danger);
+  --danger-600: #b91c1c;
+
+  /* —— Neutros / superficies desde reg —— */
+  --gray-100: var(--reg-gray-100);
+  --gray-200: var(--reg-gray-200);
+  --gray-300: var(--reg-gray-300);
+  --gray-400: var(--reg-gray-400);
+  --gray-500: var(--reg-gray-500);
+  --gray-600: var(--reg-gray-600);
+  --gray-700: var(--reg-gray-700);
+  --gray-800: var(--reg-gray-800);
+  --gray-900: var(--reg-gray-900);
+
+  --background-color: var(--reg-light);
+  --surface-color: #ffffff;
+  --surface-secondary: var(--reg-gray-100);
+  --border-color: var(--reg-gray-200);
+  --text-primary: var(--reg-dark);
+  --text-secondary: var(--reg-gray-600);
+  --text-muted: var(--reg-gray-400);
+
+  /* —— Gradientes rebasados a rojo —— */
+  --gradient-primary: linear-gradient(135deg, var(--reg-primary-light), var(--reg-primary));
+  --gradient-hero: linear-gradient(135deg, var(--reg-primary-light) 0%, var(--reg-primary) 55%, var(--reg-primary-dark) 100%);
+  --gradient-background: linear-gradient(135deg, var(--reg-gray-100) 30%, var(--reg-primary) 70%);
+  --gradient-accent: linear-gradient(90deg, var(--reg-primary), var(--reg-primary-dark));
+
+  /* —— Botones custom —— */
+  --btn-agregar-alumno: var(--reg-primary-dark);
+  --btn-exportar-excel: var(--reg-gray-400);
+  --btn-dados-baja: var(--reg-accent);
+
+  /* —— Radios / sombras / transiciones desde reg —— */
+  --border-radius: var(--reg-border-radius);
+  --border-radius-lg: var(--reg-border-radius-lg);
+  --border-radius-xl: var(--reg-border-radius-xl);
+
+  --shadow-sm: var(--reg-shadow-sm);
+  --shadow-md: var(--reg-shadow-md);
+  --shadow-lg: var(--reg-shadow-lg);
+  --shadow-xl: var(--reg-shadow-xl);
+
+  --transition-smooth: var(--reg-transition);
+}
 
 
 /* =========================== 
@@ -208,7 +191,7 @@
 .gcuotas-filter-card, .gcuotas-tabs-card, .gcuotas-actions-card {
   background: var(--surface-color);
   border-radius: var(--border-radius);
-  margin: 0 12px;
+
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
   margin-top: 12px;
@@ -342,8 +325,8 @@
 
 .gcuotas-buttons-container {
   padding: 14px;
-display: flex;
-flex-wrap: nowrap;
+  display: flex;
+  flex-wrap: nowrap;
   gap: 10px;
 }
 
@@ -544,7 +527,6 @@ flex-wrap: nowrap;
 
 /* Filas */
 .gcuotas-virtual-row {
-
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
@@ -1189,6 +1171,7 @@ flex-wrap: nowrap;
 .gcuotas-cascade-12 { animation-delay: 0.60s; }
 .gcuotas-cascade-13 { animation-delay: 0.65s; }
 .gcuotas-cascade-14 { animation-delay: 0.70s; }
+
 /* Cuotas.css — solo lo nuevo/relevante añadido para tu pedido */
 
 /* ====== ZEBRA (escalonado) en filas desktop ====== */
@@ -1243,4 +1226,50 @@ flex-wrap: nowrap;
   opacity: .6;
 }
 
-/* (El resto de tus estilos previos permanecen igual) */
+
+/* —— Derivados que faltaban (secundario, focus, on-primary, escalas semánticas) —— */
+:root {
+  /* Texto sobre fondos intensos */
+  --text-on-primary: #ffffff;
+
+  /* Focus genérico (azulado suave) */
+  --border-focus: #93c5fd;
+
+  /* Escala secundaria (derivada de --reg-secondary: #1D428A) */
+  --secondary-50:  #eef2ff;  /* tinte muy suave */
+  --secondary-100: #e0e7ff;
+  --secondary-200: #c7d2fe;
+  --secondary-300: #a5b4fc;
+  --secondary-400: #818cf8;
+  --secondary-500: #6366f1;
+  --secondary-600: #4f46e5;
+  --secondary-700: #4338ca;
+  --secondary-800: #3730a3;
+  --secondary-900: #312e81;
+  --secondary-hover: #163372; /* hover más oscuro para botones secundarios */
+
+  /* Escala primaria rápida (rojo) para chips/estados */
+  --primary-50:  #fef2f2;
+  --primary-100: #fee2e2;
+  --primary-200: #fecaca;
+  --primary-300: #fca5a5;
+  --primary-800: #991b1b; /* útil p/contraste en chip */
+  --primary-900: #7f1d1d;
+
+  /* Semánticos extra usados en móvil/badges */
+  --success-100: #d1fae5;
+  --success-600: #0a9a72; /* ya lo tenías arriba, aquí dejamos igual por coherencia */
+  --danger-50:  #fef2f2;
+  --danger-100: #fee2e2;
+  --danger-600: #b91c1c; /* ya declarado, lo reafirmamos para referencia */
+}
+/* ====== CHIP / BADGE para Categoría ====== */
+/* ... (tus reglas .gcuotas-chip y .gcuotas-chip--default / --interno quedan igual) ... */
+
+/* Externo = paleta ROJA (primaria), con buen contraste de texto */
+.gcuotas-chip--externo {
+  background: var(--primary-100);
+  color: var(--primary-800);
+  border-color: var(--primary-300);
+  text-transform: uppercase;
+}

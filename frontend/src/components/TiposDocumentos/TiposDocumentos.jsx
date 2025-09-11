@@ -4,82 +4,72 @@ import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faPlus, faSave, faTrash, faEdit, faSearch } from '@fortawesome/free-solid-svg-icons';
+import {
+  faArrowLeft,
+  faPlus,
+  faSave,
+  faTrash,
+  faEdit,
+  faTimes,
+  faSearch
+} from '@fortawesome/free-solid-svg-icons';
+import './TiposDocumentos.css';
 
-/* ===========================
-   Modal de Confirmación
-=========================== */
-const ConfirmModal = ({ open, title, message, confirmText = 'Eliminar', cancelText = 'Cancelar', onConfirm, onCancel, loading }) => {
-  // Cerrar con ESC
+/* ===== Modal Confirmar Eliminación (estilo Categorías) ===== */
+function ConfirmDeleteModal({ open, tipoDocumento, onConfirm, onCancel, loading }) {
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => e.key === 'Escape' && !loading && onCancel?.();
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCancel?.();
+      if (e.key === 'Enter') onConfirm?.();
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, loading, onCancel]);
+  }, [open, onConfirm, onCancel]);
 
   if (!open) return null;
 
   return (
     <div
+      className="td-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
-      onClick={() => !loading && onCancel?.()}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-      }}
+      aria-labelledby="td-modal-title"
+      onClick={onCancel}
     >
       <div
+        className="td-modal-container td-modal--danger"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 'min(520px, 92vw)',
-          background: '#fff',
-          borderRadius: 14,
-          boxShadow: '0 20px 50px rgba(2,6,23,.15)',
-          padding: 18
-        }}
       >
-        <h3 id="modal-title" style={{ margin: '4px 0 10px', fontSize: 20 }}>{title}</h3>
-        <p style={{ margin: '0 0 18px', color: '#334155', lineHeight: 1.5 }}>{message}</p>
+        <div className="td-modal__icon" aria-hidden="true">
+          <FontAwesomeIcon icon={faTrash} />
+        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              border: '1px solid #cbd5e1',
-              background: 'transparent',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {cancelText}
+        <h3 id="td-modal-title" className="td-modal-title td-modal-title--danger">
+          Eliminar tipo de documento
+        </h3>
+
+        <p className="td-modal-text">
+          ¿Seguro que querés eliminar <strong>{tipoDocumento?.descripcion} ({tipoDocumento?.sigla})</strong>? Esta acción no se puede deshacer.
+        </p>
+
+        <div className="td-modal-buttons">
+          <button className="td-btn td-btn--ghost" onClick={onCancel} autoFocus disabled={loading}>
+            Cancelar
           </button>
           <button
-            type="button"
+            className="td-btn td-btn--solid-danger"
             onClick={onConfirm}
             disabled={loading}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              border: 'none',
-              background: 'var(--soc-danger,#ef4444)',
-              color: '#fff',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              minWidth: 120
-            }}
+            aria-busy={loading ? 'true' : 'false'}
           >
-            {loading ? 'Eliminando…' : confirmText}
+            {loading ? 'Eliminando…' : 'Confirmar'}
           </button>
         </div>
       </div>
     </div>
   );
-};
+}
 
 const TiposDocumentos = () => {
   const navigate = useNavigate();
@@ -91,15 +81,18 @@ const TiposDocumentos = () => {
   const [editandoId, setEditandoId] = useState(null);
   const [form, setForm] = useState({ descripcion: '', sigla: '' });
 
-  // ✅ Siempre usar exito por defecto (verde)
-  const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '' });
+  // Toast
+  const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '', duracion: 3000 });
 
   // Modal eliminar
-  const [modalEliminar, setModalEliminar] = useState({ open: false, id: null, label: '' });
-  const [eliminando, setEliminando] = useState(false);
+  const [delState, setDelState] = useState({ open: false, tipoDoc: null, loading: false });
 
   const descripcionRef = useRef(null);
-  const showToast = (texto, tipo = 'exito') => setToast({ show: true, tipo, mensaje: texto });
+  const showToast = (tipo, mensaje, duracion = 3000) => setToast({ show: true, tipo, mensaje, duracion });
+  const closeToast = () => setToast((t) => ({ ...t, show: false }));
+
+  // Helpers
+  const api = (action) => `${BASE_URL}/api.php?action=${action}`;
 
   const fetchJSON = async (url, options = {}) => {
     const res = await fetch(url, options);
@@ -114,7 +107,6 @@ const TiposDocumentos = () => {
     [...(arr || [])]
       .map((x) => ({
         id: x.id ?? x.id_tipo_documento,
-        // ✅ mostrar en mayúsculas también
         descripcion: (x.descripcion ?? '').toUpperCase(),
         sigla: (x.sigla ?? '').toUpperCase(),
       }))
@@ -123,11 +115,11 @@ const TiposDocumentos = () => {
   const cargar = async () => {
     try {
       setLoading(true);
-      const json = await fetchJSON(`${BASE_URL}/api.php?action=td_listar`);
+      const json = await fetchJSON(api('td_listar'));
       if (!json.exito) throw new Error(json.mensaje || 'Error al listar');
       setLista(normalizarFilas(json.tipos_documentos));
     } catch (e) {
-      showToast(`Error cargando: ${e.message}`, 'error');
+      showToast('error', `Error cargando: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -142,20 +134,19 @@ const TiposDocumentos = () => {
     e.preventDefault();
     if (guardando) return;
 
-    // ✅ asegurar mayúsculas al enviar
     const descripcion = form.descripcion.trim().toUpperCase();
     const sigla = form.sigla.trim().toUpperCase();
 
-    if (!descripcion) return showToast('La descripción es obligatoria.', 'error');
-    if (!sigla) return showToast('La sigla es obligatoria.', 'error');
-    if (sigla.length > 10) return showToast('La sigla no puede superar 10 caracteres.', 'error');
+    if (!descripcion) return showToast('error', 'La descripción es obligatoria.');
+    if (!sigla) return showToast('error', 'La sigla es obligatoria.');
+    if (sigla.length > 10) return showToast('error', 'La sigla no puede superar 10 caracteres.');
 
     try {
       setGuardando(true);
 
       const url = editandoId
-        ? `${BASE_URL}/api.php?action=td_actualizar`
-        : `${BASE_URL}/api.php?action=td_crear`;
+        ? api('td_actualizar')
+        : api('td_crear');
 
       const body = new FormData();
       if (editandoId) body.append('id', String(editandoId));
@@ -169,16 +160,15 @@ const TiposDocumentos = () => {
 
       if (!json?.exito) throw new Error(json?.mensaje || 'No se pudo guardar');
 
-      // ✅ Mensajes de éxito más detallados
       showToast(
-        editandoId ? 'Tipo de documento actualizado con éxito.' : 'Tipo de documento creado con éxito.',
-        'exito'
+        'exito',
+        editandoId ? 'Tipo de documento actualizado con éxito.' : 'Tipo de documento creado con éxito.'
       );
       await cargar();
       setEditandoId(null);
       limpiarForm();
     } catch (e2) {
-      showToast(`Error guardando: ${e2.message}`, 'error');
+      showToast('error', `Error guardando: ${e2.message}`);
     } finally {
       setGuardando(false);
     }
@@ -186,7 +176,6 @@ const TiposDocumentos = () => {
 
   const onEditar = (item) => {
     setEditandoId(item.id);
-    // Pre-cargar en mayúsculas (coherente con el input)
     setForm({
       descripcion: (item.descripcion || '').toUpperCase(),
       sigla: (item.sigla || '').toUpperCase()
@@ -195,41 +184,37 @@ const TiposDocumentos = () => {
 
   const onCancelarEdicion = () => { setEditandoId(null); limpiarForm(); };
 
-  // Abrir modal eliminar (antes usaba window.confirm)
-  const abrirModalEliminar = useCallback((item) => {
-    setModalEliminar({
-      open: true,
-      id: item.id,
-      label: `${item.descripcion} (${item.sigla})`
-    });
-  }, []);
+  // Abrir modal de confirmación
+  const pedirConfirmacionEliminar = (tipoDoc) => {
+    setDelState({ open: true, tipoDoc, loading: false });
+  };
 
-  const cerrarModalEliminar = useCallback(() => {
-    setModalEliminar({ open: false, id: null, label: '' });
-  }, []);
-
-  const confirmarEliminar = useCallback(async () => {
-    if (!modalEliminar.id) return;
+  // Confirmar eliminación (llamado por el modal)
+  const confirmarEliminar = async () => {
+    const tipoDoc = delState.tipoDoc;
+    if (!tipoDoc) return setDelState({ open: false, tipoDoc: null, loading: false });
     try {
-      setEliminando(true);
+      setDelState((s) => ({ ...s, loading: true }));
+      
       const body = new FormData();
-      body.append('id', String(modalEliminar.id));
-      const res = await fetch(`${BASE_URL}/api.php?action=td_eliminar`, { method: 'POST', body });
+      body.append('id', String(tipoDoc.id));
+      
+      const res = await fetch(api('td_eliminar'), { method: 'POST', body });
       let json = null;
       try { json = await res.json(); }
       catch { throw new Error(`Error HTTP ${res.status}`); }
 
       if (!json?.exito) throw new Error(json?.mensaje || 'No se pudo eliminar');
 
-      showToast('Tipo de documento eliminado con éxito.', 'exito');
+      showToast('exito', 'Tipo de documento eliminado con éxito.');
+      setDelState({ open: false, tipoDoc: null, loading: false });
       await cargar();
-      cerrarModalEliminar();
     } catch (e) {
-      showToast(`Error eliminando: ${e.message}`, 'error');
-    } finally {
-      setEliminando(false);
+      console.error(e);
+      showToast('error', 'No se pudo eliminar el tipo de documento.');
+      setDelState((s) => ({ ...s, loading: false }));
     }
-  }, [modalEliminar, cerrarModalEliminar]);
+  };
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -241,140 +226,149 @@ const TiposDocumentos = () => {
   }, [lista, busqueda]);
 
   return (
-    <div className="contenedor tipodoc-wrap" style={{ padding: 16 }}>
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
-        <button onClick={() => navigate('/panel')} style={{ padding:'8px 12px', borderRadius:10, cursor:'pointer' }}>
-          <FontAwesomeIcon icon={faArrowLeft} /> Volver
-        </button>
-        <h2 style={{ margin:0 }}>Tipos de documento</h2>
-      </div>
+    <div className="td_page">
+      <div className="td_card">
+        <header className="td_header">
+          <h2 className="td_title">Tipos de Documento</h2>
+        </header>
 
-      <form onSubmit={onSubmit} style={{ padding:16, borderRadius:12, background:'var(--soc-light,#fff)', boxShadow:'0 6px 18px rgba(2,6,23,.08)', marginBottom:16 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 220px 200px', gap:12 }}>
-          <div>
-            <label>Descripción</label>
-            <input
-              ref={descripcionRef}
-              value={form.descripcion}
-              onChange={(e) => setForm(s => ({ ...s, descripcion: e.target.value.toUpperCase() }))}
-              placeholder="(ej: Documento Nacional de Identidad)"
-              style={{
-                width:'100%',
-                padding:10,
-                borderRadius:10,
-                border:'1px solid #cbd5e1',
-                textTransform:'uppercase'
-              }}
-            />
-          </div>
-          <div>
-            <label>Sigla</label>
-            <input
-              value={form.sigla}
-              onChange={(e) => setForm(s => ({ ...s, sigla: e.target.value.toUpperCase() }))}
-              placeholder="(ej: DNI)"
-              style={{ width:'100%', padding:10, borderRadius:10, border:'1px solid #cbd5e1', textTransform:'uppercase' }}
-              maxLength={10}
-            />
-          </div>
-          <div style={{ display:'flex', gap:8, alignItems:'flex-end' }}>
-            <button type="submit" disabled={guardando} style={{ padding:'10px 14px', borderRadius:10, border:'none', background: guardando ? '#93c5fd' : 'var(--soc-primary,#2563eb)', color:'#fff', cursor: guardando ? 'not-allowed' : 'pointer' }}>
-              <FontAwesomeIcon icon={editandoId ? faSave : faPlus} />{' '}
-              {guardando ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Agregar'}
-            </button>
-            {editandoId && (
-              <button type="button" onClick={onCancelarEdicion} disabled={guardando} style={{ padding:'10px 14px', borderRadius:10, border:'1px solid #cbd5e1', background:'transparent', cursor: guardando ? 'not-allowed' : 'pointer' }}>
-                Cancelar
+        {/* Form */}
+        <form className="td_form" onSubmit={onSubmit}>
+          <div className="td_form_grid">
+            <div className="td_form_field">
+              <label className="td_label">Descripción</label>
+              <input
+                ref={descripcionRef}
+                value={form.descripcion}
+                onChange={(e) => setForm(s => ({ ...s, descripcion: e.target.value.toUpperCase() }))}
+                placeholder="(ej: Documento Nacional de Identidad)"
+                className="td_input td_input_upper"
+              />
+            </div>
+
+            <div className="td_form_field">
+              <label className="td_label">Sigla</label>
+              <input
+                value={form.sigla}
+                onChange={(e) => setForm(s => ({ ...s, sigla: e.target.value.toUpperCase() }))}
+                placeholder="(ej: DNI)"
+                className="td_input td_input_upper"
+                maxLength={10}
+              />
+            </div>
+
+            <div className="td_actions">
+              <button
+                type="submit"
+                disabled={guardando}
+                className="td_btn td_btn_primary"
+              >
+                <FontAwesomeIcon icon={editandoId ? faSave : faPlus} />
+                <span className="td_btn_text">
+                  {guardando ? 'Guardando...' : editandoId ? 'Guardar' : 'Agregar'}
+                </span>
               </button>
-            )}
-          </div>
-        </div>
-      </form>
 
-      <div style={{ padding:16, borderRadius:12, background:'var(--soc-light,#fff)', boxShadow:'0 6px 18px rgba(2,6,23,.08)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', gap:12, marginBottom:12 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <FontAwesomeIcon icon={faSearch} />
-            <input
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por descripción o sigla..."
-              style={{ padding:10, borderRadius:10, border:'1px solid #cbd5e1', width:320 }}
-            />
-          </div>
-          {loading && <span style={{ color:'#64748b' }}>Cargando...</span>}
-        </div>
-
-        <div style={{ maxHeight:'60vh', overflow:'auto', borderRadius:12, border:'1px solid #e2e8f0' }}>
-          <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
-            <thead>
-              <tr>
-                {[
-                  {label:'ID', w:90, align:'left'},
-                  {label:'Descripción', w:'auto', align:'left'},
-                  {label:'Sigla', w:180, align:'left'},
-                  {label:'Acciones', w:170, align:'right'},
-                ].map((c,i)=>(
-                  <th key={i} style={{ position:'sticky', top:0, zIndex:1, background:'#f8fafc', textAlign:c.align, padding:10, borderBottom:'1px solid #e2e8f0', width:c.w }}>
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map(it => (
-                <tr key={it.id} style={{ background:'#fff' }}>
-                  <td style={{ padding:10, borderBottom:'1px solid #f1f5f9' }}>{it.id}</td>
-                  <td style={{ padding:10, borderBottom:'1px solid #f1f5f9' }}>{it.descripcion}</td>
-                  <td style={{ padding:10, borderBottom:'1px solid #f1f5f9' }}>{it.sigla}</td>
-                  <td style={{ padding:10, borderBottom:'1px solid #f1f5f9', textAlign:'right' }}>
-                    <button
-                      onClick={() => abrirModalEliminar(it)}
-                      title="Eliminar"
-                      style={{ padding:'8px 10px', borderRadius:10, border:'none', background:'var(--soc-danger,#ef4444)', color:'#fff', cursor:'pointer' }}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                    <button
-                      onClick={() => onEditar(it)}
-                      title="Editar"
-                      style={{ marginLeft:8, padding:'8px 10px', borderRadius:10, border:'1px solid #cbd5e1', background:'transparent', cursor:'pointer' }}
-                    >
-                      <FontAwesomeIcon icon={faEdit} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!loading && filtrados.length === 0 && (
-                <tr><td colSpan="4" style={{ padding:16, textAlign:'center', color:'#64748b' }}>Sin resultados.</td></tr>
+              {editandoId && (
+                <button
+                  type="button"
+                  onClick={onCancelarEdicion}
+                  disabled={guardando}
+                  className="td_btn td_btn_outline"
+                >
+                  <span className="td_btn_text">Cancelar</span>
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+        </form>
+
+
+
+        {/* Lista / Tabla */}
+        <div className="td_list">
+          <div className="td_list_head">
+            <div className="td_col td_col_id td_head_cell">ID</div>
+            <div className="td_col td_col_desc td_head_cell">Descripción</div>
+            <div className="td_col td_col_sigla td_head_cell td_center">Sigla</div>
+            <div className="td_col td_col_actions td_head_cell td_right">Acciones</div>
+          </div>
+
+          {loading ? (
+            <>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="td_row td_row_skeleton">
+                  <span className="td_skel td_skel_text" />
+                  <span className="td_skel td_skel_text" />
+                  <span className="td_skel td_skel_text td_skel_short" />
+                  <span className="td_skel td_skel_icon" />
+                </div>
+              ))}
+            </>
+          ) : filtrados.length === 0 ? (
+            <div className="td_empty">No hay tipos de documento para mostrar.</div>
+          ) : (
+            filtrados.map((t, index) => (
+              <div
+                key={t.id}
+                className="td_row"
+                style={{ animationDelay: `${index * 0.06}s` }}
+              >
+                <div className="td_cell td_col_id">{t.id}</div>
+                <div className="td_cell td_col_desc">{t.descripcion}</div>
+                <div className="td_cell td_col_sigla td_center">{t.sigla}</div>
+                <div className="td_cell td_col_actions td_right">
+                  <button
+                    className="td_icon_btn"
+                    onClick={() => onEditar(t)}
+                    title="Editar"
+                    aria-label={`Editar tipo de documento ${t.descripcion}`}
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                  <button
+                    className="td_icon_btn td_icon_btn_danger"
+                    onClick={() => pedirConfirmacionEliminar(t)}
+                    title="Eliminar"
+                    aria-label={`Eliminar tipo de documento ${t.descripcion}`}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
+
+        <section className="td_toolbar">
+          <button
+            className="td_btn td_btn_primary td_btn_back"
+            onClick={() => navigate('/panel')}
+            title="Volver"
+            aria-label="Volver"
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+            <span className="td_btn_text">Volver</span>
+          </button>
+        </section>
       </div>
 
-      {/* Modal de confirmación */}
-      <ConfirmModal
-        open={modalEliminar.open}
-        title="Confirmar eliminación"
-        message={
-          modalEliminar.label
-            ? `¿Seguro que querés eliminar el tipo de documento: ${modalEliminar.label}? Esta acción no se puede deshacer.`
-            : '¿Seguro que querés eliminar este tipo de documento? Esta acción no se puede deshacer.'
-        }
-        confirmText="Eliminar"
-        cancelText="Cancelar"
+      {/* Modal Confirmar Eliminación */}
+      <ConfirmDeleteModal
+        open={delState.open}
+        tipoDocumento={delState.tipoDoc}
         onConfirm={confirmarEliminar}
-        onCancel={cerrarModalEliminar}
-        loading={eliminando}
+        onCancel={() => setDelState({ open: false, tipoDoc: null, loading: false })}
+        loading={delState.loading}
       />
 
+      {/* TOAST */}
       {toast.show && (
         <Toast
-          tipo={toast.tipo}        // 'exito' por defecto
+          tipo={toast.tipo}
           mensaje={toast.mensaje}
-          duracion={3000}
-          onClose={() => setToast(t => ({ ...t, show:false }))}
+          duracion={toast.duracion}
+          onClose={closeToast}
         />
       )}
     </div>

@@ -144,11 +144,10 @@
 ========================================================= */
 .edit-socio-container {
   min-height: 100vh;
-  padding: 2rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-background);
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
 }
 
 /* Caja principal */
@@ -476,4 +475,14 @@ select.edit-socio-input:focus {
 /* Accesibilidad: reducir movimiento */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+/* Grupo de 3 columnas (sm+) */
+.edit-socio-input-group.cols-3 {
+  grid-template-columns: 1fr; /* móvil: 1 columna */
+}
+
+@media (min-width: 640px) {
+  .edit-socio-input-group.cols-3 {
+    grid-template-columns: 1fr 1fr 1fr; /* sm+: 3 columnas */
+  }
 }

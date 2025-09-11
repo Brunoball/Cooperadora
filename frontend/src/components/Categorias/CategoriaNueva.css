@@ -1,70 +1,123 @@
+/* =========================================================
+   Tema CATEGORÍAS — versión ROJA sin degradados
+   - Implementa la paleta --reg-* y la mapea a los tokens --agr-*
+   - Elimina fondos/efectos con gradientes (todo color plano)
+   ========================================================= */
+
+/* ====== :root ROJO (sin degradados) — variables con prefijo reg- ====== */
+:root {
+  /* 🎨 PALETA ROJA */
+  --reg-primary: #B71C1C;          /* Rojo principal */
+  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
+  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
+
+  --reg-secondary: #1D428A;        /* Azul secundario opcional */
+  --reg-accent: #C62828;
+
+  --reg-success: #10B981;
+  --reg-warning: #F59E0B;
+  --reg-danger: #D32F2F;
+
+  --reg-light: #F8FAFC;
+  --reg-dark: #0F172A;
+
+  --reg-gray-100: #F1F5F9;
+  --reg-gray-200: #E2E8F0;
+  --reg-gray-300: #CBD5E1;
+  --reg-gray-400: #94A3B8;
+  --reg-gray-500: #64748B;
+  --reg-gray-600: #475569;
+  --reg-gray-700: #334155;
+  --reg-gray-800: #1E293B;
+  --reg-gray-900: #0F172A;
+
+  --reg-border-radius: 12px;
+  --reg-border-radius-lg: 16px;
+  --reg-border-radius-xl: 20px;
+
+  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --reg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* ====== Capa de compatibilidad: tokens --agr-* mapeados a --reg-* ====== */
 :root{
-  /* Tokens (idénticos al diseño anterior) */
-  --agr-primary: var(--princ-primary, #2563EB);
-  --agr-primary-light: var(--princ-primary-light, #3B82F6);
-  --agr-primary-dark: var(--princ-primary-dark, #1D4ED8);
-  --agr-secondary: var(--princ-secondary, #7C3AED);
-  --agr-accent: var(--princ-accent, #EC4899);
-  --agr-success: var(--princ-success, #10B981);
-  --agr-danger: var(--princ-danger, #EF4444);
+  /* Colores principales */
+  --agr-primary: var(--reg-primary);
+  --agr-primary-light: var(--reg-primary-light);
+  --agr-primary-dark: var(--reg-primary-dark);
+  --agr-secondary: var(--reg-secondary);
+  --agr-accent: var(--reg-accent);
 
-  --agr-light: var(--princ-light, #F8FAFC);
-  --agr-dark: var(--princ-dark, #0F172A);
+  /* Estado / neutrales */
+  --agr-success: var(--reg-success);
+  --agr-warning: var(--reg-warning);
+  --agr-danger: var(--reg-danger);
 
-  --agr-gray-100: var(--princ-gray-100, #F1F5F9);
-  --agr-gray-200: var(--princ-gray-200, #E2E8F0);
-  --agr-gray-300: var(--princ-gray-300, #CBD5E1);
-  --agr-gray-400: var(--princ-gray-400, #94A3B8);
-  --agr-gray-500: var(--princ-gray-500, #64748B);
-  --agr-gray-600: var(--princ-gray-600, #475569);
-  --agr-gray-700: var(--princ-gray-700, #334155);
-  --agr-gray-800: var(--princ-gray-800, #1E293B);
-  --agr-gray-900: var(--princ-gray-900, #0F172A);
+  --agr-light: var(--reg-light);
+  --agr-dark: var(--reg-dark);
 
-  --agr-text-gradient: var(--princ-text-gradient, linear-gradient(135deg, var(--agr-primary), var(--agr-secondary)));
+  --agr-gray-100: var(--reg-gray-100);
+  --agr-gray-200: var(--reg-gray-200);
+  --agr-gray-300: var(--reg-gray-300);
+  --agr-gray-400: var(--reg-gray-400);
+  --agr-gray-500: var(--reg-gray-500);
+  --agr-gray-600: var(--reg-gray-600);
+  --agr-gray-700: var(--reg-gray-700);
+  --agr-gray-800: var(--reg-gray-800);
+  --agr-gray-900: var(--reg-gray-900);
 
-  --agr-radius: 12px;
-  --agr-radius-lg: 16px;
-  --agr-radius-xl: 20px;
+  /* Radios / sombras / transición */
+  --agr-radius: var(--reg-border-radius);
+  --agr-radius-lg: var(--reg-border-radius-lg);
+  --agr-radius-xl: var(--reg-border-radius-xl);
 
-  --agr-shadow-sm: 0 1px 3px rgba(0,0,0,.05);
-  --agr-shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
-  --agr-shadow-lg: 0 20px 25px -5px rgba(0,0,0,.12), 0 10px 10px -5px rgba(0,0,0,.06);
+  --agr-shadow-sm: var(--reg-shadow-sm);
+  --agr-shadow-md: var(--reg-shadow-md);
+  --agr-shadow-lg: var(--reg-shadow-xl);
 
-  --agr-transition: all .28s cubic-bezier(.4,0,.2,1);
+  --agr-transition: var(--reg-transition);
 
-  /* Para el botón con gradiente */
-  --cat-text-gradient: var(--agr-text-gradient);
+  /* Importante: sin degradados -> usar color plano */
+  --agr-text-gradient: var(--reg-primary);
+  --cat-text-gradient: var(--reg-primary);
 }
 
 @media (prefers-reduced-motion: reduce){
   *{animation:none !important;transition:none !important}
 }
 
-/* Fondo */
+/* =========================================================
+   Fondo (sin degradado)
+   ========================================================= */
 .cat_agr_page{
   min-height:100vh;
   display:flex;
   align-items:center;
   justify-content:center;
   padding:20px;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   background-attachment: fixed;
   box-sizing:border-box;
 }
 
-/* Card glass */
+/* =========================================================
+   Card glass
+   ========================================================= */
 .cat_agr_card{
   width:100%;
   max-width:720px;
   padding:2rem;
-  background: rgba(255,255,255,.95);
+  background:#ffffff; /* plano */
   border-radius: var(--agr-radius-xl);
   box-shadow: var(--agr-shadow-lg),
               inset 0 1px 0 rgba(255,255,255,.6),
               0 0 0 1px rgba(255,255,255,.2);
   backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(255,255,255,.2);
+  border: 1px solid rgba(0,0,0,.06);
   display:flex;
   flex-direction:column;
   gap:18px;
@@ -73,38 +126,33 @@
   animation: cat_agr_fade_in .4s ease forwards;
 }
 
-/* Barra superior animada (desktop) */
+/* Barra superior (desktop) — color plano, sin animación */
 @media (min-width: 768px){
   .cat_agr_card::before{
     content:''; position:absolute; top:0; left:0; right:0;
-    height:6px; background: var(--agr-text-gradient);
-    background-size:300% 300%;
-    animation: cat_agr_gradient 6s ease infinite;
+    height:6px; background: var(--agr-primary);
     z-index:2;
   }
 }
-@keyframes cat_agr_gradient{
-  0%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-  100%{background-position:0% 50%}
-}
+
+/* Animación de entrada (conservada) */
 @keyframes cat_agr_fade_in{to{opacity:1; transform:translateY(0)}}
 
-/* Header */
+/* =========================================================
+   Header
+   ========================================================= */
 .cat_agr_header{
   position:relative;
   display:block;
   padding-top:6px;
 }
+
 .cat_agr_title{
   text-align:center;
   font-size:1.8rem;
   font-weight:800;
   margin:0 0 12px;
-  background: var(--agr-text-gradient);
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
+  color: var(--agr-primary);       /* color plano */
   letter-spacing:-0.5px;
   position:relative;
   padding-bottom:8px;
@@ -116,11 +164,13 @@
   bottom:-2px;
   width:76px; height:4px;
   border-radius:999px;
-  background: var(--agr-text-gradient);
+  background: var(--agr-primary);  /* color plano */
   box-shadow: 0 0 0 1px rgba(255,255,255,.3);
 }
 
-/* Form */
+/* =========================================================
+   Formulario
+   ========================================================= */
 .cat_agr_form{
   display:flex;
   flex-direction:column;
@@ -152,20 +202,22 @@
 .cat_agr_input:focus{
   outline:none;
   border-color: var(--agr-primary-light);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  box-shadow: 0 0 0 3px rgba(183,28,28,.15); /* rojo con alpha */
 }
 
-/* Acciones: Volver a la IZQUIERDA, Guardar a la DERECHA */
+/* =========================================================
+   Acciones: Volver (izq) / Guardar (der)
+   ========================================================= */
 .cat_agr_form_actions{
   display:flex;
   align-items:center;
-  justify-content:space-between;  /* reparte extremos: izquierda/derecha */
+  justify-content:space-between;
   gap:12px;
   margin-top:6px;
   width:100%;
 }
 
-/* Botones */
+/* Botones base */
 .cat_agr_btn{
   display:inline-flex;
   align-items:center;
@@ -184,7 +236,7 @@
 }
 .cat_agr_btn_text{display:inline}
 
-/* Guardar (gris/neutral) */
+/* Guardar (neutral/gris) */
 .cat_agr_btn_primary{
   background: var(--agr-gray-200);
   color: var(--agr-gray-800);
@@ -195,30 +247,28 @@
   color: var(--agr-gray-100);
 }
 
-/* Volver (gradiente) */
+/* Volver (ROJO plano, sin degradado) */
 .cat_agr_btn_back{
-  background: var(--cat-text-gradient);
+  background: var(--agr-primary);
   color:#fff;
 }
 .cat_agr_btn_back:hover{
   transform: translateY(-2px);
+  background: var(--agr-primary-dark);
 }
 
-.cat_agr_btn[disabled]{opacity:.7; cursor:not-allowed;}
-.cat_agr_btn[disabled]::after{
-  content:'';
-  position:absolute; top:0; left:-100%;
-  width:100%; height:100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
-  animation: cat_agr_loading 1.5s infinite;
+/* Estados deshabilitado (sin shimmer/gradiente) */
+.cat_agr_btn[disabled]{
+  opacity:.7; cursor:not-allowed; filter:saturate(.85);
 }
-@keyframes cat_agr_loading{100%{left:100%}}
 
-/* Accesibilidad: focus visible */
+/* =========================================================
+   Accesibilidad: focus visible (aro rojo)
+   ========================================================= */
 :where(button, [href], input){
   outline:none;
 }
 :where(button, [href], input):focus-visible{
-  box-shadow:0 0 0 3px rgba(37,99,235,.35);
+  box-shadow:0 0 0 3px rgba(183,28,28,.35);
   border-radius:8px;
 }

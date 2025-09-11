@@ -144,7 +144,7 @@
   width: 100%;
   height: 100vh;
   box-sizing: border-box;
-  background: var(--gradient-background);
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
@@ -367,7 +367,7 @@
   gap: .5rem; padding: .75rem 1.5rem; font-size: .95rem; font-weight: 700;
   border-radius: var(--border-radius); cursor: pointer; transition: var(--transition-smooth);
   border: none; position: relative; overflow: hidden;
-  background: var(--secondary-500);
+  background: var(--secondary-color);
   color: var(--text-on-primary); box-shadow: var(--shadow-md);
 }
 .add-alumno-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-lg); }

@@ -113,10 +113,7 @@ const Cuotas = () => {
       const lista = (data?.anios && Array.isArray(data.anios)) ? data.anios : [];
       setAnios(lista);
 
-      // Lógica de selección por defecto:
-      // 1) Si hay pagos en el año actual, seleccionar CURRENT_YEAR.
-      // 2) Si no, pero hay otros años, seleccionar el primero disponible.
-      // 3) Si no hay ninguno, dejar vacío.
+      // Lógica de selección por defecto
       const hasCurrent = lista.some(a => String(a.id) === String(CURRENT_YEAR));
       if (hasCurrent) {
         setAnioSeleccionado(String(CURRENT_YEAR));
@@ -291,26 +288,44 @@ const Cuotas = () => {
 
     const nombreDiv  = getNombreDivision(cuota?.id_division);
     const nombreCat  = getNombreCategoria(cuota?.id_categoria);
-    const isInterno  = normalizar(nombreCat) === 'interno';
+    const tipoCat    = normalizar(nombreCat);
+    const isInterno  = tipoCat === 'interno';
+    const isExterno  = tipoCat === 'externo';
 
     const cascadeClass = cascadeActive && index < 15 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
     const zebraClass   = index % 2 === 0 ? 'gcuotas-row-even' : 'gcuotas-row-odd';
 
     const actionButtons = isSelected ? (
       <div className="gcuotas-actions-inline">
-        <button className="gcuotas-action-button gcuotas-print-button" onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }} title="Imprimir recibo">
+        <button
+          className="gcuotas-action-button gcuotas-print-button"
+          onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+          title="Imprimir recibo"
+        >
           <FontAwesomeIcon icon={faPrint} />
         </button>
         {estadoPagoSeleccionado === 'deudor' ? (
-          <button className="gcuotas-action-button gcuotas-payment-button" onClick={(e) => { e.stopPropagation(); handlePaymentClick(cuota); }} title="Registrar pago / Condonar">
+          <button
+            className="gcuotas-action-button gcuotas-payment-button"
+            onClick={(e) => { e.stopPropagation(); handlePaymentClick(cuota); }}
+            title="Registrar pago / Condonar"
+          >
             <FontAwesomeIcon icon={faDollarSign} />
           </button>
         ) : estadoPagoSeleccionado === 'pagado' ? (
-          <button className="gcuotas-action-button gcuotas-deletepay-button" onClick={(e) => { e.stopPropagation(); handleDeletePaymentClick(cuota); }} title="Eliminar pago">
+          <button
+            className="gcuotas-action-button gcuotas-deletepay-button"
+            onClick={(e) => { e.stopPropagation(); handleDeletePaymentClick(cuota); }}
+            title="Eliminar pago"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
         ) : (
-          <button className="gcuotas-action-button gcuotas-deletepay-button" onClick={(e) => { e.stopPropagation(); handleDeleteCondClick(cuota); }} title="Eliminar condonación">
+          <button
+            className="gcuotas-action-button gcuotas-deletepay-button"
+            onClick={(e) => { e.stopPropagation(); handleDeleteCondClick(cuota); }}
+            title="Eliminar condonación"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
         )}
@@ -319,30 +334,68 @@ const Cuotas = () => {
 
     if (isMobile) {
       return (
-        <div style={style} className={`gcuotas-mobile-card ${cascadeClass} ${isSelected ? "gcuotas-selected-card" : ""}`} onClick={() => handleRowClick(index)}>
-          <div className="gcuotas-mobile-row"><span className="gcuotas-mobile-label">Alumno:</span><span>{getNombreCuota(cuota)}</span></div>
-          <div className="gcuotas-mobile-row"><span className="gcuotas-mobile-label">DNI:</span><span>{getDocumentoCuota(cuota) || '—'}</span></div>
-          <div className="gcuotas-mobile-row"><span className="gcuotas-mobile-label">Domicilio:</span><span>{getDomicilioCuota(cuota) || '—'}</span></div>
-          <div className="gcuotas-mobile-row"><span className="gcuotas-mobile-label">División:</span><span>{nombreDiv || '—'}</span></div>
+        <div
+          style={style}
+          className={`gcuotas-mobile-card ${cascadeClass} ${isSelected ? "gcuotas-selected-card" : ""}`}
+          onClick={() => handleRowClick(index)}
+        >
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">Alumno:</span>
+            <span>{getNombreCuota(cuota)}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">DNI:</span>
+            <span>{getDocumentoCuota(cuota) || '—'}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">Domicilio:</span>
+            <span>{getDomicilioCuota(cuota) || '—'}</span>
+          </div>
+          <div className="gcuotas-mobile-row">
+            <span className="gcuotas-mobile-label">División:</span>
+            <span>{nombreDiv || '—'}</span>
+          </div>
           <div className="gcuotas-mobile-row">
             <span className="gcuotas-mobile-label">Categoría:</span>
-            <span><span className={`gcuotas-chip ${isInterno ? 'gcuotas-chip--interno' : 'gcuotas-chip--default'}`}>{nombreCat || '—'}</span></span>
+            <span>
+              <span
+                className={`gcuotas-chip ${
+                  isInterno ? 'gcuotas-chip--interno'
+                  : isExterno ? 'gcuotas-chip--externo'
+                  : 'gcuotas-chip--default'
+                }`}
+              >
+                {nombreCat || '—'}
+              </span>
+            </span>
           </div>
           {isSelected && (
             <div className="gcuotas-mobile-actions">
-              <button className="gcuotas-mobile-print-button" onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}>
+              <button
+                className="gcuotas-mobile-print-button"
+                onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+              >
                 <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
               </button>
               {estadoPagoSeleccionado === 'deudor' ? (
-                <button className="gcuotas-mobile-payment-button" onClick={(e) => { e.stopPropagation(); handlePaymentClick(cuota); }}>
+                <button
+                  className="gcuotas-mobile-payment-button"
+                  onClick={(e) => { e.stopPropagation(); handlePaymentClick(cuota); }}
+                >
                   <FontAwesomeIcon icon={faDollarSign} /><span>Registrar Pago</span>
                 </button>
               ) : estadoPagoSeleccionado === 'pagado' ? (
-                <button className="gcuotas-mobile-deletepay-button" onClick={(e) => { e.stopPropagation(); handleDeletePaymentClick(cuota); }}>
+                <button
+                  className="gcuotas-mobile-deletepay-button"
+                  onClick={(e) => { e.stopPropagation(); handleDeletePaymentClick(cuota); }}
+                >
                   <FontAwesomeIcon icon={faTimes} /><span>Eliminar</span>
                 </button>
               ) : (
-                <button className="gcuotas-mobile-deletepay-button" onClick={(e) => { e.stopPropagation(); handleDeleteCondClick(cuota); }}>
+                <button
+                  className="gcuotas-mobile-deletepay-button"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteCondClick(cuota); }}
+                >
                   <FontAwesomeIcon icon={faTimes} /><span>Eliminar</span>
                 </button>
               )}
@@ -353,13 +406,23 @@ const Cuotas = () => {
     }
 
     return (
-      <div style={style} className={`gcuotas-virtual-row ${zebraClass} ${cascadeClass} ${isSelected ? "gcuotas-selected-row" : ""}`} onClick={() => handleRowClick(index)}>
+      <div
+        style={style}
+        className={`gcuotas-virtual-row ${zebraClass} ${cascadeClass} ${isSelected ? "gcuotas-selected-row" : ""}`}
+        onClick={() => handleRowClick(index)}
+      >
         <div className="gcuotas-virtual-cell">{getNombreCuota(cuota)}</div>
         <div className="gcuotas-virtual-cell">{getDocumentoCuota(cuota) || '—'}</div>
         <div className="gcuotas-virtual-cell">{getDomicilioCuota(cuota) || '—'}</div>
         <div className="gcuotas-virtual-cell">{getNombreDivision(cuota?.id_division) || '—'}</div>
         <div className="gcuotas-virtual-cell">
-          <span className={`gcuotas-chip ${normalizar(getNombreCategoria(cuota?.id_categoria)) === 'interno' ? 'gcuotas-chip--interno' : 'gcuotas-chip--default'}`}>
+          <span
+            className={`gcuotas-chip ${
+              isInterno ? 'gcuotas-chip--interno'
+              : isExterno ? 'gcuotas-chip--externo'
+              : 'gcuotas-chip--default'
+            }`}
+          >
             {getNombreCategoria(cuota?.id_categoria) || '—'}
           </span>
         </div>
@@ -368,16 +431,38 @@ const Cuotas = () => {
     );
   };
 
-  const LoadingIndicator = () => (<div className="gcuotas-loading-container"><div className="gcuotas-loading-spinner"></div><p>Cargando datos...</p></div>);
-  const NoMonthSelected  = () => (<div className="gcuotas-info-message"><FontAwesomeIcon icon={faCalendarAlt} size="3x" /><p>Por favor seleccione un mes para ver los datos</p></div>);
-  const NoDataFound      = () => (<div className="gcuotas-info-message"><FontAwesomeIcon icon={faExclamationTriangle} size="3x" /><p>No se encontraron datos para los filtros seleccionados</p></div>);
+  const LoadingIndicator = () => (
+    <div className="gcuotas-loading-container">
+      <div className="gcuotas-loading-spinner"></div>
+      <p>Cargando datos...</p>
+    </div>
+  );
+  const NoMonthSelected  = () => (
+    <div className="gcuotas-info-message">
+      <FontAwesomeIcon icon={faCalendarAlt} size="3x" />
+      <p>Por favor seleccione un mes para ver los datos</p>
+    </div>
+  );
+  const NoDataFound      = () => (
+    <div className="gcuotas-info-message">
+      <FontAwesomeIcon icon={faExclamationTriangle} size="3x" />
+      <p>No se encontraron datos para los filtros seleccionados</p>
+    </div>
+  );
 
   // Tras cerrar modales, refrescamos **años** y **datos**
   const resyncAll = useCallback(() => { fetchAnios(); obtenerCuotasYListas(); }, [fetchAnios, obtenerCuotasYListas]);
 
   return (
     <div className="gcuotas-container">
-      {toastVisible && <Toast tipo={toastTipo} mensaje={toastMensaje} onClose={() => setToastVisible(false)} duracion={3000} />}
+      {toastVisible && (
+        <Toast
+          tipo={toastTipo}
+          mensaje={toastMensaje}
+          onClose={() => setToastVisible(false)}
+          duracion={3000}
+        />
+      )}
 
       {mostrarModalPagos && (
         <ModalPagos
@@ -423,7 +508,10 @@ const Cuotas = () => {
 
       <div className="gcuotas-left-section gcuotas-box">
         <div className="gcuotas-header-section">
-          <h2 className="gcuotas-title"><FontAwesomeIcon icon={faMoneyCheckAlt} className="gcuotas-title-icon" />Gestión de Cuotas</h2>
+          <h2 className="gcuotas-title">
+            <FontAwesomeIcon icon={faMoneyCheckAlt} className="gcuotas-title-icon" />
+            Gestión de Cuotas
+          </h2>
           <div className="gcuotas-divider"></div>
         </div>
 
@@ -431,13 +519,18 @@ const Cuotas = () => {
           <div className="gcuotas-top-section">
             <div className="gcuotas-filter-card">
               <div className="gcuotas-filter-header">
-                <div className="gcuotas-filter-header-left"><FontAwesomeIcon icon={faFilter} className="gcuotas-filter-icon" /><span>Filtros</span></div>
+                <div className="gcuotas-filter-header-left">
+                  <FontAwesomeIcon icon={faFilter} className="gcuotas-filter-icon" />
+                  <span>Filtros</span>
+                </div>
               </div>
 
               <div className="gcuotas-select-container">
                 {/* AÑO DE PAGO (arriba del Mes) */}
                 <div className="gcuotas-input-group">
-                  <label htmlFor="anio" className="gcuotas-input-label"><FontAwesomeIcon icon={faFilter} /> Año de pago</label>
+                  <label htmlFor="anio" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> Año de pago
+                  </label>
                   <select
                     id="anio"
                     value={anioSeleccionado}
@@ -456,33 +549,66 @@ const Cuotas = () => {
                 </div>
 
                 <div className="gcuotas-input-group">
-                  <label htmlFor="meses" className="gcuotas-input-label"><FontAwesomeIcon icon={faCalendarAlt} /> Mes</label>
-                  <select id="meses" value={mesSeleccionado} onChange={onChangeMes} className="gcuotas-dropdown" disabled={loading}>
+                  <label htmlFor="meses" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faCalendarAlt} /> Mes
+                  </label>
+                  <select
+                    id="meses"
+                    value={mesSeleccionado}
+                    onChange={onChangeMes}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
                     <option value="">Seleccione un Mes</option>
-                    {meses.map((mes, idx) => (<option key={idx} value={mes.id}>{mes.nombre}</option>))}
+                    {meses.map((mes, idx) => (
+                      <option key={idx} value={mes.id}>{mes.nombre}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="gcuotas-input-group">
-                  <label htmlFor="categoria" className="gcuotas-input-label"><FontAwesomeIcon icon={faFilter} /> Categoría</label>
-                  <select id="categoria" value={categoriaSeleccionada} onChange={onChangeCategoria} className="gcuotas-dropdown" disabled={loading}>
+                  <label htmlFor="categoria" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> Categoría
+                  </label>
+                  <select
+                    id="categoria"
+                    value={categoriaSeleccionada}
+                    onChange={onChangeCategoria}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
                     <option value="">Todas</option>
-                    {categorias.map((c, idx) => (<option key={idx} value={c.id}>{c.nombre}</option>))}
+                    {categorias.map((c, idx) => (
+                      <option key={idx} value={c.id}>{c.nombre}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="gcuotas-input-group">
-                  <label htmlFor="division" className="gcuotas-input-label"><FontAwesomeIcon icon={faFilter} /> División</label>
-                  <select id="division" value={divisionSeleccionada} onChange={onChangeDivision} className="gcuotas-dropdown" disabled={loading}>
+                  <label htmlFor="division" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> División
+                  </label>
+                  <select
+                    id="division"
+                    value={divisionSeleccionada}
+                    onChange={onChangeDivision}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
                     <option value="">Todas</option>
-                    {divisiones.map((d, idx) => (<option key={idx} value={d.id}>{d.nombre}</option>))}
+                    {divisiones.map((d, idx) => (
+                      <option key={idx} value={d.id}>{d.nombre}</option>
+                    ))}
                   </select>
                 </div>
               </div>
             </div>
 
             <div className="gcuotas-tabs-card">
-              <div className="gcuotas-tabs-header"><FontAwesomeIcon icon={faList} className="gcuotas-tabs-icon" /><span>Estado de cuotas</span></div>
+              <div className="gcuotas-tabs-header">
+                <FontAwesomeIcon icon={faList} className="gcuotas-tabs-icon" />
+                <span>Estado de cuotas</span>
+              </div>
               <div className="gcuotas-tab-container">
                 <button
                   className={`gcuotas-tab-button ${estadoPagoSeleccionado === 'deudor' ? "gcuotas-active-tab" : ""}`}
@@ -516,11 +642,30 @@ const Cuotas = () => {
           </div>
 
           <div className="gcuotas-actions-card">
-            <div className="gcuotas-actions-header"><FontAwesomeIcon icon={faCog} className="gcuotas-actions-icon" /><span>Acciones</span></div>
+            <div className="gcuotas-actions-header">
+              <FontAwesomeIcon icon={faCog} className="gcuotas-actions-icon" />
+              <span>Acciones</span>
+            </div>
             <div className="gcuotas-buttons-container">
-              <button className="gcuotas-button gcuotas-button-back" onClick={() => navigate('/panel')} disabled={loading}><FontAwesomeIcon icon={faArrowLeft} /><span>Volver</span></button>
-              <button className="gcuotas-button gcuotas-button-export" onClick={handleExportExcel} disabled={loading}><FontAwesomeIcon icon={faFileExcel} /><span>Excel</span></button>
-              <button className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`} onClick={handleImprimirTodos} disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}>
+              <button
+                className="gcuotas-button gcuotas-button-back"
+                onClick={() => navigate('/panel')}
+                disabled={loading}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} /><span>Volver</span>
+              </button>
+              <button
+                className="gcuotas-button gcuotas-button-export"
+                onClick={handleExportExcel}
+                disabled={loading}
+              >
+                <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
+              </button>
+              <button
+                className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
+                onClick={handleImprimirTodos}
+                disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
+              >
                 <FontAwesomeIcon icon={faPrint} /><span>{loadingPrint ? 'Generando...' : 'Imprimir'}</span>
               </button>
             </div>
@@ -542,11 +687,19 @@ const Cuotas = () => {
           <div className="gcuotas-input-group gcuotas-search-group">
             <div className="gcuotas-search-integrated">
               <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
-              <input type="text" placeholder="Buscar alumno..." value={busqueda} onChange={onChangeBusqueda} disabled={loading || !mesSeleccionado} />
+              <input
+                type="text"
+                placeholder="Buscar alumno..."
+                value={busqueda}
+                onChange={onChangeBusqueda}
+                disabled={loading || !mesSeleccionado}
+              />
             </div>
           </div>
           <div className="gcuotas-summary-info">
-            <span className="gcuotas-summary-item"><FontAwesomeIcon icon={faUsers} /> Total: {mesSeleccionado ? cuotasFiltradas.length : 0}</span>
+            <span className="gcuotas-summary-item">
+              <FontAwesomeIcon icon={faUsers} /> Total: {mesSeleccionado ? cuotasFiltradas.length : 0}
+            </span>
           </div>
         </div>
 
@@ -556,14 +709,25 @@ const Cuotas = () => {
               cuotasFiltradas.length === 0 ? <NoDataFound /> :
                 isMobile ? (
                   <div className="gcuotas-mobile-list">
-                    {cuotasFiltradas.map((item, index) => (<Row key={`${cascadeRunId}-${index}`} index={index} style={{}} data={cuotasFiltradas} />))}
+                    {cuotasFiltradas.map((item, index) => (
+                      <Row key={`${cascadeRunId}-${index}`} index={index} style={{}} data={cuotasFiltradas} />
+                    ))}
                   </div>
                 ) : (
                   <div className="gcuotas-virtual-tables" style={{ height: "75vh" }}>
                     <div className="gcuotas-virtual-header">
-                      <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('nombre')}>Alumno <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'nombre' ? 'gcuotas-sort-active' : ''}`} />{orden.campo === 'nombre' && (orden.ascendente ? ' ↑' : ' ↓')}</div>
-                      <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('dni')}>DNI <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'dni' ? 'gcuotas-sort-active' : ''}`} />{orden.campo === 'dni' && (orden.ascendente ? ' ↑' : ' ↓')}</div>
-                      <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('domicilio')}>Domicilio <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'domicilio' ? 'gcuotas-sort-active' : ''}`} />{orden.campo === 'domicilio' && (orden.ascendente ? ' ↑' : ' ↓')}</div>
+                      <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('nombre')}>
+                        Alumno <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'nombre' ? 'gcuotas-sort-active' : ''}`} />
+                        {orden.campo === 'nombre' && (orden.ascendente ? ' ↑' : ' ↓')}
+                      </div>
+                      <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('dni')}>
+                        DNI <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'dni' ? 'gcuotas-sort-active' : ''}`} />
+                        {orden.campo === 'dni' && (orden.ascendente ? ' ↑' : ' ↓')}
+                      </div>
+                      <div className="gcuotas-virtual-cell" onClick={() => toggleOrden('domicilio')}>
+                        Domicilio <FontAwesomeIcon icon={faSort} className={`gcuotas-sort-icon ${orden.campo === 'domicilio' ? 'gcuotas-sort-active' : ''}`} />
+                        {orden.campo === 'domicilio' && (orden.ascendente ? ' ↑' : ' ↓')}
+                      </div>
                       <div className="gcuotas-virtual-cell">División</div>
                       <div className="gcuotas-virtual-cell">Categoría</div>
                       <div className="gcuotas-virtual-cell">Acciones</div>
@@ -571,7 +735,15 @@ const Cuotas = () => {
 
                     <AutoSizer>
                       {({ height, width }) => (
-                        <List key={`list-${cascadeRunId}`} height={height} itemCount={cuotasFiltradas.length} itemSize={60} width={width} itemData={cuotasFiltradas}  className="gcuotas-listoverflow" >
+                        <List
+                          key={`list-${cascadeRunId}`}
+                          height={height}
+                          itemCount={cuotasFiltradas.length}
+                          itemSize={60}
+                          width={width}
+                          itemData={cuotasFiltradas}
+                          className="gcuotas-listoverflow"
+                        >
                           {Row}
                         </List>
                       )}
@@ -583,10 +755,34 @@ const Cuotas = () => {
 
       {isMobile && (
         <div className="gcuotas-mobile-bottombar">
-          <button className="gcuotas-mbar-btn mbar-back" onClick={() => navigate('/panel')} disabled={loading}><FontAwesomeIcon icon={faArrowLeft} /><span>Volver</span></button>
-          <button className="gcuotas-mbar-btn mbar-excel" onClick={handleExportExcel} disabled={loading}><FontAwesomeIcon icon={faFileExcel} /><span>Excel</span></button>
-          <button className="gcuotas-mbar-btn mbar-barcode" onClick={() => setMostrarModalCodigoBarras(true)} disabled={loading || !mesSeleccionado}><FontAwesomeIcon icon={faBarcode} /><span>Barras</span></button>
-          <button className="gcuotas-mbar-btn mbar-imprimir" onClick={handleImprimirTodos} disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}><FontAwesomeIcon icon={faPrint} /><span>Imprimir</span></button>
+          <button
+            className="gcuotas-mbar-btn mbar-back"
+            onClick={() => navigate('/panel')}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} /><span>Volver</span>
+          </button>
+          <button
+            className="gcuotas-mbar-btn mbar-excel"
+            onClick={handleExportExcel}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
+          </button>
+          <button
+            className="gcuotas-mbar-btn mbar-barcode"
+            onClick={() => setMostrarModalCodigoBarras(true)}
+            disabled={loading || !mesSeleccionado}
+          >
+            <FontAwesomeIcon icon={faBarcode} /><span>Barras</span>
+          </button>
+          <button
+            className="gcuotas-mbar-btn mbar-imprimir"
+            onClick={handleImprimirTodos}
+            disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
+          >
+            <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
+          </button>
         </div>
       )}
     </div>

@@ -280,6 +280,8 @@ const EditarAlumno = () => {
           <form className="edit-socio-form" onSubmit={(e) => e.preventDefault()}>
             {activeTab === 'informacion' && (
               <div className="edit-socio-tab-content">
+
+                {/* Apellido / Nombre */}
                 <div className="edit-socio-input-group">
                   <div className="edit-socio-floating-label-wrapper">
                     <input
@@ -311,7 +313,24 @@ const EditarAlumno = () => {
                   </div>
                 </div>
 
-                <div className="edit-socio-input-group">
+                {/* ✅ Documento + Tipo de documento + Sexo en una fila */}
+                <div className="edit-socio-input-group cols-3">
+                  <div className="edit-socio-floating-label-wrapper">
+                    <input
+                      type="text"
+                      value={num_documento}
+                      onChange={(e) => handleOnlyDigits(e, setNumDocumento)}
+                      placeholder=" "
+                      className="edit-socio-input"
+                      id="num_documento"
+                      inputMode="numeric"
+                      required
+                    />
+                    <label htmlFor="num_documento" className={`edit-socio-floating-label ${num_documento ? 'edit-socio-floating-label-filled' : ''}`}>
+                      Documento *
+                    </label>
+                  </div>
+
                   <div className="edit-fl-wrapper always-active">
                     <label htmlFor="id_tipo_documento" className="edit-fl-label">Tipo de documento</label>
                     <select
@@ -327,22 +346,6 @@ const EditarAlumno = () => {
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  <div className="edit-socio-floating-label-wrapper">
-                    <input
-                      type="text"
-                      value={num_documento}
-                      onChange={(e) => handleOnlyDigits(e, setNumDocumento)}
-                      placeholder=" "
-                      className="edit-socio-input"
-                      id="num_documento"
-                      inputMode="numeric"
-                      required
-                    />
-                    <label htmlFor="num_documento" className={`edit-socio-floating-label ${num_documento ? 'edit-socio-floating-label-filled' : ''}`}>
-                      Documento *
-                    </label>
                   </div>
 
                   <div className="edit-fl-wrapper always-active">
@@ -361,6 +364,7 @@ const EditarAlumno = () => {
                   </div>
                 </div>
 
+                {/* Teléfono / Fecha de ingreso */}
                 <div className="edit-socio-input-group">
                   <div className="edit-socio-floating-label-wrapper">
                     <input
@@ -403,6 +407,7 @@ const EditarAlumno = () => {
                   </div>
                 </div>
 
+                {/* Domicilio / Localidad */}
                 <div className="edit-socio-input-group">
                   <div className="edit-socio-floating-label-wrapper">
                     <input

@@ -1,6 +1,6 @@
-/* src/components/Alumnos/modales/ModalEliminarPago.css */
+/* src/components/Cuotas/modales/ModalEliminarCondonacion.css */
 
-/* --- Variables por si tu tema no define --soc-* (borralas si ya las tenés) --- */
+/* --- Variables base (borralas si ya definís --soc-* en tu tema global) --- */
 :root {
   --soc-border-radius-lg: 14px;
   --soc-border-radius: 10px;

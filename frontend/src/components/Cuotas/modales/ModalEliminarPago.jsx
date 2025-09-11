@@ -1,4 +1,6 @@
+// src/components/Alumnos/modales/ModalEliminarPago.jsx
 import React, { useState } from 'react';
+import { FaExclamationTriangle } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalEliminarPago.css';
@@ -14,17 +16,14 @@ const ModalEliminarPago = ({ socio, periodoId, periodoNombre, onClose, onElimina
   const handleEliminar = async () => {
     setCargando(true);
     try {
-      // Tolerancia por si el objeto viene con otras claves (id_socio/id)
+      // tolerante con nombres alternativos
       const id_alumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? 0;
       const id_mes    = periodoId ?? socio?.id_mes ?? socio?.id_periodo ?? 0;
 
       const res = await fetch(`${BASE_URL}/api.php?action=eliminar_pago`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_alumno,   // <-- nombres que espera el backend real
-          id_mes       // <-- tinyint del mes (1..12)
-        })
+        body: JSON.stringify({ id_alumno, id_mes }),
       });
 
       const data = await res.json();
@@ -33,7 +32,7 @@ const ModalEliminarPago = ({ socio, periodoId, periodoNombre, onClose, onElimina
         setTimeout(() => {
           onEliminado?.();
           onClose?.();
-        }, 800);
+        }, 700);
       } else {
         mostrarToast('error', 'Error: ' + (data.mensaje || 'No se pudo eliminar'));
       }
@@ -45,9 +44,11 @@ const ModalEliminarPago = ({ socio, periodoId, periodoNombre, onClose, onElimina
     }
   };
 
+  if (!socio) return null;
+
   return (
     <>
-      {/* Toast fuera del overlay para que no se tape */}
+      {/* Toast arriba del overlay */}
       <div className="toast-fixed-container">
         {toast && (
           <Toast
@@ -59,16 +60,32 @@ const ModalEliminarPago = ({ socio, periodoId, periodoNombre, onClose, onElimina
         )}
       </div>
 
-      <div className="modal-eliminar-overlay">
-        <div className="modal-eliminar-contenido">
-          <h3>¿Eliminar pago?</h3>
-          <p>
-            ¿Deseás eliminar el pago del alumno <strong>{socio?.nombre ?? '—'}</strong>{' '}
-            para el período <strong>{periodoNombre ?? periodoId}</strong>?
+      <div className="soc-modal-overlay-eliminar" role="dialog" aria-modal="true">
+        <div className="soc-modal-contenido-eliminar" role="document">
+          <div className="soc-modal-icono-eliminar" aria-hidden="true">
+            <FaExclamationTriangle />
+          </div>
+
+          <h3 className="soc-modal-titulo-eliminar">Eliminar Pago</h3>
+
+          <p className="soc-modal-texto-eliminar">
+            ¿Deseás eliminar el pago del alumno <strong>{socio?.nombre ?? '—'}</strong> para{' '}
+            <strong>{periodoNombre ?? periodoId}</strong>?
           </p>
-          <div className="modal-eliminar-botones">
-            <button className="btn-cancelar" onClick={onClose} disabled={cargando}>Cancelar</button>
-            <button className="btn-confirmar" onClick={handleEliminar} disabled={cargando}>
+
+          <div className="soc-modal-botones-eliminar">
+            <button
+              className="soc-boton-cancelar-eliminar"
+              onClick={onClose}
+              disabled={cargando}
+            >
+              Cancelar
+            </button>
+            <button
+              className="soc-boton-confirmar-eliminar"
+              onClick={handleEliminar}
+              disabled={cargando}
+            >
               {cargando ? 'Eliminando...' : 'Eliminar'}
             </button>
           </div>

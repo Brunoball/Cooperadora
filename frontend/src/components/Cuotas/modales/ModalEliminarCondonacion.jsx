@@ -1,9 +1,9 @@
 // src/components/Cuotas/modales/ModalEliminarCondonacion.jsx
 import React, { useState } from 'react';
+import { FaExclamationTriangle } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
-// Reutilizamos los mismos estilos del modal de eliminar pago
-import './ModalEliminarPago.css';
+import './ModalEliminarCondonacion.css';
 
 const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEliminado }) => {
   const [toast, setToast] = useState(null);
@@ -15,9 +15,8 @@ const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEli
   const handleEliminar = async () => {
     setCargando(true);
     try {
-      // Tolerancia por si el objeto viene con otras claves (id_socio/id)
+      // Tolerante con nombres alternativos
       const id_alumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? 0;
-      // El id del mes lo tomamos del prop "periodo" o del socio si viniera allí
       const id_mes = Number(periodo ?? socio?.id_mes ?? socio?.id_periodo ?? 0);
 
       if (!id_alumno || !id_mes) {
@@ -32,10 +31,9 @@ const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEli
         body: JSON.stringify({ id_alumno, id_mes }),
       });
 
-      // Ignoramos el mensaje del backend (que dice "Pago eliminado correctamente")
+      // Ignoramos el mensaje del backend (puede decir “Pago eliminado…”)
       await res.json().catch(() => ({}));
 
-      // Mostramos SIEMPRE el texto de condonación
       mostrarToast('exito', 'Condonación eliminada correctamente');
       setTimeout(() => {
         onEliminado?.();
@@ -49,9 +47,11 @@ const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEli
     }
   };
 
+  if (!socio) return null;
+
   return (
     <>
-      {/* Toast flotante */}
+      {/* Toast por encima del overlay */}
       <div className="toast-fixed-container">
         {toast && (
           <Toast
@@ -63,19 +63,33 @@ const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEli
         )}
       </div>
 
-      <div className="modal-eliminar-overlay">
-        <div className="modal-eliminar-contenido">
-          <h3>¿Eliminar condonación?</h3>
-          <p>
-            ¿Deseás quitar la condonación del alumno{' '}
+      <div className="soc-modal-overlay-eliminar" role="dialog" aria-modal="true">
+        <div className="soc-modal-contenido-eliminar" role="document">
+          <div className="soc-modal-icono-eliminar" aria-hidden="true">
+            <FaExclamationTriangle />
+          </div>
+
+          <h3 className="soc-modal-titulo-eliminar">Eliminar Condonación</h3>
+
+          <p className="soc-modal-texto-eliminar">
+            ¿Deseás eliminar la condonación del alumno{' '}
             <strong>{socio?.nombre ?? socio?.apellido_nombre ?? '—'}</strong>{' '}
             para el período <strong>{periodoTexto ?? periodo}</strong>?
           </p>
-          <div className="modal-eliminar-botones">
-            <button className="btn-cancelar" onClick={onClose} disabled={cargando}>
+
+          <div className="soc-modal-botones-eliminar">
+            <button
+              className="soc-boton-cancelar-eliminar"
+              onClick={onClose}
+              disabled={cargando}
+            >
               Cancelar
             </button>
-            <button className="btn-confirmar" onClick={handleEliminar} disabled={cargando}>
+            <button
+              className="soc-boton-confirmar-eliminar"
+              onClick={handleEliminar}
+              disabled={cargando}
+            >
               {cargando ? 'Eliminando...' : 'Eliminar'}
             </button>
           </div>

@@ -53,6 +53,7 @@
   --warning-300: #fcd34d;
   --warning-400: #fbbf24;
   --warning-500: #f59e0b;
+  --warning-600: #d97706;
 
   --danger-50:  #fef2f2;
   --danger-100: #fee2e2;
@@ -85,10 +86,10 @@
   --text-on-primary: #ffffff;
 
   /* Gradientes */
-  --gradient-primary: linear-gradient(135deg, var(--primary-500), var(--primary-700));
-  --gradient-hero: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 50%, var(--primary-900) 100%);
-  --gradient-background: linear-gradient(135deg, var(--gray-100) 30%, var(--primary-500) 70%);
-  --gradient-accent: linear-gradient(90deg, var(--primary-500), var(--primary-700));
+  --gradient-primary: linear-gradient(135deg, var(--secondary-500), var(--secondary-700));
+  --gradient-hero: linear-gradient(135deg, var(--secondary-500) 0%, var(--secondary-700) 50%, var(--secondary-900) 100%);
+  --gradient-background: linear-gradient(135deg, var(--gray-100) 30%, var(--secondary-500) 70%);
+  --gradient-accent: linear-gradient(90deg, var(--secondary-500), var(--secondary-700));
 
   /* Sombras */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -248,9 +249,150 @@
 .fecha-valor { color: var(--primary-color); font-weight: 600; }
 
 /* =========================================================
+   Condonar — Caja con switch y selector de año
+   ========================================================= */
+.condonar-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+}
+.condonar-box:is(:hover, :focus-within) {
+  border-color: var(--secondary-200);
+}
+.condonar-box.is-active {
+  background: var(--secondary-50);
+  border-color: var(--secondary-300);
+  box-shadow: var(--shadow-md);
+}
+
+/* Etiqueta + switch */
+.condonar-check {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  cursor: pointer;
+  user-select: none;
+}
+.condonar-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Switch (estilo iOS) */
+.switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  background: var(--gray-300);
+  border-radius: var(--border-radius-full);
+  box-shadow: inset 0 0 0 1px var(--gray-300);
+  transition: var(--transition-fast);
+  flex: 0 0 44px;
+}
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12);
+  transition: var(--transition-fast);
+}
+.condonar-check input:checked + .switch {
+  background: var(--secondary-color);
+  box-shadow: inset 0 0 0 1px var(--secondary-color);
+}
+.condonar-check input:checked + .switch .switch-thumb {
+  transform: translateX(18px);
+}
+
+.switch-label {
+  font-size: .95rem;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.switch-label strong { font-weight: 700; color: var(--gray-900); }
+
+/* Selector de año (botón pastilla + popover) */
+.year-picker {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  position: relative;
+  gap: .5rem;
+}
+
+.year-button {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .9rem;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1px solid var(--secondary-300);
+  color: var(--secondary-700);
+  font-weight: 600;
+  transition: var(--transition-fast);
+  box-shadow: 0 1px 0 rgb(0 0 0 / .02);
+}
+.year-button:hover:not(:disabled) {
+  background: var(--secondary-50);
+  border-color: var(--secondary-400);
+}
+.year-button:disabled { opacity: .6; cursor: not-allowed; }
+.year-button svg { font-size: .95rem; }
+
+.year-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 240px;
+  padding: .5rem;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .25rem;
+}
+.year-item {
+  padding: .45rem .6rem;
+  border-radius: 10px;
+  font-size: .9rem;
+  border: 1px solid transparent;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.year-item:hover {
+  background: var(--secondary-50);
+  color: var(--secondary-700);
+  border-color: var(--secondary-200);
+}
+.year-item.active {
+  background: var(--secondary-600);
+  color: var(--text-on-primary);
+  border-color: var(--secondary-600);
+}
+
+/* =========================================================
    Sección períodos
    ========================================================= */
-.periodos-section { margin-top: 1.5rem; }
+.periodos-section { margin-top: 1.25rem; }
 
 .section-header {
   display: flex;
@@ -387,18 +529,35 @@
 }
 
 /* =========================================================
-   Footer y botones
+   Footer / badges / botones
    ========================================================= */
 .modal-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 0.75rem;
-  padding: 1.5rem;
+  padding: 1rem;
   background-color: var(--surface-color);
   border-top: 1px solid var(--border-color);
 }
 
-/* Botones base */
+.total-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .8rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 9999px;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font-weight: 700;
+}
+.total-badge-warning {
+  background: var(--warning-50);
+  border-color: var(--warning-200);
+  color: #92400e;
+}
+
 .btn {
   padding: 0.75rem 1.5rem;
   border-radius: var(--border-radius);
@@ -418,7 +577,6 @@
 
 .btn-small { padding: 0.4rem 0.75rem; font-size: 0.75rem; min-width: auto; }
 
-/* Tono tercero: “seleccionar todos” */
 .btn-terciario {
   background-color: var(--secondary-50);
   color: var(--secondary-700);
@@ -429,7 +587,6 @@
   border-color: var(--secondary-300);
 }
 
-/* Primario: confirmar */
 .btn-primary {
   background-color: var(--secondary-color);
   color: var(--text-on-primary);
@@ -441,7 +598,6 @@
   box-shadow: var(--shadow-md);
 }
 
-/* Secundario: cancelar */
 .btn-secondary {
   background-color: var(--surface-color);
   color: var(--gray-700);
@@ -450,6 +606,17 @@
 .btn-secondary:hover:not(:disabled) {
   background-color: var(--gray-50);
   border-color: var(--gray-400);
+}
+
+.btn-warning {
+  background: var(--warning-500);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-sm);
+}
+.btn-warning:hover:not(:disabled) {
+  background: var(--warning-600);
+  box-shadow: var(--shadow-md);
 }
 
 /* Spinner dentro de botón */
@@ -463,6 +630,18 @@
   animation: spin 1s ease-in-out infinite;
   margin-right: 0.5rem;
 }
+
+/* =========================================================
+   Estados de éxito (vista post-registro)
+   ========================================================= */
+.success-card {
+  background: var(--surface-secondary);
+  border-radius: var(--border-radius);
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--success-500);
+}
+.success-title { margin: 0 0 .25rem; font-size: 1.05rem; font-weight: 700; color: var(--gray-900); }
+.success-sub { margin: 0; color: var(--gray-700); }
 
 /* =========================================================
    Breakpoints
@@ -481,9 +660,16 @@
     align-items: flex-end;
     gap: 0.5rem;
   }
+
+  .condonar-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .year-picker { width: 100%; justify-content: flex-end; }
 }
 
 @media (max-width: 400px) {
   .modal-header-content { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .modal-icon-circle { display: none; }
 }
+.footer-actions{display: flex; gap: 1rem;}

@@ -129,11 +129,12 @@ const Alumnos = () => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [bloquearInteraccion, setBloquearInteraccion] = useState(true);
 
-  // ⬇️ flag de cascada
+  // ⬇️ flags de animación
   const [animacionActiva, setAnimacionActiva] = useState(false);
+  const [preCascada, setPreCascada] = useState(false); // 👈 evita parpadeo
 
   const filtrosRef = useRef(null);
-  const prevBusquedaRef = useRef(''); // ✅ para detectar transición vacío -> no vacío
+  const prevBusquedaRef = useRef(''); // ✅ detectar transición '' -> no ''
   const navigate = useNavigate();
   const isMobile = useIsMobile(768);
 
@@ -206,11 +207,24 @@ const Alumnos = () => {
     // base 400ms + (MAX_CASCADE_ITEMS-1)*30ms + 300ms buffer
     const safeMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
     const total = typeof duracionMs === 'number' ? duracionMs : safeMs;
-
     if (animacionActiva) return;
     setAnimacionActiva(true);
     window.setTimeout(() => setAnimacionActiva(false), total);
   }, [animacionActiva]);
+
+  // 👇 helper para evitar FOUC / parpadeo
+  const triggerCascadaConPreMask = useCallback(() => {
+    // oculto preventivamente los primeros N
+    setPreCascada(true);
+    // espero a que React pinte el nuevo estado/layout
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // ahora disparo la cascada y retiro el velo
+        dispararCascadaUnaVez();
+        setPreCascada(false);
+      });
+    });
+  }, [dispararCascadaUnaVez]);
 
   /* ================================
      Efectos
@@ -302,19 +316,16 @@ const Alumnos = () => {
     localStorage.setItem('filtros_alumnos', JSON.stringify(filtros));
   }, [filtros]);
 
-  useEffect(() => {
-    if (alumnosFiltrados.length > 200 && animacionActiva) setAnimacionActiva(false);
-  }, [alumnosFiltrados.length, animacionActiva]);
-
-  // ✅ Dispara cascada SOLO cuando el buscador pasa de '' a no vacío
+  // ✅ Dispara cascada SOLO cuando el buscador pasa de '' a no ''
+  //    y con "pre-mask" para evitar parpadeo.
   useEffect(() => {
     const prev = prevBusquedaRef.current || '';
     const ahora = (busquedaDefer || '').trim();
     if (prev === '' && ahora !== '') {
-      dispararCascadaUnaVez();
+      triggerCascadaConPreMask();
     }
     prevBusquedaRef.current = ahora;
-  }, [busquedaDefer, dispararCascadaUnaVez]);
+  }, [busquedaDefer, triggerCascadaConPreMask]);
 
   /* ================================
      Handlers
@@ -394,9 +405,6 @@ const Alumnos = () => {
       return;
     }
 
-    // Mapeo de los mismos campos que mostras en Editar:
-    // - Información: Apellido, Nombre, Tipo de doc, Nº doc, Sexo, Teléfono, Fecha ingreso, Domicilio, Localidad
-    // - Escolaridad: Año, División, Categoría
     const filas = alumnosFiltrados.map((a) => ({
       'ID Alumno': a?.id_alumno ?? '',
       'Apellido': a?.apellido ?? '',
@@ -415,40 +423,15 @@ const Alumnos = () => {
     }));
 
     const headers = [
-      'ID Alumno',
-      'Apellido',
-      'Nombre',
-      'Tipo de documento',
-      'Sigla',
-      'Nº Documento',
-      'Sexo',
-      'Teléfono',
-      'Fecha de ingreso',
-      'Domicilio',
-      'Localidad',
-      'Año',
-      'División',
-      'Categoría',
+      'ID Alumno','Apellido','Nombre','Tipo de documento','Sigla','Nº Documento',
+      'Sexo','Teléfono','Fecha de ingreso','Domicilio','Localidad','Año','División','Categoría',
     ];
 
     const ws = XLSX.utils.json_to_sheet(filas, { header: headers });
 
-    // Anchos sugeridos
     ws['!cols'] = [
-      { wch: 10 }, // ID
-      { wch: 18 }, // Apellido
-      { wch: 18 }, // Nombre
-      { wch: 22 }, // Tipo doc
-      { wch: 8  }, // Sigla
-      { wch: 14 }, // Nº doc
-      { wch: 10 }, // Sexo
-      { wch: 14 }, // Teléfono
-      { wch: 14 }, // Ingreso
-      { wch: 28 }, // Domicilio
-      { wch: 20 }, // Localidad
-      { wch: 10 }, // Año
-      { wch: 10 }, // División
-      { wch: 16 }, // Categoría
+      { wch: 10 },{ wch: 18 },{ wch: 18 },{ wch: 22 },{ wch: 8  },{ wch: 14 },
+      { wch: 10 },{ wch: 14 },{ wch: 14 },{ wch: 28 },{ wch: 20 },{ wch: 10 },{ wch: 10 },{ wch: 16 },
     ];
 
     const wb = XLSX.utils.book_new();
@@ -462,13 +445,12 @@ const Alumnos = () => {
     const mm = String(fecha.getMonth() + 1).padStart(2, '0');
     const dd = String(fecha.getDate()).padStart(2, '0');
 
-    // Después (fecha con separadores seguros)
     const sufijo = filtroActivo === 'todos' ? 'Todos' : 'Filtrados';
-    const fechaStr = `${yyyy}-${mm}-${dd}`; // --> 2025-09-05
+    const fechaStr = `${yyyy}-${mm}-${dd}`;
     saveAs(blob, `Alumnos_${sufijo}_${fechaStr}(${filas.length}).xlsx`);
   }, [puedeExportar, alumnosFiltrados, filtroActivo, mostrarToast, construirDomicilio]);
 
-  // ✅ Mostrar todos — garantiza cascada tras el re-render
+  // ✅ Mostrar todos — con pre-mask para evitar parpadeo
   const handleMostrarTodos = useCallback(() => {
     setFiltros({
       busqueda: '',
@@ -476,15 +458,10 @@ const Alumnos = () => {
       anioSeleccionado: null,
       filtroActivo: 'todos',
     });
+    triggerCascadaConPreMask();
+  }, [triggerCascadaConPreMask]);
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        dispararCascadaUnaVez();
-      });
-    });
-  }, [dispararCascadaUnaVez]);
-
-  // Handlers filtros
+  // Handlers filtros (también con pre-mask para una experiencia consistente)
   const handleBuscarChange = useCallback((valor) => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: valor };
@@ -500,8 +477,8 @@ const Alumnos = () => {
       return next;
     });
     setMostrarFiltros(false);
-    dispararCascadaUnaVez();
-  }, [dispararCascadaUnaVez]);
+    triggerCascadaConPreMask();
+  }, [triggerCascadaConPreMask]);
 
   const handleFiltrarPorAnio = useCallback((anio) => {
     setFiltros((prev) => {
@@ -510,8 +487,8 @@ const Alumnos = () => {
       return next;
     });
     setMostrarFiltros(false);
-    dispararCascadaUnaVez();
-  }, [dispararCascadaUnaVez]);
+    triggerCascadaConPreMask();
+  }, [triggerCascadaConPreMask]);
 
   // Quitar chips individuales
   const quitarBusqueda = useCallback(() => {
@@ -576,10 +553,16 @@ const Alumnos = () => {
     const esFilaPar = index % 2 === 0;
     const navigateRow = useNavigate();
     const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS; // ✅ solo 15
+    const preMask = preCascada && index < MAX_CASCADE_ITEMS;          // 👈 velo previo
 
     return (
       <div
-        style={{ ...style, animationDelay: willAnimate ? `${index * 0.03}s` : '0s' }}
+        style={{
+          ...style,
+          animationDelay: willAnimate ? `${index * 0.03}s` : '0s',
+          opacity: preMask ? 0 : undefined,
+          transform: preMask ? 'translateY(8px)' : undefined,
+        }}
         className={`alu-row ${esFilaPar ? 'alu-even-row' : 'alu-odd-row'} ${alumnoSeleccionado?.id_alumno === alumno.id_alumno ? 'alu-selected-row' : ''} ${willAnimate ? 'alu-cascade' : ''}`}
         onClick={() => manejarSeleccion(alumno)}
       >
@@ -604,40 +587,55 @@ const Alumnos = () => {
         <div className="alu-column alu-icons-column">
           {alumnoSeleccionado?.id_alumno === alumno.id_alumno && (
             <div className="alu-icons-container">
-              <FaInfoCircle
-                className="alu-icon"
+              <button
+                className="alu-iconchip is-info"
                 title="Ver información"
                 onClick={async (e) => {
                   e.stopPropagation();
                   await cargarAlumnoConDetalle(alumno);
                 }}
-              />
-              <FaEdit
-                className="alu-icon"
+                aria-label="Ver información"
+              >
+                <FaInfoCircle />
+              </button>
+
+              <button
+                className="alu-iconchip is-edit"
                 title="Editar"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigateRow(`/alumnos/editar/${alumno.id_alumno}`);
                 }}
-              />
-              <FaTrash
-                className="alu-icon"
+                aria-label="Editar"
+              >
+                <FaEdit />
+              </button>
+
+              <button
+                className="alu-iconchip is-delete"
                 title="Eliminar"
                 onClick={(e) => {
                   e.stopPropagation();
                   setAlumnoAEliminar(alumno);
                   setMostrarModalEliminar(true);
                 }}
-              />
-              <FaUserMinus
-                className="alu-icon"
+                aria-label="Eliminar"
+              >
+                <FaTrash />
+              </button>
+
+              <button
+                className="alu-iconchip is-baja"
                 title="Dar de baja"
                 onClick={(e) => {
                   e.stopPropagation();
                   setAlumnoDarBaja(alumno);
                   setMostrarModalDarBaja(true);
                 }}
-              />
+                aria-label="Dar de baja"
+              >
+                <FaUserMinus />
+              </button>
             </div>
           )}
         </div>
@@ -733,7 +731,7 @@ const Alumnos = () => {
                 <div
                   className="alu-filtros-menu-item alu-mostrar-todas"
                   onClick={() => {
-                    handleMostrarTodos(); // ✅ activa cascada
+                    handleMostrarTodos();
                     setMostrarFiltros(false);
                   }}
                 >
@@ -920,11 +918,16 @@ const Alumnos = () => {
               ) : (
                 alumnosFiltrados.map((alumno, index) => {
                   const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
+                  const preMask = preCascada && index < MAX_CASCADE_ITEMS;
                   return (
                     <div
                       key={alumno.id_alumno || `card-${index}`}
                       className={`alu-card ${willAnimate ? 'alu-cascade' : ''}`}
-                      style={{ animationDelay: willAnimate ? `${index * 0.03}s` : '0s' }}
+                      style={{
+                        animationDelay: willAnimate ? `${index * 0.03}s` : '0s',
+                        opacity: preMask ? 0 : undefined,
+                        transform: preMask ? 'translateY(8px)' : undefined,
+                      }}
                       onClick={() => manejarSeleccion(alumno)}
                     >
                       <div className="alu-card-header">
@@ -956,44 +959,48 @@ const Alumnos = () => {
 
                       <div className="alu-card-actions">
                         <button
-                          className="alu-action-btn"
+                          className="alu-action-btn alu-iconchip is-info"
                           title="Información"
                           onClick={async (e) => {
                             e.stopPropagation();
                             await cargarAlumnoConDetalle(alumno);
                           }}
+                          aria-label="Información"
                         >
                           <FaInfoCircle />
                         </button>
                         <button
-                          className="alu-action-btn"
+                          className="alu-action-btn alu-iconchip is-edit"
                           title="Editar"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/alumnos/editar/${alumno.id_alumno}`);
                           }}
+                          aria-label="Editar"
                         >
                           <FaEdit />
                         </button>
                         <button
-                          className="alu-action-btn"
+                          className="alu-action-btn alu-iconchip is-delete"
                           title="Eliminar"
                           onClick={(e) => {
                             e.stopPropagation();
                             setAlumnoAEliminar(alumno);
                             setMostrarModalEliminar(true);
                           }}
+                          aria-label="Eliminar"
                         >
                           <FaTrash />
                         </button>
                         <button
-                          className="alu-action-btn alu-action-danger"
+                          className="alu-action-btn alu-iconchip is-baja"
                           title="Dar de baja"
                           onClick={(e) => {
                             e.stopPropagation();
                             setAlumnoDarBaja(alumno);
-                            setMostrarModalDarBaja(true);
+                          setMostrarModalDarBaja(true);
                           }}
+                          aria-label="Dar de baja"
                         >
                           <FaUserMinus />
                         </button>
