@@ -322,7 +322,8 @@
 }
 
 @media (max-width:768px){
-  .emp-baja-buscador-container{ margin:0; }
+
+  .emp-baja-buscador-container{ margin:0 .5rem; }
   .emp-baja-tabla-container{ margin:0; margin-top:1rem; border-bottom:none; }
 
   .emp-baja-eliminar-todos .txt{ display:none; }
@@ -333,7 +334,7 @@
 
   .emp-baja-fila{
     display:block; position:relative; background:#fff;
-    border-radius:12px; padding:12px 12px 10px 14px; margin:10px 0;
+    border-radius:12px; padding:12px 12px 10px 14px; margin:10px;
     box-shadow:var(--shadow-sm); border:1px solid var(--border-color);
   }
   .emp-baja-fila > div{

@@ -780,7 +780,7 @@ input:-webkit-autofill { background-color: transparent !important; }
     background: linear-gradient(135deg, var(--reg-red-50) 0%, #fff 100%); border:1.5px solid var(--reg-red-200); box-shadow: var(--reg-shadow-sm);
   }
   .alu-volver-atras p { display:none !important; }
-  .alu-volver-atras .alu-alumno-icon-button { width:20px; height:20px; color: var(--reg-primary); }
+  .alu-volver-atras .alu-alumno-icon-button { width:20px; height:20px; color: white; }
   .alu-volver-atras:active { transform: scale(.98); }
   .alu-volver-atras:hover { background: linear-gradient(135deg, var(--reg-red-100) 0%, var(--reg-red-50) 100%); border-color: var(--reg-red-300); }
 
@@ -789,14 +789,14 @@ input:-webkit-autofill { background-color: transparent !important; }
   .alu-botones-container .alu-alumno-button p { display:none !important; }
   .alu-alumno-icon-button { width:20px; height:20px; }
 
-  .alu-botones-container .alu-alumno-button:nth-child(1) { border-color: var(--reg-red-300); background: linear-gradient(135deg, var(--reg-success) 0%, #2E7D32 100%); color:#fff; }
-  .alu-botones-container .alu-alumno-button:nth-child(2) { border-color: var(--reg-red-300); background: linear-gradient(135deg, var(--reg-coral) 0%, var(--reg-accent) 100%); color:#fff; }
+  .alu-botones-container .alu-alumno-button:nth-child(1) { border: none; background: var(--secondary-color); color:#fff; }
+  .alu-botones-container .alu-alumno-button:nth-child(2) { border: none; background: var(--success-500); color:#fff; }
   .alu-botones-container .alu-alumno-button.alu-btn-baja-nav,
-  .alu-botones-container .alu-alumno-button:nth-child(3) { border-color: var(--reg-red-400); background: linear-gradient(135deg, var(--reg-crimson) 0%, var(--reg-danger) 100%); color:#fff; }
+  .alu-botones-container .alu-alumno-button:nth-child(3) { border: none; background: linear-gradient(135deg, var(--reg-crimson) 0%, var(--reg-danger) 100%); color:#fff; }
 
   .alu-botones-container .alu-alumno-button:hover { transform: translateY(-2px); box-shadow: var(--reg-shadow-md); }
 
-  .alu-botones-container .alu-alumno-button, .alu-volver-atras { background-image: none !important; }
+
 
   .alu-icono-celular-alumno{ display:none; }
 
