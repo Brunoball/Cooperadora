@@ -239,14 +239,13 @@ const AlumnoBaja = () => {
       ws["!cols"] = [
         { wch: 8 },
         { wch: 32 },
-        { wch: 12 }, // 2025-09-12 entra justo
+        { wch: 12 },
         { wch: 40 },
       ];
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "AlumnosBaja");
 
-      // Nombre de archivo SOLO con fecha (sin hora)
       const nombre = `alumnos_baja_${hoyISO()}.xlsx`;
       XLSX.writeFile(wb, nombre);
     } catch (e) {
@@ -291,12 +290,7 @@ const AlumnoBaja = () => {
           <div className="emp-baja-titulo-container">
             <h2 className="emp-baja-titulo">Alumnos Dados de Baja</h2>
           </div>
-
-        {/* Volver (solo desktop) */}
-          <button className="emp-baja-boton-volver-top" onClick={() => navigate("/alumnos")}>
-            <FaArrowLeft className="icon-button-baja" />
-            Volver
-          </button>
+          {/* Botón Volver de arriba REMOVIDO (ahora está en la barra inferior) */}
         </div>
       </div>
 
@@ -309,7 +303,7 @@ const AlumnoBaja = () => {
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
-        <div className="emp-baja-buscador-icono">
+        <div className="emp-baja-buscador-icono" aria-hidden="true">
           <svg
             width="16"
             height="16"
@@ -342,16 +336,7 @@ const AlumnoBaja = () => {
             </div>
 
             <div className="emp-baja-acciones-derecha">
-              <button
-                className="emp-baja-exportar"
-                title="Exportar lo visible a Excel (.xlsx)"
-                onClick={exportarVisiblesAExcel}
-                disabled={alumnosFiltrados.length === 0}
-              >
-                <FaFileExcel className="ico" />
-                <span className="txt">Exportar Excel</span>
-              </button>
-
+              {/* Exportar Excel de arriba REMOVIDO (ahora está en la barra inferior) */}
               <button
                 className="emp-baja-eliminar-todos"
                 title="Eliminar definitivamente todos los alumnos visibles"
@@ -385,7 +370,6 @@ const AlumnoBaja = () => {
                 <div className="emp-baja-fila" key={a.id_alumno}>
                   <div className="emp-baja-col-id">{a.id_alumno}</div>
                   <div className="emp-baja-col-nombre">{nombreApellido(a) || "—"}</div>
-                  {/* UI: dd/mm/aaaa */}
                   <div className="emp-baja-col-fecha">{formatearFecha(a.ingreso)}</div>
                   <div className="emp-baja-col-motivo">{(a.motivo || "").trim() || "—"}</div>
                   <div className="emp-baja-col-acciones">
@@ -564,11 +548,24 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Barra inferior móvil: Volver (solo mobile) */}
-      <div className="emp-baja-navbar-mobile">
-        <button className="emp-baja-boton-volver-mobile" onClick={() => navigate("/alumnos")}>
-          <FaArrowLeft className="alu-alumno-icon-button" />
-          Volver
+      {/* === Barra inferior fija (volver + exportar) === */}
+      <div className="emp-baja-bottombar" role="toolbar" aria-label="Acciones de navegación">
+        <button
+          className="emp-baja-nav-btn emp-baja-nav-btn--volver"
+          onClick={() => navigate("/alumnos")}
+        >
+          <FaArrowLeft className="ico" />
+          <span>Volver</span>
+        </button>
+
+        <button
+          className="emp-baja-nav-btn emp-baja-nav-btn--excel"
+          onClick={exportarVisiblesAExcel}
+          disabled={alumnosFiltrados.length === 0}
+          title="Exportar lo visible a Excel (.xlsx)"
+        >
+          <FaFileExcel className="ico" />
+          <span>Exportar Excel</span>
         </button>
       </div>
     </div>

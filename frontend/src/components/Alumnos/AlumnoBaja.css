@@ -15,12 +15,12 @@
   --grayprincipal-900: #0f172a;
   --grayprincipal-950: #0a0f1a;
 
-  /* Alias base */
-  --primary-color:var(--primary-700);
-  --primary-hover:var(--primary-800);
-  --primary-light:var(--primary-200);
-  --primary-dark:var(--primary-900);
-  --primary-accent:var(--primary-500);
+  /* Alias base (corregidos a grayprincipal-*) */
+  --primary-color:  var(--grayprincipal-700);
+  --primary-hover:  var(--grayprincipal-800);
+  --primary-light:  var(--grayprincipal-200);
+  --primary-dark:   var(--grayprincipal-900);
+  --primary-accent: var(--grayprincipal-500);
 
   /* Acento único (rojo) para encabezados/llamativos */
   --accent-red:#B71C1C;
@@ -43,7 +43,7 @@
   --surface-color:#fff;
   --surface-secondary:var(--gray-100);
   --border-color:var(--gray-200);
-  --border-focus:var(--primary-500);
+  --border-focus:var(--primary-accent);
   --text-primary:var(--gray-900);
   --text-secondary:var(--gray-600);
   --text-muted:var(--gray-400);
@@ -71,17 +71,19 @@
   min-height:100vh;
   background:var(--background-color);
   font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* para no tapar el contenido con la barra inferior fija */
+  padding-bottom:72px;
 }
 
-/* Franja superior (acento rojo, resto gris) */
+/* Franja superior (gris) */
 .emp-baja-glass{
   height:100px;
-  background:  linear-gradient(
+  background: linear-gradient(
     135deg,
-    var(--grayprincipal-600) 0%,   /* gris medio-claro */
-    var(--grayprincipal-600) 35%,  /* gris medio-oscuro */
-    var(--grayprincipal-900) 65%,  /* gris principal */
-    var(--grayprincipal-900) 100%  /* casi negro */
+    var(--grayprincipal-600) 0%,
+    var(--grayprincipal-600) 35%,
+    var(--grayprincipal-900) 65%,
+    var(--grayprincipal-900) 100%
   );
   padding:0 1rem;
   display:flex;
@@ -104,62 +106,6 @@
   font-family:'Plus Jakarta Sans', sans-serif;
   font-size:1.8rem; font-weight:700; color:#fff; margin:0;
   text-shadow:0 2px 6px rgba(0,0,0,.15);
-}
-
-/* =========================================================
-   Botones Volver (dos variantes para evitar conflictos)
-   ========================================================= */
-/* Top (desktop) */
-.emp-baja-boton-volver-top{
-  display:inline-flex;
-  align-items:center; gap:.45rem;
-  padding:.55rem .85rem;
-  border-radius:10px;
-  font-weight:700;
-  border:1px solid var(--gray-300);
-  background:#fff;
-  color:var(--gray-700);
-  box-shadow:var(--shadow-sm);
-  transition:var(--transition-smooth);
-  cursor:pointer;
-}
-.emp-baja-boton-volver-top:hover{
-  background:var(--gray-700);
-  color:#fff;
-  border-color:var(--gray-700);
-}
-@media (max-width:768px){
-  .emp-baja-boton-volver-top{ display:none; }
-}
-
-/* Bottom (mobile) */
-.emp-baja-navbar-mobile{
-  position:fixed; bottom:0; left:0; right:0; height:60px; background:#fff;
-  border-top:1px solid var(--border-color);
-  display:flex; align-items:center; justify-content:flex-start;
-  padding:.5rem 1rem; box-shadow:var(--shadow-sm); z-index:999; gap:10px;
-}
-.emp-baja-boton-volver-mobile{
-  display:none;
-  align-items:center; gap:.5rem;
-  max-width:280px;
-  padding:.65rem 1rem;
-  border-radius:var(--border-radius);
-  border:2px solid var(--primary-600);
-  color:var(--primary-700);
-  background:#fff;
-  font-weight:700;
-  cursor:pointer;
-  box-shadow:var(--shadow-sm);
-  transition:var(--transition-smooth);
-}
-.emp-baja-boton-volver-mobile:hover{
-  background:var(--primary-700);
-  color:#fff;
-  border-color:var(--primary-700);
-}
-@media (max-width:768px){
-  .emp-baja-boton-volver-mobile{ display:inline-flex; }
 }
 
 /* =========================================================
@@ -191,9 +137,9 @@
   gap:.75rem; margin:1rem 0 .5rem; padding:0 .5rem;
 }
 .emp-baja-contador{ font-size:.9rem; color:var(--text-secondary); }
-.emp-baja-contador strong{ color:var(--primary-800); margin-left:.25rem; }
+.emp-baja-contador strong{ color:var(--primary-dark); margin-left:.25rem; }
 
-/* Eliminar todos (neutro con énfasis en hover) */
+/* Eliminar todos */
 .emp-baja-eliminar-todos{
   display:inline-flex; align-items:center; gap:.5rem;
   padding:.5rem .9rem; border-radius:10px;
@@ -230,7 +176,7 @@
 }
 .emp-baja-tabla-header-container{ display:flex; flex-direction:column; gap:7px; }
 
-/* Header con acento rojo y tipografía clara */
+/* Header */
 .emp-baja-tabla-header{
   display:grid; border-radius:14px 14px 0 0;
   grid-template-columns:60px 1.5fr .8fr 1.5fr .5fr;
@@ -243,7 +189,7 @@
   padding:0 8px; display:flex; align-items:center; justify-content:center;
 }
 
-/* Filas en gris con zebra */
+/* Filas */
 .emp-baja-fila{
   display:grid;
   grid-template-columns:60px 1.5fr .8fr 1.5fr .5fr;
@@ -252,14 +198,11 @@
 }
 .emp-baja-fila:nth-child(even){ background:var(--surface-secondary); }
 
-/* =========================================================
-   Iconos de acción (neutros y consistentes, hover invierte)
-   ========================================================= */
+/* Iconos de acción */
 .emp-baja-iconos{
   display:flex; justify-content:center; align-items:center; gap:6px; font-size:1.3rem;
 }
 
-/* Base para todos los iconos: fondo gris + texto gris */
 .emp-baja-icono{
   color:var(--gray-800);
   background-color:var(--gray-200);
@@ -271,43 +214,15 @@
   border-radius:10px;
   box-shadow:var(--shadow-sm);
 }
-
-/* Hover general: invierte (texto blanco, fondo gris oscuro) */
 .emp-baja-icono:hover{
   transform:scale(1.08);
   color:#fff;
-  background-color:var(--primary-800);
-  border-color:var(--primary-800);
+  background-color:var(--primary-hover);
+  border-color:var(--primary-hover);
   box-shadow:0 2px 8px rgba(30,41,59,.25);
 }
 
-/* Variante INFO (gris azulado sutil) */
-.emp-baja-icono--info{
-  color:var(--gray-800);
-  background-color:var(--primary-100);
-  border-color:var(--primary-200);
-}
-.emp-baja-icono--info:hover{
-  color:var(--primary-900);
-  background-color:#fff;
-  border-color:var(--primary-400);
-  box-shadow:0 4px 10px rgba(100,116,139,.20);
-}
-
-/* Variante EDIT (azul suave sobre gris neutro) */
-.emp-baja-icono--edit{
-  color:#1e40af;               /* azul 800 */
-  background-color:var(--gray-100);
-  border-color:var(--gray-300);
-}
-.emp-baja-icono--edit:hover{
-  color:#fff;
-  background-color:#1e40af;    /* invierte */
-  border-color:#1e40af;
-  box-shadow:0 4px 10px rgba(30,64,175,.25);
-}
-
-/* Variante DANGER (eliminar) con inversión en hover */
+/* Danger */
 .emp-baja-icono-danger,
 .emp-baja-icono--delete{
   color:var(--danger-600);
@@ -320,19 +235,6 @@
   background-color:var(--danger-600);
   border-color:var(--danger-600);
   box-shadow:0 4px 10px rgba(220,38,38,.25);
-}
-
-/* Variante BAJA (advertencia) */
-.emp-baja-icono--baja{
-  color:#b45309; /* amber-700 */
-  background-color:var(--warning-50);
-  border-color:var(--warning-100);
-}
-.emp-baja-icono--baja:hover{
-  color:#fff;
-  background-color:#b45309; /* invierte */
-  border-color:#b45309;
-  box-shadow:0 4px 10px rgba(180,83,9,.22);
 }
 
 /* =========================================================
@@ -374,7 +276,7 @@
 .emp-baja-modal__icon{ font-size:2.5rem; color:var(--success-600); margin-bottom:1rem; }
 .emp-baja-modal__icon--danger{ color:var(--danger-600); }
 
-.emp-baja-modal__title{ margin:0 0 1rem; font-size:1.4rem; font-weight:700; color:var(--primary-800); }
+.emp-baja-modal__title{ margin:0 0 1rem; font-size:1.4rem; font-weight:700; color:var(--primary-hover); }
 .emp-baja-modal__title--danger{ color:var(--danger-600)!important; }
 .emp-baja-modal__title--success{ color:var(--success-600)!important; }
 
@@ -391,7 +293,7 @@
   background:#fff; color:var(--text-primary); border-color:var(--border-color);
 }
 .emp-baja-btn--ghost:hover{
-  background:var(--primary-50); transform:translateY(-2px); box-shadow:var(--shadow-md);
+  background:var(--primary-light); transform:translateY(-2px); box-shadow:var(--shadow-md);
 }
 .emp-baja-btn--solid-success{
   background:var(--success-600); color:#fff; border-color:var(--success-600);
@@ -477,3 +379,65 @@
   font-size:.95rem; color:var(--text-primary); cursor:pointer;
 }
 .soc-icono-calendario{ margin-left:.5rem; font-size:1.1rem; color:var(--text-muted); }
+
+/* =========================================================
+   Barra inferior fija (nuevo)
+   ========================================================= */
+.emp-baja-bottombar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 60px;
+  background: #fff; /* sin degradados */
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 .75rem;
+  box-shadow: var(--shadow-sm);
+  z-index: 998; /* los modales (1000) quedan por encima */
+}
+
+.emp-baja-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .6rem 1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  border: 1px solid var(--grayprincipal-300);
+  background: #fff;            /* base neutra */
+  color: var(--grayprincipal-800);
+  box-shadow: var(--shadow-sm);
+}
+
+.emp-baja-nav-btn .ico { font-size: 1.05rem; }
+
+/* Volver */
+.emp-baja-nav-btn--volver:hover {
+  background: var(--grayprincipal-700);
+  color: #fff;
+  border-color: var(--grayprincipal-700);
+}
+
+/* Exportar Excel */
+.emp-baja-nav-btn--excel {
+  background: var(--success-600);
+  color: #fff;
+  border-color: var(--success-600);
+}
+.emp-baja-nav-btn--excel:hover {
+  filter: brightness(.96);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.emp-baja-nav-btn--excel:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

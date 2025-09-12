@@ -53,7 +53,7 @@
   align-items:center;
   justify-content:center;
   padding:20px;
-background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   background-attachment: fixed;
   box-sizing:border-box;
 }
@@ -228,18 +228,44 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
 .cat_center{text-align:center;}
 .cat_right{text-align:right;}
 
-/* Icon buttons */
+/* =========================================================
+   Icon buttons
+   ========================================================= */
 .cat_icon_btn{
   width:36px;height:36px;border:none;border-radius:var(--reg-border-radius);
   display:flex;align-items:center;justify-content:center;
-  background: color-mix(in srgb, var(--secondary-600) 12%, transparent);
+  background: color-mix(in srgb, var(--reg-secondary) 12%, transparent);
   color: #3b82f6;
   cursor:pointer; transition: var(--reg-transition);
 }
 .cat_icon_btn:hover{
-  background: color-mix(in srgb, var(--secondary-800) 20%, transparent);
+  background: color-mix(in srgb, var(--reg-secondary) 20%, transparent);
   transform: translateY(-1px);
 }
+
+/* ✅ Historial: fondo gris, texto negro, hover oscurecido */
+.cat_icon_btn_history{
+  background: var(--reg-gray-300);
+  color: #111; /* negro legible */
+
+}
+.cat_icon_btn_history:hover{
+  background: var(--reg-gray-400);
+  color: #111;
+  transform: translateY(-1px);
+}
+.cat_icon_btn_history:active{
+  background: var(--reg-gray-500);
+  color: #111;
+  transform: translateY(0);
+}
+.cat_icon_btn_history:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--reg-gray-600) 35%, transparent);
+  border-radius: var(--reg-border-radius);
+}
+
+/* Peligro (eliminar) */
 .cat_icon_btn_danger{
   background: color-mix(in srgb, var(--reg-danger) 12%, transparent);
   color: var(--reg-danger);
@@ -248,7 +274,9 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   background: color-mix(in srgb, var(--reg-danger) 20%, transparent);
 }
 
-/* Empty & Loading */
+/* =========================================================
+   Empty & Loading
+   ========================================================= */
 .cat_empty{
   text-align:center;
   padding:14px;

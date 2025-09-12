@@ -1216,15 +1216,7 @@
   text-transform: uppercase;
 }
 
-/* Puntito decorativo opcional delante del texto */
-.gcuotas-chip::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background-color: currentColor;
-  opacity: .6;
-}
+
 
 
 /* —— Derivados que faltaban (secundario, focus, on-primary, escalas semánticas) —— */
