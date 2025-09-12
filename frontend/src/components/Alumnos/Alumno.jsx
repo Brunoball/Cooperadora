@@ -64,6 +64,7 @@ const combinarNombre = (a) => {
   return partes || (a?.nombre ?? '');
 };
 
+// Extrae el número de año desde "anio_nombre"
 const extraerAnioNum = (valor) => {
   if (valor == null) return null;
   if (typeof valor === 'number' && Number.isFinite(valor)) return valor;
@@ -83,6 +84,7 @@ const formatearFechaISO = (v) => {
   return `${m[3]}/${m[2]}/${m[1]}`;
 };
 
+// Hook simple para detectar mobile
 function useIsMobile(breakpoint = 768) {
   const getMatch = () =>
     (typeof window !== 'undefined'
@@ -112,10 +114,6 @@ const Alumnos = () => {
   const [alumnos, setAlumnos] = useState([]);
   const [alumnosDB, setAlumnosDB] = useState([]);
   const [cargando, setCargando] = useState(false);
-
-  const [cargado, setCargado] = useState(false);
-  const [iniciado, setIniciado] = useState(false);
-
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
 
   const [mostrarModalEliminar, setMostrarModalEliminar] = useState(false);
@@ -130,24 +128,38 @@ const Alumnos = () => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [bloquearInteraccion, setBloquearInteraccion] = useState(true);
 
-  // Animación
+  // flags de animación
   const [animacionActiva, setAnimacionActiva] = useState(false);
   const [preCascada, setPreCascada] = useState(false);
 
   const filtrosRef = useRef(null);
+  const prevBusquedaRef = useRef('');
   const navigate = useNavigate();
   const isMobile = useIsMobile(768);
 
-  const [toast, setToast] = useState({ mostrar: false, tipo: '', mensaje: '' });
+  const [toast, setToast] = useState({
+    mostrar: false,
+    tipo: '',
+    mensaje: ''
+  });
 
   const [filtros, setFiltros] = useState(() => {
     const saved = localStorage.getItem('filtros_alumnos');
     return saved
       ? JSON.parse(saved)
-      : { busqueda: '', letraSeleccionada: '', anioSeleccionado: null, filtroActivo: null };
+      : {
+          busqueda: '',
+          letraSeleccionada: '',
+          anioSeleccionado: null,
+          filtroActivo: null, // 'filtros' | 'todos' | null
+        };
   });
 
-  const [openSecciones, setOpenSecciones] = useState({ letra: false, anio: false });
+  // Acordeones
+  const [openSecciones, setOpenSecciones] = useState({
+    letra: false,
+    anio: false,
+  });
   const [verMasAnio] = useState(false);
 
   const { busqueda, letraSeleccionada, filtroActivo, anioSeleccionado } = filtros;
@@ -159,7 +171,6 @@ const Alumnos = () => {
     (anioSeleccionado !== null)
   );
 
-  // ====== filtrado ======
   const alumnosFiltrados = useMemo(() => {
     let resultados = alumnos;
 
@@ -191,17 +202,19 @@ const Alumnos = () => {
     return resultados;
   }, [alumnos, busquedaDefer, letraSeleccionada, anioSeleccionado, filtroActivo]);
 
-  const puedeExportar = useMemo(
-    () => (hayFiltros || filtroActivo === 'todos') && alumnosFiltrados.length > 0 && !cargando,
-    [hayFiltros, filtroActivo, alumnosFiltrados.length, cargando]
+  const puedeExportar = useMemo(() => {
+    return (hayFiltros || filtroActivo === 'todos') && alumnosFiltrados.length > 0 && !cargando;
+  }, [hayFiltros, filtroActivo, alumnosFiltrados.length, cargando]);
+
+  // 🔑 Loader visible SOLO si el usuario pidió resultados (hay filtros o "todos")
+  const mostrarLoader = useMemo(
+    () => cargando && (hayFiltros || filtroActivo === 'todos'),
+    [cargando, hayFiltros, filtroActivo]
   );
 
   /* ================================
-     Cascada (controlada)
+     Animación en cascada (helper)
   ================================= */
-  const yaAnimadosRef = useRef(new Set());
-  const searchDebounceRef = useRef(null);
-
   const dispararCascadaUnaVez = useCallback((duracionMs) => {
     const safeMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
     const total = typeof duracionMs === 'number' ? duracionMs : safeMs;
@@ -211,8 +224,6 @@ const Alumnos = () => {
   }, [animacionActiva]);
 
   const triggerCascadaConPreMask = useCallback(() => {
-    // 🔁 reseteamos qué ítems ya animaron, para que la cascada se vea siempre
-    yaAnimadosRef.current = new Set();
     setPreCascada(true);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -221,54 +232,6 @@ const Alumnos = () => {
       });
     });
   }, [dispararCascadaUnaVez]);
-
-  /* ================================
-     Toast
-  ================================= */
-  const mostrarToast = useCallback((mensaje, tipo = 'exito') => {
-    setToast({ mostrar: true, tipo, mensaje });
-  }, []);
-
-  /* ================================
-     Fetch (lazy)
-  ================================= */
-  const cargarDatosIniciales = useCallback(async () => {
-    if (cargado) return;
-    try {
-      setCargando(true);
-      const response = await fetch(`${BASE_URL}/api.php?action=alumnos`);
-      const data = await response.json();
-
-      if (data.exito) {
-        const procesados = (data.alumnos || []).map((a) => {
-          const _anioNum = extraerAnioNum(a?.anio_nombre);
-          return {
-            ...a,
-            _n: normalizar(combinarNombre(a)),
-            _nSolo: normalizar(a?.nombre ?? ''),
-            _ap: normalizar(a?.apellido ?? ''),
-            _nyap: normalizar(a?.nombre_completo ?? a?.nombreyapellido ?? a?.nyap ?? ''),
-            _dni: String(a?.dni ?? '').toLowerCase(),
-            _anioNum,
-          };
-        });
-
-        setAlumnos(procesados);
-        setAlumnosDB(procesados);
-        setCargado(true);
-      } else {
-        mostrarToast(`Error al obtener alumnos: ${data.mensaje}`, 'error');
-      }
-    } catch (error) {
-      mostrarToast('Error de red al obtener alumnos', 'error');
-    } finally {
-      setCargando(false);
-    }
-  }, [cargado, mostrarToast]);
-
-  const asegurarDatos = useCallback(async () => {
-    if (!cargado) await cargarDatosIniciales();
-  }, [cargado, cargarDatosIniciales]);
 
   /* ================================
      Efectos
@@ -301,9 +264,75 @@ const Alumnos = () => {
     };
   }, []);
 
+  const mostrarToast = useCallback((mensaje, tipo = 'exito') => {
+    setToast({ mostrar: true, tipo, mensaje });
+  }, []);
+
+  // ✅ Carga inicial (pero spinner se oculta hasta que el usuario pida ver resultados)
+  useEffect(() => {
+    const cargarDatosIniciales = async () => {
+      try {
+        setCargando(true);
+        const response = await fetch(`${BASE_URL}/api.php?action=alumnos`);
+        const data = await response.json();
+
+        if (data.exito) {
+          const procesados = (data.alumnos || []).map((a) => {
+            const _anioNum = extraerAnioNum(a?.anio_nombre);
+            return {
+              ...a,
+              _n: normalizar(combinarNombre(a)),
+              _nSolo: normalizar(a?.nombre ?? ''),
+              _ap: normalizar(a?.apellido ?? ''),
+              _nyap: normalizar(a?.nombre_completo ?? a?.nombreyapellido ?? a?.nyap ?? ''),
+              _dni: String(a?.dni ?? '').toLowerCase(),
+              _anioNum,
+            };
+          });
+
+          setAlumnos(procesados);
+          setAlumnosDB(procesados);
+        } else {
+          mostrarToast(`Error al obtener alumnos: ${data.mensaje}`, 'error');
+        }
+      } catch (error) {
+        mostrarToast('Error de red al obtener alumnos', 'error');
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDatosIniciales();
+
+    const handlePopState = () => {
+      if (window.location.pathname === '/panel') {
+        setFiltros({
+          busqueda: '',
+          letraSeleccionada: '',
+          anioSeleccionado: null,
+          filtroActivo: null,
+        });
+        localStorage.removeItem('filtros_alumnos');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [mostrarToast]);
+
   useEffect(() => {
     localStorage.setItem('filtros_alumnos', JSON.stringify(filtros));
   }, [filtros]);
+
+  // Dispara cascada SOLO cuando el buscador pasa de '' a no ''
+  useEffect(() => {
+    const prev = prevBusquedaRef.current || '';
+    const ahora = (busquedaDefer || '').trim();
+    if (prev === '' && ahora !== '') {
+      triggerCascadaConPreMask();
+    }
+    prevBusquedaRef.current = ahora;
+  }, [busquedaDefer, triggerCascadaConPreMask]);
 
   /* ================================
      Handlers
@@ -374,7 +403,7 @@ const Alumnos = () => {
 
   const construirDomicilio = useCallback((domicilio) => (domicilio || '').trim(), []);
 
-  // Excel
+  // Exporta SOLO lo visible pero con TODOS los campos de Editar
   const exportarExcel = useCallback(() => {
     if (!puedeExportar) {
       mostrarToast('No hay filas visibles para exportar.', 'error');
@@ -404,6 +433,7 @@ const Alumnos = () => {
     ];
 
     const ws = XLSX.utils.json_to_sheet(filas, { header: headers });
+
     ws['!cols'] = [
       { wch: 10 },{ wch: 18 },{ wch: 18 },{ wch: 22 },{ wch: 8  },{ wch: 14 },
       { wch: 10 },{ wch: 14 },{ wch: 14 },{ wch: 28 },{ wch: 20 },{ wch: 10 },{ wch: 10 },{ wch: 16 },
@@ -421,35 +451,31 @@ const Alumnos = () => {
     const dd = String(fecha.getDate()).padStart(2, '0');
 
     const sufijo = filtroActivo === 'todos' ? 'Todos' : 'Filtrados';
-    saveAs(blob, `Alumnos_${sufijo}_${yyyy}-${mm}-${dd}(${filas.length}).xlsx`);
+    const fechaStr = `${yyyy}-${mm}-${dd}`;
+    saveAs(blob, `Alumnos_${sufijo}_${fechaStr}(${filas.length}).xlsx`);
   }, [puedeExportar, alumnosFiltrados, filtroActivo, mostrarToast, construirDomicilio]);
 
-  // Mostrar todos (con cascada)
+  // Mostrar todos — con pre-mask para evitar parpadeo
   const handleMostrarTodos = useCallback(() => {
-    if (!iniciado) { setIniciado(true); asegurarDatos(); }
-    setFiltros({ busqueda: '', letraSeleccionada: '', anioSeleccionado: null, filtroActivo: 'todos' });
+    setFiltros({
+      busqueda: '',
+      letraSeleccionada: '',
+      anioSeleccionado: null,
+      filtroActivo: 'todos',
+    });
     triggerCascadaConPreMask();
-  }, [iniciado, asegurarDatos, triggerCascadaConPreMask]);
+  }, [triggerCascadaConPreMask]);
 
-  // ====== Filtros ======
+  // Handlers filtros
   const handleBuscarChange = useCallback((valor) => {
-    if (valor.trim() && !iniciado) { setIniciado(true); asegurarDatos(); }
     setFiltros((prev) => {
       const next = { ...prev, busqueda: valor };
-      next.filtroActivo =
-        (valor?.trim() || prev.letraSeleccionada || prev.anioSeleccionado !== null) ? 'filtros' : null;
+      next.filtroActivo = (valor?.trim() || prev.letraSeleccionada || prev.anioSeleccionado !== null) ? 'filtros' : null;
       return next;
     });
-
-    // Debounce para no disparar por cada tecla
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      triggerCascadaConPreMask();
-    }, 0);
-  }, [iniciado, asegurarDatos, triggerCascadaConPreMask]);
+  }, []);
 
   const handleFiltrarPorLetra = useCallback((letra) => {
-    if (!iniciado) { setIniciado(true); asegurarDatos(); }
     setFiltros((prev) => {
       const next = { ...prev, letraSeleccionada: letra };
       next.filtroActivo = (prev.busqueda?.trim() || letra || prev.anioSeleccionado !== null) ? 'filtros' : null;
@@ -457,10 +483,9 @@ const Alumnos = () => {
     });
     setMostrarFiltros(false);
     triggerCascadaConPreMask();
-  }, [iniciado, asegurarDatos, triggerCascadaConPreMask]);
+  }, [triggerCascadaConPreMask]);
 
   const handleFiltrarPorAnio = useCallback((anio) => {
-    if (!iniciado) { setIniciado(true); asegurarDatos(); }
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: anio };
       next.filtroActivo = (prev.busqueda?.trim() || prev.letraSeleccionada || anio !== null) ? 'filtros' : null;
@@ -468,17 +493,16 @@ const Alumnos = () => {
     });
     setMostrarFiltros(false);
     triggerCascadaConPreMask();
-  }, [iniciado, asegurarDatos, triggerCascadaConPreMask]);
+  }, [triggerCascadaConPreMask]);
 
-  // Quitar chips (también dispara cascada)
+  // Quitar chips individuales
   const quitarBusqueda = useCallback(() => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: '' };
       next.filtroActivo = (prev.letraSeleccionada || prev.anioSeleccionado !== null) ? 'filtros' : null;
       return next;
     });
-    triggerCascadaConPreMask();
-  }, [triggerCascadaConPreMask]);
+  }, []);
 
   const quitarLetra = useCallback(() => {
     setFiltros((prev) => {
@@ -486,8 +510,7 @@ const Alumnos = () => {
       next.filtroActivo = (prev.busqueda?.trim() || prev.anioSeleccionado !== null) ? 'filtros' : null;
       return next;
     });
-    triggerCascadaConPreMask();
-  }, [triggerCascadaConPreMask]);
+  }, []);
 
   const quitarAnio = useCallback(() => {
     setFiltros((prev) => {
@@ -495,9 +518,9 @@ const Alumnos = () => {
       next.filtroActivo = (prev.busqueda?.trim() || prev.letraSeleccionada) ? 'filtros' : null;
       return next;
     });
-    triggerCascadaConPreMask();
-  }, [triggerCascadaConPreMask]);
+  }, []);
 
+  // Limpieza total de chips activos
   const limpiarTodosLosChips = useCallback(() => {
     setFiltros((prev) => ({
       ...prev,
@@ -506,8 +529,7 @@ const Alumnos = () => {
       anioSeleccionado: null,
       filtroActivo: null,
     }));
-    triggerCascadaConPreMask();
-  }, [triggerCascadaConPreMask]);
+  }, []);
 
   const cargarAlumnoConDetalle = useCallback(async (alumnoBase) => {
     try {
@@ -535,21 +557,17 @@ const Alumnos = () => {
     const alumno = data[index];
     const esFilaPar = index % 2 === 0;
     const navigateRow = useNavigate();
-
-    const firstTime = !yaAnimadosRef.current.has(alumno.id_alumno);
-    const willAnimate =
-      animacionActiva &&
-      !preCascada &&
-      index < MAX_CASCADE_ITEMS &&
-      firstTime;
-
-    useEffect(() => {
-      if (willAnimate) yaAnimadosRef.current.add(alumno.id_alumno);
-    }, [willAnimate, alumno?.id_alumno]);
+    const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
+    const preMask = preCascada && index < MAX_CASCADE_ITEMS;
 
     return (
       <div
-        style={{ ...style, animationDelay: willAnimate ? `${index * 0.03}s` : '0s' }}
+        style={{
+          ...style,
+          animationDelay: willAnimate ? `${index * 0.03}s` : '0s',
+          opacity: preMask ? 0 : undefined,
+          transform: preMask ? 'translateY(8px)' : undefined,
+        }}
         className={`alu-row ${esFilaPar ? 'alu-even-row' : 'alu-odd-row'} ${alumnoSeleccionado?.id_alumno === alumno.id_alumno ? 'alu-selected-row' : ''} ${willAnimate ? 'alu-cascade' : ''}`}
         onClick={() => manejarSeleccion(alumno)}
       >
@@ -764,6 +782,7 @@ const Alumnos = () => {
         {/* CONTADOR + CHIPS + LISTADO */}
         <div className="alu-alumnos-list">
           <div className="alu-contenedor-list-items">
+            {/* Contador */}
             <div className="alu-left-inline">
               <div className="alu-contador-container">
                 <span className="alu-alumnos-desktop">
@@ -775,6 +794,7 @@ const Alumnos = () => {
                 <FaUsers className="alu-icono-alumno" />
               </div>
 
+              {/* Chips */}
               {hayChips && (
                 <div className="alu-chips-container">
                   {busqueda && (
@@ -836,7 +856,7 @@ const Alumnos = () => {
             </div>
           </div>
 
-          {/* TABLA (desktop) */}
+          {/* TABLA (solo desktop) */}
           {!isMobile && (
             <div className="alu-box-table">
               <div className="alu-header">
@@ -849,24 +869,25 @@ const Alumnos = () => {
                 <div className="alu-column-header alu-icons-column">Acciones</div>
               </div>
 
-              <div className={`alu-body ${(cargando || preCascada) ? 'is-pre' : ''}`}>
-                {(cargando && iniciado) ? (
-                  <div className="alu-loading-spinner-container">
-                    <div className="alu-loading-spinner"></div>
-                  </div>
-                ) : (cargado && alumnos.length === 0) ? (
-                  <div className="alu-no-data-message">
-                    <div className="alu-message-content">
-                      <p>No hay alumnos registrados</p>
-                    </div>
-                  </div>
-                ) : !hayFiltros && filtroActivo !== 'todos' ? (
+              <div className="alu-body">
+                {/* Estado inicial sin interacción => NO mostramos loader inicial */}
+                {!hayFiltros && filtroActivo !== 'todos' ? (
                   <div className="alu-no-data-message">
                     <div className="alu-message-content">
                       <p>Por favor aplicá búsqueda o filtros para ver los alumnos</p>
                       <button className="alu-btn-show-all" onClick={handleMostrarTodos}>
                         Mostrar todos los alumnos
                       </button>
+                    </div>
+                  </div>
+                ) : mostrarLoader ? (
+                  <div className="alu-loading-spinner-container">
+                    <div className="alu-loading-spinner"></div>
+                  </div>
+                ) : alumnos.length === 0 ? (
+                  <div className="alu-no-data-message">
+                    <div className="alu-message-content">
+                      <p>No hay alumnos registrados</p>
                     </div>
                   </div>
                 ) : alumnosFiltrados.length === 0 ? (
@@ -898,32 +919,33 @@ const Alumnos = () => {
             </div>
           )}
 
-          {/* TARJETAS (mobile) */}
+          {/* TARJETAS (solo mobile) */}
           {isMobile && (
             <div
               className={`alu-cards-wrapper ${
-                animacionActiva && !preCascada && alumnosFiltrados.length <= MAX_CASCADE_ITEMS ? 'alu-cascade-animation' : ''
-              }${(cargando || preCascada) ? ' is-pre' : ''}`}
+                animacionActiva && alumnosFiltrados.length <= MAX_CASCADE_ITEMS ? 'alu-cascade-animation' : ''
+              }`}
             >
-              {(cargando && iniciado) ? (
+              {/* Estado inicial sin interacción => NO loader */}
+              {!hayFiltros && filtroActivo !== 'todos' ? (
                 <div className="alu-no-data-message alu-no-data-mobile">
                   <div className="alu-message-content">
-                    <p>Cargando datos iniciales...</p>
-                  </div>
-                </div>
-              ) : (cargado && alumnos.length === 0) ? (
-                <div className="alu-no-data-message alu-no-data-mobile">
-                  <div className="alu-message-content">
-                    <p>No hay alumnos registrados</p>
-                  </div>
-                </div>
-              ) : !hayFiltros && filtroActivo !== 'todos' ? (
-                <div className="alu-no-data-message alu-no-data-mobile">
-                  <div className="alu-message-content">
-                    <p>Usá la búsqueda o aplica filtros para ver resultados</p>
+                    <p>Usá la búsqueda o aplicá filtros para ver resultados</p>
                     <button className="alu-btn-show-all" onClick={handleMostrarTodos}>
                       Mostrar todos
                     </button>
+                  </div>
+                </div>
+              ) : mostrarLoader ? (
+                <div className="alu-no-data-message alu-no-data-mobile">
+                  <div className="alu-message-content">
+                    <p>Cargando alumnos...</p>
+                  </div>
+                </div>
+              ) : alumnos.length === 0 ? (
+                <div className="alu-no-data-message alu-no-data-mobile">
+                  <div className="alu-message-content">
+                    <p>No hay alumnos registrados</p>
                   </div>
                 </div>
               ) : alumnosFiltrados.length === 0 ? (
@@ -934,15 +956,17 @@ const Alumnos = () => {
                 </div>
               ) : (
                 alumnosFiltrados.map((alumno, index) => {
-                  const firstTime = !yaAnimadosRef.current.has(alumno.id_alumno);
-                  const willAnimate = animacionActiva && !preCascada && index < MAX_CASCADE_ITEMS && firstTime;
-                  if (willAnimate) yaAnimadosRef.current.add(alumno.id_alumno);
-
+                  const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
+                  const preMask = preCascada && index < MAX_CASCADE_ITEMS;
                   return (
                     <div
                       key={alumno.id_alumno || `card-${index}`}
                       className={`alu-card ${willAnimate ? 'alu-cascade' : ''}`}
-                      style={{ animationDelay: willAnimate ? `${index * 0.03}s` : '0s' }}
+                      style={{
+                        animationDelay: willAnimate ? `${index * 0.03}s` : '0s',
+                        opacity: preMask ? 0 : undefined,
+                        transform: preMask ? 'translateY(8px)' : undefined,
+                      }}
                       onClick={() => manejarSeleccion(alumno)}
                     >
                       <div className="alu-card-header">
@@ -1001,7 +1025,7 @@ const Alumnos = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setAlumnoAEliminar(alumno);
-                            setMostrarModalEliminar(true);
+                            setMostrarModalEliminar(true); // ✅ corregido
                           }}
                           aria-label="Eliminar"
                         >
@@ -1033,7 +1057,12 @@ const Alumnos = () => {
           <button
             className="alu-alumno-button alu-hover-effect alu-volver-atras"
             onClick={() => {
-              setFiltros({ busqueda: '', letraSeleccionada: '', anioSeleccionado: null, filtroActivo: null });
+              setFiltros({
+                busqueda: '',
+                letraSeleccionada: '',
+                anioSeleccionado: null,
+                filtroActivo: null,
+              });
               localStorage.removeItem('filtros_alumnos');
               navigate('/panel');
             }}
@@ -1055,6 +1084,7 @@ const Alumnos = () => {
               <p>Agregar Alumno</p>
             </button>
 
+            {/* Exportar Excel: bloqueado si no hay filas visibles */}
             <button
               className="alu-alumno-button alu-hover-effect"
               onClick={exportarExcel}
