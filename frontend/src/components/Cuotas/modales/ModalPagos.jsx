@@ -277,6 +277,24 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
+  // ✅ Handler para monto libre: no negativos y step de 500 (input), permite vacío
+  const handleLibreChange = (e) => {
+    const raw = e.target.value;
+
+    // permitir campo vacío mientras se escribe
+    if (raw === '') {
+      setLibreValor('');
+      return;
+    }
+
+    // parsear y clavar en [0, +∞)
+    let n = Number(raw);
+    if (!Number.isFinite(n)) return; // ignora entradas no numéricas
+    if (n < 0) n = 0;
+
+    setLibreValor(String(n));
+  };
+
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
     if (seleccionados.length === 0) return mostrarToast('advertencia', 'Seleccioná al menos un mes.');
@@ -535,11 +553,16 @@ const ModalPagos = ({ socio, onClose }) => {
               <div className="year-picker" style={{ gap: 10 }}>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
+                  min="0"
+                  step="500"
+                  inputMode="numeric"
                   placeholder="Ingresá el monto libre por mes"
                   value={libreValor}
-                  onChange={(e) => setLibreValor(e.target.value)}
+                  onChange={handleLibreChange}
+                  onKeyDown={(e) => {
+                    // bloquear el signo menos
+                    if (e.key === '-' || e.key === 'Minus') e.preventDefault();
+                  }}
                   disabled={!libreActivo || cargando}
                   style={{ padding: 10, borderRadius: 8, border: '1px solid #cbd5e1', width: 220 }}
                 />

@@ -124,9 +124,9 @@
   cursor:pointer;
 }
 .emp-baja-boton-volver-top:hover{
-  background:var(--primary-700);
+  background:var(--gray-700);
   color:#fff;
-  border-color:var(--primary-700);
+  border-color:var(--gray-700);
 }
 @media (max-width:768px){
   .emp-baja-boton-volver-top{ display:none; }

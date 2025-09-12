@@ -102,8 +102,9 @@ html, body {
 }
 
 .ini_logo {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
+  padding: .8rem;
   border-radius: 50%;
   border: 2px solid var(--ini-primary);
   object-fit: contain;

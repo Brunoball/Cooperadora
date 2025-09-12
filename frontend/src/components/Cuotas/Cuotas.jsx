@@ -83,7 +83,7 @@ const Cuotas = () => {
     setCascadeActive(true);
     setCascadeRunId(prev => prev + 1);
     if (cascadeTimerRef.current) clearTimeout(cascadeTimerRef.current);
-    cascadeTimerRef.current = setTimeout(() => setCascadeActive(false), 1200);
+    cascadeTimerRef.current = setTimeout(() => setCascadeActive(false), 800);
   }, []);
   useEffect(() => () => { if (cascadeTimerRef.current) clearTimeout(cascadeTimerRef.current); }, []);
 
@@ -261,7 +261,14 @@ const Cuotas = () => {
     finally { setLoadingPrint(false); }
   };
 
-  const handleRowClick = useCallback((index) => { if (typeof index === 'number' && index >= 0) setSelectedRow(prev => prev === index ? null : index); }, []);
+  // 🚫 Bloquear selección de filas durante cascada
+  const handleRowClick = useCallback((index) => {
+    if (cascadeActive) return;
+    if (typeof index === 'number' && index >= 0) {
+      setSelectedRow(prev => (prev === index ? null : index));
+    }
+  }, [cascadeActive]);
+
   const handlePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalPagos(true); }, []);
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
@@ -295,7 +302,8 @@ const Cuotas = () => {
     const cascadeClass = cascadeActive && index < 15 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
     const zebraClass   = index % 2 === 0 ? 'gcuotas-row-even' : 'gcuotas-row-odd';
 
-    const actionButtons = isSelected ? (
+    // 🔧 Botones SIEMPRE visibles (sin condicionar por isSelected)
+    const actionButtons = (
       <div className="gcuotas-actions-inline">
         <button
           className="gcuotas-action-button gcuotas-print-button"
@@ -330,14 +338,14 @@ const Cuotas = () => {
           </button>
         )}
       </div>
-    ) : null;
+    );
 
     if (isMobile) {
       return (
         <div
           style={style}
           className={`gcuotas-mobile-card ${cascadeClass} ${isSelected ? "gcuotas-selected-card" : ""}`}
-          onClick={() => handleRowClick(index)}
+          onClick={() => { if (!cascadeActive) handleRowClick(index); }}
         >
           <div className="gcuotas-mobile-row">
             <span className="gcuotas-mobile-label">Alumno:</span>
@@ -369,38 +377,38 @@ const Cuotas = () => {
               </span>
             </span>
           </div>
-          {isSelected && (
-            <div className="gcuotas-mobile-actions">
+
+          {/* 🔧 Acciones SIEMPRE visibles en mobile */}
+          <div className="gcuotas-mobile-actions">
+            <button
+              className="gcuotas-mobile-print-button"
+              onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+            >
+              <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
+            </button>
+            {estadoPagoSeleccionado === 'deudor' ? (
               <button
-                className="gcuotas-mobile-print-button"
-                onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+                className="gcuotas-mobile-payment-button"
+                onClick={(e) => { e.stopPropagation(); handlePaymentClick(cuota); }}
               >
-                <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
+                <FontAwesomeIcon icon={faDollarSign} /><span>Registrar Pago</span>
               </button>
-              {estadoPagoSeleccionado === 'deudor' ? (
-                <button
-                  className="gcuotas-mobile-payment-button"
-                  onClick={(e) => { e.stopPropagation(); handlePaymentClick(cuota); }}
-                >
-                  <FontAwesomeIcon icon={faDollarSign} /><span>Registrar Pago</span>
-                </button>
-              ) : estadoPagoSeleccionado === 'pagado' ? (
-                <button
-                  className="gcuotas-mobile-deletepay-button"
-                  onClick={(e) => { e.stopPropagation(); handleDeletePaymentClick(cuota); }}
-                >
-                  <FontAwesomeIcon icon={faTimes} /><span>Eliminar</span>
-                </button>
-              ) : (
-                <button
-                  className="gcuotas-mobile-deletepay-button"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteCondClick(cuota); }}
-                >
-                  <FontAwesomeIcon icon={faTimes} /><span>Eliminar</span>
-                </button>
-              )}
-            </div>
-          )}
+            ) : estadoPagoSeleccionado === 'pagado' ? (
+              <button
+                className="gcuotas-mobile-deletepay-button"
+                onClick={(e) => { e.stopPropagation(); handleDeletePaymentClick(cuota); }}
+              >
+                <FontAwesomeIcon icon={faTimes} /><span>Eliminar</span>
+              </button>
+            ) : (
+              <button
+                className="gcuotas-mobile-deletepay-button"
+                onClick={(e) => { e.stopPropagation(); handleDeleteCondClick(cuota); }}
+              >
+                <FontAwesomeIcon icon={faTimes} /><span>Eliminar</span>
+              </button>
+            )}
+          </div>
         </div>
       );
     }
@@ -409,7 +417,7 @@ const Cuotas = () => {
       <div
         style={style}
         className={`gcuotas-virtual-row ${zebraClass} ${cascadeClass} ${isSelected ? "gcuotas-selected-row" : ""}`}
-        onClick={() => handleRowClick(index)}
+        onClick={() => { if (!cascadeActive) handleRowClick(index); }}
       >
         <div className="gcuotas-virtual-cell">{getNombreCuota(cuota)}</div>
         <div className="gcuotas-virtual-cell">{getDocumentoCuota(cuota) || '—'}</div>
@@ -454,7 +462,7 @@ const Cuotas = () => {
   const resyncAll = useCallback(() => { fetchAnios(); obtenerCuotasYListas(); }, [fetchAnios, obtenerCuotasYListas]);
 
   return (
-    <div className="gcuotas-container">
+    <div className={`gcuotas-container ${cascadeActive ? 'gcuotas-cascading' : ''}`}>
       {toastVisible && (
         <Toast
           tipo={toastTipo}
@@ -512,7 +520,6 @@ const Cuotas = () => {
             <FontAwesomeIcon icon={faMoneyCheckAlt} className="gcuotas-title-icon" />
             Gestión de Cuotas
           </h2>
-          <div className="gcuotas-divider"></div>
         </div>
 
         <div className="gcuotas-scrollable-content">

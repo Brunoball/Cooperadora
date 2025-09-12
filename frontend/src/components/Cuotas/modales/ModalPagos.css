@@ -359,7 +359,6 @@
   top: calc(100% + 6px);
   z-index: 20;
   min-width: 100px;
-  max-height: 120px;
   overflow: auto;
   padding: .5rem;
   background: #fff;

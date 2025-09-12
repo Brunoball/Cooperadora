@@ -92,8 +92,9 @@
 }
 
 .reg_logo {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
+  padding: .7rem;
   border-radius: 50%;
   border: 2px solid var(--reg-primary);
   object-fit: contain;

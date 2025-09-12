@@ -147,9 +147,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background:    linear-gradient(
+  background: linear-gradient(
     135deg,
-    var(--reg-gray-300) 30%,   /* gris suave */
+    #ffebee 30%,   /* gris suave */
     var(--reg-primary) 70%     /* rojo principal */
   );
 }
@@ -489,4 +489,34 @@ select.edit-socio-input:focus {
   .edit-socio-input-group.cols-3 {
     grid-template-columns: 1fr 1fr 1fr; /* sm+: 3 columnas */
   }
+}
+/* === Botón GUARDAR en ROJO con hover invertido === */
+.edit-socio-button {
+  background: var(--danger-600);          /* rojo */
+  border: 1px solid var(--danger-600);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.edit-socio-button:hover:not(:disabled) {
+  background: #fff;                       /* blanco */
+  color: var(--danger-600);               /* texto rojo */
+  border-color: var(--danger-600);        /* borde rojo */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.edit-socio-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25); /* ring rojo */
+}
+
+.edit-socio-button:disabled {
+  background: var(--danger-400);
+  border-color: var(--danger-400);
+  color: #fff;
+  opacity: .8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-md);
 }

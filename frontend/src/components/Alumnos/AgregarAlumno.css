@@ -146,9 +146,10 @@
   box-sizing: border-box;
   background:    linear-gradient(
     135deg,
-    var(--reg-gray-300) 30%,   /* gris suave */
+    #ffebee 30%,   /* gris suave */
     var(--reg-primary) 70%     /* rojo principal */
   );
+
   box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
@@ -525,3 +526,33 @@
   }
 }
 .add-group > .add-input-wrapper { min-width: 0; }
+/* === Botones primarios (Siguiente / Guardar) en ROJO === */
+.add-alumno-button:not(.prev-step) {
+  background: var(--danger-600);           /* rojo */
+  border: 1px solid var(--danger-600);
+  color: #fff;
+}
+
+/* Hover: blanco con borde rojo y texto rojo */
+.add-alumno-button:not(.prev-step):hover:not(:disabled) {
+  background: #fff;
+  color: var(--danger-600);
+  border-color: var(--danger-600);
+  transform: translateY(-2px);             /* mantiene el efecto */
+  box-shadow: var(--shadow-lg);
+}
+
+/* Focus ring rojo */
+.add-alumno-button:not(.prev-step):focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25); /* 220,38,38 ~ var(--danger-600) */
+}
+
+/* Deshabilitado: rojo atenuado */
+.add-alumno-button:not(.prev-step):disabled {
+  background: var(--danger-400);
+  border-color: var(--danger-400);
+  color: #fff;
+  opacity: .75;
+  cursor: not-allowed;
+}
