@@ -1,126 +1,71 @@
-/* =========================================================
-   EDITAR — Tema ROJO sin degradados (colores fijos)
-   - Implementa la paleta --reg-* y la mapea a --edi-*
-   ========================================================= */
-
-/* =========================================================
-   ROOT — Paleta ROJA (solo variables --reg-)
-   ========================================================= */
-:root {
-  /* 🎨 PALETA ROJA */
-  --reg-primary: #B71C1C;          /* Rojo principal */
-  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
-  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
-
-  --reg-secondary: #1D428A;        /* Azul secundario opcional */
-  --reg-accent: #C62828;
-
-  --reg-success: #10B981;
-  --reg-warning: #F59E0B;
-  --reg-danger: #D32F2F;
-
-  --reg-light: #F8FAFC;
-  --reg-dark: #0F172A;
-
-  --reg-gray-100: #F1F5F9;
-  --reg-gray-200: #E2E8F0;
-  --reg-gray-300: #CBD5E1;
-  --reg-gray-400: #94A3B8;
-  --reg-gray-500: #64748B;
-  --reg-gray-600: #475569;
-  --reg-gray-700: #334155;
-  --reg-gray-800: #1E293B;
-  --reg-gray-900: #0F172A;
-
-  --reg-border-radius: 12px;
-  --reg-border-radius-lg: 16px;
-  --reg-border-radius-xl: 20px;
-
-  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  --reg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-/* ====== Capa de compatibilidad: tokens --edi-* mapeados a --reg-* ====== */
 :root{
-  /* Colores principales */
-  --edi-primary: var(--reg-primary);
-  --edi-primary-light: var(--reg-primary-light);
-  --edi-primary-dark: var(--reg-primary-dark);
-  --edi-secondary: var(--reg-secondary);
-  --edi-accent: var(--reg-accent);
+  /* Tokens (idénticos a Nueva/Agregar) */
+  --edi-primary: var(--princ-primary, #2563EB);
+  --edi-primary-light: var(--princ-primary-light, #3B82F6);
+  --edi-primary-dark: var(--princ-primary-dark, #1D4ED8);
+  --edi-secondary: var(--princ-secondary, #7C3AED);
+  --edi-accent: var(--princ-accent, #EC4899);
+  --edi-success: var(--princ-success, #10B981);
+  --edi-danger: var(--princ-danger, #EF4444);
 
-  /* Estados */
-  --edi-success: var(--reg-success);
-  --edi-warning: var(--reg-warning);
-  --edi-danger: var(--reg-danger);
+  --edi-light: var(--princ-light, #F8FAFC);
+  --edi-dark: var(--princ-dark, #0F172A);
 
-  /* Neutros */
-  --edi-light: var(--reg-light);
-  --edi-dark: var(--reg-dark);
+  --edi-gray-50:  #F8FAFC;
+  --edi-gray-100: #F1F5F9;
+  --edi-gray-200: #E2E8F0;
+  --edi-gray-300: #CBD5E1;
+  --edi-gray-400: #94A3B8;
+  --edi-gray-500: #64748B;
+  --edi-gray-600: #475569;
+  --edi-gray-700: #334155;
+  --edi-gray-800: #1E293B;
+  --edi-gray-900: #0F172A;
 
-  --edi-gray-50:  var(--reg-gray-100); /* opción clara */
-  --edi-gray-100: var(--reg-gray-100);
-  --edi-gray-200: var(--reg-gray-200);
-  --edi-gray-300: var(--reg-gray-300);
-  --edi-gray-400: var(--reg-gray-400);
-  --edi-gray-500: var(--reg-gray-500);
-  --edi-gray-600: var(--reg-gray-600);
-  --edi-gray-700: var(--reg-gray-700);
-  --edi-gray-800: var(--reg-gray-800);
-  --edi-gray-900: var(--reg-gray-900);
+  --edi-text-gradient: var(--princ-text-gradient, linear-gradient(135deg, var(--edi-primary), var(--edi-secondary)));
 
-  /* Radios / sombras / transición */
-  --edi-radius: var(--reg-border-radius);
-  --edi-radius-lg: var(--reg-border-radius-lg);
-  --edi-radius-xl: var(--reg-border-radius-xl);
+  --edi-radius: 12px;
+  --edi-radius-lg: 16px;
+  --edi-radius-xl: 20px;
 
-  --edi-shadow-sm: var(--reg-shadow-sm);
-  --edi-shadow-md: var(--reg-shadow-md);
-  --edi-shadow-lg: var(--reg-shadow-xl);
+  --edi-shadow-sm: 0 1px 3px rgba(0,0,0,.05);
+  --edi-shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+  --edi-shadow-lg: 0 20px 25px -5px rgba(0,0,0,.12), 0 10px 10px -5px rgba(0,0,0,.06);
 
-  --edi-transition: var(--reg-transition);
+  --edi-transition: all .28s cubic-bezier(.4,0,.2,1);
 
-  /* Importante: sin degradados -> usar color plano */
-  --edi-text-gradient: var(--reg-primary); /* se usa como color fijo */
-  --cat-text-gradient: var(--reg-primary); /* para botón "volver" */
+  /* Para el botón gradiente (volver) */
+  --cat-text-gradient: var(--edi-text-gradient);
 }
 
 @media (prefers-reduced-motion: reduce){
   *{animation:none !important;transition:none !important}
 }
 
-/* =========================================================
-   Fondo (color fijo, sin degradado)
-   ========================================================= */
+/* Fondo */
 .cat_edi_page{
   min-height:100vh;
   display:flex;
   align-items:center;
   justify-content:center;
   padding:20px;
-background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   background-attachment: fixed;
   box-sizing:border-box;
 }
 
-/* =========================================================
-   Card
-   ========================================================= */
+/* Card glass */
 .cat_edi_card{
   width:100%;
   max-width:720px;
   padding:2rem;
-  background:#ffffff; /* plano */
+  background: rgba(255,255,255,.95);
   border-radius: var(--edi-radius-xl);
   box-shadow: var(--edi-shadow-lg),
               inset 0 1px 0 rgba(255,255,255,.6),
               0 0 0 1px rgba(255,255,255,.2);
   backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(0,0,0,.06);
+  border: 1px solid rgba(255,255,255,.2);
   display:flex;
   flex-direction:column;
   gap:18px;
@@ -129,29 +74,34 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   animation: cat_edi_fade_in .4s ease forwards;
 }
 
-/* Barra superior (desktop) — color fijo, sin animación */
+/* Barra superior animada (desktop) */
 @media (min-width: 768px){
   .cat_edi_card::before{
     content:''; position:absolute; top:0; left:0; right:0;
-    height:6px; background: var(--edi-primary);
+    height:6px; background: var(--edi-text-gradient);
+    background-size:300% 300%;
+    animation: cat_edi_gradient 6s ease infinite;
     z-index:2;
   }
 }
-
-/* Sólo animación de entrada (se mantiene) */
+@keyframes cat_edi_gradient{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
 @keyframes cat_edi_fade_in{to{opacity:1; transform:translateY(0)}}
 
-/* =========================================================
-   Header
-   ========================================================= */
+/* Header */
 .cat_edi_header{ position:relative; display:block; padding-top:6px; }
-
 .cat_edi_title{
   text-align:center;
   font-size:1.8rem;
   font-weight:800;
   margin:0 0 12px;
-  color: var(--edi-primary);      /* color fijo (sin gradient text) */
+  background: var(--edi-text-gradient);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
   letter-spacing:-0.5px;
   position:relative;
   padding-bottom:8px;
@@ -163,13 +113,11 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   bottom:-2px;
   width:76px; height:4px;
   border-radius:999px;
-  background: var(--edi-primary); /* color fijo */
+  background: var(--edi-text-gradient);
   box-shadow: 0 0 0 1px rgba(255,255,255,.3);
 }
 
-/* =========================================================
-   Loading simple
-   ========================================================= */
+/* Loading simple */
 .cat_edi_loading{
   width:100%;
   padding:16px;
@@ -179,9 +127,7 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   color:var(--edi-gray-700);
 }
 
-/* =========================================================
-   Formulario
-   ========================================================= */
+/* Form */
 .cat_edi_form{
   display:flex;
   flex-direction:column;
@@ -213,16 +159,14 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
 .cat_edi_input:focus{
   outline:none;
   border-color: var(--edi-primary-light);
-  box-shadow: 0 0 0 3px rgba(183,28,28,.15); /* aro rojo suave */
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
 }
 .cat_edi_input:disabled{
   background: var(--edi-gray-50);
   color: var(--edi-gray-600);
 }
 
-/* =========================================================
-   Acciones: Volver (izq) + Guardar (der)
-   ========================================================= */
+/* Acciones: Volver (izq) + Guardar (der) */
 .cat_edi_form_actions{
   display:flex;
   align-items:center;
@@ -232,9 +176,7 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   width:100%;
 }
 
-/* =========================================================
-   Botones
-   ========================================================= */
+/* Botones */
 .cat_edi_btn{
   display:inline-flex;
   align-items:center;
@@ -253,7 +195,7 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
 }
 .cat_edi_btn_text{display:inline}
 
-/* Guardar (neutral gris) */
+/* Guardar (neutral gris, igual a Nueva) */
 .cat_edi_btn_primary{
   background: var(--edi-gray-200);
   color: var(--edi-gray-800);
@@ -264,38 +206,27 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   color: var(--edi-gray-100);
 }
 
-/* Volver (ROJO fijo, sin degradado) */
+/* Volver con gradiente */
 .cat_edi_btn_back{
-  background: var(--edi-primary);
+  background: var(--cat-text-gradient);
   color:#fff;
 }
-.cat_edi_btn_back:hover{
-  transform: translateY(-2px);
-  background: var(--edi-primary-dark);
+.cat_edi_btn_back:hover{ transform: translateY(-2px); }
+
+.cat_edi_btn[disabled]{opacity:.7; cursor:not-allowed;}
+.cat_edi_btn[disabled]::after{
+  content:''; position:absolute; top:0; left:-100%;
+  width:100%; height:100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+  animation: cat_edi_loading 1.5s infinite;
 }
+@keyframes cat_edi_loading{100%{left:100%}}
 
-/* Deshabilitado (sin shimmer/gradiente) */
-.cat_edi_btn[disabled]{opacity:.7; cursor:not-allowed; filter:saturate(.85);}
-
-/* =========================================================
-   Accesibilidad
-   ========================================================= */
+/* Accesibilidad */
 :where(button, [href], input){
   outline:none;
 }
 :where(button, [href], input):focus-visible{
-  box-shadow:0 0 0 3px rgba(183,28,28,.35); /* foco rojo */
+  box-shadow:0 0 0 3px rgba(37,99,235,.35);
   border-radius:8px;
-}
-/* Botón de historial: fondo gris + icono negro */
-.cat_icon_btn_history{
-  background: var(--reg-gray-300);
-  color: #000;
-}
-.cat_icon_btn_history:hover{
-  background: var(--reg-gray-400);
-  transform: translateY(-1px);
-}
-.cat_icon_btn_history:active{
-  transform: translateY(0);
 }

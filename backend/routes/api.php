@@ -63,6 +63,12 @@ try {
         case 'registrar_pago':     include_module($M . '/cuotas/registrar_pago.php'); break;
         case 'eliminar_pago':      include_module($M . '/cuotas/eliminar_pago.php'); break;
 
+        /* ✅ NUEVO: ficha para impresión de comprobante */
+        case 'obtener_socio_comprobante':
+        case 'socio_comprobante':  // alias opcional por compatibilidad
+            include_module($M . '/cuotas/obtener_socio_comprobante.php'); 
+            break;
+
         /* CONTABLE */
         case 'contable':           include_module($M . '/contable/contable_socios.php'); break;
 
@@ -78,8 +84,6 @@ try {
         case 'cat_actualizar':     include_module($M . '/categorias/editar_categoria.php'); break; // solo monto
         case 'cat_eliminar':       include_module($M . '/categorias/eliminar_categoria.php'); break;
         case 'cat_historial':      include_module($M . '/categorias/obtener_historial.php'); break; 
-
-        
 
         default:
             http_response_code(200);

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BASE_URL from "../../config/config";
-import { FaUserCheck, FaTrashAlt, FaCalendarAlt, FaArrowLeft } from "react-icons/fa";
+import { FaUserCheck, FaTrashAlt, FaCalendarAlt, FaArrowLeft, FaFileExcel } from "react-icons/fa";
 import Toast from "../Global/Toast";
 import "./AlumnoBaja.css";
 
@@ -33,14 +33,26 @@ const formatearFecha = (val) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
   if (m) {
     const [, yyyy, mm, dd] = m;
-    return `${dd}/${mm}/${yyyy}`;
+    return `${dd}/${mm}/${yyyy}`; // SOLO para UI
   }
   const d = new Date(val.includes("T") ? val : `${val}T00:00:00`);
   if (isNaN(d.getTime())) return "—";
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  return `${dd}/${mm}/${yyyy}`; // SOLO para UI
+};
+
+// Para Excel: devolver YYYY-MM-DD siempre
+const toISODate = (val) => {
+  if (!val) return "";
+  if (esFechaISO(val)) return val;
+  const d = new Date(val.includes("T") ? val : `${val}T00:00:00`);
+  if (isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 const AlumnoBaja = () => {
@@ -203,6 +215,50 @@ const AlumnoBaja = () => {
     }
   };
 
+  /* ============ Exportar visibles (.xlsx) ============ */
+  const exportarVisiblesAExcel = async () => {
+    if (!alumnosFiltrados.length) {
+      setToast({ show: true, tipo: "info", mensaje: "No hay registros para exportar." });
+      return;
+    }
+    try {
+      const XLSX = await import("xlsx");
+
+      const filas = alumnosFiltrados.map((a) => ({
+        ID: a.id_alumno ?? "",
+        "Apellido y Nombre": nombreApellido(a) || "",
+        "Fecha de Baja": toISODate(a.ingreso), // <-- YYYY-MM-DD
+        Motivo: (a.motivo || "").toString().trim(),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(filas, {
+        header: ["ID", "Apellido y Nombre", "Fecha de Baja", "Motivo"],
+        skipHeader: false,
+      });
+
+      ws["!cols"] = [
+        { wch: 8 },
+        { wch: 32 },
+        { wch: 12 }, // 2025-09-12 entra justo
+        { wch: 40 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "AlumnosBaja");
+
+      // Nombre de archivo SOLO con fecha (sin hora)
+      const nombre = `alumnos_baja_${hoyISO()}.xlsx`;
+      XLSX.writeFile(wb, nombre);
+    } catch (e) {
+      console.error(e);
+      setToast({
+        show: true,
+        tipo: "error",
+        mensaje: "No se pudo generar el Excel. Verificá que 'xlsx' esté instalado.",
+      });
+    }
+  };
+
   /* ============ Cerrar toast ============ */
   const closeToast = () => setToast((s) => ({ ...s, show: false }));
 
@@ -236,7 +292,7 @@ const AlumnoBaja = () => {
             <h2 className="emp-baja-titulo">Alumnos Dados de Baja</h2>
           </div>
 
-          {/* Volver (solo desktop) */}
+        {/* Volver (solo desktop) */}
           <button className="emp-baja-boton-volver-top" onClick={() => navigate("/alumnos")}>
             <FaArrowLeft className="icon-button-baja" />
             Volver
@@ -285,15 +341,27 @@ const AlumnoBaja = () => {
               Mostrando <strong>{alumnosFiltrados.length}</strong> alumnos
             </div>
 
-            <button
-              className="emp-baja-eliminar-todos"
-              title="Eliminar definitivamente todos los alumnos visibles"
-              onClick={() => setMostrarConfirmacionEliminarTodos(true)}
-              disabled={alumnosFiltrados.length === 0}
-            >
-              <FaTrashAlt className="ico" />
-              <span className="txt">Eliminar todos</span>
-            </button>
+            <div className="emp-baja-acciones-derecha">
+              <button
+                className="emp-baja-exportar"
+                title="Exportar lo visible a Excel (.xlsx)"
+                onClick={exportarVisiblesAExcel}
+                disabled={alumnosFiltrados.length === 0}
+              >
+                <FaFileExcel className="ico" />
+                <span className="txt">Exportar Excel</span>
+              </button>
+
+              <button
+                className="emp-baja-eliminar-todos"
+                title="Eliminar definitivamente todos los alumnos visibles"
+                onClick={() => setMostrarConfirmacionEliminarTodos(true)}
+                disabled={alumnosFiltrados.length === 0}
+              >
+                <FaTrashAlt className="ico" />
+                <span className="txt">Eliminar todos</span>
+              </button>
+            </div>
           </div>
 
           <div className="emp-baja-tabla-header-container">
@@ -317,7 +385,7 @@ const AlumnoBaja = () => {
                 <div className="emp-baja-fila" key={a.id_alumno}>
                   <div className="emp-baja-col-id">{a.id_alumno}</div>
                   <div className="emp-baja-col-nombre">{nombreApellido(a) || "—"}</div>
-                  {/* Se usa 'ingreso' porque en la baja se pisa con la fecha de baja */}
+                  {/* UI: dd/mm/aaaa */}
                   <div className="emp-baja-col-fecha">{formatearFecha(a.ingreso)}</div>
                   <div className="emp-baja-col-motivo">{(a.motivo || "").trim() || "—"}</div>
                   <div className="emp-baja-col-acciones">
