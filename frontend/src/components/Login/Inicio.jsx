@@ -11,6 +11,19 @@ const STORAGE_KEYS = {
   pass: 'remember_contrasena', // base64
 };
 
+// helper: decodificar JWT (payload)
+function decodeJwtPayload(token) {
+  try {
+    const [, payloadB64] = token.split('.');
+    if (!payloadB64) return null;
+    const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(b64);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 const Inicio = () => {
   const [nombre, setNombre] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -84,8 +97,32 @@ const Inicio = () => {
       const data = await respuesta.json();
 
       if (data?.exito) {
-        localStorage.setItem('usuario', JSON.stringify(data.usuario));
-        localStorage.setItem('token', data.token);
+        // 1) Guardar token
+        const token = data.token;
+        if (token) localStorage.setItem('token', token);
+
+        // 2) Derivar rol desde diferentes fuentes
+        const usuarioResp = data.usuario || {};
+        let rol =
+          (usuarioResp.rol || data.rol || '').toString().toLowerCase();
+
+        // 3) Si no vino rol explícito, intentar leerlo del JWT
+        if ((!rol || rol === '') && token && token.split('.').length === 3) {
+          const payload = decodeJwtPayload(token);
+          const fromJwt =
+            (payload?.rol || payload?.role || payload?.scope || '').toString().toLowerCase();
+          if (fromJwt) rol = fromJwt;
+        }
+
+        // 4) Por seguridad, si no hay rol, default a 'vista' (más restrictivo)
+        if (!rol) rol = 'vista';
+
+        // 5) Guardar usuario + rol unificado
+        const usuarioFinal = {
+          ...usuarioResp,
+          rol, // <- acá queda persistido
+        };
+        localStorage.setItem('usuario', JSON.stringify(usuarioFinal));
 
         // Mantener o limpiar recordatorio según el check
         persistRemember(nombre, contrasena, remember);
@@ -160,7 +197,7 @@ const Inicio = () => {
             </button>
           </div>
 
-          {/* Checkbox Recordar cuenta (igual a LALCEC) */}
+          {/* Checkbox Recordar cuenta */}
           <div className="ini_check-row">
             <input
               id="recordar"

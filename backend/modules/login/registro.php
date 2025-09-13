@@ -1,6 +1,4 @@
 <?php
-
-
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
@@ -20,11 +18,12 @@ try {
     $raw = file_get_contents("php://input");
     $data = json_decode($raw, true);
 
-    $nombre = isset($data['nombre']) ? trim($data['nombre']) : '';
+    $nombre = isset($data['nombre']) ? trim((string)$data['nombre']) : '';
     $contrasena = isset($data['contrasena']) ? (string)$data['contrasena'] : '';
+    $rol = isset($data['rol']) ? strtolower(trim((string)$data['rol'])) : ''; // ⬅️ rol desde el front
 
-    // Validaciones
-    if ($nombre === '' || $contrasena === '') {
+    // Validaciones básicas
+    if ($nombre === '' || $contrasena === '' || $rol === '') {
         echo json_encode(['exito' => false, 'mensaje' => 'Faltan datos.']);
         exit;
     }
@@ -37,6 +36,13 @@ try {
         exit;
     }
 
+    // Validar rol (solo 'vista' o 'admin')
+    $rolesValidos = ['vista', 'admin'];
+    if (!in_array($rol, $rolesValidos, true)) {
+        echo json_encode(['exito' => false, 'mensaje' => 'Rol inválido.']);
+        exit;
+    }
+
     // Verificar existencia (case-insensitive)
     $sqlExiste = "SELECT COUNT(*) FROM " . USUARIOS_TABLA . " WHERE UPPER(Nombre_Completo) = UPPER(:nombre)";
     $stmt = $pdo->prepare($sqlExiste);
@@ -46,15 +52,17 @@ try {
         exit;
     }
 
-    // Hash
+    // Hash de contraseña
     $hash = password_hash($contrasena, PASSWORD_BCRYPT);
 
-    // Insert
-    $sqlInsert = "INSERT INTO " . USUARIOS_TABLA . " (Nombre_Completo, Hash_Contrasena) VALUES (:nombre, :hash)";
+    // Insert con rol
+    $sqlInsert = "INSERT INTO " . USUARIOS_TABLA . " (Nombre_Completo, Hash_Contrasena, rol)
+                  VALUES (:nombre, :hash, :rol)";
     $stmtInsert = $pdo->prepare($sqlInsert);
     $ok = $stmtInsert->execute([
         'nombre' => $nombre,
-        'hash'   => $hash
+        'hash'   => $hash,
+        'rol'    => $rol
     ]);
 
     if ($ok) {
@@ -62,8 +70,9 @@ try {
         echo json_encode([
             'exito' => true,
             'usuario' => [
-                'idUsuario'       => $id,
-                'Nombre_Completo' => $nombre
+                'idUsuario'       => (int)$id,
+                'Nombre_Completo' => $nombre,
+                'rol'             => $rol
             ]
         ]);
     } else {

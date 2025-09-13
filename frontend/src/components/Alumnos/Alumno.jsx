@@ -143,33 +143,68 @@ const Alumnos = () => {
     mensaje: ''
   });
 
+  // ⚠️ Estructura nueva: reemplazamos letraSeleccionada por divisionSeleccionada
   const [filtros, setFiltros] = useState(() => {
     const saved = localStorage.getItem('filtros_alumnos');
-    return saved
-      ? JSON.parse(saved)
-      : {
-          busqueda: '',
-          letraSeleccionada: '',
-          anioSeleccionado: null,
-          filtroActivo: null, // 'filtros' | 'todos' | null
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          busqueda: parsed.busqueda ?? '',
+          divisionSeleccionada: parsed.divisionSeleccionada ?? '',
+          anioSeleccionado: parsed.anioSeleccionado ?? null,
+          filtroActivo: parsed.filtroActivo ?? null,
         };
+      } catch {}
+    }
+    return {
+      busqueda: '',
+      divisionSeleccionada: '',
+      anioSeleccionado: null,
+      filtroActivo: null,
+    };
   });
 
   // Acordeones
   const [openSecciones, setOpenSecciones] = useState({
-    letra: false,
+    division: false,
     anio: false,
   });
   const [verMasAnio] = useState(false);
 
-  const { busqueda, letraSeleccionada, filtroActivo, anioSeleccionado } = filtros;
+  const { busqueda, divisionSeleccionada, filtroActivo, anioSeleccionado } = filtros;
   const busquedaDefer = useDeferredValue(busqueda);
 
   const hayFiltros = !!(
     (busquedaDefer && busquedaDefer.trim() !== '') ||
-    (letraSeleccionada && letraSeleccionada !== '') ||
+    (divisionSeleccionada && divisionSeleccionada !== '') ||
     (anioSeleccionado !== null)
   );
+
+  // 🔐 Rol del usuario para ocultar botones en rol "vista"
+  const [isVista, setIsVista] = useState(false);
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('usuario'));
+      const role = (u?.rol || '').toString().toLowerCase();
+      setIsVista(role === 'vista');
+    } catch {
+      setIsVista(false);
+    }
+  }, []);
+
+  // Lista de divisiones disponibles (únicas) deducidas de los datos cargados
+  const divisionesDisponibles = useMemo(() => {
+    const set = new Set(
+      (alumnosDB || [])
+        .map(a => a?.division_nombre)
+        .filter(Boolean)
+        .map(d => d.toString().trim())
+    );
+    return Array.from(set).sort((a, b) => {
+      return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+    });
+  }, [alumnosDB]);
 
   const alumnosFiltrados = useMemo(() => {
     let resultados = alumnos;
@@ -186,9 +221,9 @@ const Alumnos = () => {
       );
     }
 
-    if (letraSeleccionada && letraSeleccionada !== '') {
-      const letra = normalizar(letraSeleccionada).charAt(0);
-      resultados = resultados.filter((a) => a._n.startsWith(letra));
+    if (divisionSeleccionada && divisionSeleccionada !== '') {
+      const divNorm = normalizar(divisionSeleccionada);
+      resultados = resultados.filter((a) => normalizar(a?.division_nombre ?? '') === divNorm);
     }
 
     if (anioSeleccionado !== null) {
@@ -200,7 +235,7 @@ const Alumnos = () => {
     }
 
     return resultados;
-  }, [alumnos, busquedaDefer, letraSeleccionada, anioSeleccionado, filtroActivo]);
+  }, [alumnos, busquedaDefer, divisionSeleccionada, anioSeleccionado, filtroActivo]);
 
   const puedeExportar = useMemo(() => {
     return (hayFiltros || filtroActivo === 'todos') && alumnosFiltrados.length > 0 && !cargando;
@@ -308,7 +343,7 @@ const Alumnos = () => {
       if (window.location.pathname === '/panel') {
         setFiltros({
           busqueda: '',
-          letraSeleccionada: '',
+          divisionSeleccionada: '',
           anioSeleccionado: null,
           filtroActivo: null,
         });
@@ -459,7 +494,7 @@ const Alumnos = () => {
   const handleMostrarTodos = useCallback(() => {
     setFiltros({
       busqueda: '',
-      letraSeleccionada: '',
+      divisionSeleccionada: '',
       anioSeleccionado: null,
       filtroActivo: 'todos',
     });
@@ -470,15 +505,21 @@ const Alumnos = () => {
   const handleBuscarChange = useCallback((valor) => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: valor };
-      next.filtroActivo = (valor?.trim() || prev.letraSeleccionada || prev.anioSeleccionado !== null) ? 'filtros' : null;
+      next.filtroActivo =
+        (valor?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null)
+          ? 'filtros'
+          : null;
       return next;
     });
   }, []);
 
-  const handleFiltrarPorLetra = useCallback((letra) => {
+  const handleFiltrarPorDivision = useCallback((division) => {
     setFiltros((prev) => {
-      const next = { ...prev, letraSeleccionada: letra };
-      next.filtroActivo = (prev.busqueda?.trim() || letra || prev.anioSeleccionado !== null) ? 'filtros' : null;
+      const next = { ...prev, divisionSeleccionada: division };
+      next.filtroActivo =
+        (prev.busqueda?.trim() || division || prev.anioSeleccionado !== null)
+          ? 'filtros'
+          : null;
       return next;
     });
     setMostrarFiltros(false);
@@ -488,7 +529,10 @@ const Alumnos = () => {
   const handleFiltrarPorAnio = useCallback((anio) => {
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: anio };
-      next.filtroActivo = (prev.busqueda?.trim() || prev.letraSeleccionada || anio !== null) ? 'filtros' : null;
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || anio !== null)
+          ? 'filtros'
+          : null;
       return next;
     });
     setMostrarFiltros(false);
@@ -499,15 +543,21 @@ const Alumnos = () => {
   const quitarBusqueda = useCallback(() => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: '' };
-      next.filtroActivo = (prev.letraSeleccionada || prev.anioSeleccionado !== null) ? 'filtros' : null;
+      next.filtroActivo =
+        (prev.divisionSeleccionada || prev.anioSeleccionado !== null)
+          ? 'filtros'
+          : null;
       return next;
     });
   }, []);
 
-  const quitarLetra = useCallback(() => {
+  const quitarDivision = useCallback(() => {
     setFiltros((prev) => {
-      const next = { ...prev, letraSeleccionada: '' };
-      next.filtroActivo = (prev.busqueda?.trim() || prev.anioSeleccionado !== null) ? 'filtros' : null;
+      const next = { ...prev, divisionSeleccionada: '' };
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.anioSeleccionado !== null)
+          ? 'filtros'
+          : null;
       return next;
     });
   }, []);
@@ -515,7 +565,10 @@ const Alumnos = () => {
   const quitarAnio = useCallback(() => {
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: null };
-      next.filtroActivo = (prev.busqueda?.trim() || prev.letraSeleccionada) ? 'filtros' : null;
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.divisionSeleccionada)
+          ? 'filtros'
+          : null;
       return next;
     });
   }, []);
@@ -525,7 +578,7 @@ const Alumnos = () => {
     setFiltros((prev) => ({
       ...prev,
       busqueda: '',
-      letraSeleccionada: '',
+      divisionSeleccionada: '',
       anioSeleccionado: null,
       filtroActivo: null,
     }));
@@ -592,6 +645,7 @@ const Alumnos = () => {
         <div className="alu-column alu-icons-column">
           {alumnoSeleccionado?.id_alumno === alumno.id_alumno && (
             <div className="alu-icons-container">
+              {/* SIEMPRE mostrar INFO */}
               <button
                 className="alu-iconchip is-info"
                 title="Ver información"
@@ -604,43 +658,48 @@ const Alumnos = () => {
                 <FaInfoCircle />
               </button>
 
-              <button
-                className="alu-iconchip is-edit"
-                title="Editar"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigateRow(`/alumnos/editar/${alumno.id_alumno}`);
-                }}
-                aria-label="Editar"
-              >
-                <FaEdit />
-              </button>
+              {/* SOLO Admin: Editar / Eliminar / Dar de baja */}
+              {!isVista && (
+                <>
+                  <button
+                    className="alu-iconchip is-edit"
+                    title="Editar"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigateRow(`/alumnos/editar/${alumno.id_alumno}`);
+                    }}
+                    aria-label="Editar"
+                  >
+                    <FaEdit />
+                  </button>
 
-              <button
-                className="alu-iconchip is-delete"
-                title="Eliminar"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAlumnoAEliminar(alumno);
-                  setMostrarModalEliminar(true);
-                }}
-                aria-label="Eliminar"
-              >
-                <FaTrash />
-              </button>
+                  <button
+                    className="alu-iconchip is-delete"
+                    title="Eliminar"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAlumnoAEliminar(alumno);
+                      setMostrarModalEliminar(true);
+                    }}
+                    aria-label="Eliminar"
+                  >
+                    <FaTrash />
+                  </button>
 
-              <button
-                className="alu-iconchip is-baja"
-                title="Dar de baja"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAlumnoDarBaja(alumno);
-                  setMostrarModalDarBaja(true);
-                }}
-                aria-label="Dar de baja"
-              >
-                <FaUserMinus />
-              </button>
+                  <button
+                    className="alu-iconchip is-baja"
+                    title="Dar de baja"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAlumnoDarBaja(alumno);
+                      setMostrarModalDarBaja(true);
+                    }}
+                    aria-label="Dar de baja"
+                  >
+                    <FaUserMinus />
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -651,7 +710,7 @@ const Alumnos = () => {
   /* ================================
      Render
   ================================= */
-  const hayChips = !!(busqueda || letraSeleccionada || anioSeleccionado !== null);
+  const hayChips = !!(busqueda || divisionSeleccionada || anioSeleccionado !== null);
 
   return (
     <div className="alu-alumno-container">
@@ -694,7 +753,7 @@ const Alumnos = () => {
               onClick={() => {
                 setMostrarFiltros((prev) => {
                   const next = !prev;
-                  if (next) setOpenSecciones((s) => ({ ...s, letra: false }));
+                  if (next) setOpenSecciones((s) => ({ ...s, division: false }));
                   return next;
                 });
               }}
@@ -707,35 +766,7 @@ const Alumnos = () => {
 
             {mostrarFiltros && (
               <div className="alu-filtros-menu" role="menu">
-                {/* LETRA */}
-                <div className="alu-filtros-group">
-                  <button
-                    type="button"
-                    className={`alu-filtros-group-header ${openSecciones.letra ? 'is-open' : ''}`}
-                    onClick={() => setOpenSecciones((s) => ({ ...s, letra: !s.letra }))}
-                    aria-expanded={openSecciones.letra}
-                  >
-                    <span className="alu-filtros-group-title">Filtrar por letra</span>
-                    <FaChevronDown className="alu-accordion-caret" />
-                  </button>
-
-                  <div className={`alu-filtros-group-body ${openSecciones.letra ? 'is-open' : 'is-collapsed'}`}>
-                    <div className="alu-alfabeto-filtros">
-                      {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letra) => (
-                        <button
-                          key={letra}
-                          className={`alu-letra-filtro ${filtros.letraSeleccionada === letra ? 'alu-active' : ''}`}
-                          onClick={() => handleFiltrarPorLetra(letra)}
-                          title={`Filtrar por ${letra}`}
-                        >
-                          {letra}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AÑO */}
+                {/* AÑO (arriba) */}
                 <div className="alu-filtros-group">
                   <button
                     type="button"
@@ -749,7 +780,7 @@ const Alumnos = () => {
 
                   <div className={`alu-filtros-group-body ${openSecciones.anio ? 'is-open' : 'is-collapsed'}`}>
                     <div className="alu-anio-filtros">
-                      {(verMasAnio ? [1,2,3,4,5,6,7] : [1,2,3,4,5,6,7]).map((n) => (
+                      {[1,2,3,4,5,6,7].map((n) => (
                         <button
                           key={`anio-${n}`}
                           className={`alu-anio-filtro ${filtros.anioSeleccionado === n ? 'alu-active' : ''}`}
@@ -759,6 +790,38 @@ const Alumnos = () => {
                           {n}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* DIVISIÓN (abajo) */}
+                <div className="alu-filtros-group">
+                  <button
+                    type="button"
+                    className={`alu-filtros-group-header ${openSecciones.division ? 'is-open' : ''}`}
+                    onClick={() => setOpenSecciones((s) => ({ ...s, division: !s.division }))}
+                    aria-expanded={openSecciones.division}
+                  >
+                    <span className="alu-filtros-group-title">Filtrar por división</span>
+                    <FaChevronDown className="alu-accordion-caret" />
+                  </button>
+
+                  <div className={`alu-filtros-group-body ${openSecciones.division ? 'is-open' : 'is-collapsed'}`}>
+                    <div className="alu-alfabeto-filtros">
+                      {divisionesDisponibles.length === 0 ? (
+                        <span className="alu-filtro-empty">No hay divisiones disponibles</span>
+                      ) : (
+                        divisionesDisponibles.map((div) => (
+                          <button
+                            key={`div-${div}`}
+                            className={`alu-letra-filtro ${filtros.divisionSeleccionada === div ? 'alu-active' : ''}`}
+                            onClick={() => handleFiltrarPorDivision(div)}
+                            title={`Filtrar por división ${div}`}
+                          >
+                            {div}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -814,13 +877,13 @@ const Alumnos = () => {
                     </div>
                   )}
 
-                  {letraSeleccionada && (
+                  {divisionSeleccionada && (
                     <div className="alu-chip-mini" title="Filtro activo">
-                      <span className="alu-chip-mini-text alu-alumnos-desktop">Letra: {letraSeleccionada}</span>
-                      <span className="alu-chip-mini-text alu-alumnos-mobile">{letraSeleccionada}</span>
+                      <span className="alu-chip-mini-text alu-alumnos-desktop">División: {divisionSeleccionada}</span>
+                      <span className="alu-chip-mini-text alu-alumnos-mobile">{divisionSeleccionada}</span>
                       <button
                         className="alu-chip-mini-close"
-                        onClick={quitarLetra}
+                        onClick={quitarDivision}
                         aria-label="Quitar filtro"
                         title="Quitar este filtro"
                       >
@@ -870,7 +933,6 @@ const Alumnos = () => {
               </div>
 
               <div className="alu-body">
-                {/* Estado inicial sin interacción => NO mostramos loader inicial */}
                 {!hayFiltros && filtroActivo !== 'todos' ? (
                   <div className="alu-no-data-message">
                     <div className="alu-message-content">
@@ -926,7 +988,6 @@ const Alumnos = () => {
                 animacionActiva && alumnosFiltrados.length <= MAX_CASCADE_ITEMS ? 'alu-cascade-animation' : ''
               }`}
             >
-              {/* Estado inicial sin interacción => NO loader */}
               {!hayFiltros && filtroActivo !== 'todos' ? (
                 <div className="alu-no-data-message alu-no-data-mobile">
                   <div className="alu-message-content">
@@ -997,6 +1058,7 @@ const Alumnos = () => {
                       </div>
 
                       <div className="alu-card-actions">
+                        {/* SIEMPRE Info */}
                         <button
                           className="alu-action-btn alu-iconchip is-info"
                           title="Información"
@@ -1008,41 +1070,47 @@ const Alumnos = () => {
                         >
                           <FaInfoCircle />
                         </button>
-                        <button
-                          className="alu-action-btn alu-iconchip is-edit"
-                          title="Editar"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/alumnos/editar/${alumno.id_alumno}`);
-                          }}
-                          aria-label="Editar"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          className="alu-action-btn alu-iconchip is-delete"
-                          title="Eliminar"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAlumnoAEliminar(alumno);
-                            setMostrarModalEliminar(true); // ✅ corregido
-                          }}
-                          aria-label="Eliminar"
-                        >
-                          <FaTrash />
-                        </button>
-                        <button
-                          className="alu-action-btn alu-iconchip is-baja"
-                          title="Dar de baja"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAlumnoDarBaja(alumno);
-                            setMostrarModalDarBaja(true);
-                          }}
-                          aria-label="Dar de baja"
-                        >
-                          <FaUserMinus />
-                        </button>
+
+                        {/* SOLO Admin: Editar / Eliminar / Dar de baja */}
+                        {!isVista && (
+                          <>
+                            <button
+                              className="alu-action-btn alu-iconchip is-edit"
+                              title="Editar"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/alumnos/editar/${alumno.id_alumno}`);
+                              }}
+                              aria-label="Editar"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              className="alu-action-btn alu-iconchip is-delete"
+                              title="Eliminar"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAlumnoAEliminar(alumno);
+                                setMostrarModalEliminar(true);
+                              }}
+                              aria-label="Eliminar"
+                            >
+                              <FaTrash />
+                            </button>
+                            <button
+                              className="alu-action-btn alu-iconchip is-baja"
+                              title="Dar de baja"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAlumnoDarBaja(alumno);
+                                setMostrarModalDarBaja(true);
+                              }}
+                              aria-label="Dar de baja"
+                            >
+                              <FaUserMinus />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -1059,7 +1127,7 @@ const Alumnos = () => {
             onClick={() => {
               setFiltros({
                 busqueda: '',
-                letraSeleccionada: '',
+                divisionSeleccionada: '',
                 anioSeleccionado: null,
                 filtroActivo: null,
               });
@@ -1074,15 +1142,18 @@ const Alumnos = () => {
           </button>
 
           <div className="alu-botones-container">
-            <button
-              className="alu-alumno-button alu-hover-effect"
-              onClick={() => navigate('/alumnos/agregar')}
-              aria-label="Agregar"
-              title="Agregar alumno"
-            >
-              <FaUserPlus className="alu-alumno-icon-button" />
-              <p>Agregar Alumno</p>
-            </button>
+            {/* SOLO Admin: Agregar Alumno */}
+            {!isVista && (
+              <button
+                className="alu-alumno-button alu-hover-effect"
+                onClick={() => navigate('/alumnos/agregar')}
+                aria-label="Agregar"
+                title="Agregar alumno"
+              >
+                <FaUserPlus className="alu-alumno-icon-button" />
+                <p>Agregar Alumno</p>
+              </button>
+            )}
 
             {/* Exportar Excel: bloqueado si no hay filas visibles */}
             <button

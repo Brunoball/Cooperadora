@@ -1,6 +1,6 @@
 // src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import Inicio from './components/Login/Inicio';
 import Principal from './components/Principal/Principal';
@@ -26,9 +26,90 @@ import Categorias from './components/Categorias/Categorias';
 import CategoriaNueva from './components/Categorias/CategoriaNueva';
 import CategoriaEditar from './components/Categorias/CategoriaEditar';
 
+/* =========================================================
+   🔒 Cierre de sesión por inactividad (global)
+   - Ajustá INACTIVITY_MINUTES a lo que necesites.
+   - Escucha mouse/teclado/scroll/toques/visibilidad.
+   - Considera sesión si hay token O usuario en localStorage.
+========================================================= */
+const INACTIVITY_MINUTES = 60; // ⬅️ 1 minuto
+const INACTIVITY_MS = INACTIVITY_MINUTES * 60 * 1000;
+
+function InactivityLogout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const timerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const hasSession = () => {
+      try {
+        return !!localStorage.getItem('token') || !!localStorage.getItem('usuario');
+      } catch {
+        return false;
+      }
+    };
+
+    const doLogout = () => {
+      try { sessionStorage.clear(); } catch {}
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+      } catch {}
+      navigate('/', { replace: true });
+    };
+
+    const resetTimer = () => {
+      // No correr timer si no hay sesión o estás en el login
+      if (!hasSession()) return;
+      if (location.pathname === '/') return;
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(doLogout, INACTIVITY_MS);
+    };
+
+    const onActivity = () => resetTimer();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') resetTimer();
+    };
+    // Soporte multi-pestaña: si en otra pestaña se borra la sesión, cerramos acá también
+    const onStorage = (e) => {
+      if (e.key === 'token' || e.key === 'usuario') {
+        const hasAny = !!localStorage.getItem('token') || !!localStorage.getItem('usuario');
+        if (!hasAny) doLogout();
+      }
+    };
+
+    const events = ['pointermove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    // Instalar listeners
+    events.forEach((ev) => window.addEventListener(ev, onActivity, { passive: true }));
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('storage', onStorage);
+
+    // Arrancar timer al montar / cambiar de ruta
+    resetTimer();
+
+    // Limpiar
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      events.forEach((ev) => window.removeEventListener(ev, onActivity));
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [location.pathname, navigate]);
+
+  return null; // no renderiza UI
+}
+
 function App() {
   return (
     <Router>
+      {/* ⬇️ Activa el cierre por inactividad en toda la app */}
+      <InactivityLogout />
+
       <Routes>
         {/* Login */}
         <Route path="/" element={<Inicio />} />

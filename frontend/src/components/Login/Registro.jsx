@@ -5,10 +5,16 @@ import './registro.css';
 import logoRH from '../../imagenes/Escudo.png';
 import Toast from '../Global/Toast';
 
+const ROLES = [
+  { value: 'vista', label: 'Vista (solo lectura)' },
+  { value: 'admin', label: 'Admin (administrador)' },
+];
+
 const Registro = () => {
   const [nombre, setNombre] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
+  const [rol, setRol] = useState('vista'); // ⬅️ nuevo: selección de rol
   const [cargando, setCargando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -26,7 +32,7 @@ const Registro = () => {
 
     const nombreTrim = (nombre || '').trim();
 
-    if (!nombreTrim || !contrasena || !confirmarContrasena) {
+    if (!nombreTrim || !contrasena || !confirmarContrasena || !rol) {
       mostrarToast('error', 'Por favor, completá todos los campos.');
       return;
     }
@@ -42,22 +48,26 @@ const Registro = () => {
       mostrarToast('error', 'Las contraseñas no coinciden.');
       return;
     }
+    if (!['vista', 'admin'].includes(rol)) {
+      mostrarToast('error', 'Rol inválido.');
+      return;
+    }
 
     try {
       setCargando(true);
       mostrarToast('cargando', 'Registrando usuario...', 10000);
 
-      // Endpoint PHP de abajo, ruteado como action=registro_cooperadora
       const respuesta = await fetch(`${BASE_URL}/api.php?action=registro`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: nombreTrim, contrasena })
+        body: JSON.stringify({ nombre: nombreTrim, contrasena, rol })
       });
 
       const data = await respuesta.json();
       setCargando(false);
 
       if (data.exito) {
+        // guardamos también el rol que devuelve el backend
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         mostrarToast('exito', '¡Registro exitoso! Redirigiendo...', 1800);
         setTimeout(() => navigate('/panel'), 1800);
@@ -89,9 +99,8 @@ const Registro = () => {
           <p className="reg_subtitulo">Registrate para acceder al sistema de la Cooperadora</p>
         </div>
 
-        {/* Se quitaron los mensajes dentro del contenedor */}
-
         <form onSubmit={manejarRegistro} className="reg_formulario">
+          {/* Usuario */}
           <div className="reg_campo">
             <input
               type="text"
@@ -104,6 +113,7 @@ const Registro = () => {
             />
           </div>
 
+          {/* Contraseña */}
           <div className="reg_campo reg_campo-password">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -137,6 +147,7 @@ const Registro = () => {
             </button>
           </div>
 
+          {/* Confirmación */}
           <div className="reg_campo reg_campo-password">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
@@ -168,6 +179,22 @@ const Registro = () => {
                 )}
               </svg>
             </button>
+          </div>
+
+          {/* Rol */}
+          <div className="reg_campo">
+            <select
+              className="reg_input"
+              value={rol}
+              onChange={(e) => setRol(e.target.value)}
+              required
+              aria-label="Seleccionar rol"
+              title="Seleccionar rol"
+            >
+              {ROLES.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="reg_footer">

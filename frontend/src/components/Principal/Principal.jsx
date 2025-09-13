@@ -13,7 +13,7 @@ import {
 import logoRH from "../../imagenes/Escudo.png";
 import "./principal.css";
 
-/* =========== Modal cierre de sesión (estilo LALCEC) ============= */
+/* =========== Modal cierre de sesión ============= */
 const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
   const cancelBtnRef = useRef(null);
 
@@ -78,6 +78,17 @@ const Principal = () => {
   const [showModal, setShowModal] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
+  const [usuario, setUsuario] = useState(null);
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("usuario"));
+      setUsuario(u || null);
+    } catch {
+      setUsuario(null);
+    }
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.removeItem("ultimaBusqueda");
@@ -87,6 +98,11 @@ const Principal = () => {
     } catch {}
   }, []);
 
+  // rol normalizado
+  const role = (usuario?.rol || "").toLowerCase();
+  const isAdmin = role === "admin";
+
+  // Menú completo
   const menuItems = [
     { icon: faUsers,            text: "Gestionar Alumnos",     ruta: "/alumnos" },
     { icon: faMoneyCheckDollar, text: "Gestionar Cuotas",      ruta: "/cuotas" },
@@ -95,6 +111,11 @@ const Principal = () => {
     { icon: faIdCard,           text: "Tipos de Documento",    ruta: "/tipos-documentos" },
     { icon: faLayerGroup,       text: "Categorías",            ruta: "/categorias" }
   ];
+
+  // 🔒 Si NO es admin, solo ve "Alumnos"
+  const visibleItems = isAdmin
+    ? menuItems
+    : menuItems.filter((m) => m.ruta === "/alumnos");
 
   const handleItemClick = (item) => {
     navigate(item.ruta);
@@ -126,12 +147,14 @@ const Principal = () => {
             <img src={logoRH} alt="Logo IPET 50" className="logo" />
           </div>
           <h1 className="title">Sistema de Gestión IPET 50</h1>
-          <p className="subtitle">Panel de administración</p>
+          <p className="subtitle">
+            {isAdmin ? "Panel de administración" : "Panel de consulta"}
+          </p>
         </div>
 
         <div className="menu-container">
           <div className="menu-grid">
-            {menuItems.map((item, index) => (
+            {visibleItems.map((item, index) => (
               <button
                 type="button"
                 key={index}

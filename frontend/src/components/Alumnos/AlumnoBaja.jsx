@@ -1,3 +1,4 @@
+// src/components/Alumnos/AlumnoBaja.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BASE_URL from "../../config/config";
@@ -60,6 +61,18 @@ const AlumnoBaja = () => {
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
   const [toast, setToast] = useState({ show: false, tipo: "", mensaje: "" });
+
+  // Rol (para ocultar acciones si es "vista")
+  const [isVista, setIsVista] = useState(false);
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("usuario"));
+      const role = (u?.rol || "").toString().toLowerCase();
+      setIsVista(role === "vista");
+    } catch {
+      setIsVista(false);
+    }
+  }, []);
 
   // Alta
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
@@ -236,12 +249,7 @@ const AlumnoBaja = () => {
         skipHeader: false,
       });
 
-      ws["!cols"] = [
-        { wch: 8 },
-        { wch: 32 },
-        { wch: 12 },
-        { wch: 40 },
-      ];
+      ws["!cols"] = [{ wch: 8 }, { wch: 32 }, { wch: 12 }, { wch: 40 }];
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "AlumnosBaja");
@@ -290,7 +298,7 @@ const AlumnoBaja = () => {
           <div className="emp-baja-titulo-container">
             <h2 className="emp-baja-titulo">Alumnos Dados de Baja</h2>
           </div>
-          {/* Botón Volver de arriba REMOVIDO (ahora está en la barra inferior) */}
+          {/* (El botón "Volver" quedó en la barra inferior) */}
         </div>
       </div>
 
@@ -321,9 +329,7 @@ const AlumnoBaja = () => {
       </div>
 
       {/* Toast */}
-      {toast.show && (
-        <Toast tipo={toast.tipo} mensaje={toast.mensaje} onClose={closeToast} duracion={3000} />
-      )}
+      {toast.show && <Toast tipo={toast.tipo} mensaje={toast.mensaje} onClose={closeToast} duracion={3000} />}
 
       {/* Tabla / Lista */}
       {cargando ? (
@@ -336,16 +342,19 @@ const AlumnoBaja = () => {
             </div>
 
             <div className="emp-baja-acciones-derecha">
-              {/* Exportar Excel de arriba REMOVIDO (ahora está en la barra inferior) */}
-              <button
-                className="emp-baja-eliminar-todos"
-                title="Eliminar definitivamente todos los alumnos visibles"
-                onClick={() => setMostrarConfirmacionEliminarTodos(true)}
-                disabled={alumnosFiltrados.length === 0}
-              >
-                <FaTrashAlt className="ico" />
-                <span className="txt">Eliminar todos</span>
-              </button>
+              {/* 🚫 Eliminado el botón Exportar Excel superior (queda sólo el de abajo) */}
+              {/* Ocultar "Eliminar todos" si es rol vista */}
+              {!isVista && (
+                <button
+                  className="emp-baja-eliminar-todos"
+                  title="Eliminar definitivamente todos los alumnos visibles"
+                  onClick={() => setMostrarConfirmacionEliminarTodos(true)}
+                  disabled={alumnosFiltrados.length === 0}
+                >
+                  <FaTrashAlt className="ico" />
+                  <span className="txt">Eliminar todos</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -374,23 +383,28 @@ const AlumnoBaja = () => {
                   <div className="emp-baja-col-motivo">{(a.motivo || "").trim() || "—"}</div>
                   <div className="emp-baja-col-acciones">
                     <div className="emp-baja-iconos">
-                      <FaUserCheck
-                        title="Dar de alta"
-                        className="emp-baja-icono"
-                        onClick={() => {
-                          setAlumnoSeleccionado(a);
-                          setFechaAlta(hoyISO());
-                          setMostrarConfirmacionAlta(true);
-                        }}
-                      />
-                      <FaTrashAlt
-                        title="Eliminar definitivamente"
-                        className="emp-baja-icono emp-baja-icono-danger"
-                        onClick={() => {
-                          setAlumnoAEliminar(a);
-                          setMostrarConfirmacionEliminarUno(true);
-                        }}
-                      />
+                      {/* 🔒 Ocultar acciones en rol "vista" */}
+                      {!isVista && (
+                        <>
+                          <FaUserCheck
+                            title="Dar de alta"
+                            className="emp-baja-icono"
+                            onClick={() => {
+                              setAlumnoSeleccionado(a);
+                              setFechaAlta(hoyISO());
+                              setMostrarConfirmacionAlta(true);
+                            }}
+                          />
+                          <FaTrashAlt
+                            title="Eliminar definitivamente"
+                            className="emp-baja-icono emp-baja-icono-danger"
+                            onClick={() => {
+                              setAlumnoAEliminar(a);
+                              setMostrarConfirmacionEliminarUno(true);
+                            }}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -400,8 +414,8 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Modal DAR ALTA */}
-      {mostrarConfirmacionAlta && alumnoSeleccionado && (
+      {/* Modal DAR ALTA (no se renderiza en rol vista) */}
+      {!isVista && mostrarConfirmacionAlta && alumnoSeleccionado && (
         <div
           className="emp-baja-modal-overlay"
           role="dialog"
@@ -468,8 +482,8 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Modal ELIMINAR UNO */}
-      {mostrarConfirmacionEliminarUno && alumnoAEliminar && (
+      {/* Modal ELIMINAR UNO (no se renderiza en rol vista) */}
+      {!isVista && mostrarConfirmacionEliminarUno && alumnoAEliminar && (
         <div
           className="emp-baja-modal-overlay"
           role="dialog"
@@ -511,8 +525,8 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Modal ELIMINAR TODOS */}
-      {mostrarConfirmacionEliminarTodos && (
+      {/* Modal ELIMINAR TODOS (no se renderiza en rol vista) */}
+      {!isVista && mostrarConfirmacionEliminarTodos && (
         <div
           className="emp-baja-modal-overlay"
           role="dialog"

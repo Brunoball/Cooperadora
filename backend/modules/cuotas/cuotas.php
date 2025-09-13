@@ -3,18 +3,22 @@
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json; charset=utf-8');
 
+// (Opcional de debug: descomentar solo mientras probás en Hostinger)
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+
 /*
   Reglas:
-  - Deudor: no hay fila en cooperadora.pagos para (id_alumno, id_mes) en el año indicado.
+  - Deudor: no hay fila en pagos para (id_alumno, id_mes) en el año indicado.
   - Pagado / Condonado: hay fila con estado para ese mes en el año indicado.
   - ANUAL (id_mes = 13): si existe en el año indicado, cubre todos los meses 1..12.
-  - Se listan alumnos ACTIVOS. Si estás filtrando por pagados/condonados y un alumno inactivo
+  - Se listan alumnos ACTIVOS. Si filtrás por pagados/condonados y un alumno inactivo
     tiene un pago para ese mes/año (o anual de ese año), también se incluye.
 */
 
 const ID_MES_ANUAL = 13;
 
-/* === NUEVO: endpoint para listar años con pagos (solo años existentes) ===
+/* === Endpoint: listar años con pagos (solo años existentes) ===
    GET ...?action=cuotas&listar_anios=1
    Respuesta: { exito: true, anios: [{id: 2025, nombre: "2025"}, ...] }
 */
@@ -24,10 +28,11 @@ if (isset($_GET['listar_anios'])) {
       throw new RuntimeException('Conexión PDO no disponible.');
     }
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
     // Solo años donde hay pagos con fecha (YEAR(fecha_pago))
     $st = $pdo->query("
       SELECT DISTINCT YEAR(fecha_pago) AS anio
-      FROM cooperadora.pagos
+      FROM pagos
       WHERE fecha_pago IS NOT NULL
       ORDER BY anio DESC
     ");
@@ -60,35 +65,35 @@ try {
   }
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  // Parámetros
-  $anioFiltro    = isset($_GET['anio']) ? max(1900, (int)$_GET['anio']) : (int)date('Y'); // ← año de pago (calendar)
+  // == Parámetros ==
+  $anioFiltro    = isset($_GET['anio']) ? max(1900, (int)$_GET['anio']) : (int)date('Y'); // año de pago (calendar)
   $idMesFiltro   = isset($_GET['id_mes']) ? (int)$_GET['id_mes'] : 0; // 0 = todos
   $soloPagados   = isset($_GET['pagados']);
   $soloCondon    = isset($_GET['condonados']);
 
-  // --- Meses
-  $stMes = $pdo->query("SELECT id_mes, nombre FROM cooperadora.meses ORDER BY id_mes");
+  // == Meses ==
+  $stMes = $pdo->query("SELECT id_mes, nombre FROM meses ORDER BY id_mes");
   $mesesRows = $stMes->fetchAll(PDO::FETCH_ASSOC);
   $meses = [];
   foreach ($mesesRows as $m) $meses[(int)$m['id_mes']] = (string)$m['nombre'];
   if (!isset($meses[ID_MES_ANUAL])) $meses[ID_MES_ANUAL] = 'CONTADO ANUAL';
 
-  // --- ¿Incluimos inactivos? sólo si pedís pagados/condonados y estás filtrando por un mes concreto
+  // ¿Incluimos inactivos? solo si pedís pagados/condonados y filtrás por un mes concreto
   $incluirInactivos = ($idMesFiltro > 0) && ($soloPagados || $soloCondon);
 
-  // --- Alumnos
+  // == Alumnos ==
   $sqlAlu = "
     SELECT
       a.id_alumno, a.apellido, a.nombre, a.num_documento,
       a.domicilio, a.localidad, a.telefono,
       a.id_año, a.id_division, a.id_categoria, a.activo, a.ingreso
-    FROM cooperadora.alumnos a
+    FROM alumnos a
   ";
   if ($incluirInactivos) {
     $sqlAlu .= "
       WHERE a.activo = 1
          OR EXISTS (
-              SELECT 1 FROM cooperadora.pagos p
+              SELECT 1 FROM pagos p
                WHERE p.id_alumno = a.id_alumno
                  AND p.id_mes IN (:mes_consulta, :mes_anual)
                  AND p.fecha_pago IS NOT NULL
@@ -109,12 +114,12 @@ try {
   $stAlu->execute();
   $alumnos = $stAlu->fetchAll(PDO::FETCH_ASSOC);
 
-  // --- Pagos del año (contempla mensual + anual) — filtra por YEAR(fecha_pago)
+  // == Pagos del año (contempla mensual + anual) — filtra por YEAR(fecha_pago) ==
   $paramsPagos = [':anio' => $anioFiltro];
   if ($idMesFiltro > 0 && $idMesFiltro !== ID_MES_ANUAL) {
     $sqlPag = "
       SELECT id_alumno, id_mes, estado
-        FROM cooperadora.pagos
+        FROM pagos
        WHERE fecha_pago IS NOT NULL
          AND YEAR(fecha_pago) = :anio
          AND id_mes IN (:mes, :anual)
@@ -124,7 +129,7 @@ try {
   } else {
     $sqlPag = "
       SELECT id_alumno, id_mes, estado
-        FROM cooperadora.pagos
+        FROM pagos
        WHERE fecha_pago IS NOT NULL
          AND YEAR(fecha_pago) = :anio
     ";
@@ -136,9 +141,9 @@ try {
   $stPag->execute();
   $pagos = $stPag->fetchAll(PDO::FETCH_ASSOC);
 
-  // Indexamos pagos
-  $pagoDirecto = [];              // [id_alumno][id_mes] = 'pagado'|'condonado'
-  $pagoAnual   = [];              // [id_alumno]          = 'pagado'|'condonado'
+  // Indexación de pagos
+  $pagoDirecto = []; // [id_alumno][id_mes] = 'pagado'|'condonado'
+  $pagoAnual   = []; // [id_alumno]        = 'pagado'|'condonado'
   foreach ($pagos as $p) {
     $ida = (int)$p['id_alumno'];
     $idm = (int)$p['id_mes'];
@@ -150,9 +155,10 @@ try {
     }
   }
 
-  // --- Armar respuesta
+  // == Armar respuesta ==
   $cuotas = [];
-  // Elegimos meses a producir
+
+  // Meses a producir
   $listaMeses = array_keys($meses);
   $listaMeses = array_values(array_filter($listaMeses, fn($m) => (int)$m !== ID_MES_ANUAL)); // 1..12
   if ($idMesFiltro > 0 && $idMesFiltro !== ID_MES_ANUAL) {
@@ -161,18 +167,18 @@ try {
   $mostrarSoloAnual = ($idMesFiltro === ID_MES_ANUAL);
 
   foreach ($alumnos as $a) {
-    $idAlu   = (int)$a['id_alumno'];
+    $idAlu    = (int)$a['id_alumno'];
     $apellido = trim((string)$a['apellido'] ?? '');
     $nombre   = trim((string)$a['nombre'] ?? '');
     $nombreCompleto = trim($apellido . ', ' . $nombre, ', ');
 
-    // Filas ANUAL explícitas (si están pidiendo id_mes 13)
+    // Fila ANUAL (si piden id_mes 13)
     if ($mostrarSoloAnual) {
       if (!alumnoEstabaActivo($a['ingreso'] ?? null, 12, $anioFiltro)) continue;
 
       $estado = isset($pagoAnual[$idAlu]) ? $pagoAnual[$idAlu] : 'deudor';
-      if ($soloPagados   && $estado !== 'pagado')    continue;
-      if ($soloCondon    && $estado !== 'condonado') continue;
+      if ($soloPagados && $estado !== 'pagado') continue;
+      if ($soloCondon  && $estado !== 'condonado') continue;
 
       $cuotas[] = [
         'id_alumno'    => $idAlu,
@@ -197,10 +203,10 @@ try {
     foreach ($listaMeses as $idm) {
       $idm = (int)$idm;
 
-      // elegible por ingreso
+      // Elegibilidad por ingreso
       if (!alumnoEstabaActivo($a['ingreso'] ?? null, $idm, $anioFiltro)) continue;
 
-      // estado
+      // Estado
       if (isset($pagoDirecto[$idAlu][$idm])) {
         $estado = $pagoDirecto[$idAlu][$idm];
         $fromAnual = 0;
@@ -212,8 +218,8 @@ try {
         $fromAnual = 0;
       }
 
-      if ($soloPagados   && $estado !== 'pagado')    continue;
-      if ($soloCondon    && $estado !== 'condonado') continue;
+      if ($soloPagados && $estado !== 'pagado') continue;
+      if ($soloCondon  && $estado !== 'condonado') continue;
 
       $cuotas[] = [
         'id_alumno'    => $idAlu,
@@ -237,6 +243,7 @@ try {
   echo json_encode(['exito' => true, 'cuotas' => $cuotas], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
+  // Dejamos 200 para que el frontend pueda leer el JSON del error (evita CORS confusos).
   http_response_code(200);
   echo json_encode(['exito' => false, 'mensaje' => 'Error al obtener cuotas: ' . $e->getMessage()]);
 }
