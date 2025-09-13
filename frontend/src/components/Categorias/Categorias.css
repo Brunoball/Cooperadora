@@ -246,8 +246,7 @@
 /* ✅ Historial: fondo gris, texto negro, hover oscurecido */
 .cat_icon_btn_history{
   background: var(--reg-gray-300);
-  color: #111; /* negro legible */
-
+  color: #111;
 }
 .cat_icon_btn_history:hover{
   background: var(--reg-gray-400);
@@ -362,7 +361,6 @@ thead{ background:var(--reg-accent); }
 .cat_th_center, .cat_td_center{ text-align:center; }
 .cat_th_right,  .cat_td_right{  text-align:center; }
 
-/* Indicador de cambio */
 .cat_change{
   display:inline-flex; align-items:center; gap:6px;
   font-weight:700;
@@ -381,30 +379,57 @@ thead{ background:var(--reg-accent); }
 .cat_change_icon{ font-size:.9rem; }
 .cat_change_dash{ color:var(--reg-gray-500); }
 
-/* Animaciones */
 @keyframes cat_pulse{0%{opacity:1} 50%{opacity:.45} 100%{opacity:1}}
 
 /* =========================================================
-   Responsive tabla → tarjetas
+   Responsive tabla → tarjetas (MÓVIL)
    ========================================================= */
 @media (max-width: 720px){
-  .cat_btn_text{display:none}
-  .cat_card{padding:18px}
-  .cat_list_head{display:none}
+  .cat_page{ padding: 0; }
+  .cat_btn_text{ display:none }
+  .cat_card{ padding:18px; height: 100vh;}
+
+  /* Ocultar cabecera de lista */
+  .cat_list_head{ display:none }
+
+  /* Fila como tarjeta */
   .cat_row{
     grid-template-columns: 1fr;
-    gap:10px;
+    gap: 10px;
+    padding: 14px;
   }
-  .cat_cell{display:grid; grid-template-columns: auto 1fr; gap:8px}
-  .cat_col_name{display:block; font-size:1.05rem}
-  .cat_col_amount{justify-content:end}
-  .cat_col_actions{justify-self:stretch; justify-content:flex-end}
 
-  /* Tabla historial → tarjetas */
-  .cat_hist_table, .cat_hist_table thead, .cat_hist_table tbody, .cat_hist_table tr, .cat_hist_table th, .cat_hist_table td{
+  /* Cada celda muestra: Label (izq) — Valor (der) */
+  .cat_cell{
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Nombre——valor / Monto——valor */
+    gap: 8px;
+    text-align: right; /* El valor queda hacia la derecha */
+  }
+  .cat_cell::before{
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--reg-gray-600);
+    margin-right: 10px;
+    text-align: left; /* el label a la izquierda */
+  }
+
+  /* Botones: al final, centrados y en fila */
+  .cat_col_actions{
+    justify-content: center;   /* centra los íconos en una fila */
+    gap: 10px;
+    width: 100%;
+  }
+  /* Oculta el texto "Acciones" encima de los botones para que queden limpios */
+  .cat_col_actions::before{ content: ""; }
+
+  /* ====== Historial (table → tarjetas) ====== */
+  .cat_hist_table, .cat_hist_table thead, .cat_hist_table tbody,
+  .cat_hist_table tr, .cat_hist_table th, .cat_hist_table td{
     display:block; width:100%;
   }
-  .cat_hist_table thead{display:none}
+  .cat_hist_table thead{ display:none }
   .cat_hist_table tbody tr{
     background:#fff; border:1px solid var(--reg-gray-200); border-radius:var(--reg-border-radius-lg);
     box-shadow: var(--reg-shadow-sm); margin:0 0 12px 0; padding:10px 12px 6px;

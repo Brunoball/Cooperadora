@@ -400,7 +400,8 @@
 
 /* ===== Responsive: tarjetas “en fila” y acciones al final centradas ===== */
 @media (max-width: 720px){
-  .td_btn_text{ display:none }
+  .td_form_grid{display: flex; flex-wrap: wrap;}
+  .td_form_field{width: 100%;}
   .td_card{ padding:18px }
 
   /* Ocultamos cabecera en móvil */
@@ -461,7 +462,7 @@
     display:flex; justify-content:center; gap:10px;
     margin-top: 6px;
   }
-
+.td_card{gap: 0; justify-content: space-between; border-radius: 0; height: 100vh;}
   /* Lista sin scroll limitado en móvil */
-  .td_list{ max-height: none; overflow-y: visible; }
+  .td_list{  overflow-y: visible; }
 }

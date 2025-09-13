@@ -217,14 +217,13 @@ const Categorias = () => {
     }
   };
 
-  // Historial por categoría (botón en la principal)
-  // ✅ SOLO abre el modal si hay registros; si no, muestra toast y NO abre
+  // Historial por categoría
   const abrirHistorial = async (cat) => {
     try {
       setHistCategoria({ id: cat.id, nombre: cat.descripcion || '' });
-      setHist([]);                 // limpiar datos previos
-      setHistLoading(true);        // estado de carga (aunque no abrimos aún el modal)
-      setModalHistOpen(false);     // aseguramos cerrado antes de consultar
+      setHist([]);
+      setHistLoading(true);
+      setModalHistOpen(false);
 
       const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_historial&id=${encodeURIComponent(cat.id)}`);
       let filas = [];
@@ -244,12 +243,11 @@ const Categorias = () => {
 
       if (norm.length === 0) {
         showToast('info', 'No hay pagos registrados.');
-        // Si tu Toast no soporta 'info', usá 'advertencia' o 'exito'
-        return; // ⬅️ no abrimos el modal
+        return;
       }
 
       setHist(norm);
-      setModalHistOpen(true); // ⬅️ abrimos solo si HAY datos
+      setModalHistOpen(true);
     } catch (e) {
       console.error(e);
       setModalHistOpen(false);
@@ -313,10 +311,16 @@ const Categorias = () => {
                 className="cat_row"
                 style={{ animationDelay: `${index * 0.06}s` }}
               >
-                <div className="cat_cell cat_col_name">{c.descripcion || '—'}</div>
-                <div className="cat_cell cat_col_amount cat_center">{fmtARS(c.precio)}</div>
-                <div className="cat_cell cat_col_actions cat_right">
-                  {/* Botón de historial - clase especial gris/negro */}
+                <div className="cat_cell cat_col_name" data-label="Nombre">
+                  {c.descripcion || '—'}
+                </div>
+
+                <div className="cat_cell cat_col_amount cat_center" data-label="Monto">
+                  {fmtARS(c.precio)}
+                </div>
+
+                <div className="cat_cell cat_col_actions cat_right" data-label="Acciones">
+                  {/* Historial */}
                   <button
                     className="cat_icon_btn cat_icon_btn_history"
                     onClick={() => abrirHistorial(c)}
@@ -334,6 +338,7 @@ const Categorias = () => {
                   >
                     <FontAwesomeIcon icon={faEdit} />
                   </button>
+
                   <button
                     className="cat_icon_btn cat_icon_btn_danger"
                     onClick={() => pedirConfirmacionEliminar(c)}
@@ -372,7 +377,7 @@ const Categorias = () => {
         </section>
       </div>
 
-      {/* Modal Historial (pagos) — solo se abre si modalHistOpen = true */}
+      {/* Modal Historial */}
       <Modal
         open={modalHistOpen}
         onClose={() => setModalHistOpen(false)}
