@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import BASE_URL from "../../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faSave, faUpload, faTrash, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faSave, faUpload, faTrash, faEye, faPlus, faMinus, faCompress } from "@fortawesome/free-solid-svg-icons";
 import "./ContableEgresoModal.css";
 
 const VALOR_OTRO = "__OTRO__";
@@ -26,6 +26,10 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
   const [uploading, setUploading] = useState(false);
   const [localPreview, setLocalPreview] = useState("");
 
+  // Lightbox / visor
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [zoom, setZoom] = useState(1);
+
   const fileInputRef = useRef(null);
   const dropRef = useRef(null);
 
@@ -42,7 +46,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
       const arr = (data?.listas?.medios_pago ?? []).map((m) => ({
         id: Number(m.id),
-        nombre: String(m.nombre || ""), // ← ⛔ sin toUpperCase: mostramos tal cual
+        nombre: String(m.nombre || ""),
       }));
       setMediosPago(arr);
     } catch (e) {
@@ -76,7 +80,6 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       setCategoria(String(editRow.categoria || "").toUpperCase());
       setDescripcion(String(editRow.descripcion || "").toUpperCase());
 
-      // Match por nombre de medio, case-insensitive
       if (editRow.id_medio_pago) {
         setMedioId(String(editRow.id_medio_pago));
       } else if (editRow.medio_pago) {
@@ -94,6 +97,8 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       setMonto(String(editRow.monto || ""));
       setComp(editRow.comprobante_url || "");
       setLocalPreview("");
+      setViewerOpen(false);
+      setZoom(1);
     } else {
       const d = new Date();
       setFecha(d.toISOString().slice(0, 10));
@@ -105,6 +110,8 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       setMonto("");
       setComp("");
       setLocalPreview("");
+      setViewerOpen(false);
+      setZoom(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editRow, mediosPago]);
@@ -138,7 +145,9 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
 
       if (!res.ok || !data.ok) throw new Error(data?.mensaje || "Error al subir el archivo");
 
-      const finalUrl = `${BASE_URL}/${data.relative_url}`;
+      // Ideal: que el backend ya devuelva una URL pública absoluta.
+      // Si devuelve relative_url, concatenamos con BASE_URL.
+      const finalUrl = data.absolute_url ? data.absolute_url : `${BASE_URL}/${data.relative_url}`;
       setComp(finalUrl);
       notify?.("exito", "Comprobante subido.");
     } catch (err) {
@@ -160,13 +169,16 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     setComp("");
     setLocalPreview("");
     fileInputRef.current && (fileInputRef.current.value = "");
+    setViewerOpen(false);
+    setZoom(1);
     notify?.("advertencia", "Comprobante quitado.");
   };
 
+  // Ahora abre el visor modal interno
   const openComprobante = () => {
-    if (!comp) return;
-    try { window.open(comp, "_blank", "noopener,noreferrer"); }
-    catch { window.location.href = comp; }
+    if (!comp && !localPreview) return;
+    setViewerOpen(true);
+    setZoom(1);
   };
 
   const onChangeMedio = (val) => {
@@ -184,7 +196,6 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
   const isSinCambios = () => {
     if (!editRow) return false;
 
-    // id medio original
     let origIdMedio = 0;
     if (editRow.id_medio_pago) {
       origIdMedio = Number(editRow.id_medio_pago);
@@ -233,10 +244,9 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     try {
       setSaving(true);
 
-      // Si es edición y no cambió nada → toast y CERRAR modal.
       if (editRow && isSinCambios()) {
         notify?.("advertencia", "No se encontraron cambios para actualizar.");
-        onSaved?.();          // cierra modal y refresca listado en el padre
+        onSaved?.();
         return;
       }
 
@@ -274,7 +284,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       });
 
       notify?.("exito", editRow ? "Egreso editado correctamente." : "Egreso creado correctamente.");
-      onSaved?.(); // cierra y refresca
+      onSaved?.();
     } catch (e2) {
       console.error(e2);
       notify?.("error", e2.message || "Error al guardar el egreso.");
@@ -285,9 +295,10 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
 
   if (!open) return null;
 
+  const isPDF = (localPreview || comp)?.toLowerCase?.().endsWith(".pdf");
+
   return createPortal(
     <div className="lc_modal_overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      {/* style -> evita que todo el modal herede mayúsculas */}
       <div className="lc_modal" style={{ textTransform: "none" }} onClick={(e) => e.stopPropagation()}>
         <div className="lc_modal_head">
           <h3>{editRow ? "Editar egreso" : "Nuevo egreso"}</h3>
@@ -381,7 +392,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
               <div className="dz_preview">
                 {localPreview ? (
                   <img className="dz_thumb" src={localPreview} alt="Preview comprobante" />
-                ) : comp?.toLowerCase().endsWith(".pdf") ? (
+                ) : isPDF ? (
                   <div className="dz_pdf"><span className="dz_pdf_label">PDF subido</span></div>
                 ) : (
                   <img className="dz_thumb" src={comp} alt="Comprobante" />
@@ -389,14 +400,14 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
 
                 <div className="dz_meta">
                   <div className="dz_actions">
-                    <button type="button" className="lc_btn secondary" onClick={openComprobante} disabled={!comp} title="Ver comprobante en nueva pestaña">
+                    <button type="button" className="lc_btn secondary" onClick={openComprobante} disabled={!(localPreview || comp)} title="Ver comprobante">
                       <FontAwesomeIcon icon={faEye} /> Ver comprobante
                     </button>
                     <button type="button" className="lc_btn danger" onClick={clearComprobante}>
                       <FontAwesomeIcon icon={faTrash} /> Quitar
                     </button>
                   </div>
-                  {comp && <a className="dz_link" href={comp} target="_blank" rel="noreferrer">{comp}</a>}
+                  {/* Se quitó el link de texto con la URL */}
                 </div>
               </div>
             )}
@@ -412,6 +423,67 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
           </div>
         </form>
       </div>
+
+      {/* ===== Visor / Lightbox ===== */}
+      {viewerOpen && (
+        <div
+          className="lc_viewer_overlay"
+          onClick={() => setViewerOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="lc_viewer" onClick={(e) => e.stopPropagation()}>
+            <div className="lc_viewer_toolbar">
+              {!isPDF && (
+                <>
+                  <button className="lc_icon" onClick={() => setZoom((z) => Math.max(0.2, Number((z - 0.2).toFixed(2))))} title="Alejar">
+                    <FontAwesomeIcon icon={faMinus} />
+                  </button>
+                  <span className="lc_zoom_label">{Math.round(zoom * 100)}%</span>
+                  <button className="lc_icon" onClick={() => setZoom((z) => Math.min(5, Number((z + 0.2).toFixed(2))))} title="Acercar">
+                    <FontAwesomeIcon icon={faPlus} />
+                  </button>
+                  <button className="lc_icon" onClick={() => setZoom(1)} title="Restaurar 100%">
+                    <FontAwesomeIcon icon={faCompress} />
+                  </button>
+                </>
+              )}
+              {isPDF && (comp || localPreview) && (
+                <button
+                  className="lc_btn"
+                  onClick={() => {
+                    try { window.open(comp || localPreview, "_blank", "noopener,noreferrer"); }
+                    catch { window.location.href = comp || localPreview; }
+                  }}
+                  title="Abrir en nueva pestaña"
+                >
+                  Abrir en pestaña
+                </button>
+              )}
+              <button className="lc_icon" onClick={() => setViewerOpen(false)} title="Cerrar">
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
+
+            <div className="lc_viewer_body">
+              {!isPDF ? (
+                <img
+                  src={localPreview || comp}
+                  alt="Comprobante"
+                  className="lc_viewer_img"
+                  style={{ transform: `scale(${zoom})` }}
+                />
+              ) : (
+                <iframe
+                  title="PDF comprobante"
+                  className="lc_viewer_pdf"
+                  src={comp || localPreview}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

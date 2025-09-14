@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faEdit, faEye } from "@fortawesome/free-solid-svg-icons";
 import ContableEgresoModal from "./modalcontable/ContableEgresoModal";
 import Toast from "../Global/Toast";
 
@@ -107,6 +107,33 @@ export default function EgresoContable() {
   const onCreateEgreso = () => { setEditRow(null); setModalOpen(true); };
   const onEditEgreso   = (row) => { setEditRow(row); setModalOpen(true); };
 
+  // ====== Abrir comprobante (imagen/PDF) ======
+  const normalizeUrl = (url = "") => {
+    if (!url) return "";
+    // si es absoluta, devolver tal cual
+    if (/^https?:\/\//i.test(url)) return url;
+    // relativa: unir con BASE_URL cuidando las barras
+    const clean = String(url).replace(/^\/+/, "");
+    return `${BASE_URL}/${clean}`;
+  };
+
+  const onViewComprobante = (row) => {
+    // campos posibles: comprobante_url (nuevo), comprobante, url
+    const candidate =
+      row?.comprobante_url || row?.comprobante || row?.url || "";
+    const finalUrl = normalizeUrl(candidate);
+
+    if (!finalUrl) {
+      addToast("advertencia", "Este egreso no tiene comprobante adjunto.");
+      return;
+    }
+    try {
+      window.open(finalUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      window.location.href = finalUrl;
+    }
+  };
+
   // ===== Modal de confirmación de ELIMINAR =====
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState(null);
@@ -145,7 +172,7 @@ export default function EgresoContable() {
 
   return (
     <div className="lc_panel">
-      {/* TOAST STACK (único lugar donde se renderizan) */}
+      {/* TOAST STACK */}
       <div className="toast-stack">
         {toasts.map((t) => (
           <Toast
@@ -206,7 +233,7 @@ export default function EgresoContable() {
               <th>Descripción</th>
               <th>Medio</th>
               <th>Monto</th>
-              <th style={{ width: 120 }}>Acciones</th>
+              <th style={{ width: 180 }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -218,9 +245,22 @@ export default function EgresoContable() {
                 <td>{e.medio_nombre || e.medio_pago || "-"}</td>
                 <td>${Number(e.monto || 0).toLocaleString("es-AR")}</td>
                 <td className="lc_actions">
+                  {/* Ver comprobante */}
+                  <button
+                    className="lc_icon"
+                    onClick={() => onViewComprobante(e)}
+                    title="Ver comprobante"
+                    disabled={!normalizeUrl(e?.comprobante_url || e?.comprobante || e?.url)}
+                  >
+                    <FontAwesomeIcon icon={faEye} />
+                  </button>
+
+                  {/* Editar */}
                   <button className="lc_icon" onClick={() => onEditEgreso(e)} title="Editar">
                     <FontAwesomeIcon icon={faEdit} />
                   </button>
+
+                  {/* Eliminar */}
                   <button
                     className="lc_icon danger"
                     onClick={() => askDeleteEgreso(e.id_egreso)}
