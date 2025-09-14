@@ -1,3 +1,5 @@
+/* src/components/Alumnos/AlumnoBaja.css */
+
 /* =========================================================
    Variables y base (predominio de GRISES + acento ROJO)
    ========================================================= */
@@ -15,7 +17,7 @@
   --grayprincipal-900: #0f172a;
   --grayprincipal-950: #0a0f1a;
 
-  /* Alias base (corregidos a grayprincipal-*) */
+  /* Alias base */
   --primary-color:  var(--grayprincipal-700);
   --primary-hover:  var(--grayprincipal-800);
   --primary-light:  var(--grayprincipal-200);
@@ -139,7 +141,14 @@
 .emp-baja-contador{ font-size:.9rem; color:var(--text-secondary); }
 .emp-baja-contador strong{ color:var(--primary-dark); margin-left:.25rem; }
 
-/* Eliminar todos */
+/* Contenedor de acciones a la derecha */
+.emp-baja-acciones-derecha{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+
+/* Botón Eliminar todos (estética base fantasma) */
 .emp-baja-eliminar-todos{
   display:inline-flex; align-items:center; gap:.5rem;
   padding:.5rem .9rem; border-radius:10px;
@@ -155,6 +164,23 @@
 .emp-baja-eliminar-todos:disabled{ opacity:.5; pointer-events:none; }
 .emp-baja-eliminar-todos .ico{ font-size:1rem; }
 .emp-baja-eliminar-todos .txt{ display:inline; }
+
+/* Botón Exportar (misma estética, variante éxito/verde) */
+.emp-baja-exportar{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.5rem .9rem; border-radius:10px;
+  border:1px solid var(--gray-300);
+  background:#fff; color:var(--success-700);
+  font-weight:700; box-shadow:var(--shadow-sm);
+  transition:var(--transition-smooth);
+  cursor:pointer;
+}
+.emp-baja-exportar:hover{
+  background:var(--success-600); color:#fff; border-color:var(--success-600);
+}
+.emp-baja-exportar:disabled{ opacity:.5; pointer-events:none; }
+.emp-baja-exportar .ico{ font-size:1rem; }
+.emp-baja-exportar .txt{ display:inline; }
 
 /* =========================================================
    Tabla / lista
@@ -316,18 +342,21 @@
    ========================================================= */
 @media (max-width:992px){
   .emp-baja-titulo{ font-size:1.6rem; }
+  /* Mantener 5 columnas con proporciones más cómodas */
   .emp-baja-tabla-header, .emp-baja-fila{
-    grid-template-columns:60px 1.5fr .9fr 1.1fr 1.1fr 110px;
+    grid-template-columns:60px 1.5fr .9fr 1.2fr .6fr;
   }
 }
 
 @media (max-width:768px){
-
+  .emp-baja-exportar{display: none;}
   .emp-baja-buscador-container{ margin:0 .5rem; }
   .emp-baja-tabla-container{ margin:0; margin-top:1rem; border-bottom:none; }
 
-  .emp-baja-eliminar-todos .txt{ display:none; }
-  .emp-baja-eliminar-todos{ padding:.5rem .65rem; }
+  .emp-baja-eliminar-todos .txt,
+  .emp-baja-exportar .txt{ display:none; }
+  .emp-baja-eliminar-todos,
+  .emp-baja-exportar{ padding:.5rem .65rem; }
 
   .emp-baja-tabla-header{ display:none; }
   .emp-baja-tabla-body{ max-height:50vh; overflow:auto; }
@@ -347,7 +376,6 @@
   .emp-baja-col-id::before{ content:"ID"; }
   .emp-baja-col-nombre::before{ content:"Nombre"; }
   .emp-baja-col-fecha::before{ content:"Ingreso"; }
-  .emp-baja-col-domicilio::before{ content:"Domicilio"; }
   .emp-baja-col-motivo::before{ content:"Motivo"; }
   .emp-baja-col-acciones::before{ content:"Acciones"; }
 
@@ -382,7 +410,7 @@
 .soc-icono-calendario{ margin-left:.5rem; font-size:1.1rem; color:var(--text-muted); }
 
 /* =========================================================
-   Barra inferior fija (nuevo)
+   Barra inferior fija (volver + exportar)
    ========================================================= */
 .emp-baja-bottombar {
   position: fixed;
@@ -425,7 +453,7 @@
   border-color: var(--grayprincipal-700);
 }
 
-/* Exportar Excel */
+/* Exportar Excel (barra inferior) */
 .emp-baja-nav-btn--excel {
   background: var(--success-600);
   color: #fff;

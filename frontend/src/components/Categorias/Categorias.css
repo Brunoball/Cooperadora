@@ -387,7 +387,7 @@ thead{ background:var(--reg-accent); }
 @media (max-width: 720px){
   .cat_page{ padding: 0; }
   .cat_btn_text{ display:none }
-  .cat_card{ padding:18px; height: 100vh;}
+  .cat_card{ padding:18px; height: 100vh; justify-content: space-between;}
 
   /* Ocultar cabecera de lista */
   .cat_list_head{ display:none }

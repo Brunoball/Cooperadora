@@ -1,9 +1,13 @@
+/* ===========================
+   registro.css (COMPLETO)
+   =========================== */
+
 /* ====== Fuente ====== */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
 /* ====== :root ROJO (sin degradados) — variables con prefijo reg- ====== */
 :root {
-  /* 🎨 PALETA ROJA (idéntica a ini-) */
+  /* 🎨 PALETA ROJA */
   --reg-primary: #B71C1C;          /* Rojo principal */
   --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
   --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
@@ -47,7 +51,6 @@
   justify-content: center;
   box-sizing: border-box;
   background: url('../../imagenes/img_fondo.png') center center / cover no-repeat fixed;
-  /* mismo fondo que Inicio */
 }
 
 /* ====== Tarjeta ====== */
@@ -55,7 +58,7 @@
   width: 90%;
   max-width: 500px;
   padding: 28px 20px;
-  background: #ffffff; /* tarjeta blanca, sin glass */
+  background: #ffffff; /* tarjeta blanca */
   border-radius: var(--reg-border-radius-xl);
   box-shadow: var(--reg-shadow-xl),
               inset 0 1px 0 rgba(255,255,255,.6),
@@ -110,7 +113,7 @@
   margin: 2px 0 0;
   font-weight: 800;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--reg-primary); /* rojo sólido (sin gradiente) */
+  color: var(--reg-primary);
   letter-spacing: -0.4px;
 }
 @media (min-width: 768px) { .reg_titulo { font-size: 1.9rem; } }
@@ -140,7 +143,7 @@
   justify-content: center;
 }
 
-/* Inputs con íconos embebidos (idéntico a Inicio) */
+/* Inputs con íconos embebidos */
 .reg_input {
   width: 100%;
   padding: 12px 50px;
@@ -160,7 +163,7 @@
   box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.18); /* rojo claro */
 }
 
-/* Íconos embebidos */
+/* Íconos embebidos base */
 .reg_campo::before {
   content: '';
   position: absolute;
@@ -174,17 +177,21 @@
   mask-position: center;
   transition: var(--reg-transition);
 }
+
+/* Usuario (primer campo) */
 .reg_campo:nth-child(1)::before {
-  /* Usuario */
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
 }
+
+/* Password (ambos campos con clase) */
 .reg_campo.reg_campo-password::before {
-  /* Candado */
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E");
 }
+
+/* Color del ícono en foco */
 .reg_campo:focus-within::before { background-color: var(--reg-primary); }
 
-/* Botón ver contraseña */
+/* Botón ver contraseña (ojo) */
 .reg_toggle-password {
   position: absolute;
   right: 15px; top: 50%;
@@ -199,7 +206,7 @@
 .reg_toggle-password svg { width: 20px; height: 20px; }
 .reg_toggle-password:hover { color: var(--reg-primary); }
 
-/* Mensajes (para usar con Toast o texto simple si quisieras) */
+/* Mensajes */
 .reg_mensaje {
   text-align: center;
   color: var(--reg-accent);
@@ -209,7 +216,7 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* ====== Footer y botones (ROJO, sin degradado) ====== */
+/* ====== Footer y botones ====== */
 .reg_footer {
   display: flex;
   flex-direction: row;
@@ -253,7 +260,7 @@
   box-shadow: var(--reg-shadow-md);
 }
 
-/* ====== Efecto onda (igual a Inicio) ====== */
+/* ====== Efecto onda ====== */
 .reg_boton:active::after {
   content: '';
   position: absolute;
@@ -271,6 +278,55 @@
   100% { transform: scale(30,30) translate(-50%,-50%); opacity: 0; }
 }
 
+/* ====== SELECT de Rol (debajo de Usuario) ====== */
+.reg_campo-rol select.reg_input {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 48px; /* espacio para flecha */
+  cursor: pointer;
+  background-color: #fff; /* coherente con inputs */
+}
+.reg_campo-rol select.reg_input:focus {
+  outline: none;
+}
+
+/* Icono izquierdo (maletín / rol) */
+.reg_campo-rol::before {
+  background-color: var(--reg-gray-500);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  /* briefcase */
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M10 6h4a2 2 0 0 1 2 2v2h-8V8a2 2 0 0 1 2-2z'/%3E%3Cpath d='M4 10h16a2 2 0 0 1 2 2v5a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-5a2 2 0 0 1 2-2z'/%3E%3C/svg%3E");
+}
+
+/* Flecha custom a la derecha */
+.reg_campo-rol::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  background-color: var(--reg-gray-500);
+  pointer-events: none;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  /* chevron-down */
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Colores en foco (ícono + flecha) */
+.reg_campo-rol:focus-within::before,
+.reg_campo-rol:focus-within::after {
+  background-color: var(--reg-primary);
+}
+
+/* (Opcional) quitar flecha IE/Edge antiguos */
+select.reg_input::-ms-expand { display: none; }
+
 /* ====== Responsive muy chico ====== */
 @media (max-width: 400px) {
   .reg_contenedor {
@@ -282,4 +338,28 @@
   .reg_input { padding: 11px 46px; }
   .reg_footer { flex-direction: column; }
   .reg_footer .reg_boton { flex: 1 1 100%; }
+  .reg_campo-rol select.reg_input { padding-right: 44px; }
+}
+/* ====== Fila de 2 columnas para las contraseñas ====== */
+.reg_fila-2 {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.reg_col-6 {
+  flex: 1 1 50%;
+  min-width: 0; /* evita overflow del input */
+}
+
+/* Asegura que los íconos y el botón ojo queden bien dentro de cada columna */
+.reg_fila-2 .reg_campo.reg_campo-password {
+  position: relative;
+}
+
+/* Responsive: en pantallas chicas, apilar */
+@media (max-width: 560px) {
+  .reg_fila-2 {
+    flex-direction: column;
+  }
 }

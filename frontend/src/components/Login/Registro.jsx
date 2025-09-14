@@ -1,3 +1,4 @@
+// src/components/Auth/Registro.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
@@ -6,15 +7,15 @@ import logoRH from '../../imagenes/Escudo.png';
 import Toast from '../Global/Toast';
 
 const ROLES = [
-  { value: 'vista', label: 'Vista (solo lectura)' },
-  { value: 'admin', label: 'Admin (administrador)' },
+  { value: 'vista', label: 'Rol: Vista (solo lectura)' },
+  { value: 'admin', label: 'Rol: Admin (administrador)' },
 ];
 
 const Registro = () => {
   const [nombre, setNombre] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
-  const [rol, setRol] = useState('vista'); // ⬅️ nuevo: selección de rol
+  const [rol, setRol] = useState('vista');
   const [cargando, setCargando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -67,7 +68,6 @@ const Registro = () => {
       setCargando(false);
 
       if (data.exito) {
-        // guardamos también el rol que devuelve el backend
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         mostrarToast('exito', '¡Registro exitoso! Redirigiendo...', 1800);
         setTimeout(() => navigate('/panel'), 1800);
@@ -113,76 +113,8 @@ const Registro = () => {
             />
           </div>
 
-          {/* Contraseña */}
-          <div className="reg_campo reg_campo-password">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              className="reg_input"
-              placeholder="Contraseña"
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              required
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              className="reg_toggle-password"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                {showPassword ? (
-                  <>
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                  </>
-                ) : (
-                  <>
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </>
-                )}
-              </svg>
-            </button>
-          </div>
-
-          {/* Confirmación */}
-          <div className="reg_campo reg_campo-password">
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              placeholder="Confirmar Contraseña"
-              value={confirmarContrasena}
-              onChange={(e) => setConfirmarContrasena(e.target.value)}
-              required
-              className="reg_input"
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              className="reg_toggle-password"
-              onClick={() => setShowConfirmPassword((v) => !v)}
-              aria-label={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
-              title={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                {showConfirmPassword ? (
-                  <>
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                  </>
-                ) : (
-                  <>
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </>
-                )}
-              </svg>
-            </button>
-          </div>
-
-          {/* Rol */}
-          <div className="reg_campo">
+          {/* Rol (debajo de Usuario) */}
+          <div className="reg_campo reg_campo-rol">
             <select
               className="reg_input"
               value={rol}
@@ -195,6 +127,75 @@ const Registro = () => {
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Contraseña + Confirmación (misma fila) */}
+          <div className="reg_fila-2">
+            <div className="reg_campo reg_campo-password reg_col-6">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="reg_input"
+                placeholder="Contraseña"
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+                required
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="reg_toggle-password"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  {showPassword ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
+
+            <div className="reg_campo reg_campo-password reg_col-6">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Confirmar Contraseña"
+                value={confirmarContrasena}
+                onChange={(e) => setConfirmarContrasena(e.target.value)}
+                required
+                className="reg_input"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="reg_toggle-password"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                aria-label={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
+                title={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  {showConfirmPassword ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="reg_footer">

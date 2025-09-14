@@ -2,7 +2,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BASE_URL from "../../config/config";
-import { FaUserCheck, FaTrashAlt, FaCalendarAlt, FaArrowLeft, FaFileExcel } from "react-icons/fa";
+import {
+  FaUserCheck,
+  FaTrashAlt,
+  FaCalendarAlt,
+  FaArrowLeft,
+  FaFileExcel,
+} from "react-icons/fa";
 import Toast from "../Global/Toast";
 import "./AlumnoBaja.css";
 
@@ -81,8 +87,10 @@ const AlumnoBaja = () => {
   const fechaInputRef = useRef(null);
 
   // Eliminaciones
-  const [mostrarConfirmacionEliminarUno, setMostrarConfirmacionEliminarUno] = useState(false);
-  const [mostrarConfirmacionEliminarTodos, setMostrarConfirmacionEliminarTodos] = useState(false);
+  const [mostrarConfirmacionEliminarUno, setMostrarConfirmacionEliminarUno] =
+    useState(false);
+  const [mostrarConfirmacionEliminarTodos, setMostrarConfirmacionEliminarTodos] =
+    useState(false);
   const [alumnoAEliminar, setAlumnoAEliminar] = useState(null);
 
   const navigate = useNavigate();
@@ -99,15 +107,25 @@ const AlumnoBaja = () => {
     const obtenerAlumnosBaja = async () => {
       setCargando(true);
       try {
-        const res = await fetch(`${BASE_URL}/api.php?action=alumnos_baja&ts=${Date.now()}`);
+        const res = await fetch(
+          `${BASE_URL}/api.php?action=alumnos_baja&ts=${Date.now()}`
+        );
         const data = await res.json();
         if (data.exito) {
           setAlumnos(Array.isArray(data.alumnos) ? data.alumnos : []);
         } else {
-          setToast({ show: true, tipo: "error", mensaje: data.mensaje || "Error al cargar" });
+          setToast({
+            show: true,
+            tipo: "error",
+            mensaje: data.mensaje || "Error al cargar",
+          });
         }
       } catch {
-        setToast({ show: true, tipo: "error", mensaje: "Error de conexión al cargar alumnos" });
+        setToast({
+          show: true,
+          tipo: "error",
+          mensaje: "Error de conexión al cargar alumnos",
+        });
       } finally {
         setCargando(false);
       }
@@ -138,7 +156,11 @@ const AlumnoBaja = () => {
   /* ============ Dar alta ============ */
   const darAltaAlumno = async (id_alumno) => {
     if (!esFechaISO(fechaAlta)) {
-      setToast({ show: true, tipo: "error", mensaje: "Fecha inválida. Usá AAAA-MM-DD." });
+      setToast({
+        show: true,
+        tipo: "error",
+        mensaje: "Fecha inválida. Usá AAAA-MM-DD.",
+      });
       return;
     }
     try {
@@ -146,11 +168,17 @@ const AlumnoBaja = () => {
       params.set("id_alumno", String(id_alumno));
       params.set("fecha_ingreso", fechaAlta);
 
-      const res = await fetch(`${BASE_URL}/api.php?action=dar_alta_alumno&ts=${Date.now()}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-        body: params.toString(),
-      });
+      const res = await fetch(
+        `${BASE_URL}/api.php?action=dar_alta_alumno&ts=${Date.now()}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded;charset=UTF-8",
+          },
+          body: params.toString(),
+        }
+      );
 
       const text = await res.text();
       let data;
@@ -164,32 +192,59 @@ const AlumnoBaja = () => {
         setAlumnos((prev) => prev.filter((a) => a.id_alumno !== id_alumno));
         setMostrarConfirmacionAlta(false);
         setAlumnoSeleccionado(null);
-        setToast({ show: true, tipo: "exito", mensaje: "Alumno dado de alta correctamente" });
+        setToast({
+          show: true,
+          tipo: "exito",
+          mensaje: "Alumno dado de alta correctamente",
+        });
       } else {
-        setToast({ show: true, tipo: "error", mensaje: data.mensaje || "No se pudo dar de alta" });
+        setToast({
+          show: true,
+          tipo: "error",
+          mensaje: data.mensaje || "No se pudo dar de alta",
+        });
       }
     } catch {
-      setToast({ show: true, tipo: "error", mensaje: "Error de red al dar de alta" });
+      setToast({
+        show: true,
+        tipo: "error",
+        mensaje: "Error de red al dar de alta",
+      });
     }
   };
 
   /* ============ Eliminar uno ============ */
   const eliminarAlumnoDefinitivo = async (id_alumno) => {
     try {
-      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_alumno }),
-      });
+      const res = await fetch(
+        `${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id_alumno }),
+        }
+      );
       const data = await res.json();
       if (data.exito) {
         setAlumnos((prev) => prev.filter((a) => a.id_alumno !== id_alumno));
-        setToast({ show: true, tipo: "exito", mensaje: "Alumno eliminado definitivamente" });
+        setToast({
+          show: true,
+          tipo: "exito",
+          mensaje: "Alumno eliminado definitivamente",
+        });
       } else {
-        setToast({ show: true, tipo: "error", mensaje: data.mensaje || "No se pudo eliminar" });
+        setToast({
+          show: true,
+          tipo: "error",
+          mensaje: data.mensaje || "No se pudo eliminar",
+        });
       }
     } catch {
-      setToast({ show: true, tipo: "error", mensaje: "Error de red al eliminar" });
+      setToast({
+        show: true,
+        tipo: "error",
+        mensaje: "Error de red al eliminar",
+      });
     } finally {
       setMostrarConfirmacionEliminarUno(false);
       setAlumnoAEliminar(null);
@@ -200,29 +255,46 @@ const AlumnoBaja = () => {
   const eliminarTodosDefinitivo = async () => {
     const ids = alumnosFiltrados.map((a) => a.id_alumno);
     if (ids.length === 0) {
-      setToast({ show: true, tipo: "info", mensaje: "No hay registros para eliminar." });
+      setToast({
+        show: true,
+        tipo: "info",
+        mensaje: "No hay registros para eliminar.",
+      });
       setMostrarConfirmacionEliminarTodos(false);
       return;
     }
     try {
-      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
+      const res = await fetch(
+        `${BASE_URL}/api.php?action=eliminar_bajas&ts=${Date.now()}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        }
+      );
       const data = await res.json();
       if (data.exito) {
         setAlumnos((prev) => prev.filter((a) => !ids.includes(a.id_alumno)));
         setToast({
           show: true,
           tipo: "exito",
-          mensaje: `Se eliminaron definitivamente ${data.eliminados ?? ids.length} alumno(s).`,
+          mensaje: `Se eliminaron definitivamente ${
+            data.eliminados ?? ids.length
+          } alumno(s).`,
         });
       } else {
-        setToast({ show: true, tipo: "error", mensaje: data.mensaje || "No se pudo eliminar" });
+        setToast({
+          show: true,
+          tipo: "error",
+          mensaje: data.mensaje || "No se pudo eliminar",
+        });
       }
     } catch {
-      setToast({ show: true, tipo: "error", mensaje: "Error de red al eliminar" });
+      setToast({
+        show: true,
+        tipo: "error",
+        mensaje: "Error de red al eliminar",
+      });
     } finally {
       setMostrarConfirmacionEliminarTodos(false);
     }
@@ -231,7 +303,11 @@ const AlumnoBaja = () => {
   /* ============ Exportar visibles (.xlsx) ============ */
   const exportarVisiblesAExcel = async () => {
     if (!alumnosFiltrados.length) {
-      setToast({ show: true, tipo: "info", mensaje: "No hay registros para exportar." });
+      setToast({
+        show: true,
+        tipo: "info",
+        mensaje: "No hay registros para exportar.",
+      });
       return;
     }
     try {
@@ -261,7 +337,8 @@ const AlumnoBaja = () => {
       setToast({
         show: true,
         tipo: "error",
-        mensaje: "No se pudo generar el Excel. Verificá que 'xlsx' esté instalado.",
+        mensaje:
+          "No se pudo generar el Excel. Verificá que 'xlsx' esté instalado.",
       });
     }
   };
@@ -288,7 +365,11 @@ const AlumnoBaja = () => {
     };
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
-  }, [mostrarConfirmacionAlta, mostrarConfirmacionEliminarUno, mostrarConfirmacionEliminarTodos]);
+  }, [
+    mostrarConfirmacionAlta,
+    mostrarConfirmacionEliminarUno,
+    mostrarConfirmacionEliminarTodos,
+  ]);
 
   return (
     <div className="emp-baja-container">
@@ -329,7 +410,14 @@ const AlumnoBaja = () => {
       </div>
 
       {/* Toast */}
-      {toast.show && <Toast tipo={toast.tipo} mensaje={toast.mensaje} onClose={closeToast} duracion={3000} />}
+      {toast.show && (
+        <Toast
+          tipo={toast.tipo}
+          mensaje={toast.mensaje}
+          onClose={closeToast}
+          duracion={3000}
+        />
+      )}
 
       {/* Tabla / Lista */}
       {cargando ? (
@@ -341,8 +429,19 @@ const AlumnoBaja = () => {
               Mostrando <strong>{alumnosFiltrados.length}</strong> alumnos
             </div>
 
+            {/* === Acciones a la derecha: Exportar + Eliminar todos === */}
             <div className="emp-baja-acciones-derecha">
-              {/* 🚫 Eliminado el botón Exportar Excel superior (queda sólo el de abajo) */}
+              {/* Exportar visible a Excel: disponible para todos los roles */}
+              <button
+                className="emp-baja-exportar"
+                title="Exportar lo visible a Excel (.xlsx)"
+                onClick={exportarVisiblesAExcel}
+                disabled={alumnosFiltrados.length === 0}
+              >
+                <FaFileExcel className="ico" />
+                <span className="txt">Exportar Excel</span>
+              </button>
+
               {/* Ocultar "Eliminar todos" si es rol vista */}
               {!isVista && (
                 <button
@@ -378,9 +477,15 @@ const AlumnoBaja = () => {
               alumnosFiltrados.map((a) => (
                 <div className="emp-baja-fila" key={a.id_alumno}>
                   <div className="emp-baja-col-id">{a.id_alumno}</div>
-                  <div className="emp-baja-col-nombre">{nombreApellido(a) || "—"}</div>
-                  <div className="emp-baja-col-fecha">{formatearFecha(a.ingreso)}</div>
-                  <div className="emp-baja-col-motivo">{(a.motivo || "").trim() || "—"}</div>
+                  <div className="emp-baja-col-nombre">
+                    {nombreApellido(a) || "—"}
+                  </div>
+                  <div className="emp-baja-col-fecha">
+                    {formatearFecha(a.ingreso)}
+                  </div>
+                  <div className="emp-baja-col-motivo">
+                    {(a.motivo || "").trim() || "—"}
+                  </div>
                   <div className="emp-baja-col-acciones">
                     <div className="emp-baja-iconos">
                       {/* 🔒 Ocultar acciones en rol "vista" */}
@@ -491,7 +596,10 @@ const AlumnoBaja = () => {
           aria-labelledby="modal-eliminar-alumno-title"
         >
           <div className="emp-baja-modal emp-baja-modal--danger">
-            <div className="emp-baja-modal__icon emp-baja-modal__icon--danger" aria-hidden="true">
+            <div
+              className="emp-baja-modal__icon emp-baja-modal__icon--danger"
+              aria-hidden="true"
+            >
               <FaTrashAlt />
             </div>
             <h3
@@ -502,7 +610,8 @@ const AlumnoBaja = () => {
             </h3>
             <p className="emp-baja-modal__body">
               ¿Eliminar definitivamente al alumno{" "}
-              <strong>{nombreApellido(alumnoAEliminar)}</strong>? Esta acción no se puede deshacer.
+              <strong>{nombreApellido(alumnoAEliminar)}</strong>? Esta acción no
+              se puede deshacer.
             </p>
             <div className="emp-baja-modal__actions">
               <button
@@ -516,7 +625,9 @@ const AlumnoBaja = () => {
               </button>
               <button
                 className="emp-baja-btn emp-baja-btn--solid-danger"
-                onClick={() => eliminarAlumnoDefinitivo(alumnoAEliminar.id_alumno)}
+                onClick={() =>
+                  eliminarAlumnoDefinitivo(alumnoAEliminar.id_alumno)
+                }
               >
                 Sí, eliminar
               </button>
@@ -534,7 +645,10 @@ const AlumnoBaja = () => {
           aria-labelledby="modal-eliminar-todos-title"
         >
           <div className="emp-baja-modal emp-baja-modal--danger">
-            <div className="emp-baja-modal__icon emp-baja-modal__icon--danger" aria-hidden="true">
+            <div
+              className="emp-baja-modal__icon emp-baja-modal__icon--danger"
+              aria-hidden="true"
+            >
               <FaTrashAlt />
             </div>
             <h3
@@ -544,8 +658,8 @@ const AlumnoBaja = () => {
               Eliminar permanentemente
             </h3>
             <p className="emp-baja-modal__body">
-              ¿Eliminar definitivamente <strong>todos</strong> los alumnos actualmente visibles? Esta
-              acción no se puede deshacer.
+              ¿Eliminar definitivamente <strong>todos</strong> los alumnos
+              actualmente visibles? Esta acción no se puede deshacer.
             </p>
             <div className="emp-baja-modal__actions">
               <button
@@ -554,7 +668,10 @@ const AlumnoBaja = () => {
               >
                 Cancelar
               </button>
-              <button className="emp-baja-btn emp-baja-btn--solid-danger" onClick={eliminarTodosDefinitivo}>
+              <button
+                className="emp-baja-btn emp-baja-btn--solid-danger"
+                onClick={eliminarTodosDefinitivo}
+              >
                 Sí, eliminar todos
               </button>
             </div>
