@@ -1,0 +1,37 @@
+.lc_wrap { padding: 12px; }
+.lc_header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.lc_header h1 { margin: 0; font-size: 1.4rem; }
+.lc_back { background: #f3f4f6; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+
+.lc_tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.lc_tabs button { padding: 8px 12px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+.lc_tabs button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+.lc_panel { display: grid; gap: 12px; }
+.lc_filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.lc_filters label { display: grid; gap: 6px; }
+.lc_filters input, .lc_filters select { height: 38px; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 8px; outline: none; }
+.lc_filters input:focus, .lc_filters select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+.lc_spacer { flex: 1; }
+
+.lc_btn { background: #f3f4f6; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: 600; }
+.lc_btn.primary { background: #2563eb; color: #fff; }
+.lc_btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.lc_cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 12px; }
+.lc_card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #fff; }
+.lc_big { font-size: 24px; font-weight: 700; }
+
+.lc_box { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #fff; }
+.lc_table { width: 100%; border-collapse: collapse; }
+.lc_table th, .lc_table td { border-bottom: 1px solid #f1f5f9; padding: 8px; text-align: left; }
+.lc_empty { color: #64748b; text-align: center; }
+.lc_actions { display: flex; gap: 6px; }
+.lc_icon { background: #f3f4f6; border: none; border-radius: 8px; padding: 6px 8px; cursor: pointer; }
+.lc_icon.danger { background: #fee2e2; color: #991b1b; }
+.lc_pos { color: #065f46; font-weight: 700; }
+.lc_neg { color: #991b1b; font-weight: 700; }
+
+@media (max-width: 640px) {
+  .lc_filters { flex-direction: column; align-items: stretch; }
+}

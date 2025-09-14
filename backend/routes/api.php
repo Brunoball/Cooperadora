@@ -31,7 +31,11 @@ if ($M === false) {
 function include_module($path) {
     if (!is_file($path)) {
         http_response_code(200);
-        echo json_encode(['exito' => false, 'mensaje' => 'Ruta no encontrada: ' . basename($path)]);
+        echo json_encode([
+            'exito' => false,
+            'mensaje' => 'Ruta no encontrada',
+            'ruta_buscada' => $path
+        ]);
         return false;
     }
     require $path;
@@ -40,11 +44,15 @@ function include_module($path) {
 
 try {
     switch ($action) {
-        /* LOGIN / REGISTRO */
+        /* ===========================
+           LOGIN / REGISTRO
+        ============================ */
         case 'inicio':             include_module($M . '/login/inicio.php'); break;
         case 'registro':           include_module($M . '/login/registro.php'); break;
 
-        /* ALUMNOS */
+        /* ===========================
+           ALUMNOS
+        ============================ */
         case 'alumnos':            include_module($M . '/alumnos/obtener_alumnos.php'); break;
         case 'alumnos_baja':       include_module($M . '/alumnos/alumnos_baja.php'); break;
         case 'agregar_alumno':     include_module($M . '/alumnos/agregar_alumno.php'); break;
@@ -54,10 +62,14 @@ try {
         case 'dar_alta_alumno':    include_module($M . '/alumnos/dar_alta_alumno.php'); break;
         case 'eliminar_bajas':     include_module($M . '/alumnos/eliminar_bajas.php'); break;
 
-        /* GLOBAL */
+        /* ===========================
+           GLOBAL
+        ============================ */
         case 'obtener_listas':     include_module($M . '/global/obtener_listas.php'); break;
 
-        /* CUOTAS */
+        /* ===========================
+           CUOTAS
+        ============================ */
         case 'cuotas':             include_module($M . '/cuotas/cuotas.php'); break;
         case 'meses_pagados':      include_module($M . '/cuotas/meses_pagados.php'); break;
         case 'registrar_pago':     include_module($M . '/cuotas/registrar_pago.php'); break;
@@ -66,31 +78,49 @@ try {
         /* ✅ NUEVO: ficha para impresión de comprobante */
         case 'obtener_socio_comprobante':
         case 'socio_comprobante':  // alias opcional por compatibilidad
-            include_module($M . '/cuotas/obtener_socio_comprobante.php'); 
+            include_module($M . '/cuotas/obtener_socio_comprobante.php');
             break;
 
-        /* CONTABLE */
+        /* ===========================
+           CONTABLE (LEGADO)
+        ============================ */
         case 'contable':           include_module($M . '/contable/contable_socios.php'); break;
 
-        /* TIPOS DE DOCUMENTOS */
+        /* ===========================
+           ✅ CONTABLE NUEVO
+           - Ingresos (desde pagos + categoría)
+           - Egresos (ABM, resumen)
+        ============================ */
+        case 'contable_ingresos':       include_module($M . '/contable/ingresos.php');  break;
+        case 'contable_egresos':        include_module($M . '/contable/egresos.php');   break;
+        case 'contable_egresos_upload': include_module($M . '/contable/contable_egresos_upload.php'); break;
+
+        /* ===========================
+           TIPOS DE DOCUMENTOS
+        ============================ */
         case 'td_listar':          include_module($M . '/tipos_documentos/listar_documentos.php'); break;
-        case 'td_crear':           include_module($M . '/tipos_documentos/crear_documentos.php'); break;
+        case 'td_crear':           include_module($M . '/tipos_documentos/crear_documentos.php');  break;
         case 'td_actualizar':      include_module($M . '/tipos_documentos/editar_documentos.php'); break;
         case 'td_eliminar':        include_module($M . '/tipos_documentos/eliminar_documentos.php'); break;
 
-        /* ✅ CATEGORÍAS */
+        /* ===========================
+           ✅ CATEGORÍAS
+        ============================ */
         case 'cat_listar':         include_module($M . '/categorias/obtener_categorias.php'); break;
-        case 'cat_crear':          include_module($M . '/categorias/agregar_categoria.php'); break;
-        case 'cat_actualizar':     include_module($M . '/categorias/editar_categoria.php'); break; // solo monto
-        case 'cat_eliminar':       include_module($M . '/categorias/eliminar_categoria.php'); break;
-        case 'cat_historial':      include_module($M . '/categorias/obtener_historial.php'); break; 
+        case 'cat_crear':          include_module($M . '/categorias/agregar_categoria.php');   break;
+        case 'cat_actualizar':     include_module($M . '/categorias/editar_categoria.php');    break; // solo monto
+        case 'cat_eliminar':       include_module($M . '/categorias/eliminar_categoria.php');  break;
+        case 'cat_historial':      include_module($M . '/categorias/obtener_historial.php');   break;
 
+        /* ===========================
+           DEFAULT
+        ============================ */
         default:
             http_response_code(200);
-            echo json_encode(['exito' => false, 'mensaje' => 'Acción no válida: '.$action]);
+            echo json_encode(['exito' => false, 'mensaje' => 'Acción no válida: ' . $action]);
             break;
     }
 } catch (Throwable $e) {
     http_response_code(200);
-    echo json_encode(['exito' => false, 'mensaje' => 'Error en router: '.$e->getMessage()]);
+    echo json_encode(['exito' => false, 'mensaje' => 'Error en router: ' . $e->getMessage()]);
 }

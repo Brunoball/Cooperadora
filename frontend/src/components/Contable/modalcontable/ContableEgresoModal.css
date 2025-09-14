@@ -1,0 +1,207 @@
+/* ===== Overlay del modal ===== */
+.lc_modal_overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Fondo oscuro */
+  display: flex;
+  justify-content: center;
+  align-items: center; /* ⬅️ CENTRADO VERTICAL */
+  z-index: 9999;
+}
+
+/* ===== Contenedor principal del modal ===== */
+.lc_modal {
+  background: #fff;
+  border-radius: 10px;
+  max-width: 600px;
+  width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.3s ease;
+}
+
+/* ===== Animación de entrada ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Header ===== */
+.lc_modal_head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: #1976d2;
+  color: white;
+}
+
+.lc_modal_head h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.lc_modal_head .lc_icon {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* ===== Cuerpo del modal ===== */
+.lc_modal_body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.lc_row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.lc_row label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+}
+
+.lc_row input,
+.lc_row select,
+.lc_modal_body input {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-top: 5px;
+  font-size: 0.9rem;
+}
+
+/* ===== Zona drag & drop ===== */
+.dz_wrap {
+  margin: 15px 0;
+}
+
+.dz_area {
+  border: 2px dashed #aaa;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.dz_area:hover,
+.dz_area.dz_over {
+  border-color: #1976d2;
+  background: #f0f8ff;
+}
+
+.dz_icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  color: #1976d2;
+}
+
+.dz_text span {
+  font-weight: bold;
+  color: #1976d2;
+}
+
+/* ===== Preview ===== */
+.dz_preview {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.dz_thumb {
+  max-width: 150px;
+  max-height: 150px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  object-fit: contain;
+}
+
+.dz_meta {
+  margin-top: 10px;
+}
+
+.dz_actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.dz_link {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.8rem;
+  color: #1976d2;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.dz_pdf {
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.dz_pdf_label {
+  font-weight: bold;
+  color: #1976d2;
+}
+
+.dz_hint {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+/* ===== Footer ===== */
+.lc_modal_footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+}
+
+.lc_btn {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.lc_btn.primary {
+  background: #1976d2;
+  color: white;
+}
+
+.lc_btn.secondary {
+  background: #eee;
+  color: #333;
+}
+
+.lc_btn.danger {
+  background: #e53935;
+  color: white;
+}
+
+.lc_btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

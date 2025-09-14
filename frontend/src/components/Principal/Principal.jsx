@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUsers,
   faMoneyCheckDollar,   // Cuotas
-  faFileInvoiceDollar,   // Contable
   faUserPlus,            // Registro
   faSignOutAlt,          // Salir
   faIdCard,              // Tipos de documento
@@ -98,18 +97,19 @@ const Principal = () => {
     } catch {}
   }, []);
 
-  // rol normalizado
+  // rol normalizado (no limita accesos)
   const role = (usuario?.rol || "").toLowerCase();
   const isAdmin = role === "admin";
 
-  // Menú completo
+  // Menú (REMOVIDO "Gestión Contable" /contable; AGREGADO "Libro Contable" /contable/libro)
   const menuItems = [
     { icon: faUsers,            text: "Gestionar Alumnos",     ruta: "/alumnos" },
     { icon: faMoneyCheckDollar, text: "Gestionar Cuotas",      ruta: "/cuotas" },
-    { icon: faFileInvoiceDollar,text: "Gestión Contable",      ruta: "/contable" },
-    { icon: faUserPlus,         text: "Registro de Usuarios",  ruta: "/registro" },
     { icon: faIdCard,           text: "Tipos de Documento",    ruta: "/tipos-documentos" },
-    { icon: faLayerGroup,       text: "Categorías",            ruta: "/categorias" }
+    { icon: faLayerGroup,       text: "Categorías",            ruta: "/categorias" },
+    { icon: faUserPlus,         text: "Registro de Usuarios",  ruta: "/registro" },
+    // ⬇️ Nuevo acceso en lugar de “Gestión Contable”
+    { icon: faMoneyCheckDollar, text: "Libro Contable",        ruta: "/contable/libro" },
   ];
 
   // 🔒 Si NO es admin, solo ve "Alumnos"

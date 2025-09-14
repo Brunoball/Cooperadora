@@ -15,8 +15,9 @@ import AlumnoBaja from './components/Alumnos/AlumnoBaja';
 // 💵 Cuotas
 import Cuotas from './components/Cuotas/Cuotas';
 
-// 📊 Contable (Dashboard)
-import DashboardContable from './components/Contable/DashboardContable';
+// 📊 Contable
+// ❌ Quitado: import DashboardContable from './components/Contable/DashboardContable';
+import LibroContable from './components/Contable/LibroContable';
 
 // 🪪 Tipos de Documento
 import TiposDocumentos from './components/TiposDocumentos/TiposDocumentos';
@@ -28,11 +29,8 @@ import CategoriaEditar from './components/Categorias/CategoriaEditar';
 
 /* =========================================================
    🔒 Cierre de sesión por inactividad (global)
-   - Ajustá INACTIVITY_MINUTES a lo que necesites.
-   - Escucha mouse/teclado/scroll/toques/visibilidad.
-   - Considera sesión si hay token O usuario en localStorage.
 ========================================================= */
-const INACTIVITY_MINUTES = 60; // ⬅️ 1 minuto
+const INACTIVITY_MINUTES = 60;
 const INACTIVITY_MS = INACTIVITY_MINUTES * 60 * 1000;
 
 function InactivityLogout() {
@@ -59,19 +57,14 @@ function InactivityLogout() {
     };
 
     const resetTimer = () => {
-      // No correr timer si no hay sesión o estás en el login
       if (!hasSession()) return;
       if (location.pathname === '/') return;
-
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(doLogout, INACTIVITY_MS);
     };
 
     const onActivity = () => resetTimer();
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') resetTimer();
-    };
-    // Soporte multi-pestaña: si en otra pestaña se borra la sesión, cerramos acá también
+    const onVisibility = () => { if (document.visibilityState === 'visible') resetTimer(); };
     const onStorage = (e) => {
       if (e.key === 'token' || e.key === 'usuario') {
         const hasAny = !!localStorage.getItem('token') || !!localStorage.getItem('usuario');
@@ -80,16 +73,12 @@ function InactivityLogout() {
     };
 
     const events = ['pointermove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-
-    // Instalar listeners
     events.forEach((ev) => window.addEventListener(ev, onActivity, { passive: true }));
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('storage', onStorage);
 
-    // Arrancar timer al montar / cambiar de ruta
     resetTimer();
 
-    // Limpiar
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -101,13 +90,22 @@ function InactivityLogout() {
     };
   }, [location.pathname, navigate]);
 
-  return null; // no renderiza UI
+  return null;
+}
+
+function RutaProtegida({ componente }) {
+  try {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    const token = localStorage.getItem('token');
+    return (usuario || token) ? componente : <Navigate to="/" replace />;
+  } catch {
+    return <Navigate to="/" replace />;
+  }
 }
 
 function App() {
   return (
     <Router>
-      {/* ⬇️ Activa el cierre por inactividad en toda la app */}
       <InactivityLogout />
 
       <Routes>
@@ -127,8 +125,28 @@ function App() {
         {/* Rutas de Cuotas */}
         <Route path="/cuotas" element={<RutaProtegida componente={<Cuotas />} />} />
 
-        {/* Dashboard Contable */}
-        <Route path="/contable" element={<RutaProtegida componente={<DashboardContable />} />} />
+        {/* Contable */}
+        {/* ❌ Quitada esta ruta: /contable con DashboardContable */}
+        {/* <Route path="/contable" element={<RutaProtegida componente={<DashboardContable />} />} /> */}
+
+        {/* ✅ Redirigimos /contable → /contable/libro */}
+        <Route path="/contable" element={<Navigate to="/contable/libro" replace />} />
+        <Route
+          path="/contable/libro"
+          element={
+            <RutaProtegida
+              componente={
+                <LibroContable
+                  onBack={() =>
+                    window.history.length > 1
+                      ? window.history.back()
+                      : window.location.assign('/panel')
+                  }
+                />
+              }
+            />
+          }
+        />
 
         {/* Tipos de Documento */}
         <Route path="/tipos-documentos" element={<RutaProtegida componente={<TiposDocumentos />} />} />
@@ -143,15 +161,6 @@ function App() {
       </Routes>
     </Router>
   );
-}
-
-function RutaProtegida({ componente }) {
-  try {
-    const usuario = JSON.parse(localStorage.getItem('usuario'));
-    return usuario ? componente : <Navigate to="/" replace />;
-  } catch {
-    return <Navigate to="/" replace />;
-  }
 }
 
 export default App;

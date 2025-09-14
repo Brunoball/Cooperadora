@@ -679,24 +679,18 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* === Barra inferior fija (volver + exportar) === */}
-      <div className="emp-baja-bottombar" role="toolbar" aria-label="Acciones de navegación">
+      {/* === Barra inferior fija (solo Volver) === */}
+      <div
+        className="emp-baja-bottombar"
+        role="toolbar"
+        aria-label="Acciones de navegación"
+      >
         <button
           className="emp-baja-nav-btn emp-baja-nav-btn--volver"
           onClick={() => navigate("/alumnos")}
         >
           <FaArrowLeft className="ico" />
           <span>Volver</span>
-        </button>
-
-        <button
-          className="emp-baja-nav-btn emp-baja-nav-btn--excel"
-          onClick={exportarVisiblesAExcel}
-          disabled={alumnosFiltrados.length === 0}
-          title="Exportar lo visible a Excel (.xlsx)"
-        >
-          <FaFileExcel className="ico" />
-          <span>Exportar Excel</span>
         </button>
       </div>
     </div>
