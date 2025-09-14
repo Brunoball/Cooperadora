@@ -4,66 +4,125 @@ import { createPortal } from "react-dom";
 import BASE_URL from "../../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faSave, faUpload, faTrash, faEye } from "@fortawesome/free-solid-svg-icons";
-import "./ContableEgresoModal.css"; // ⬅️ IMPORTA EL CSS DEL MODAL
+import "./ContableEgresoModal.css";
 
-export default function ContableEgresoModal({ open, onClose, onSaved, editRow }) {
+const VALOR_OTRO = "__OTRO__";
+
+export default function ContableEgresoModal({ open, onClose, onSaved, editRow, notify }) {
   const [fecha, setFecha] = useState("");
   const [categoria, setCategoria] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [medio, setMedio] = useState("efectivo");
-  const [monto, setMonto] = useState("");
-  const [comp, setComp] = useState(""); // URL final guardada en DB
-  const [saving, setSaving] = useState(false);
 
-  // Estados para upload
+  // mediosPago: [{id, nombre}]
+  const [mediosPago, setMediosPago] = useState([]);
+  const [medioId, setMedioId] = useState("");
+  const [medioEsOtro, setMedioEsOtro] = useState(false);
+  const [medioNuevo, setMedioNuevo] = useState("");
+
+  const [monto, setMonto] = useState("");
+  const [comp, setComp] = useState("");
+
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [localPreview, setLocalPreview] = useState(""); // preview de imagen (miniatura)
+  const [localPreview, setLocalPreview] = useState("");
+
   const fileInputRef = useRef(null);
   const dropRef = useRef(null);
+
+  const fetchJSON = async (url, options) => {
+    const sep = url.includes("?") ? "&" : "?";
+    const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.mensaje || `HTTP ${res.status}`);
+    return data;
+  };
+
+  const loadMediosPago = async () => {
+    try {
+      const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
+      const arr = (data?.listas?.medios_pago ?? []).map((m) => ({
+        id: Number(m.id),
+        nombre: String(m.nombre || ""), // ← ⛔ sin toUpperCase: mostramos tal cual
+      }));
+      setMediosPago(arr);
+    } catch (e) {
+      console.error("Error cargando medios de pago:", e);
+      notify?.("error", "No se pudieron cargar los medios de pago.");
+      setMediosPago([]);
+    }
+  };
+
+  const crearMedioPago = async (nombre) => {
+    const nombreOK = String(nombre || "").trim().toUpperCase();
+    if (!nombreOK) throw new Error("INGRESÁ EL NUEVO MEDIO DE PAGO.");
+    if (nombreOK.length > 100) throw new Error("EL MEDIO DE PAGO NO PUEDE SUPERAR 100 CARACTERES.");
+    const r = await fetchJSON(`${BASE_URL}/api.php?action=medio_pago_crear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nombreOK }),
+    });
+    return r; // {exito:true, id, nombre}
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    loadMediosPago();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     if (editRow) {
       setFecha(editRow.fecha || "");
-      setCategoria(editRow.categoria || "");
-      setDescripcion(editRow.descripcion || "");
-      setMedio(editRow.medio_pago || "efectivo");
+      setCategoria(String(editRow.categoria || "").toUpperCase());
+      setDescripcion(String(editRow.descripcion || "").toUpperCase());
+
+      // Match por nombre de medio, case-insensitive
+      if (editRow.id_medio_pago) {
+        setMedioId(String(editRow.id_medio_pago));
+      } else if (editRow.medio_pago) {
+        const buscado = String(editRow.medio_pago).trim().toUpperCase();
+        const found = mediosPago.find(
+          (m) => String(m.nombre).trim().toUpperCase() === buscado
+        );
+        setMedioId(found ? String(found.id) : "");
+      } else {
+        setMedioId("");
+      }
+
+      setMedioEsOtro(false);
+      setMedioNuevo("");
       setMonto(String(editRow.monto || ""));
       setComp(editRow.comprobante_url || "");
       setLocalPreview("");
     } else {
       const d = new Date();
-      setFecha(d.toISOString().slice(0,10));
+      setFecha(d.toISOString().slice(0, 10));
       setCategoria("");
       setDescripcion("");
-      setMedio("efectivo");
+      setMedioId("");
+      setMedioEsOtro(false);
+      setMedioNuevo("");
       setMonto("");
       setComp("");
       setLocalPreview("");
     }
-  }, [open, editRow]);
-
-  const fetchJSON = async (url, options) => {
-    const sep = url.includes("?") ? "&" : "?";
-    const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editRow, mediosPago]);
 
   const uploadFile = async (file) => {
-    const valid = ["image/jpeg","image/png","image/gif","image/webp","application/pdf"];
+    const valid = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
     if (!valid.includes(file.type)) {
-      alert("Formato no permitido. Permitidos: JPG, PNG, GIF, WEBP, PDF.");
+      notify?.("advertencia", "Formato no permitido. JPG/PNG/GIF/WEBP/PDF.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      alert("El archivo supera 10MB.");
+      notify?.("advertencia", "El archivo supera 10MB.");
       return;
     }
 
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onload = e => setLocalPreview(e.target.result);
+      reader.onload = (e) => setLocalPreview(e.target.result);
       reader.readAsDataURL(file);
     } else {
       setLocalPreview("");
@@ -73,20 +132,18 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow })
     try {
       const form = new FormData();
       form.append("file", file);
-
       const url = `${BASE_URL}/api.php?action=contable_egresos_upload`;
       const res = await fetch(url, { method: "POST", body: form });
       const data = await res.json();
 
-      if (!res.ok || !data.ok) {
-        throw new Error(data?.mensaje || "Error al subir el archivo");
-      }
+      if (!res.ok || !data.ok) throw new Error(data?.mensaje || "Error al subir el archivo");
 
       const finalUrl = `${BASE_URL}/${data.relative_url}`;
       setComp(finalUrl);
+      notify?.("exito", "Comprobante subido.");
     } catch (err) {
       console.error(err);
-      alert("No se pudo subir el archivo.");
+      notify?.("error", "No se pudo subir el archivo.");
       setLocalPreview("");
       setComp("");
     } finally {
@@ -99,112 +156,194 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow })
     if (file) uploadFile(file);
   };
 
-  // Drag & Drop
-  const onDragOver = (e) => {
-    e.preventDefault();
-    dropRef.current?.classList.add("dz_over");
-  };
-  const onDragLeave = () => {
-    dropRef.current?.classList.remove("dz_over");
-  };
-  const onDrop = (e) => {
-    e.preventDefault();
-    dropRef.current?.classList.remove("dz_over");
-    const file = e.dataTransfer.files?.[0];
-    if (file) uploadFile(file);
-  };
-
   const clearComprobante = () => {
     setComp("");
     setLocalPreview("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    fileInputRef.current && (fileInputRef.current.value = "");
+    notify?.("advertencia", "Comprobante quitado.");
   };
 
   const openComprobante = () => {
     if (!comp) return;
-    try {
-      window.open(comp, "_blank", "noopener,noreferrer");
-    } catch {
-      window.location.href = comp;
+    try { window.open(comp, "_blank", "noopener,noreferrer"); }
+    catch { window.location.href = comp; }
+  };
+
+  const onChangeMedio = (val) => {
+    if (val === VALOR_OTRO) {
+      setMedioEsOtro(true);
+      setMedioId("");
+    } else {
+      setMedioEsOtro(false);
+      setMedioId(val);
+      setMedioNuevo("");
     }
+  };
+
+  /** Compara el estado actual con los datos originales del registro */
+  const isSinCambios = () => {
+    if (!editRow) return false;
+
+    // id medio original
+    let origIdMedio = 0;
+    if (editRow.id_medio_pago) {
+      origIdMedio = Number(editRow.id_medio_pago);
+    } else if (editRow.medio_pago) {
+      const f = mediosPago.find(
+        (m) => String(m.nombre).trim().toUpperCase() === String(editRow.medio_pago).trim().toUpperCase()
+      );
+      origIdMedio = f ? Number(f.id) : 0;
+    }
+
+    const norm = (s) => String(s || "").toUpperCase();
+    const cur = {
+      fecha,
+      categoria: norm(categoria || "SIN CATEGORÍA"),
+      descripcion: norm(descripcion),
+      id_medio_pago: Number(medioId || 0),
+      monto: Number(monto || 0),
+      comprobante_url: comp || null,
+    };
+
+    const orig = {
+      fecha: editRow.fecha || "",
+      categoria: norm(editRow.categoria || "SIN CATEGORÍA"),
+      descripcion: norm(editRow.descripcion || ""),
+      id_medio_pago: origIdMedio,
+      monto: Number(editRow.monto || 0),
+      comprobante_url: editRow.comprobante_url || null,
+    };
+
+    return (
+      cur.fecha === orig.fecha &&
+      cur.categoria === orig.categoria &&
+      cur.descripcion === orig.descripcion &&
+      cur.id_medio_pago === orig.id_medio_pago &&
+      cur.monto === orig.monto &&
+      cur.comprobante_url === orig.comprobante_url
+    );
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (uploading) {
-      alert("Esperá a que termine la subida del archivo…");
+      notify?.("advertencia", "Esperá a que termine la subida…");
       return;
     }
-    setSaving(true);
     try {
+      setSaving(true);
+
+      // Si es edición y no cambió nada → toast y CERRAR modal.
+      if (editRow && isSinCambios()) {
+        notify?.("advertencia", "No se encontraron cambios para actualizar.");
+        onSaved?.();          // cierra modal y refresca listado en el padre
+        return;
+      }
+
+      let idMedio = medioId;
+      if (medioEsOtro) {
+        const r = await crearMedioPago(medioNuevo);
+        if (!r?.exito || !r.id) throw new Error(r?.mensaje || "No se pudo crear el medio.");
+        await loadMediosPago();
+        idMedio = String(r.id);
+        setMedioId(idMedio);
+        setMedioEsOtro(false);
+        setMedioNuevo("");
+        notify?.("exito", `Medio de pago agregado: ${r.nombre}`);
+      }
+
       const payload = {
         fecha,
-        categoria: categoria || 'SIN CATEGORÍA',
-        descripcion,
-        medio_pago: medio,
-        monto: Number(monto||0),
+        categoria: (categoria || "SIN CATEGORÍA").toUpperCase(),
+        descripcion: String(descripcion || "").toUpperCase(),
+        id_medio_pago: Number(idMedio || 0),
+        monto: Number(monto || 0),
         comprobante_url: comp || null,
       };
+
       let url = `${BASE_URL}/api.php?action=contable_egresos&op=create`;
       if (editRow) {
         url = `${BASE_URL}/api.php?action=contable_egresos&op=update`;
         payload.id_egreso = editRow.id_egreso;
       }
+
       await fetchJSON(url, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      onSaved?.();
-    } catch (e) {
-      console.error(e);
-      alert("Error al guardar el egreso");
+
+      notify?.("exito", editRow ? "Egreso editado correctamente." : "Egreso creado correctamente.");
+      onSaved?.(); // cierra y refresca
+    } catch (e2) {
+      console.error(e2);
+      notify?.("error", e2.message || "Error al guardar el egreso.");
     } finally {
       setSaving(false);
     }
   };
 
-  // Si no está abierto, no renderizo nada
   if (!open) return null;
 
-  // PORTAL: renderizar en <body> para que siempre flote centrado
   return createPortal(
     <div className="lc_modal_overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="lc_modal" onClick={(e)=>e.stopPropagation()}>
+      {/* style -> evita que todo el modal herede mayúsculas */}
+      <div className="lc_modal" style={{ textTransform: "none" }} onClick={(e) => e.stopPropagation()}>
         <div className="lc_modal_head">
-          <h3>{editRow ? 'Editar egreso' : 'Nuevo egreso'}</h3>
+          <h3>{editRow ? "Editar egreso" : "Nuevo egreso"}</h3>
           <button className="lc_icon" onClick={onClose} aria-label="Cerrar">
-            <FontAwesomeIcon icon={faTimes}/>
+            <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
 
         <form onSubmit={onSubmit} className="lc_modal_body">
           <div className="lc_row">
             <label>Fecha
-              <input type="date" value={fecha} onChange={(e)=>setFecha(e.target.value)} required/>
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
             </label>
+
             <label>Medio
-              <select value={medio} onChange={(e)=>setMedio(e.target.value)}>
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="cheque">Cheque</option>
-                <option value="otro">Otro</option>
+              <select value={medioEsOtro ? VALOR_OTRO : medioId} onChange={(e) => onChangeMedio(e.target.value)}>
+                <option value="">SELECCIONE…</option>
+                {mediosPago.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nombre}</option>
+                ))}
+                <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
               </select>
             </label>
           </div>
 
+          {medioEsOtro && (
+            <div className="lc_row">
+              <label className="grow">INGRESE NUEVO MEDIO DE PAGO
+                <input
+                  value={medioNuevo}
+                  onChange={(e) => setMedioNuevo(e.target.value.toUpperCase())}
+                  placeholder="EJ.: Vale, cupón, transferencia bancaria…"
+                />
+              </label>
+            </div>
+          )}
+
           <div className="lc_row">
             <label className="grow">Categoría
-              <input value={categoria} onChange={(e)=>setCategoria(e.target.value)} placeholder="Servicios, Insumos, etc."/>
+              <input
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value.toUpperCase())}
+                placeholder="Servicios, insumos, etc."
+              />
             </label>
             <label>Monto
-              <input type="number" min="0" step="1" value={monto} onChange={(e)=>setMonto(e.target.value)} required/>
+              <input type="number" min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
             </label>
           </div>
 
           <label>Descripción
-            <input value={descripcion} onChange={(e)=>setDescripcion(e.target.value)} placeholder="Detalle..."/>
+            <input
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value.toUpperCase())}
+              placeholder="Detalle..."
+            />
           </label>
 
           {/* Dropzone + preview */}
@@ -212,95 +351,63 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow })
             <div
               ref={dropRef}
               className="dz_area"
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); dropRef.current?.classList.add("dz_over"); }}
+              onDragLeave={() => dropRef.current?.classList.remove("dz_over")}
+              onDrop={(e) => {
+                e.preventDefault();
+                dropRef.current?.classList.remove("dz_over");
+                const f = e.dataTransfer.files?.[0];
+                if (f) uploadFile(f);
+              }}
               role="button"
               tabIndex={0}
-              onKeyDown={(e)=>{ if(e.key === 'Enter') fileInputRef.current?.click(); }}
+              onKeyDown={(e) => { if (e.key === "Enter") fileInputRef.current?.click(); }}
             >
               <div className="dz_icon"><FontAwesomeIcon icon={faUpload} /></div>
-              <div className="dz_text">
-                Arrastrá y soltá la imagen/PDF del comprobante acá<br/>
-                <span>o</span>
-              </div>
+              <div className="dz_text">Arrastrá y soltá la imagen/PDF del comprobante acá<br/><span>o</span></div>
               <button
                 type="button"
                 className="lc_btn"
-                onClick={()=>fileInputRef.current?.click()}
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                 disabled={uploading}
               >
                 Elegir archivo
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                hidden
-                onChange={handleFileInput}
-              />
+              <input ref={fileInputRef} type="file" accept="image/*,application/pdf" hidden onChange={handleFileInput} />
             </div>
 
             {(localPreview || comp) && (
               <div className="dz_preview">
                 {localPreview ? (
                   <img className="dz_thumb" src={localPreview} alt="Preview comprobante" />
+                ) : comp?.toLowerCase().endsWith(".pdf") ? (
+                  <div className="dz_pdf"><span className="dz_pdf_label">PDF subido</span></div>
                 ) : (
-                  <>
-                    {comp?.toLowerCase().endsWith('.pdf') ? (
-                      <div className="dz_pdf">
-                        <span className="dz_pdf_label">PDF subido</span>
-                      </div>
-                    ) : (
-                      <img className="dz_thumb" src={comp} alt="Comprobante" />
-                    )}
-                  </>
+                  <img className="dz_thumb" src={comp} alt="Comprobante" />
                 )}
 
                 <div className="dz_meta">
                   <div className="dz_actions">
-                    <button
-                      type="button"
-                      className="lc_btn secondary"
-                      onClick={openComprobante}
-                      disabled={!comp}
-                      title="Ver comprobante en nueva pestaña"
-                    >
+                    <button type="button" className="lc_btn secondary" onClick={openComprobante} disabled={!comp} title="Ver comprobante en nueva pestaña">
                       <FontAwesomeIcon icon={faEye} /> Ver comprobante
                     </button>
-
                     <button type="button" className="lc_btn danger" onClick={clearComprobante}>
-                      <FontAwesomeIcon icon={faTrash}/> Quitar
+                      <FontAwesomeIcon icon={faTrash} /> Quitar
                     </button>
                   </div>
-
-                  {comp && (
-                    <a className="dz_link" href={comp} target="_blank" rel="noreferrer">
-                      {comp}
-                    </a>
-                  )}
+                  {comp && <a className="dz_link" href={comp} target="_blank" rel="noreferrer">{comp}</a>}
                 </div>
               </div>
             )}
 
-            <p className="dz_hint">
-              Permitidos: JPG, PNG, GIF, WEBP o PDF. Máx 10 MB.
-              {uploading && <b> Subiendo...</b>}
-            </p>
+            <p className="dz_hint">Permitidos: JPG, PNG, GIF, WEBP o PDF. Máx 10 MB. {uploading && <b> Subiendo...</b>}</p>
           </div>
-
-          <label>Comprobante (URL)
-            <input
-              value={comp}
-              onChange={(e)=>setComp(e.target.value)}
-              placeholder="https://..."
-            />
-          </label>
 
           <div className="lc_modal_footer">
             <button type="button" className="lc_btn" onClick={onClose}>Cancelar</button>
             <button type="submit" className="lc_btn primary" disabled={saving || uploading}>
-              <FontAwesomeIcon icon={faSave}/> {saving ? 'Guardando...' : 'Guardar'}
+              <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </form>

@@ -4,68 +4,116 @@
  *
  * Métodos por parámetro 'op':
  *  - op=list   [GET]    ?start=YYYY-MM-DD&end=YYYY-MM-DD&categoria=...&medio=...
- *  - op=create [POST]   body JSON: {fecha, categoria, descripcion, medio_pago, monto, comprobante_url?}
- *  - op=update [POST]   body JSON: {id_egreso, ...campos...}
- *  - op=delete [POST]   body JSON: {id_egreso}
- *  - op=resumen[GET]    Totales por mes (ingresos/egresos/saldo). Usa contable_ingresos internamente.
+ *                       (medio puede ser ID numérico o nombre)
+ *  - op=create [POST]   JSON: {fecha, categoria, descripcion, id_medio_pago, monto, comprobante_url?}
+ *                       (compat: si viene medio_pago en texto y no id_medio_pago, se resuelve el id)
+ *  - op=update [POST]   JSON: {id_egreso, ...campos...}
+ *  - op=delete [POST]   JSON: {id_egreso}
+ *  - op=resumen[GET]    Totales por mes (ingresos/egresos/saldo)
  */
+
+declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 if (!isset($pdo)) {
   require_once __DIR__ . '/../../config/db.php';
 }
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->exec("SET NAMES utf8mb4");
 
-function json_input() {
+function json_input(): array {
   $raw = file_get_contents('php://input');
   if (!$raw) return [];
   $obj = json_decode($raw, true);
   return is_array($obj) ? $obj : [];
 }
 
+/** Resuelve un id_medio_pago a partir de id directo o nombre (UPPER). */
+function resolver_id_medio_pago(PDO $pdo, $id, $nombre): int {
+  $id = is_numeric($id) ? (int)$id : 0;
+  if ($id > 0) return $id;
+
+  $nom = strtoupper(trim((string)$nombre));
+  if ($nom === '') throw new InvalidArgumentException('id_medio_pago o medio_pago requerido.');
+
+  $st = $pdo->prepare("SELECT id_medio_pago FROM medio_pago WHERE UPPER(medio_pago)=:n LIMIT 1");
+  $st->execute([':n' => $nom]);
+  $found = $st->fetchColumn();
+  if ($found) return (int)$found;
+
+  // Último recurso: usar OTRO si existe.
+  $st = $pdo->query("SELECT id_medio_pago FROM medio_pago WHERE UPPER(medio_pago)='OTRO' LIMIT 1");
+  $otro = $st->fetchColumn();
+  if ($otro) return (int)$otro;
+
+  // Crear OTRO si no existe.
+  $pdo->prepare("INSERT INTO medio_pago (medio_pago) VALUES ('OTRO')")->execute();
+  return (int)$pdo->lastInsertId();
+}
+
 try {
   $op = $_GET['op'] ?? 'list';
 
+  /* -------- CREATE -------- */
   if ($op === 'create') {
     $in = json_input();
-    $sql = "INSERT INTO egresos (fecha, categoria, descripcion, medio_pago, monto, comprobante_url)
-            VALUES (:fecha,:categoria,:descripcion,:medio,:monto,:comp)";
+
+    $fecha       = $in['fecha'] ?? date('Y-m-d');
+    $categoria   = strtoupper(trim((string)($in['categoria'] ?? 'SIN CATEGORÍA')));
+    $descripcion = strtoupper(trim((string)($in['descripcion'] ?? '')));
+    $idMedio     = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
+    $monto       = (int)($in['monto'] ?? 0);
+    $comp        = $in['comprobante_url'] ?? null;
+
+    $sql = "INSERT INTO egresos (fecha, categoria, descripcion, id_medio_pago, monto, comprobante_url)
+            VALUES (:fecha,:categoria,:descripcion,:idmedio,:monto,:comp)";
     $st = $pdo->prepare($sql);
     $st->execute([
-      ':fecha'      => $in['fecha'] ?? date('Y-m-d'),
-      ':categoria'  => trim($in['categoria'] ?? 'SIN CATEGORÍA'),
-      ':descripcion'=> trim($in['descripcion'] ?? null),
-      ':medio'      => $in['medio_pago'] ?? 'efectivo',
-      ':monto'      => (int)($in['monto'] ?? 0),
-      ':comp'       => $in['comprobante_url'] ?? null,
+      ':fecha'      => $fecha,
+      ':categoria'  => $categoria,
+      ':descripcion'=> ($descripcion !== '' ? $descripcion : null),
+      ':idmedio'    => $idMedio,
+      ':monto'      => $monto,
+      ':comp'       => $comp,
     ]);
+
     echo json_encode(['exito'=>true, 'id_egreso' => (int)$pdo->lastInsertId()], JSON_UNESCAPED_UNICODE);
     exit;
   }
 
+  /* -------- UPDATE -------- */
   if ($op === 'update') {
     $in = json_input();
     $id = (int)($in['id_egreso'] ?? 0);
     if ($id <= 0) throw new InvalidArgumentException('id_egreso inválido');
 
+    $fecha       = $in['fecha'] ?? date('Y-m-d');
+    $categoria   = strtoupper(trim((string)($in['categoria'] ?? 'SIN CATEGORÍA')));
+    $descripcion = strtoupper(trim((string)($in['descripcion'] ?? '')));
+    $idMedio     = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
+    $monto       = (int)($in['monto'] ?? 0);
+    $comp        = $in['comprobante_url'] ?? null;
+
     $sql = "UPDATE egresos SET
               fecha=:fecha, categoria=:categoria, descripcion=:descripcion,
-              medio_pago=:medio, monto=:monto, comprobante_url=:comp
+              id_medio_pago=:idmedio, monto=:monto, comprobante_url=:comp
             WHERE id_egreso=:id";
     $st = $pdo->prepare($sql);
     $st->execute([
       ':id'         => $id,
-      ':fecha'      => $in['fecha'] ?? date('Y-m-d'),
-      ':categoria'  => trim($in['categoria'] ?? 'SIN CATEGORÍA'),
-      ':descripcion'=> trim($in['descripcion'] ?? null),
-      ':medio'      => $in['medio_pago'] ?? 'efectivo',
-      ':monto'      => (int)($in['monto'] ?? 0),
-      ':comp'       => $in['comprobante_url'] ?? null,
+      ':fecha'      => $fecha,
+      ':categoria'  => $categoria,
+      ':descripcion'=> ($descripcion !== '' ? $descripcion : null),
+      ':idmedio'    => $idMedio,
+      ':monto'      => $monto,
+      ':comp'       => $comp,
     ]);
+
     echo json_encode(['exito'=>true], JSON_UNESCAPED_UNICODE);
     exit;
   }
 
+  /* -------- DELETE -------- */
   if ($op === 'delete') {
     $in = json_input();
     $id = (int)($in['id_egreso'] ?? 0);
@@ -77,22 +125,19 @@ try {
     exit;
   }
 
+  /* -------- RESUMEN -------- */
   if ($op === 'resumen') {
-    // Resumen mensual: ingresos (desde contable_ingresos), egresos y saldo
     $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
 
-    // Ingresos por mes
-    $ingreq = $_GET;
-    $ingreq['action'] = 'contable_ingresos';
     $_GET_bak = $_GET;
-    $_GET = ['action'=>'contable_ingresos','year'=>$year]; // sin month => todo el año
+    $_GET = ['action'=>'contable_ingresos','year'=>$year];
     ob_start();
     require __DIR__.'/ingresos.php';
     $ingRaw = ob_get_clean();
     $_GET = $_GET_bak;
 
     $ing = json_decode($ingRaw, true);
-    $ingresosMes = []; // "YYYY-MM" => monto
+    $ingresosMes = [];
     if (is_array($ing) && !empty($ing['resumen'])) {
       foreach ($ing['resumen'] as $r) {
         $key = sprintf('%04d-%02d', (int)$r['anio'], (int)$r['mes']);
@@ -100,7 +145,6 @@ try {
       }
     }
 
-    // Egresos por mes
     $st = $pdo->prepare("SELECT YEAR(fecha) y, MONTH(fecha) m, SUM(monto) monto
                          FROM egresos
                          WHERE YEAR(fecha)=:y
@@ -112,55 +156,65 @@ try {
       $egresosMes[$key] = (int)$r['monto'];
     }
 
-    // Merge
     $MESES = [1=>'ENERO',2=>'FEBRERO',3=>'MARZO',4=>'ABRIL',5=>'MAYO',6=>'JUNIO',7=>'JULIO',8=>'AGOSTO',9=>'SEPTIEMBRE',10=>'OCTUBRE',11=>'NOVIEMBRE',12=>'DICIEMBRE'];
     $out = [];
     for ($m=1;$m<=12;$m++){
       $key = sprintf('%04d-%02d', $year, $m);
-      $ing = $ingresosMes[$key] ?? 0;
-      $egr = $egresosMes[$key] ?? 0;
+      $ingV = $ingresosMes[$key] ?? 0;
+      $egrV = $egresosMes[$key] ?? 0;
       $out[] = [
         'anio' => $year,
         'mes'  => $m,
         'nombre_mes' => $MESES[$m],
-        'ingresos' => $ing,
-        'egresos'  => $egr,
-        'saldo'    => $ing - $egr
+        'ingresos' => $ingV,
+        'egresos'  => $egrV,
+        'saldo'    => $ingV - $egrV
       ];
     }
     echo json_encode(['exito'=>true, 'year'=>$year, 'resumen'=>$out], JSON_UNESCAPED_UNICODE);
     exit;
   }
 
-  // op=list (default)
+  /* -------- LIST -------- */
   $start = $_GET['start'] ?? null; // YYYY-MM-DD
   $end   = $_GET['end']   ?? null;
-  $cat   = trim($_GET['categoria'] ?? '');
-  $medio = trim($_GET['medio'] ?? '');
+  $cat   = trim((string)($_GET['categoria'] ?? ''));
+  $medio = trim((string)($_GET['medio'] ?? '')); // puede ser ID o nombre
 
   $where = "1=1";
   $par   = [];
   if ($start && $end) {
-    $where .= " AND fecha BETWEEN :s AND :e";
+    $where .= " AND e.fecha BETWEEN :s AND :e";
     $par[':s'] = $start;
     $par[':e'] = $end;
   } elseif ($start) {
-    $where .= " AND fecha >= :s";
+    $where .= " AND e.fecha >= :s";
     $par[':s'] = $start;
   } elseif ($end) {
-    $where .= " AND fecha <= :e";
+    $where .= " AND e.fecha <= :e";
     $par[':e'] = $end;
   }
   if ($cat !== '') {
-    $where .= " AND categoria = :c";
+    $where .= " AND e.categoria = :c";
     $par[':c'] = $cat;
   }
   if ($medio !== '') {
-    $where .= " AND medio_pago = :m";
-    $par[':m'] = $medio;
+    if (ctype_digit($medio)) {
+      $where .= " AND e.id_medio_pago = :mid";
+      $par[':mid'] = (int)$medio;
+    } else {
+      $where .= " AND UPPER(m.medio_pago) = UPPER(:mnom)";
+      $par[':mnom'] = $medio;
+    }
   }
 
-  $sql = "SELECT * FROM egresos WHERE $where ORDER BY fecha DESC, id_egreso DESC";
+  $sql = "SELECT
+            e.*,
+            m.medio_pago AS medio_pago
+          FROM egresos e
+          JOIN medio_pago m ON m.id_medio_pago = e.id_medio_pago
+          WHERE $where
+          ORDER BY e.fecha DESC, e.id_egreso DESC";
   $st = $pdo->prepare($sql);
   $st->execute($par);
   $list = $st->fetchAll(PDO::FETCH_ASSOC);

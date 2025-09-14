@@ -94,6 +94,7 @@ try {
         case 'contable_ingresos':       include_module($M . '/contable/ingresos.php');  break;
         case 'contable_egresos':        include_module($M . '/contable/egresos.php');   break;
         case 'contable_egresos_upload': include_module($M . '/contable/contable_egresos_upload.php'); break;
+        case 'medio_pago_crear':   include_module($M . '/contable/medio_pago_crear.php'); break;
 
         /* ===========================
            TIPOS DE DOCUMENTOS

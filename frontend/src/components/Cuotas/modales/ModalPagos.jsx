@@ -313,8 +313,12 @@ const ModalPagos = ({ socio, onClose }) => {
         periodos: seleccionados.map(Number),
         condonar: !!condonar,
         anio: Number(anioTrabajo),
+
+        // 🔹 SIEMPRE mandamos el monto que se ve/usa en UI (0 si condonado)
+        monto_unitario: Math.round(condonar ? 0 : Number(precioUnitarioVigente || 0)),
       };
 
+      // (Compatibilidad con versiones previas del backend)
       if (libreActivo && !condonar) {
         payload.monto_libre = Math.round(Number(libreValor) || 0); // entero
       }
@@ -330,7 +334,6 @@ const ModalPagos = ({ socio, onClose }) => {
       const data = await res.json().catch(() => ({}));
       if (data?.exito) {
         setPagoExitoso(true);
-        // Marcamos ocupados en memoria
         setPeriodosPagados(prev => {
           const set = new Set(prev);
           seleccionados.forEach(id => set.add(Number(id)));
@@ -351,6 +354,7 @@ const ModalPagos = ({ socio, onClose }) => {
       setCargando(false);
     }
   };
+
 
   // === Impresión usando tu util
   const handleImprimirComprobante = async () => {

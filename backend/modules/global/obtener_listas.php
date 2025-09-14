@@ -20,10 +20,10 @@ try {
         'meses'             => [],
         'sexos'             => [],
         'tipos_documentos'  => [],
+        'medios_pago'       => [],   // 👈 nuevo array para los medios de pago
     ];
 
     /* ----------- AÑOS ----------- */
-    // Tabla: anio (id_año, nombre_año)
     $sql = "SELECT `id_año` AS id, `nombre_año` AS nombre
             FROM `anio`
             ORDER BY `nombre_año`";
@@ -35,7 +35,6 @@ try {
     }
 
     /* -------- CATEGORÍAS -------- */
-    // Tabla: categoria (id_categoria, nombre_categoria)
     $sql = "SELECT `id_categoria` AS id, `nombre_categoria` AS nombre
             FROM `categoria`
             ORDER BY `nombre_categoria`";
@@ -47,7 +46,6 @@ try {
     }
 
     /* --------- DIVISIONES -------- */
-    // Tabla: division (id_division, nombre_division)
     $sql = "SELECT `id_division` AS id, `nombre_division` AS nombre
             FROM `division`
             ORDER BY `nombre_division`";
@@ -59,7 +57,6 @@ try {
     }
 
     /* ----------- MESES ----------- */
-    // Tabla: meses (id_mes, nombre)
     $sql = "SELECT `id_mes` AS id, `nombre`
             FROM `meses`
             ORDER BY `id_mes`";
@@ -71,7 +68,6 @@ try {
     }
 
     /* ------------ SEXO ------------ */
-    // Tabla: sexo (id_sexo, sexo)  -- 'sexo' es UNIQUE según tu describe
     $sql = "SELECT `id_sexo` AS id, `sexo`
             FROM `sexo`
             ORDER BY `sexo`";
@@ -83,7 +79,6 @@ try {
     }
 
     /* ----- TIPOS DE DOCUMENTOS ----- */
-    // Tabla: tipos_documentos (id_tipo_documento, descripcion, sigla) -- ambos UNIQUE
     $sql = "SELECT `id_tipo_documento` AS id, `descripcion`, `sigla`
             FROM `tipos_documentos`
             ORDER BY `descripcion`";
@@ -92,6 +87,18 @@ try {
             'id'          => (int) $row['id'],
             'descripcion' => (string) $row['descripcion'],
             'sigla'       => (string) $row['sigla'],
+        ];
+    }
+
+    /* ----- MEDIOS DE PAGO ----- */
+    // Tabla: medio_pago (id_medio_pago, medio_pago)
+    $sql = "SELECT `id_medio_pago` AS id, `medio_pago` AS nombre
+            FROM `medio_pago`
+            ORDER BY `medio_pago`";
+    foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
+        $listas['medios_pago'][] = [
+            'id'     => (int) $row['id'],
+            'nombre' => (string) $row['nombre'],
         ];
     }
 
