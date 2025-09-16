@@ -27,6 +27,9 @@ import Categorias from './components/Categorias/Categorias';
 import CategoriaNueva from './components/Categorias/CategoriaNueva';
 import CategoriaEditar from './components/Categorias/CategoriaEditar';
 
+// 🔹 Familias (ubicado dentro de components/Socios)
+import Familias from './components/Alumnos/Familias';
+
 /* =========================================================
    🔒 Cierre de sesión por inactividad (global)
 ========================================================= */
@@ -121,6 +124,8 @@ function App() {
         <Route path="/alumnos/agregar" element={<RutaProtegida componente={<AgregarAlumno />} />} />
         <Route path="/alumnos/editar/:id" element={<RutaProtegida componente={<EditarAlumno />} />} />
         <Route path="/alumnos/baja" element={<RutaProtegida componente={<AlumnoBaja />} />} />
+
+        <Route path="/familias" element={<RutaProtegida componente={<Familias />} />} />
 
         {/* Rutas de Cuotas */}
         <Route path="/cuotas" element={<RutaProtegida componente={<Cuotas />} />} />

@@ -1,0 +1,12 @@
+/* src/components/Familias/ModalFamilia.css */
+.mf_overlay { position:fixed; inset:0; background:rgba(2,6,23,.55); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.mf_modal { width:min(640px, 92vw); background:white; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; }
+.mf_head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #e2e8f0; }
+.mf_close { border:none; background:transparent; cursor:pointer; }
+.mf_body { display:flex; flex-direction:column; gap:10px; padding:16px; }
+.mf_body input, .mf_body textarea { border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; outline:none; }
+.mf_check { display:flex; align-items:center; gap:8px; color:#0f172a; }
+.mf_foot { display:flex; justify-content:flex-end; gap:10px; padding:12px 16px; border-top:1px solid #e2e8f0; }
+.mf_btn { border-radius:10px; padding:10px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+.mf_btn.ghost { border:1px solid #e2e8f0; background:white; }
+.mf_btn.solid { border:none; background:#10b981; color:white; }

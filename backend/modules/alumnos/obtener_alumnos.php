@@ -53,24 +53,29 @@ try {
             a.motivo,
             a.ingreso,
             a.observaciones,
+            a.id_familia,
 
             -- Nombres ya resueltos para UI
             an.`nombre_año`      AS anio_nombre,
             d.`nombre_division`  AS division_nombre,
             c.`nombre_categoria` AS categoria_nombre,
 
-            -- NUEVO: resolver sexo y tipo de documento
+            -- Resolver sexo y tipo de documento
             s.`sexo`             AS sexo_nombre,
             td.`descripcion`     AS tipo_documento_nombre,
-            td.`sigla`           AS tipo_documento_sigla
+            td.`sigla`           AS tipo_documento_sigla,
+
+            -- ===== NUEVO: familia (apellido/nombre del grupo familiar)
+            f.`nombre_familia`   AS familia
 
         FROM alumnos a
-        LEFT JOIN anio an           ON an.`id_año`       = a.`id_año`
-        LEFT JOIN division d        ON d.`id_division`   = a.`id_division`
-        LEFT JOIN categoria c       ON c.`id_categoria`  = a.`id_categoria`
-        LEFT JOIN sexo s            ON s.`id_sexo`       = a.`id_sexo`
+        LEFT JOIN anio an           ON an.`id_año`             = a.`id_año`
+        LEFT JOIN division d        ON d.`id_division`         = a.`id_division`
+        LEFT JOIN categoria c       ON c.`id_categoria`        = a.`id_categoria`
+        LEFT JOIN sexo s            ON s.`id_sexo`             = a.`id_sexo`
         LEFT JOIN tipos_documentos td
-                                    ON td.`id_tipo_documento` = a.`id_tipo_documento`
+                                    ON td.`id_tipo_documento`  = a.`id_tipo_documento`
+        LEFT JOIN familias f        ON f.`id_familia`          = a.`id_familia`
         /**WHERE**/
         ORDER BY a.id_alumno ASC
     ";
@@ -78,14 +83,14 @@ try {
     $where  = [];
     $params = [];
 
-    // Solo activos (la grilla principal suele mostrar activos)
+    // Solo activos en la grilla principal
     $where[] = "a.activo = 1";
 
     if ($id > 0) {
         $where[]        = "a.id_alumno = :id";
         $params[':id']  = $id;
     } elseif ($q !== '') {
-        // Busca por Apellido + Nombre (case-insensitive por collation)
+        // Busca por Apellido + Nombre (por collation de la tabla)
         $where[]        = "CONCAT_WS(' ', a.apellido, a.nombre) LIKE :q";
         $params[':q']   = "%{$q}%";
     }

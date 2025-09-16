@@ -21,25 +21,26 @@ mb_internal_encoding('UTF-8');
 
 $action = $_GET['action'] ?? '';
 
-$M = realpath(__DIR__ . '/../modules');
-if ($M === false) {
-    http_response_code(200);
-    echo json_encode(['exito' => false, 'mensaje' => 'No se encontró la carpeta de módulos.']);
-    exit;
-}
+/**
+ * Carga un módulo con el formato requerido y corta la ejecución.
+ * Si el archivo no existe, responde JSON con error y corta.
+ */
+function load_and_exit(string $relativePath): void
+{
+    $path = __DIR__ . '/../modules/' . ltrim($relativePath, '/');
 
-function include_module($path) {
     if (!is_file($path)) {
         http_response_code(200);
         echo json_encode([
             'exito' => false,
             'mensaje' => 'Ruta no encontrada',
-            'ruta_buscada' => $path
+            'ruta_buscada' => $relativePath
         ]);
-        return false;
+        exit;
     }
-    require $path;
-    return true;
+
+    require_once $path;
+    exit;
 }
 
 try {
@@ -47,71 +48,198 @@ try {
         /* ===========================
            LOGIN / REGISTRO
         ============================ */
-        case 'inicio':             include_module($M . '/login/inicio.php'); break;
-        case 'registro':           include_module($M . '/login/registro.php'); break;
+        case 'inicio':
+            require_once __DIR__ . '/../modules/login/inicio.php';
+            exit;
+
+        case 'registro':
+            require_once __DIR__ . '/../modules/login/registro.php';
+            exit;
 
         /* ===========================
            ALUMNOS
         ============================ */
-        case 'alumnos':            include_module($M . '/alumnos/obtener_alumnos.php'); break;
-        case 'alumnos_baja':       include_module($M . '/alumnos/alumnos_baja.php'); break;
-        case 'agregar_alumno':     include_module($M . '/alumnos/agregar_alumno.php'); break;
-        case 'editar_alumno':      include_module($M . '/alumnos/editar_alumno.php'); break;
-        case 'eliminar_alumno':    include_module($M . '/alumnos/eliminar_alumno.php'); break;
-        case 'dar_baja_alumno':    include_module($M . '/alumnos/dar_baja_alumno.php'); break;
-        case 'dar_alta_alumno':    include_module($M . '/alumnos/dar_alta_alumno.php'); break;
-        case 'eliminar_bajas':     include_module($M . '/alumnos/eliminar_bajas.php'); break;
+        case 'alumnos':
+            require_once __DIR__ . '/../modules/alumnos/obtener_alumnos.php';
+            exit;
+
+        case 'alumnos_baja':
+            require_once __DIR__ . '/../modules/alumnos/alumnos_baja.php';
+            exit;
+
+        case 'agregar_alumno':
+            require_once __DIR__ . '/../modules/alumnos/agregar_alumno.php';
+            exit;
+
+        case 'editar_alumno':
+            require_once __DIR__ . '/../modules/alumnos/editar_alumno.php';
+            exit;
+
+        case 'eliminar_alumno':
+            require_once __DIR__ . '/../modules/alumnos/eliminar_alumno.php';
+            exit;
+
+        case 'dar_baja_alumno':
+            require_once __DIR__ . '/../modules/alumnos/dar_baja_alumno.php';
+            exit;
+
+        case 'dar_alta_alumno':
+            require_once __DIR__ . '/../modules/alumnos/dar_alta_alumno.php';
+            exit;
+
+        case 'eliminar_bajas':
+            require_once __DIR__ . '/../modules/alumnos/eliminar_bajas.php';
+            exit;
+
+        /* =========================
+           FAMILIAS (usa ALUMNOS)
+        ========================= */
+        case 'familias_listar':
+            require_once __DIR__ . '/../modules/alumnos/familias/familias_listar.php';
+            exit;
+
+        case 'familia_agregar':
+            require_once __DIR__ . '/../modules/alumnos/familias/agregar_familia.php';
+            exit;
+
+        case 'familia_editar':
+            require_once __DIR__ . '/../modules/alumnos/familias/editar_familia.php';
+            exit;
+
+        case 'familia_eliminar':
+            require_once __DIR__ . '/../modules/alumnos/familias/eliminar_familia.php';
+            exit;
+
+        case 'familia_miembros':
+            require_once __DIR__ . '/../modules/alumnos/familias/familia_miembros.php';
+            exit;
+
+        case 'alumnos_sin_familia':
+            require_once __DIR__ . '/../modules/alumnos/familias/alumnos_sin_familia.php';
+            exit;
+
+        /* 🔁 Alias compat: socios_sin_familia -> alumnos_sin_familia */
+        case 'socios_sin_familia':
+            require_once __DIR__ . '/../modules/alumnos/familias/alumnos_sin_familia.php';
+            exit;
+
+        case 'familia_agregar_miembros':
+            require_once __DIR__ . '/../modules/alumnos/familias/familia_agregar_miembros.php';
+            exit;
+
+        case 'familia_quitar_miembro':
+            require_once __DIR__ . '/../modules/alumnos/familias/familia_quitar_miembro.php';
+            exit;
+
+        /* Compat: POST familia_guardar decide INSERT/UPDATE */
+        case 'familia_guardar':
+            require_once __DIR__ . '/../modules/alumnos/familias/familia_guardar.php';
+            exit;
 
         /* ===========================
            GLOBAL
         ============================ */
-        case 'obtener_listas':     include_module($M . '/global/obtener_listas.php'); break;
+        case 'obtener_listas':
+            require_once __DIR__ . '/../modules/global/obtener_listas.php';
+            exit;
 
         /* ===========================
            CUOTAS
         ============================ */
-        case 'cuotas':             include_module($M . '/cuotas/cuotas.php'); break;
-        case 'meses_pagados':      include_module($M . '/cuotas/meses_pagados.php'); break;
-        case 'registrar_pago':     include_module($M . '/cuotas/registrar_pago.php'); break;
-        case 'eliminar_pago':      include_module($M . '/cuotas/eliminar_pago.php'); break;
+        case 'cuotas':
+            require_once __DIR__ . '/../modules/cuotas/cuotas.php';
+            exit;
+
+        case 'meses_pagados':
+            require_once __DIR__ . '/../modules/cuotas/meses_pagados.php';
+            exit;
+
+        case 'registrar_pago':
+            require_once __DIR__ . '/../modules/cuotas/registrar_pago.php';
+            exit;
+
+        case 'eliminar_pago':
+            require_once __DIR__ . '/../modules/cuotas/eliminar_pago.php';
+            exit;
 
         /* ✅ NUEVO: ficha para impresión de comprobante */
         case 'obtener_socio_comprobante':
-        case 'socio_comprobante':  // alias opcional por compatibilidad
-            include_module($M . '/cuotas/obtener_socio_comprobante.php');
-            break;
+            require_once __DIR__ . '/../modules/cuotas/obtener_socio_comprobante.php';
+            exit;
+
+        case 'socio_comprobante': // alias opcional
+            require_once __DIR__ . '/../modules/cuotas/obtener_socio_comprobante.php';
+            exit;
 
         /* ===========================
            CONTABLE (LEGADO)
         ============================ */
-        case 'contable':           include_module($M . '/contable/contable_socios.php'); break;
+        case 'contable':
+            require_once __DIR__ . '/../modules/contable/contable_socios.php';
+            exit;
 
         /* ===========================
            ✅ CONTABLE NUEVO
            - Ingresos (desde pagos + categoría)
            - Egresos (ABM, resumen)
         ============================ */
-        case 'contable_ingresos':       include_module($M . '/contable/ingresos.php');  break;
-        case 'contable_egresos':        include_module($M . '/contable/egresos.php');   break;
-        case 'contable_egresos_upload': include_module($M . '/contable/contable_egresos_upload.php'); break;
-        case 'medio_pago_crear':   include_module($M . '/contable/medio_pago_crear.php'); break;
+        case 'contable_ingresos':
+            require_once __DIR__ . '/../modules/contable/ingresos.php';
+            exit;
+
+        case 'contable_egresos':
+            require_once __DIR__ . '/../modules/contable/egresos.php';
+            exit;
+
+        case 'contable_egresos_upload':
+            require_once __DIR__ . '/../modules/contable/contable_egresos_upload.php';
+            exit;
+
+        case 'medio_pago_crear':
+            require_once __DIR__ . '/../modules/contable/medio_pago_crear.php';
+            exit;
 
         /* ===========================
            TIPOS DE DOCUMENTOS
         ============================ */
-        case 'td_listar':          include_module($M . '/tipos_documentos/listar_documentos.php'); break;
-        case 'td_crear':           include_module($M . '/tipos_documentos/crear_documentos.php');  break;
-        case 'td_actualizar':      include_module($M . '/tipos_documentos/editar_documentos.php'); break;
-        case 'td_eliminar':        include_module($M . '/tipos_documentos/eliminar_documentos.php'); break;
+        case 'td_listar':
+            require_once __DIR__ . '/../modules/tipos_documentos/listar_documentos.php';
+            exit;
+
+        case 'td_crear':
+            require_once __DIR__ . '/../modules/tipos_documentos/crear_documentos.php';
+            exit;
+
+        case 'td_actualizar':
+            require_once __DIR__ . '/../modules/tipos_documentos/editar_documentos.php';
+            exit;
+
+        case 'td_eliminar':
+            require_once __DIR__ . '/../modules/tipos_documentos/eliminar_documentos.php';
+            exit;
 
         /* ===========================
            ✅ CATEGORÍAS
         ============================ */
-        case 'cat_listar':         include_module($M . '/categorias/obtener_categorias.php'); break;
-        case 'cat_crear':          include_module($M . '/categorias/agregar_categoria.php');   break;
-        case 'cat_actualizar':     include_module($M . '/categorias/editar_categoria.php');    break; // solo monto
-        case 'cat_eliminar':       include_module($M . '/categorias/eliminar_categoria.php');  break;
-        case 'cat_historial':      include_module($M . '/categorias/obtener_historial.php');   break;
+        case 'cat_listar':
+            require_once __DIR__ . '/../modules/categorias/obtener_categorias.php';
+            exit;
+
+        case 'cat_crear':
+            require_once __DIR__ . '/../modules/categorias/agregar_categoria.php';
+            exit;
+
+        case 'cat_actualizar':
+            require_once __DIR__ . '/../modules/categorias/editar_categoria.php';
+            exit;
+
+        case 'cat_eliminar':
+            require_once __DIR__ . '/../modules/categorias/eliminar_categoria.php';
+            exit;
+
+        case 'cat_historial':
+            require_once __DIR__ . '/../modules/categorias/obtener_historial.php';
+            exit;
 
         /* ===========================
            DEFAULT

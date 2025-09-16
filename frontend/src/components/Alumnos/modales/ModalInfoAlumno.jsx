@@ -74,6 +74,9 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
   // Observaciones (texto libre)
   const observaciones = alumno.observaciones;
 
+  // Familia (nuevo)
+  const familia = texto(alumno.familia);
+
   return (
     <div
       className="mi-modal__overlay"
@@ -140,6 +143,12 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                   <div className="mi-row">
                     <span className="mi-label">Ingreso</span>
                     <span className="mi-value">{ingreso}</span>
+                  </div>
+
+                  {/* ===== NUEVO: Familia ===== */}
+                  <div className="mi-row">
+                    <span className="mi-label">Familia</span>
+                    <span className="mi-value">{familia}</span>
                   </div>
                 </article>
               </div>
