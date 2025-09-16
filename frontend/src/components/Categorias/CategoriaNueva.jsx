@@ -13,23 +13,19 @@ const CategoriaNueva = () => {
   const navigate = useNavigate();
 
   const [nombre, setNombre] = useState('');
-  const [monto, setMonto] = useState('');
+  const [mMensual, setMMensual] = useState('');
+  const [mAnual, setMAnual] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // TOAST
   const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '', duracion: 3000 });
-  const showToast = (tipo, mensaje, duracion = 3000) =>
-    setToast({ show: true, tipo, mensaje, duracion });
+  const showToast = (tipo, mensaje, duracion = 3000) => setToast({ show: true, tipo, mensaje, duracion });
   const closeToast = () => setToast((t) => ({ ...t, show: false }));
 
   const nombreRef = useRef(null);
-  const montoRef = useRef(null);
-
   const fetchJSON = async (url, options = {}) => {
     const res = await fetch(url, options);
     let data = null;
-    try { data = await res.json(); }
-    catch { throw new Error(`Error HTTP ${res.status}`); }
+    try { data = await res.json(); } catch { throw new Error(`Error HTTP ${res.status}`); }
     if (!res.ok) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
     return data;
   };
@@ -39,31 +35,31 @@ const CategoriaNueva = () => {
     if (saving) return;
 
     const n = normalizar(nombre);
-    const mStr = (monto ?? '').toString().trim();
-    const m = mStr === '' ? 0 : Number(mStr);
-
     if (!n) {
       showToast('error', 'El nombre de la categoría es obligatorio', 2800);
       nombreRef.current?.focus();
       return;
     }
-    if (isNaN(m) || m < 0) {
-      showToast('error', 'El monto debe ser un número mayor o igual a 0', 2800);
-      montoRef.current?.focus();
-      return;
-    }
+
+    const mens = mMensual === '' ? 0 : Number(mMensual);
+    const anu  = mAnual   === '' ? 0 : Number(mAnual);
+
+    if (isNaN(mens) || mens < 0) { showToast('error', 'Mensual inválido (>= 0)', 2800); return; }
+    if (isNaN(anu)  || anu  < 0) { showToast('error', 'Anual inválido (>= 0)', 2800); return; }
 
     try {
       setSaving(true);
       const body = new FormData();
       body.append('descripcion', n);
-      body.append('monto', String(m));
-      body.append('precio', String(m)); // compat con backend actual
+      body.append('monto', String(mens));
+      body.append('monto_anual', String(anu));
+      // compat
+      body.append('precio', String(mens));
 
       const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_crear`, { method: 'POST', body });
       if (!json?.exito) throw new Error(json?.mensaje || 'No se pudo crear');
 
-      const dur = 2200;
+      const dur = 2000;
       showToast('exito', 'Categoría creada con éxito.', dur);
       setTimeout(() => navigate('/categorias', { replace: true }), dur);
     } catch (e) {
@@ -76,12 +72,9 @@ const CategoriaNueva = () => {
   return (
     <div className="cat_agr_page">
       <div className="cat_agr_card">
-        <header className="cat_agr_header">
-          <h2 className="cat_agr_title">Nueva categoría</h2>
-        </header>
+        <header className="cat_agr_header"><h2 className="cat_agr_title">Nueva categoría</h2></header>
 
         <form className="cat_agr_form" onSubmit={onSubmit}>
-          {/* Nombre (sin asterisco visual, sigue siendo required) */}
           <div className="cat_agr_form_row">
             <label className="cat_agr_label">Nombre</label>
             <input
@@ -90,7 +83,7 @@ const CategoriaNueva = () => {
               type="text"
               value={nombre}
               onChange={(e) => setNombre(e.target.value.toUpperCase())}
-              placeholder='Ej: "INTERNO"'
+              placeholder='Ej: "A"'
               maxLength={50}
               required
               style={{ textTransform: 'uppercase' }}
@@ -98,16 +91,14 @@ const CategoriaNueva = () => {
             />
           </div>
 
-          {/* Monto — mismo ancho que Nombre */}
           <div className="cat_agr_form_row">
-            <label className="cat_agr_label">Monto</label>
+            <label className="cat_agr_label">Monto mensual</label>
             <input
-              ref={montoRef}
               className="cat_agr_input"
               type="number"
               inputMode="numeric"
-              value={monto}
-              onChange={(e) => setMonto(e.target.value)}
+              value={mMensual}
+              onChange={(e) => setMMensual(e.target.value)}
               placeholder="0"
               min="0"
               step="1"
@@ -115,37 +106,33 @@ const CategoriaNueva = () => {
             />
           </div>
 
-          {/* Acciones: Volver (izquierda) + Guardar (derecha) */}
-          <div className="cat_agr_form_actions">
-            <button
-              type="button"
-              className="cat_agr_btn cat_agr_btn_back"
-              onClick={() => navigate('/categorias')}
-              title="Volver"
-              aria-label="Volver"
+          <div className="cat_agr_form_row">
+            <label className="cat_agr_label">Monto anual</label>
+            <input
+              className="cat_agr_input"
+              type="number"
+              inputMode="numeric"
+              value={mAnual}
+              onChange={(e) => setMAnual(e.target.value)}
+              placeholder="0"
+              min="0"
+              step="1"
               disabled={saving}
-            >
-              <FontAwesomeIcon icon={faArrowLeft} />
-              <span className="cat_agr_btn_text">Volver</span>
-            </button>
+            />
+          </div>
 
+          <div className="cat_agr_form_actions">
+            <button type="button" className="cat_agr_btn cat_agr_btn_back" onClick={() => navigate('/categorias')} disabled={saving}>
+              <FontAwesomeIcon icon={faArrowLeft} /><span className="cat_agr_btn_text">Volver</span>
+            </button>
             <button type="submit" className="cat_agr_btn cat_agr_btn_primary" disabled={saving}>
-              <FontAwesomeIcon icon={faPlus} />
-              <span className="cat_agr_btn_text">{saving ? 'Guardando…' : 'Guardar'}</span>
+              <FontAwesomeIcon icon={faPlus} /><span className="cat_agr_btn_text">{saving ? 'Guardando…' : 'Guardar'}</span>
             </button>
           </div>
         </form>
       </div>
 
-      {/* Toast */}
-      {toast.show && (
-        <Toast
-          tipo={toast.tipo}
-          mensaje={toast.mensaje}
-          duracion={toast.duracion}
-          onClose={closeToast}
-        />
-      )}
+      {toast.show && <Toast tipo={toast.tipo} mensaje={toast.mensaje} duracion={toast.duracion} onClose={closeToast} />}
     </div>
   );
 };

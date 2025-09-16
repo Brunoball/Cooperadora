@@ -11,7 +11,7 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
     return () => document.removeEventListener('keydown', onKey);
   }, [mostrar, onClose]);
 
-  // Pestañas: 'datos' | 'contacto' | 'academico' | 'observaciones'
+  // Pestañas
   const [pestania, setPestania] = useState('datos');
 
   /* ================= Helpers ================= */
@@ -20,9 +20,15 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
     return s === '' ? '-' : s;
   }, []);
 
+  const fmtARS = useCallback((n) => {
+    if (n === null || n === undefined || n === '') return '-';
+    const v = Number(n);
+    if (Number.isNaN(v)) return '-';
+    return v.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+  }, []);
+
   const formatearFecha = useCallback((val) => {
     if (!val) return '-';
-    // Soporta "YYYY-MM-DD" o ISO
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
     if (m) return `${m[3]}/${m[2]}/${m[1]}`;
     const d = new Date(val.includes('T') ? val : `${val}T00:00:00`);
@@ -63,10 +69,21 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
   const lugarNac  = texto(alumno.lugar_nacimiento);
   const fechaNac  = formatearFecha(alumno.fecha_nacimiento);
 
-  // Académico
+  // Académico (curso/categoría “lógica”)
   const anio      = alumno.anio_nombre      || alumno.nombre_año      || alumno.nombre_anio || texto(alumno.id_año);
   const division  = alumno.division_nombre  || alumno.nombre_division || texto(alumno.id_division);
   const categoria = alumno.categoria_nombre || alumno.nombre_categoria|| texto(alumno.id_categoria);
+
+  // ✅ Categoría de monto (categoria_monto)
+  const catMontoNombre   =
+    alumno.catm_nombre ||
+    alumno.categoria_monto_nombre ||
+    alumno.nombre_categoria_monto ||
+    texto(alumno.id_cat_monto);
+  const catMontoMensual  =
+    alumno.catm_monto_mensual ?? alumno.monto_mensual ?? null;
+  const catMontoAnual    =
+    alumno.catm_monto_anual   ?? alumno.monto_anual   ?? null;
 
   // Estado
   const ingreso   = formatearFecha(alumno.ingreso);
@@ -145,7 +162,7 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                     <span className="mi-value">{ingreso}</span>
                   </div>
 
-                  {/* ===== NUEVO: Familia ===== */}
+                  {/* Familia */}
                   <div className="mi-row">
                     <span className="mi-label">Familia</span>
                     <span className="mi-value">{familia}</span>
@@ -205,6 +222,23 @@ const ModalInfoAlumno = ({ mostrar, alumno, onClose }) => {
                   <div className="mi-row">
                     <span className="mi-label">Categoría</span>
                     <span className="mi-value">{texto(categoria)}</span>
+                  </div>
+                </article>
+
+                {/* ✅ NUEVO: Categoría de monto (categoria_monto) */}
+                <article className="mi-card">
+                  <h3 className="mi-card__title">Categoría (monto)</h3>
+                  <div className="mi-row">
+                    <span className="mi-label">Nombre</span>
+                    <span className="mi-value">{texto(catMontoNombre)}</span>
+                  </div>
+                  <div className="mi-row">
+                    <span className="mi-label">Monto mensual</span>
+                    <span className="mi-value">{fmtARS(catMontoMensual)}</span>
+                  </div>
+                  <div className="mi-row">
+                    <span className="mi-label">Monto anual</span>
+                    <span className="mi-value">{fmtARS(catMontoAnual)}</span>
                   </div>
                 </article>
               </div>

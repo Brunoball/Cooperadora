@@ -8,24 +8,30 @@ try {
     $data = json_decode($raw, true);
     if (!is_array($data)) $data = $_POST;
 
-    $descripcion = trim(strtoupper($data['descripcion'] ?? $data['nombre'] ?? ''));
-    $monto = $data['monto'] ?? $data['precio'] ?? 0;
-
-    if ($descripcion === '') {
-        echo json_encode(['exito' => false, 'mensaje' => 'La descripción es obligatoria']);
-        exit;
-    }
-    if ($monto === '' || $monto === null) $monto = 0;
-    if (!is_numeric($monto) || $monto < 0) {
-        echo json_encode(['exito' => false, 'mensaje' => 'El monto debe ser un número mayor o igual a 0']);
+    $nombre = strtoupper(trim($data['descripcion'] ?? $data['nombre'] ?? ''));
+    if ($nombre === '') {
+        echo json_encode(['exito' => false, 'mensaje' => 'El nombre de la categoría es obligatorio']);
         exit;
     }
 
-    $sql = "INSERT INTO categoria (nombre_categoria, monto) VALUES (:nombre, :monto)";
+    $mMens  = $data['monto'] ?? $data['precio'] ?? 0;
+    $mAnual = $data['monto_anual'] ?? 0;
+
+    $mMens  = (int)($mMens  === '' ? 0 : $mMens);
+    $mAnual = (int)($mAnual === '' ? 0 : $mAnual);
+
+    if ($mMens < 0 || $mAnual < 0) {
+        echo json_encode(['exito' => false, 'mensaje' => 'Los montos deben ser >= 0']);
+        exit;
+    }
+
+    $sql = "INSERT INTO categoria_monto (nombre_categoria, monto_mensual, monto_anual, fecha_creacion)
+            VALUES (:nombre, :m_mensual, :m_anual, CURDATE())";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        ':nombre' => $descripcion,
-        ':monto'  => (int)$monto
+        ':nombre'    => $nombre,
+        ':m_mensual' => $mMens,
+        ':m_anual'   => $mAnual,
     ]);
 
     echo json_encode(['exito' => true, 'mensaje' => 'Categoría creada', 'id' => $pdo->lastInsertId()]);

@@ -15,12 +15,12 @@ try {
 
     $listas = [
         'anios'             => [],
-        'categorias'        => [],
+        'categorias'        => [],   // ahora vendrá de categoria_monto
         'divisiones'        => [],
         'meses'             => [],
         'sexos'             => [],
         'tipos_documentos'  => [],
-        'medios_pago'       => [],   // 👈 nuevo array para los medios de pago
+        'medios_pago'       => [],
     ];
 
     /* ----------- AÑOS ----------- */
@@ -34,14 +34,22 @@ try {
         ];
     }
 
-    /* -------- CATEGORÍAS -------- */
-    $sql = "SELECT `id_categoria` AS id, `nombre_categoria` AS nombre
-            FROM `categoria`
+    /* -------- CATEGORÍAS (desde categoria_monto) -------- */
+    $sql = "SELECT 
+                `id_cat_monto` AS id, 
+                `nombre_categoria` AS nombre,
+                `monto_mensual`,
+                `monto_anual`,
+                DATE_FORMAT(`fecha_creacion`, '%Y-%m-%d') AS fecha_creacion
+            FROM `categoria_monto`
             ORDER BY `nombre_categoria`";
     foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
         $listas['categorias'][] = [
-            'id'     => (int) $row['id'],
-            'nombre' => (string) $row['nombre'],
+            'id'              => (int) $row['id'],
+            'nombre'          => (string) $row['nombre'],
+            'monto_mensual'   => (int) $row['monto_mensual'],
+            'monto_anual'     => (int) $row['monto_anual'],
+            'fecha_creacion'  => (string) $row['fecha_creacion'],
         ];
     }
 
@@ -91,7 +99,6 @@ try {
     }
 
     /* ----- MEDIOS DE PAGO ----- */
-    // Tabla: medio_pago (id_medio_pago, medio_pago)
     $sql = "SELECT `id_medio_pago` AS id, `medio_pago` AS nombre
             FROM `medio_pago`
             ORDER BY `medio_pago`";

@@ -171,6 +171,10 @@ try {
             require_once __DIR__ . '/../modules/cuotas/obtener_socio_comprobante.php';
             exit;
 
+        case 'obtener_monto_categoria': // alias opcional
+            require_once __DIR__ . '/../modules/cuotas/obtener_monto_categoria.php';
+            exit;
+
         /* ===========================
            CONTABLE (LEGADO)
         ============================ */

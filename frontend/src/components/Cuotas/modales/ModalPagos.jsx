@@ -25,7 +25,7 @@ const ModalPagos = ({ socio, onClose }) => {
   const nowYear = new Date().getFullYear();
 
   const [meses, setMeses] = useState([]);                     // [{ id, nombre }]
-  const [periodosPagados, setPeriodosPagados] = useState([]); // [id_mes,...] (del año elegido) — fallback simple
+  const [periodosPagados, setPeriodosPagados] = useState([]); // [id_mes,...] (del año elegido)
   const [periodosEstado, setPeriodosEstado] = useState({});   // { [id_mes]: 'pagado' | 'condonado' }
   const [seleccionados, setSeleccionados] = useState([]);     // [id_mes,...]
   const [fechaIngreso, setFechaIngreso] = useState('');       // 'YYYY-MM-DD'
@@ -55,7 +55,6 @@ const ModalPagos = ({ socio, onClose }) => {
 
   // Tolerancia de ID desde distintas fuentes
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
-  const idCategoria = socio?.id_categoria ?? socio?.categoria_id ?? socio?.id_cat ?? null;
 
   /* ================= Helpers ================= */
   const formatearFecha = (f) => {
@@ -98,51 +97,52 @@ const ModalPagos = ({ socio, onClose }) => {
 
   /* ================= Efectos ================= */
 
-  // Cargar precio mensual según categoría del alumno
+  // ✅ Cargar precio mensual exacto y nombre de categoría del alumno
   useEffect(() => {
-    const cargarPrecioCategoria = async () => {
+    const cargarMontoCategoria = async () => {
       try {
-        if (idCategoria == null) {
+        if (!idAlumno) {
           setPrecioMensual(0);
           setNombreCategoria('');
           return;
         }
 
-        const res = await fetch(`${BASE_URL}/api.php?action=cat_listar`, { method: 'GET' });
+        const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(idAlumno)}`;
+        const res = await fetch(url, { method: 'GET' });
+        if (!res.ok) throw new Error(`obtener_monto_categoria HTTP ${res.status}`);
+
         const data = await res.json().catch(() => ({}));
 
-        let filas = [];
-        if (Array.isArray(data)) filas = data;
-        else if (data?.categorias) filas = data.categorias;
-        else if (data?.exito && Array.isArray(data?.data)) filas = data.data;
-        else if (data?.exito && Array.isArray(data?.rows)) filas = data.rows;
-        else if (data?.exito && Array.isArray(data?.result)) filas = data.result;
-        else filas = data?.resultados || [];
-
-        const norm = filas.map((r) => ({
-          id: r.id ?? r.id_categoria ?? r.ID ?? null,
-          nombre: (r.nombre_categoria ?? r.descripcion ?? r.nombre ?? '').toString(),
-          monto: Number(r.monto ?? r.precio ?? r.Precio_Categoria ?? 0),
-        }));
-
-        const cat = norm.find(x => String(x.id) === String(idCategoria));
-        if (cat) {
-          setPrecioMensual(Number(cat.monto || 0));
-          setNombreCategoria(cat.nombre.toUpperCase());
+        // Estructura esperada:
+        // { exito: true, id_categoria, categoria_nombre, monto_mensual }
+        if (data?.exito) {
+          const monto = Number(
+            data?.monto_mensual ??
+            data?.monto ??
+            data?.precio ??
+            data?.Precio_Categoria ??
+            0
+          );
+          const nombre = (data?.categoria_nombre ?? data?.nombre_categoria ?? data?.nombre ?? '').toString();
+          setPrecioMensual(Number.isFinite(monto) ? monto : 0);
+          setNombreCategoria(nombre ? nombre.toUpperCase() : '');
         } else {
+          // Fallback si el backend no tiene info
           setPrecioMensual(0);
           setNombreCategoria('');
+          if (data?.mensaje) mostrarToast('advertencia', data.mensaje);
         }
       } catch (e) {
-        console.error('Error al cargar precio por categoría', e);
+        console.error('Error al obtener monto por categoría del alumno:', e);
         setPrecioMensual(0);
         setNombreCategoria('');
+        mostrarToast('error', 'No se pudo obtener el monto de la categoría del alumno.');
       }
     };
 
-    cargarPrecioCategoria();
+    cargarMontoCategoria();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idCategoria]);
+  }, [idAlumno]);
 
   // Limpiar selección al cambiar alumno o año
   useEffect(() => { setSeleccionados([]); }, [idAlumno, anioTrabajo]);
@@ -151,7 +151,6 @@ const ModalPagos = ({ socio, onClose }) => {
     const idsDisponibles = mesesDisponibles
       .map((m) => Number(m.id))
       .filter((id) => {
-        // deshabilitamos si ya hay estado (pagado/condonado) o si viene en la lista simple
         if (periodosEstado[id]) return false;
         return !periodosPagados.includes(Number(id));
       });
@@ -195,7 +194,6 @@ const ModalPagos = ({ socio, onClose }) => {
         }
 
         if (dataPagados?.exito) {
-          // 1) Intentamos leer detalle con estado
           let detalles = [];
           if (Array.isArray(dataPagados?.detalles)) detalles = dataPagados.detalles;
           else if (Array.isArray(dataPagados?.items)) detalles = dataPagados.items;
@@ -211,7 +209,6 @@ const ModalPagos = ({ socio, onClose }) => {
           }
           setPeriodosEstado(mapEstado);
 
-          // 2) Para compatibilidad, construimos la lista simple de IDs ocupados
           let ids = Object.keys(mapEstado).map(Number);
           if (ids.length === 0) {
             const arrIds = Array.isArray(dataPagados.meses_pagados)
@@ -242,7 +239,6 @@ const ModalPagos = ({ socio, onClose }) => {
   /* ================= Acciones ================= */
   const togglePeriodo = (id) => {
     const idNum = Number(id);
-    // si ya tiene estado (pagado/condonado) o viene en la lista simple, no permitimos
     if (periodosEstado[idNum] || periodosPagados.includes(idNum)) return;
     setSeleccionados((prev) =>
       prev.includes(idNum) ? prev.filter((x) => x !== idNum) : [...prev, idNum]
@@ -261,7 +257,6 @@ const ModalPagos = ({ socio, onClose }) => {
   const onToggleCondonar = (checked) => {
     setCondonar(checked);
     if (checked) {
-      // si condonamos, desactivamos libre
       setLibreActivo(false);
       setLibreValor('');
     }
@@ -270,28 +265,21 @@ const ModalPagos = ({ socio, onClose }) => {
   const onToggleLibre = (checked) => {
     setLibreActivo(checked);
     if (checked) {
-      // si es libre, no puede ser condonado
       setCondonar(false);
     } else {
       setLibreValor('');
     }
   };
 
-  // ✅ Handler para monto libre: no negativos y step de 500 (input), permite vacío
   const handleLibreChange = (e) => {
     const raw = e.target.value;
-
-    // permitir campo vacío mientras se escribe
     if (raw === '') {
       setLibreValor('');
       return;
     }
-
-    // parsear y clavar en [0, +∞)
     let n = Number(raw);
-    if (!Number.isFinite(n)) return; // ignora entradas no numéricas
+    if (!Number.isFinite(n)) return;
     if (n < 0) n = 0;
-
     setLibreValor(String(n));
   };
 
@@ -313,14 +301,11 @@ const ModalPagos = ({ socio, onClose }) => {
         periodos: seleccionados.map(Number),
         condonar: !!condonar,
         anio: Number(anioTrabajo),
-
-        // 🔹 SIEMPRE mandamos el monto que se ve/usa en UI (0 si condonado)
         monto_unitario: Math.round(condonar ? 0 : Number(precioUnitarioVigente || 0)),
       };
 
-      // (Compatibilidad con versiones previas del backend)
       if (libreActivo && !condonar) {
-        payload.monto_libre = Math.round(Number(libreValor) || 0); // entero
+        payload.monto_libre = Math.round(Number(libreValor) || 0);
       }
 
       const res = await fetch(`${BASE_URL}/api.php?action=registrar_pago`, {
@@ -355,8 +340,6 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-
-  // === Impresión usando tu util
   const handleImprimirComprobante = async () => {
     const periodoCodigo = [...seleccionados].map(Number).sort((a,b)=>a-b)[0] || 0;
 
@@ -564,7 +547,6 @@ const ModalPagos = ({ socio, onClose }) => {
                   value={libreValor}
                   onChange={handleLibreChange}
                   onKeyDown={(e) => {
-                    // bloquear el signo menos
                     if (e.key === '-' || e.key === 'Minus') e.preventDefault();
                   }}
                   disabled={!libreActivo || cargando}

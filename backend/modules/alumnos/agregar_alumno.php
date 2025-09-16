@@ -18,6 +18,7 @@ try {
     }
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
+    $pdo->exec("SET time_zone = '-03:00'");
 
     $raw = file_get_contents("php://input");
     $data = json_decode($raw, true);
@@ -27,7 +28,6 @@ try {
         exit;
     }
 
-    // Helpers
     $toUpper = function ($txt, $max = null) {
         if (!isset($txt) || trim((string)$txt) === '') return null;
         $val = mb_strtoupper(trim((string)$txt), 'UTF-8');
@@ -40,25 +40,23 @@ try {
     $errors = [];
 
     // ===== Campos =====
-    $apellido          = $toUpper($data['apellido'] ?? '', 100); // NOT NULL
-    $nombre            = $toUpper($data['nombre']   ?? '', 100); // NULL permitido
-    $id_tipo_documento = isset($data['id_tipo_documento']) && $data['id_tipo_documento'] !== '' ? (int)$data['id_tipo_documento'] : null; // opcional
-    $num_documento     = isset($data['num_documento']) ? trim((string)$data['num_documento']) : ''; // NOT NULL, UNIQUE
-    $id_sexo           = isset($data['id_sexo']) && $data['id_sexo'] !== '' ? (int)$data['id_sexo'] : null; // opcional
+    $apellido          = $toUpper($data['apellido'] ?? '', 100);
+    $nombre            = $toUpper($data['nombre']   ?? '', 100);
+    $id_tipo_documento = isset($data['id_tipo_documento']) && $data['id_tipo_documento'] !== '' ? (int)$data['id_tipo_documento'] : null;
+    $num_documento     = isset($data['num_documento']) ? trim((string)$data['num_documento']) : '';
+    $id_sexo           = isset($data['id_sexo']) && $data['id_sexo'] !== '' ? (int)$data['id_sexo'] : null;
     $domicilio         = $toUpper($data['domicilio'] ?? '', 150);
     $localidad         = $toUpper($data['localidad'] ?? '', 100);
     $telefono          = isset($data['telefono']) ? trim((string)$data['telefono']) : '';
-    $id_anio           = isset($data['id_año']) ? (int)$data['id_año'] : null; // JSON llega con "id_año"
+    $id_anio           = isset($data['id_año']) ? (int)$data['id_año'] : null;
     $id_division       = isset($data['id_division']) ? (int)$data['id_division'] : null;
-    $id_categoria      = isset($data['id_categoria']) && $data['id_categoria'] !== '' ? (int)$data['id_categoria'] : 1;
+    $id_categoria      = isset($data['id_categoria']) && $data['id_categoria'] !== '' ? (int)$data['id_categoria'] : null;
+    $id_cat_monto      = isset($data['id_cat_monto']) && $data['id_cat_monto'] !== '' ? (int)$data['id_cat_monto'] : null; // ⬅️ NUEVO
 
-    // ✅ NUEVO: Observaciones (texto libre, opcional, sin transformar)
     $observaciones     = isset($data['observaciones']) ? (string)$data['observaciones'] : null;
     if ($observaciones !== null) {
         $observaciones = trim($observaciones);
-        if ($observaciones === '') $observaciones = null; // guardar NULL si viene vacío
-        // No aplicamos restricciones de caracteres (texto libre)
-        // Si quisieras limitar tamaño en servidor: $observaciones = mb_substr($observaciones, 0, 65535, 'UTF-8');
+        if ($observaciones === '') $observaciones = null;
     }
 
     // ===== Validaciones =====
@@ -91,6 +89,9 @@ try {
     if (!$id_categoria || !is_int($id_categoria)) {
         $errors['id_categoria'] = 'Categoría obligatoria.';
     }
+    if (!$id_cat_monto || !is_int($id_cat_monto)) {
+        $errors['id_cat_monto'] = 'Categoría (monto) obligatoria.';
+    }
     if ($id_tipo_documento !== null && !is_int($id_tipo_documento)) {
         $errors['id_tipo_documento'] = 'Tipo de documento inválido.';
     }
@@ -109,31 +110,31 @@ try {
     $localidad = $localidad ?: null;
     $telefono  = $telefono  ?: null;
 
-    // ===== INSERT (incluye observaciones) =====
-    // NOTA: 'activo' y 'ingreso' tienen DEFAULT en la tabla.
+    // ===== INSERT =====
     $sql = "INSERT INTO `alumnos`
             (`apellido`, `nombre`, `id_tipo_documento`, `num_documento`, `id_sexo`,
-             `domicilio`, `localidad`, `telefono`, `id_año`, `id_division`, `id_categoria`,
-             `observaciones`)
+             `domicilio`, `localidad`, `telefono`, `id_año`, `id_division`,
+             `id_categoria`, `id_cat_monto`, `observaciones`, `ingreso`)
             VALUES
             (:apellido, :nombre, :id_tipo_documento, :num_documento, :id_sexo,
-             :domicilio, :localidad, :telefono, :id_anio, :id_division, :id_categoria,
-             :observaciones)";
+             :domicilio, :localidad, :telefono, :id_anio, :id_division,
+             :id_categoria, :id_cat_monto, :observaciones, CURDATE())";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         ':apellido'          => $apellido,
         ':nombre'            => $nombre,
-        ':id_tipo_documento' => $id_tipo_documento,  // null permitido
+        ':id_tipo_documento' => $id_tipo_documento,
         ':num_documento'     => $num_documento,
-        ':id_sexo'           => $id_sexo,            // null permitido
+        ':id_sexo'           => $id_sexo,
         ':domicilio'         => $domicilio,
         ':localidad'         => $localidad,
         ':telefono'          => $telefono,
-        ':id_anio'           => $id_anio,            // placeholder ascii
+        ':id_anio'           => $id_anio,
         ':id_division'       => $id_division,
         ':id_categoria'      => $id_categoria,
-        ':observaciones'     => $observaciones       // ✅ nuevo campo
+        ':id_cat_monto'      => $id_cat_monto,
+        ':observaciones'     => $observaciones
     ]);
 
     echo json_encode(['exito' => true, 'mensaje' => '✅ Alumno registrado correctamente.'], JSON_UNESCAPED_UNICODE);
@@ -146,7 +147,6 @@ try {
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
-
     http_response_code(500);
     echo json_encode(['exito' => false, 'mensaje' => '❌ Error: ' . $e->getMessage()]);
 } catch (Throwable $e) {

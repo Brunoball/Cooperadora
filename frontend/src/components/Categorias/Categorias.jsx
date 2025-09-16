@@ -89,6 +89,12 @@ function ConfirmDeleteModal({ open, categoria, onConfirm, onCancel, loading }) {
             : <>¿Seguro que querés eliminar esta categoría? Esta acción no se puede deshacer.</>}
         </p>
 
+        <p className="catdel-modal-text" style={{ marginTop: 8 }}>
+          <strong>Importante:</strong> todos los <strong>alumnos</strong> que tengan asignada esta
+          categoría de monto quedarán <strong>sin ninguna categoría</strong>.
+        </p>
+
+
         <div className="catdel-modal-buttons">
           <button className="catdel-btn catdel-btn--ghost" onClick={onCancel} autoFocus disabled={loading}>
             Cancelar
@@ -139,7 +145,7 @@ const Categorias = () => {
   // Historial
   const [modalHistOpen, setModalHistOpen] = useState(false);
   const [histLoading, setHistLoading] = useState(false);
-  const [hist, setHist] = useState([]); // [{precio_anterior, precio_nuevo, fecha}]
+  const [hist, setHist] = useState([]); // [{precio_anterior, precio_nuevo, fecha, tipo}]
   const [histCategoria, setHistCategoria] = useState({ id: null, nombre: '' });
 
   // Eliminar
@@ -155,12 +161,14 @@ const Categorias = () => {
     return data;
   };
 
+  // ⬇⬇⬇ Normalizamos para tener mensual y anual por separado
   const normalizarFilas = (arr) =>
     [...(arr || [])]
       .map((r) => ({
-        id: r.id ?? r.id_categoria ?? r.ID ?? null,
+        id: r.id ?? r.id_cat_monto ?? r.id_categoria ?? r.ID ?? null,
         descripcion: (r.descripcion ?? r.nombre_categoria ?? r.nombre ?? '').toString(),
-        precio: r.monto ?? r.precio ?? r.Precio_Categoria ?? null,
+        monto_mensual: r.monto ?? r.monto_mensual ?? null,
+        monto_anual:   r.monto_anual ?? null,
         historialCount: r.historial_count ?? r.cant_historial ?? r.tiene_historial ?? 0,
       }))
       .sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
@@ -239,12 +247,8 @@ const Categorias = () => {
         precio_anterior: Number(r.precio_anterior ?? r.anterior ?? r.old ?? 0),
         precio_nuevo:   Number(r.precio_nuevo   ?? r.nuevo   ?? r.new ?? 0),
         fecha:          (r.fecha_cambio ?? r.fecha ?? '').toString(),
+        tipo:           (r.tipo ?? 'MENSUAL').toString(),
       }));
-
-      if (norm.length === 0) {
-        showToast('info', 'No hay pagos registrados.');
-        return;
-      }
 
       setHist(norm);
       setModalHistOpen(true);
@@ -288,7 +292,8 @@ const Categorias = () => {
         <div className="cat_list">
           <div className="cat_list_head">
             <div className="cat_col cat_col_name cat_head_cell">Nombre</div>
-            <div className="cat_col cat_col_amount cat_head_cell cat_center">Monto</div>
+            <div className="cat_col cat_col_amount cat_head_cell cat_center">Mensual</div>
+            <div className="cat_col cat_col_amount cat_head_cell cat_center">Anual</div>
             <div className="cat_col cat_col_actions cat_head_cell cat_right">Acciones</div>
           </div>
 
@@ -297,6 +302,7 @@ const Categorias = () => {
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="cat_row cat_row_skeleton">
                   <span className="cat_skel cat_skel_text" />
+                  <span className="cat_skel cat_skel_text cat_skel_short" />
                   <span className="cat_skel cat_skel_text cat_skel_short" />
                   <span className="cat_skel cat_skel_icon" />
                 </div>
@@ -315,8 +321,12 @@ const Categorias = () => {
                   {c.descripcion || '—'}
                 </div>
 
-                <div className="cat_cell cat_col_amount cat_center" data-label="Monto">
-                  {fmtARS(c.precio)}
+                <div className="cat_cell cat_col_amount cat_center" data-label="Mensual">
+                  {fmtARS(c.monto_mensual)}
+                </div>
+
+                <div className="cat_cell cat_col_amount cat_center" data-label="Anual">
+                  {fmtARS(c.monto_anual)}
                 </div>
 
                 <div className="cat_cell cat_col_actions cat_right" data-label="Acciones">
@@ -324,8 +334,8 @@ const Categorias = () => {
                   <button
                     className="cat_icon_btn cat_icon_btn_history"
                     onClick={() => abrirHistorial(c)}
-                    title="Historial de pagos"
-                    aria-label={`Ver historial de pagos de ${c.descripcion || 'categoría'}`}
+                    title="Historial de cambios"
+                    aria-label={`Ver historial de ${c.descripcion || 'categoría'}`}
                   >
                     <FontAwesomeIcon icon={faClockRotateLeft} />
                   </button>
@@ -379,9 +389,9 @@ const Categorias = () => {
 
       {/* Modal Historial */}
       <Modal
-        open={modalHistOpen}
+        open={delState.open === false ? modalHistOpen : false}
         onClose={() => setModalHistOpen(false)}
-        title={`Historial de pagos · ${histCategoria.nombre || ''}`}
+        title={`Historial · ${histCategoria.nombre || ''}`}
       >
         {histLoading ? (
           <div className="cat_hist_loading">Cargando historial…</div>
@@ -391,6 +401,7 @@ const Categorias = () => {
               <thead>
                 <tr>
                   <th className="cat_th_center">#</th>
+                  <th className="cat_th_center">Tipo</th>
                   <th className="cat_th_right">Monto anterior</th>
                   <th className="cat_th_right">Monto nuevo</th>
                   <th className="cat_th_center">Cambio</th>
@@ -401,6 +412,7 @@ const Categorias = () => {
                 {hist.map((h, i) => (
                   <tr key={i}>
                     <td className="cat_td_center" data-label="#"> {i + 1} </td>
+                    <td className="cat_td_center" data-label="Tipo">{h.tipo}</td>
                     <td className="cat_td_right" data-label="Monto anterior">{fmtARS(h.precio_anterior)}</td>
                     <td className="cat_td_right" data-label="Monto nuevo">{fmtARS(h.precio_nuevo)}</td>
                     <td className="cat_td_center" data-label="Cambio">
