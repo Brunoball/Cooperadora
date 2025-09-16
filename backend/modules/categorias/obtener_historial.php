@@ -4,21 +4,23 @@ require_once realpath(__DIR__ . '/../../config/db.php');
 header('Content-Type: application/json; charset=utf-8');
 
 try {
-    $id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_POST['id']) ? (int)$_POST['id'] : 0);
-    if ($id <= 0) {
-        echo json_encode(['exito' => false, 'mensaje' => 'ID inválido']);
-        exit;
-    }
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0; // id_cat_monto
+    if ($id <= 0) { echo json_encode([]); exit; }
 
-    $sql = "SELECT precio_anterior, precio_nuevo, fecha_cambio
+    $sql = "SELECT
+                id_historico,
+                precio_anterior,
+                precio_nuevo,
+                DATE_FORMAT(fecha_cambio, '%Y-%m-%d') AS fecha_cambio,
+                tipo
             FROM precios_historicos
-            WHERE id_categoria = :id
+            WHERE id_cat_monto = :id
             ORDER BY fecha_cambio DESC, id_historico DESC";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $st = $pdo->prepare($sql);
+    $st->execute([':id' => $id]);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode(['exito' => true, 'historial' => $rows]);
+    echo json_encode(['exito' => true, 'historial' => $rows], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     echo json_encode(['exito' => false, 'mensaje' => 'Error al obtener historial: ' . $e->getMessage()]);
 }

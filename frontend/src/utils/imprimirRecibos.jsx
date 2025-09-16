@@ -1,4 +1,3 @@
-// frontend/src/utils/imprimirRecibos.jsx
 import BASE_URL from '../config/config';
 
 /* ================= Utilidades ================= */
@@ -64,13 +63,10 @@ function plantillaRecibo({
   dni = '',
   montoEntero = 0,
   categoriaNombre = '',
-  periodoMesNombre = '',
-  anioActual = new Date().getFullYear(),
+  periodoTexto = '',
 }) {
   const montoLetras = numeroALetras(Math.round(montoEntero));
-  const leyenda =
-    `como aporte de alumno ${String(categoriaNombre || '').toUpperCase()} ${Math.round(montoEntero)} ` +
-    `correspondiente al mes de ${periodoMesNombre} de ${anioActual}`;
+  const leyenda = `como aporte de alumno ${String(categoriaNombre || '').toUpperCase()} ${Math.round(montoEntero)} correspondiente a ${periodoTexto}`;
   const textoSon = `SON $ ${Number(montoEntero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`;
 
   return `
@@ -178,94 +174,33 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
 
   // 4) Estilos
   const css = `
-    @page { size: A4 portrait; margin: 0; } /* sin encabezado/pie del navegador */
+    @page { size: A4 portrait; margin: 0; }
     html, body { margin: 0; padding: 0; }
     body { font-family: "Courier New", Courier, monospace; color: #222; }
-
-    .page {
-      position: relative;
-      width: 210mm;   /* A4 */
-      height: 297mm;  /* A4 */
-      page-break-after: always;
-    }
-
-    /* Caja exacta 11cm x 15cm (arriba izquierda) */
+    .page { position: relative; width: 210mm; height: 297mm; page-break-after: always; }
     .comprobante {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 110mm;   /* 11 cm */
-      height: 150mm;  /* 15 cm */
-      border: 1px solid #000;
-      box-sizing: border-box;
-      padding: 8mm 9mm 10mm 9mm;
-      display: flex;
-      flex-direction: column;
-      gap: 2.6mm;
+      position: absolute; top: 0; left: 0; width: 110mm; height: 150mm;
+      border: 1px solid #000; box-sizing: border-box; padding: 8mm 9mm 10mm 9mm;
+      display: flex; flex-direction: column; gap: 2.6mm;
     }
-
-    .titulo {
-      text-align: center;
-      font-weight: 700;
-      letter-spacing: .4px;
-      font-size: 11pt;
-      margin-bottom: 2mm;
-    }
-
+    .titulo { text-align: center; font-weight: 700; letter-spacing: .4px; font-size: 11pt; margin-bottom: 2mm; }
     .fila { display: flex; align-items: center; width: 100%; font-size: 10.5pt; line-height: 1.35; }
     .cabecera { justify-content: space-between; color: #555; }
     .izq, .der { font-size: 10.5pt; }
     .dato { margin-left: 6px; font-weight: 700; }
     .dato.largo { margin-left: 8px; max-width: 82%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .etiqueta { margin-top: 1mm; color: #666; }
-
-    /* === TRES RAYAS: primera comienza a la derecha del texto === */
-    .raya-triple {
-      display: grid;
-      grid-template-columns: auto 1fr;  /* texto | línea */
-      grid-template-rows: 7mm 7mm 7mm;  /* tres renglones */
-      align-items: center;
-      column-gap: 4mm;
-      row-gap: 4mm;
-      margin: 1mm 0 2mm 0;
-      width: 100%;
-    }
-    .raya-triple .texto {
-      grid-column: 1 / 2;
-      grid-row: 1 / 2;                 /* sólo primera fila */
-      font-weight: 700;
-      font-size: 12pt;
-      letter-spacing: .5px;
-      white-space: nowrap;
-    }
-    .raya-triple .linea {
-      border-bottom: 1px dashed #777;   /* —— —— —— estilo rayas */
-      height: 0;
-      width: 100%;
-    }
-    .raya-triple .linea1 { grid-column: 2 / 3; grid-row: 1 / 2; }  /* a la derecha del texto */
-    .raya-triple .linea2 { grid-column: 1 / 3; grid-row: 2 / 3; }  /* ancho completo */
-    .raya-triple .linea3 { grid-column: 1 / 3; grid-row: 3 / 4; }  /* ancho completo */
-
+    .raya-triple { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 7mm 7mm 7mm;
+      align-items: center; column-gap: 4mm; row-gap: 4mm; margin: 1mm 0 2mm 0; width: 100%; }
+    .raya-triple .texto { grid-column: 1 / 2; grid-row: 1 / 2; font-weight: 700; font-size: 12pt; letter-spacing: .5px; white-space: nowrap; }
+    .raya-triple .linea { border-bottom: 1px dashed #777; height: 0; width: 100%; }
+    .raya-triple .linea1 { grid-column: 2 / 3; grid-row: 1 / 2; }
+    .raya-triple .linea2 { grid-column: 1 / 3; grid-row: 2 / 3; }
+    .raya-triple .linea3 { grid-column: 1 / 3; grid-row: 3 / 4; }
     .leyenda { color: #555; }
     .son { font-weight: 700; font-size: 12pt; margin-top: 1mm; }
-
-    .pie {
-      margin-top: auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      padding-top: 6mm;
-      gap: 12mm;
-    }
-    .sello, .firma {
-      width: 40mm;
-      text-align: center;
-      font-size: 10pt;
-      color: #666;
-      border-top: 1px solid #000;
-      padding-top: 10mm;
-    }
+    .pie { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 6mm; gap: 12mm; }
+    .sello, .firma { width: 40mm; text-align: center; font-size: 10pt; color: #666; border-top: 1px solid #000; padding-top: 10mm; }
   `;
 
   // 5) HTML
@@ -279,9 +214,32 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
     const nombreCompleto = getNombreCompleto(s);
     const dni = getDni(s);
 
+    // ======= MONTO =======
+    // Tomamos el PRIMER valor > 0 entre todas las fuentes posibles.
     const idCat = s?.id_categoria ?? null;
-    const catNombre = (s?.nombre_categoria || categoriasById[String(idCat)]?.nombre || '').toString();
-    const precio = Number(s?.monto ?? s?.importe ?? s?.precio_categoria ?? categoriasById[String(idCat)]?.monto ?? 0);
+    const precioDesdeListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
+
+    const candidatos = [
+      Number(s?.precio_unitario),   // del modal (si vino)
+      Number(s?.importe_total),     // del modal (pago de varios meses, si lo usás)
+      Number(s?.monto_mensual),     // del endpoint obtener_socio_comprobante (categoria_monto)
+      Number(s?.precio_categoria),  // alias
+      Number(s?.monto),             // dato viejo en grilla (suele venir 0)
+      Number(s?.importe),           // otro alias
+      precioDesdeListas             // listas (obtener_listas)
+    ].filter(v => Number.isFinite(v) && v > 0);
+
+    const precio = candidatos.length ? candidatos[0] : 0;
+
+    // ======= CATEGORÍA =======
+    const catNombre =
+      (s?.categoria_nombre || s?.nombre_categoria || categoriasById[String(idCat)]?.nombre || '').toString();
+
+    // ======= PERIODO =======
+    const periodoTexto =
+      (s?.periodo_texto && String(s.periodo_texto).trim())
+        ? String(s.periodo_texto).trim()
+        : `${mesNombre} ${anioActual}`;
 
     const nroRecibo = (s?.nro_recibo ?? String(reciboBase + idx)).toString().padStart(6, '0');
 
@@ -291,10 +249,9 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
       fecha,
       nombreCompleto,
       dni,
-      montoEntero: Math.round(precio || 0),
+      montoEntero: Math.round(Number(precio) || 0),
       categoriaNombre: catNombre,
-      periodoMesNombre: mesNombre,
-      anioActual,
+      periodoTexto,
     });
   }).join('\n');
 

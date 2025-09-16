@@ -46,8 +46,11 @@ const Cuotas = () => {
   // Estado de pestaña (deudor | pagado | condonado)
   const [estadoPagoSeleccionado, setEstadoPagoSeleccionado] = useState('deudor');
 
-  // Año **de pago** (viene de pagos.fecha_pago). Lo fijamos luego de fetchAnios.
-  const [anioSeleccionado, setAnioSeleccionado] = useState('');
+  // Año **de pago** (viene de pagos.fecha_pago). Lo fijamos luego de fetchAniosPago.
+  const [anioPagoSeleccionado, setAnioPagoSeleccionado] = useState('');
+
+  // Nuevo: Año lectivo (tabla anio de obtener_listas)
+  const [anioLectivoSeleccionado, setAnioLectivoSeleccionado] = useState('');
 
   // Otros filtros
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
@@ -55,7 +58,8 @@ const Cuotas = () => {
   const [mesSeleccionado, setMesSeleccionado] = useState('');
 
   // Listas
-  const [anios, setAnios] = useState([]);         // se llena con listar_anios
+  const [aniosPago, setAniosPago] = useState([]);         // listar_anios (años con pagos)
+  const [aniosLectivos, setAniosLectivos] = useState([]); // obtener_listas -> anios (id/nombre)
   const [categorias, setCategorias] = useState([]);
   const [divisiones, setDivisiones] = useState([]);
   const [meses, setMeses] = useState([]);
@@ -94,42 +98,48 @@ const Cuotas = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Helpers de lectura
+  // Helpers de lectura (según estructura recibida del backend)
   const getIdMesFromCuota = (c) => c?.id_mes ?? c?.id_periodo ?? '';
   const getNombreCuota = (c) => c?.nombre ?? '';
   const getDomicilioCuota = (c) => c?.domicilio ?? '';
   const getDocumentoCuota = (c) => c?.documento ?? c?.dni ?? c?.num_documento ?? '';
   const getIdAlumnoFromCuota = (c) => c?.id_alumno ?? c?.id_socio ?? c?.id ?? '';
 
+  // Año lectivo posible en cuota (distintos nombres defensivos)
+  const getIdAnioLectivo = (c) =>
+    c?.id_anio ?? c?.id_año ?? c?.anio_id ?? c?.anio ?? '';
+  const getNombreAnioLectivo = (c) =>
+    c?.anio_nombre ?? c?.nombre_anio ?? c?.nombre_año ?? '';
+
   const getNombreDivision = (id) => (divisiones.find(d => String(d.id) === String(id))?.nombre) || '';
   const getNombreCategoria = (id) => (categorias.find(c => String(c.id) === String(id))?.nombre) || '';
   const getNombreMes = (id) => (meses.find(m => String(m.id) === String(id))?.nombre) || id;
 
   // === Traer años que tienen pagos (listar_anios) ===
-  const fetchAnios = useCallback(async () => {
+  const fetchAniosPago = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`);
       const data = await res.json().catch(() => ({}));
       const lista = (data?.anios && Array.isArray(data.anios)) ? data.anios : [];
-      setAnios(lista);
+      setAniosPago(lista);
 
       // Lógica de selección por defecto
       const hasCurrent = lista.some(a => String(a.id) === String(CURRENT_YEAR));
       if (hasCurrent) {
-        setAnioSeleccionado(String(CURRENT_YEAR));
+        setAnioPagoSeleccionado(String(CURRENT_YEAR));
       } else if (lista.length > 0) {
-        setAnioSeleccionado(String(lista[0].id));
+        setAnioPagoSeleccionado(String(lista[0].id));
       } else {
-        setAnioSeleccionado('');
+        setAnioPagoSeleccionado('');
       }
     } catch (e) {
-      console.error('Error al obtener años:', e);
-      setAnios([]);
-      setAnioSeleccionado('');
+      console.error('Error al obtener años de pago:', e);
+      setAniosPago([]);
+      setAnioPagoSeleccionado('');
     }
   }, []);
 
-  // === Obtener cuotas + listas (meses/categorías/divisiones) ===
+  // === Obtener cuotas + listas (meses/categorías/divisiones/anios lectivos) ===
   const obtenerCuotasYListas = useCallback(async () => {
     try {
       setLoading(true);
@@ -137,7 +147,7 @@ const Cuotas = () => {
       const params = new URLSearchParams();
       params.set('action', 'cuotas');
       if (mesSeleccionado) params.set('id_mes', String(mesSeleccionado));
-      if (anioSeleccionado) params.set('anio', String(anioSeleccionado)); // AÑO DE PAGO (BACKEND)
+      if (anioPagoSeleccionado) params.set('anio', String(anioPagoSeleccionado)); // AÑO DE PAGO (BACKEND)
 
       const [resCuotas, resListas] = await Promise.all([
         fetch(`${BASE_URL}/api.php?${params.toString()}`),
@@ -154,26 +164,25 @@ const Cuotas = () => {
         setCategorias(Array.isArray(L.categorias) ? L.categorias : []);
         setDivisiones(Array.isArray(L.divisiones) ? L.divisiones : []);
         setMeses(Array.isArray(L.meses) ? L.meses : []);
+        setAniosLectivos(Array.isArray(L.anios) ? L.anios : []);
       } else {
-        setCategorias([]); setDivisiones([]); setMeses([]);
+        setCategorias([]); setDivisiones([]); setMeses([]); setAniosLectivos([]);
       }
     } catch (e) {
       console.error('Error al conectar con el servidor:', e);
-      setCuotas([]); setCategorias([]); setDivisiones([]); setMeses([]);
+      setCuotas([]); setCategorias([]); setDivisiones([]); setMeses([]); setAniosLectivos([]);
     } finally {
       setLoading(false);
     }
-  }, [mesSeleccionado, anioSeleccionado]);
+  }, [mesSeleccionado, anioPagoSeleccionado]);
 
-  // Cargar años y luego datos
-  useEffect(() => {
-    fetchAnios();
-  }, [fetchAnios]);
+  // Cargar años de pago y luego datos
+  useEffect(() => { fetchAniosPago(); }, [fetchAniosPago]);
 
   useEffect(() => {
     obtenerCuotasYListas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mesSeleccionado, anioSeleccionado]);
+  }, [mesSeleccionado, anioPagoSeleccionado]);
 
   // ===== Patch optimista tras pagar/condonar =====
   const patchCuotasAfterPago = useCallback(({ idAlumno, periodos, estado }) => {
@@ -191,7 +200,7 @@ const Cuotas = () => {
     );
   }, []);
 
-  // Filtros locales (NO filtramos por año en el cliente: el año lo aplica el backend)
+  // Filtros locales (NO filtramos por año de pago en el cliente: lo aplica el backend)
   const coincideBusquedaLibre = (c) => {
     if (!busqueda) return true;
     const q = normalizar(busqueda);
@@ -209,6 +218,19 @@ const Cuotas = () => {
     !mesSeleccionado || String(getIdMesFromCuota(c)) === String(mesSeleccionado);
   const coincideEstadoPago = (c) =>
     !estadoPagoSeleccionado || String(c?.estado_pago ?? '').toLowerCase() === estadoPagoSeleccionado;
+
+  // Nuevo: filtro Año lectivo (por id; si no hay id, por nombre)
+  const coincideAnioLectivo = (c) => {
+    if (!anioLectivoSeleccionado) return true;
+    const idCuota = String(getIdAnioLectivo(c));
+    if (idCuota) return idCuota === String(anioLectivoSeleccionado);
+
+    const nombreCuota = normalizar(getNombreAnioLectivo(c));
+    const nombreSeleccionado = normalizar(
+      aniosLectivos.find(a => String(a.id) === String(anioLectivoSeleccionado))?.nombre ?? ''
+    );
+    return nombreSeleccionado ? nombreCuota === nombreSeleccionado : true;
+  };
 
   const ordenarPor = (a, b, campo, asc) => {
     let va = '', vb = '';
@@ -229,23 +251,25 @@ const Cuotas = () => {
       .filter(coincideBusquedaLibre)
       .filter(coincideCategoria)
       .filter(coincideDivision)
+      .filter(coincideAnioLectivo)
       .filter(coincideMes)
       .sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
-  }, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado, estadoPagoSeleccionado, orden]);
+  }, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, estadoPagoSeleccionado, orden]);
 
-  // Contadores SIEMPRE sobre el dataset completo del mes
+  // Contadores SIEMPRE sobre el dataset completo del mes, respetando filtros visibles
   const contarConFiltros = (estadoPago) =>
     cuotas.filter((c) =>
       String(getIdMesFromCuota(c)) === String(mesSeleccionado || '') &&
       (!busqueda || coincideBusquedaLibre(c)) &&
       coincideCategoria(c) &&
       coincideDivision(c) &&
+      coincideAnioLectivo(c) &&
       (String(c?.estado_pago ?? '').toLowerCase() === estadoPago)
     ).length;
 
-  const cantidadFiltradaDeudores   = useMemo(() => mesSeleccionado ? contarConFiltros('deudor')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado]);
-  const cantidadFiltradaPagados    = useMemo(() => mesSeleccionado ? contarConFiltros('pagado')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado]);
-  const cantidadFiltradaCondonados = useMemo(() => mesSeleccionado ? contarConFiltros('condonado') : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, mesSeleccionado]);
+  const cantidadFiltradaDeudores   = useMemo(() => mesSeleccionado ? contarConFiltros('deudor')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
+  const cantidadFiltradaPagados    = useMemo(() => mesSeleccionado ? contarConFiltros('pagado')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
+  const cantidadFiltradaCondonados = useMemo(() => mesSeleccionado ? contarConFiltros('condonado') : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
 
   const toggleOrden = useCallback((campo) => {
     setOrden(prev => ({ campo, ascendente: prev.campo === campo ? !prev.ascendente : true }));
@@ -283,11 +307,12 @@ const Cuotas = () => {
     setToastTipo('exito'); setToastMensaje('Exportación a Excel iniciada'); setToastVisible(true);
   }, [mesSeleccionado, loading, cuotasFiltradas.length]);
 
-  const onChangeMes       = (e) => { setMesSeleccionado(e.target.value); triggerCascade(); };
-  const onChangeAnio      = (e) => { setAnioSeleccionado(e.target.value); triggerCascade(); }; // AÑO de pago (backend)
-  const onChangeCategoria = (e) => { setCategoriaSeleccionada(e.target.value); triggerCascade(); };
-  const onChangeDivision  = (e) => { setDivisionSeleccionada(e.target.value); triggerCascade(); };
-  const onChangeBusqueda  = (e) => { setBusqueda(e.target.value); triggerCascade(); };
+  const onChangeMes        = (e) => { setMesSeleccionado(e.target.value); triggerCascade(); };
+  const onChangeAnioPago   = (e) => { setAnioPagoSeleccionado(e.target.value); triggerCascade(); }; // AÑO de pago (backend)
+  const onChangeCategoria  = (e) => { setCategoriaSeleccionada(e.target.value); triggerCascade(); };
+  const onChangeDivision   = (e) => { setDivisionSeleccionada(e.target.value); triggerCascade(); };
+  const onChangeAnioLect   = (e) => { setAnioLectivoSeleccionado(e.target.value); triggerCascade(); };
+  const onChangeBusqueda   = (e) => { setBusqueda(e.target.value); triggerCascade(); };
 
   const Row = ({ index, style, data }) => {
     const cuota = data[index];
@@ -458,8 +483,8 @@ const Cuotas = () => {
     </div>
   );
 
-  // Tras cerrar modales, refrescamos **años** y **datos**
-  const resyncAll = useCallback(() => { fetchAnios(); obtenerCuotasYListas(); }, [fetchAnios, obtenerCuotasYListas]);
+  // Tras cerrar modales, refrescamos **años de pago** y **datos**
+  const resyncAll = useCallback(() => { fetchAniosPago(); obtenerCuotasYListas(); }, [fetchAniosPago, obtenerCuotasYListas]);
 
   return (
     <div className={`gcuotas-container ${cascadeActive ? 'gcuotas-cascading' : ''}`}>
@@ -535,20 +560,20 @@ const Cuotas = () => {
               <div className="gcuotas-select-container">
                 {/* AÑO DE PAGO (arriba del Mes) */}
                 <div className="gcuotas-input-group">
-                  <label htmlFor="anio" className="gcuotas-input-label">
+                  <label htmlFor="anioPago" className="gcuotas-input-label">
                     <FontAwesomeIcon icon={faFilter} /> Año de pago
                   </label>
                   <select
-                    id="anio"
-                    value={anioSeleccionado}
-                    onChange={onChangeAnio}
+                    id="anioPago"
+                    value={anioPagoSeleccionado}
+                    onChange={onChangeAnioPago}
                     className="gcuotas-dropdown"
-                    disabled={loading || anios.length === 0}
+                    disabled={loading || aniosPago.length === 0}
                   >
-                    {anios.length === 0 ? (
+                    {aniosPago.length === 0 ? (
                       <option value="">Sin pagos</option>
                     ) : (
-                      anios.map((a, idx) => (
+                      aniosPago.map((a, idx) => (
                         <option key={idx} value={a.id}>{a.nombre}</option>
                       ))
                     )}
@@ -587,6 +612,25 @@ const Cuotas = () => {
                     <option value="">Todas</option>
                     {categorias.map((c, idx) => (
                       <option key={idx} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ⬅️ Nuevo: Año lectivo a la IZQUIERDA de División */}
+                <div className="gcuotas-input-group">
+                  <label htmlFor="anioLectivo" className="gcuotas-input-label">
+                    <FontAwesomeIcon icon={faFilter} /> Año
+                  </label>
+                  <select
+                    id="anioLectivo"
+                    value={anioLectivoSeleccionado}
+                    onChange={onChangeAnioLect}
+                    className="gcuotas-dropdown"
+                    disabled={loading}
+                  >
+                    <option value="">Todos</option>
+                    {aniosLectivos.map((a, idx) => (
+                      <option key={idx} value={a.id}>{a.nombre}</option>
                     ))}
                   </select>
                 </div>

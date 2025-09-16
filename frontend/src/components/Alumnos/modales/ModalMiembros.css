@@ -1,0 +1,85 @@
+/* src/components/Familias/modales/ModalMiembros.css */
+
+/* Overlay y contenedor */
+.mm_overlay { position:fixed; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.mm_modal { width:min(1100px, 96vw); background:white; border-radius:14px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.25); display:flex; flex-direction:column; max-height:92vh; }
+
+/* Header / Footer */
+.mm_head, .mm_foot { padding:12px 16px; border-bottom:1px solid #e2e8f0; }
+.mm_foot { border-top:1px solid #e2e8f0; border-bottom:none; display:flex; justify-content:flex-end; gap:10px; }
+.mm_close { border:none; background:transparent; cursor:pointer; }
+.mm_head { display:flex; align-items:center; justify-content:space-between; }
+
+/* Layout cuerpo */
+.mm_body { display:grid; grid-template-columns: 1fr 1fr; gap:12px; padding:12px; overflow:auto; }
+.mm_col { display:flex; flex-direction:column; gap:10px; min-height:0; }
+
+/* LISTA con altura FIJA para evitar “saltos” */
+.mm_list[data-fixed] {
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+  padding:8px;
+  overflow-y:auto;
+  height: clamp(300px, 56vh, 560px);
+}
+
+/* Items base */
+.mm_item {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; background:white; border:1px solid #e2e8f0;
+  border-radius:10px; padding:10px 12px; margin:6px 2px;
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.mm_item.sel { align-items:flex-start; gap:10px; }
+.mm_item.sel input { margin-top:6px; }
+.mm_item.sel.checked { box-shadow:0 0 0 2px rgba(14,165,233,.25) inset; }
+.mm_main { display:flex; flex-direction:column; gap:2px; }
+
+/* Estados (verde activo / rojo inactivo) */
+.mm_item.status-active {
+  border-color:#bbf7d0;            /* green-200 */
+  background:#f0fdf4;             /* green-50  */
+}
+.mm_item.status-active:hover {
+  border-color:#86efac;
+  background:#ecfdf5;
+}
+.mm_item.status-inactive {
+  border-color:#fecaca;           /* red-200 */
+  background:#fef2f2;             /* red-50  */
+}
+.mm_item.status-inactive:hover {
+  border-color:#fca5a5;
+  background:#fee2e2;
+}
+
+/* Badges */
+.mm_badge {
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:11px;
+  line-height:1.2;
+  width:max-content;
+}
+.mm_badge.danger {
+  background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;
+}
+
+/* Botón eliminar */
+.mm_actions button { border:1px solid #fecaca; color:#dc2626; background:white; border-radius:10px; padding:6px 8px; cursor:pointer; }
+.mm_actions button:hover { background:#fee2e2; }
+
+/* Vacío */
+.mm_empty { text-align:center; color:#475569; padding:16px; }
+
+/* Búsqueda */
+.mm_search { display:flex; align-items:center; gap:8px; border:1px solid #e2e8f0; border-radius:10px; background:white; padding:8px 10px; }
+.mm_search input { border:none; outline:none; flex:1; }
+
+/* Botones */
+.mm_btn { border-radius:10px; padding:10px 14px; cursor:pointer; }
+.mm_btn.ghost { border:1px solid #e2e8f0; background:white; }
+.mm_btn.solid { border:none; background:#0ea5e9; color:white; }
+.mm_footer_right { display:flex; justify-content:flex-end; padding-top:6px; }

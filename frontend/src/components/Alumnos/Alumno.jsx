@@ -143,7 +143,10 @@ const Alumnos = () => {
     mensaje: ''
   });
 
-  // ⚠️ Estructura nueva: reemplazamos letraSeleccionada por divisionSeleccionada
+  // 🔽 NUEVO: categorías disponibles (desde obtener_listas)
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+
+  // ⚠️ Estructura con categoría incluida
   const [filtros, setFiltros] = useState(() => {
     const saved = localStorage.getItem('filtros_alumnos');
     if (saved) {
@@ -153,6 +156,7 @@ const Alumnos = () => {
           busqueda: parsed.busqueda ?? '',
           divisionSeleccionada: parsed.divisionSeleccionada ?? '',
           anioSeleccionado: parsed.anioSeleccionado ?? null,
+          categoriaSeleccionada: parsed.categoriaSeleccionada ?? '',
           filtroActivo: parsed.filtroActivo ?? null,
         };
       } catch {}
@@ -161,6 +165,7 @@ const Alumnos = () => {
       busqueda: '',
       divisionSeleccionada: '',
       anioSeleccionado: null,
+      categoriaSeleccionada: '',
       filtroActivo: null,
     };
   });
@@ -169,16 +174,18 @@ const Alumnos = () => {
   const [openSecciones, setOpenSecciones] = useState({
     division: false,
     anio: false,
+    categoria: false, // 👈 nuevo acordeón
   });
   const [verMasAnio] = useState(false);
 
-  const { busqueda, divisionSeleccionada, filtroActivo, anioSeleccionado } = filtros;
+  const { busqueda, divisionSeleccionada, filtroActivo, anioSeleccionado, categoriaSeleccionada } = filtros;
   const busquedaDefer = useDeferredValue(busqueda);
 
   const hayFiltros = !!(
     (busquedaDefer && busquedaDefer.trim() !== '') ||
     (divisionSeleccionada && divisionSeleccionada !== '') ||
-    (anioSeleccionado !== null)
+    (anioSeleccionado !== null) ||
+    (categoriaSeleccionada && categoriaSeleccionada !== '')
   );
 
   // 🔐 Rol del usuario para ocultar botones en rol "vista"
@@ -230,12 +237,18 @@ const Alumnos = () => {
       resultados = resultados.filter((a) => a._anioNum === anioSeleccionado);
     }
 
+    // 👇 Nuevo: filtro por categoría (usa nombre de la categoría)
+    if (categoriaSeleccionada && categoriaSeleccionada !== '') {
+      const catNorm = normalizar(categoriaSeleccionada);
+      resultados = resultados.filter((a) => normalizar(a?.categoria_nombre ?? '') === catNorm);
+    }
+
     if (filtroActivo === 'todos') {
       resultados = alumnos;
     }
 
     return resultados;
-  }, [alumnos, busquedaDefer, divisionSeleccionada, anioSeleccionado, filtroActivo]);
+  }, [alumnos, busquedaDefer, divisionSeleccionada, anioSeleccionado, categoriaSeleccionada, filtroActivo]);
 
   const puedeExportar = useMemo(() => {
     return (hayFiltros || filtroActivo === 'todos') && alumnosFiltrados.length > 0 && !cargando;
@@ -303,11 +316,13 @@ const Alumnos = () => {
     setToast({ mostrar: true, tipo, mensaje });
   }, []);
 
-  // ✅ Carga inicial (pero spinner se oculta hasta que el usuario pida ver resultados)
+  // ✅ Carga inicial (alumnos + listas para categorías)
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
         setCargando(true);
+
+        // 1) Alumnos
         const response = await fetch(`${BASE_URL}/api.php?action=alumnos`);
         const data = await response.json();
 
@@ -320,7 +335,7 @@ const Alumnos = () => {
               _nSolo: normalizar(a?.nombre ?? ''),
               _ap: normalizar(a?.apellido ?? ''),
               _nyap: normalizar(a?.nombre_completo ?? a?.nombreyapellido ?? a?.nyap ?? ''),
-              _dni: String(a?.dni ?? '').toLowerCase(),
+              _dni: String(a?.dni ?? a?.num_documento ?? '').toLowerCase(),
               _anioNum,
             };
           });
@@ -330,6 +345,37 @@ const Alumnos = () => {
         } else {
           mostrarToast(`Error al obtener alumnos: ${data.mensaje}`, 'error');
         }
+
+        // 2) Listas (para categorías)
+        try {
+          const resListas = await fetch(`${BASE_URL}/api.php?action=obtener_listas`);
+          const dataListas = await resListas.json();
+          if (dataListas?.exito && dataListas?.listas?.categorias) {
+            // Mapeo a solo nombres, ordenados alfabéticamente
+            const cats = (dataListas.listas.categorias || [])
+              .map(c => (c?.nombre ?? '').toString().trim())
+              .filter(Boolean)
+              .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+            setCategoriasDisponibles(cats);
+          } else {
+            // Si falla, intento derivarlas de los alumnos (fallback)
+            const setCats = new Set(
+              (data?.alumnos || [])
+                .map(a => (a?.categoria_nombre ?? '').toString().trim())
+                .filter(Boolean)
+            );
+            setCategoriasDisponibles(Array.from(setCats).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })));
+          }
+        } catch {
+          // Fallback a partir de alumnos si obtener_listas falla
+          const setCats = new Set(
+            (data?.alumnos || [])
+              .map(a => (a?.categoria_nombre ?? '').toString().trim())
+              .filter(Boolean)
+          );
+          setCategoriasDisponibles(Array.from(setCats).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })));
+        }
+
       } catch (error) {
         mostrarToast('Error de red al obtener alumnos', 'error');
       } finally {
@@ -345,6 +391,7 @@ const Alumnos = () => {
           busqueda: '',
           divisionSeleccionada: '',
           anioSeleccionado: null,
+          categoriaSeleccionada: '',
           filtroActivo: null,
         });
         localStorage.removeItem('filtros_alumnos');
@@ -496,6 +543,7 @@ const Alumnos = () => {
       busqueda: '',
       divisionSeleccionada: '',
       anioSeleccionado: null,
+      categoriaSeleccionada: '',
       filtroActivo: 'todos',
     });
     triggerCascadaConPreMask();
@@ -506,7 +554,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: valor };
       next.filtroActivo =
-        (valor?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null)
+        (valor?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
           ? 'filtros'
           : null;
       return next;
@@ -517,7 +565,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, divisionSeleccionada: division };
       next.filtroActivo =
-        (prev.busqueda?.trim() || division || prev.anioSeleccionado !== null)
+        (prev.busqueda?.trim() || division || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
           ? 'filtros'
           : null;
       return next;
@@ -530,7 +578,21 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: anio };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.divisionSeleccionada || anio !== null)
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || anio !== null || prev.categoriaSeleccionada)
+          ? 'filtros'
+          : null;
+      return next;
+    });
+    setMostrarFiltros(false);
+    triggerCascadaConPreMask();
+  }, [triggerCascadaConPreMask]);
+
+  // 👇 Nuevo handler: Categoría
+  const handleFiltrarPorCategoria = useCallback((categoria) => {
+    setFiltros((prev) => {
+      const next = { ...prev, categoriaSeleccionada: categoria };
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || categoria)
           ? 'filtros'
           : null;
       return next;
@@ -544,7 +606,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: '' };
       next.filtroActivo =
-        (prev.divisionSeleccionada || prev.anioSeleccionado !== null)
+        (prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
           ? 'filtros'
           : null;
       return next;
@@ -555,7 +617,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, divisionSeleccionada: '' };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.anioSeleccionado !== null)
+        (prev.busqueda?.trim() || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
           ? 'filtros'
           : null;
       return next;
@@ -566,7 +628,19 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: null };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.divisionSeleccionada)
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.categoriaSeleccionada)
+          ? 'filtros'
+          : null;
+      return next;
+    });
+  }, []);
+
+  // 👇 Nuevo: quitar categoría
+  const quitarCategoria = useCallback(() => {
+    setFiltros((prev) => {
+      const next = { ...prev, categoriaSeleccionada: '' };
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null)
           ? 'filtros'
           : null;
       return next;
@@ -580,6 +654,7 @@ const Alumnos = () => {
       busqueda: '',
       divisionSeleccionada: '',
       anioSeleccionado: null,
+      categoriaSeleccionada: '',
       filtroActivo: null,
     }));
   }, []);
@@ -710,7 +785,7 @@ const Alumnos = () => {
   /* ================================
      Render
   ================================= */
-  const hayChips = !!(busqueda || divisionSeleccionada || anioSeleccionado !== null);
+  const hayChips = !!(busqueda || divisionSeleccionada || anioSeleccionado !== null || categoriaSeleccionada);
 
   return (
     <div className="alu-alumno-container">
@@ -766,7 +841,7 @@ const Alumnos = () => {
 
             {mostrarFiltros && (
               <div className="alu-filtros-menu" role="menu">
-                {/* AÑO (arriba) */}
+                {/* AÑO */}
                 <div className="alu-filtros-group">
                   <button
                     type="button"
@@ -794,7 +869,7 @@ const Alumnos = () => {
                   </div>
                 </div>
 
-                {/* DIVISIÓN (abajo) */}
+                {/* DIVISIÓN */}
                 <div className="alu-filtros-group">
                   <button
                     type="button"
@@ -819,6 +894,38 @@ const Alumnos = () => {
                             title={`Filtrar por división ${div}`}
                           >
                             {div}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* CATEGORÍA (NUEVO) */}
+                <div className="alu-filtros-group">
+                  <button
+                    type="button"
+                    className={`alu-filtros-group-header ${openSecciones.categoria ? 'is-open' : ''}`}
+                    onClick={() => setOpenSecciones((s) => ({ ...s, categoria: !s.categoria }))}
+                    aria-expanded={openSecciones.categoria}
+                  >
+                    <span className="alu-filtros-group-title">Filtrar por categoría</span>
+                    <FaChevronDown className="alu-accordion-caret" />
+                  </button>
+
+                  <div className={`alu-filtros-group-body ${openSecciones.categoria ? 'is-open' : 'is-collapsed'}`}>
+                    <div className="alu-alfabeto-filtros">
+                      {categoriasDisponibles.length === 0 ? (
+                        <span className="alu-filtro-empty">No hay categorías disponibles</span>
+                      ) : (
+                        categoriasDisponibles.map((cat) => (
+                          <button
+                            key={`cat-${cat}`}
+                            className={`alu-letra-filtro ${filtros.categoriaSeleccionada === cat ? 'alu-active' : ''}`}
+                            onClick={() => handleFiltrarPorCategoria(cat)}
+                            title={`Filtrar por categoría ${cat}`}
+                          >
+                            {cat}
                           </button>
                         ))
                       )}
@@ -899,6 +1006,21 @@ const Alumnos = () => {
                       <button
                         className="alu-chip-mini-close"
                         onClick={quitarAnio}
+                        aria-label="Quitar filtro"
+                        title="Quitar este filtro"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+
+                  {categoriaSeleccionada && (
+                    <div className="alu-chip-mini" title="Filtro activo">
+                      <span className="alu-chip-mini-text alu-alumnos-desktop">Categoría: {categoriaSeleccionada}</span>
+                      <span className="alu-chip-mini-text alu-alumnos-mobile">{categoriaSeleccionada}</span>
+                      <button
+                        className="alu-chip-mini-close"
+                        onClick={quitarCategoria}
                         aria-label="Quitar filtro"
                         title="Quitar este filtro"
                       >
@@ -1129,6 +1251,7 @@ const Alumnos = () => {
                 busqueda: '',
                 divisionSeleccionada: '',
                 anioSeleccionado: null,
+                categoriaSeleccionada: '',
                 filtroActivo: null,
               });
               localStorage.removeItem('filtros_alumnos');
@@ -1165,6 +1288,17 @@ const Alumnos = () => {
             >
               <FaFileExcel className="alu-alumno-icon-button" />
               <p>Exportar a Excel</p>
+            </button>
+
+            {/* ➕ Botón Familias */}
+            <button
+              className="alu-alumno-button alu-hover-effect"
+              onClick={() => navigate('/familias')}
+              aria-label="Familias"
+              title="Familias"
+            >
+              <FaUsers className="alu-alumno-icon-button" />
+              <p>Familias</p>
             </button>
 
             <button

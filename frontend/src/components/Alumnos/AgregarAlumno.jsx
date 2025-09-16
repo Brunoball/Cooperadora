@@ -13,7 +13,8 @@ const AgregarAlumno = () => {
   const [listas, setListas] = useState({
     anios: [],
     divisiones: [],
-    categorias: [],
+    categorias: [],          // tabla categoria (id_categoria)
+    categoriasMonto: [],     // tabla categoria_monto (id_cat_monto)
     tipos_documentos: [],
     sexos: [],
     loaded: false
@@ -22,7 +23,7 @@ const AgregarAlumno = () => {
   const [formData, setFormData] = useState({
     apellido: '',
     nombre: '',
-    id_tipo_documento: '',   // ⬅️ se setea a DNI por defecto tras cargar listas
+    id_tipo_documento: '',
     num_documento: '',
     id_sexo: '',
     domicilio: '',
@@ -31,6 +32,7 @@ const AgregarAlumno = () => {
     id_año: '',
     id_division: '',
     id_categoria: '',
+    id_cat_monto: '',         // ⬅️ NUEVO
     observaciones: ''
   });
 
@@ -46,7 +48,6 @@ const AgregarAlumno = () => {
     setTimeout(() => setToast({ show: false, message: '', type }), duracion);
   };
 
-  // Normalizador simple (quita acentos y pasa a mayúsculas)
   const normalize = (s) =>
     (s || '')
       .toString()
@@ -63,19 +64,32 @@ const AgregarAlumno = () => {
         const json = await res.json();
 
         if (json.exito) {
-          const { anios, divisiones, categorias, tipos_documentos, sexos } = json.listas || {};
+          const {
+            anios,
+            divisiones,
+            categorias,
+            categorias_monto,   // si el backend lo expone con este nombre
+            tipos_documentos,
+            sexos
+          } = json.listas || {};
+
           const td = Array.isArray(tipos_documentos) ? tipos_documentos : [];
 
           setListas({
             anios: Array.isArray(anios) ? anios : [],
             divisiones: Array.isArray(divisiones) ? divisiones : [],
             categorias: Array.isArray(categorias) ? categorias : [],
+            categoriasMonto: Array.isArray(categorias_monto)
+              ? categorias_monto
+              : (Array.isArray(json.listas?.categorias) && json.listas?.categorias[0]?.monto_mensual !== undefined)
+                  ? json.listas.categorias // compat si ya devolvés categoria_monto en "categorias"
+                  : [],
             tipos_documentos: td,
             sexos: Array.isArray(sexos) ? sexos : [],
             loaded: true
           });
 
-          // ⬇️ Preseleccionar DNI si el usuario no eligió nada aún
+          // Preseleccionar DNI si no hay selecc.
           if (!formData.id_tipo_documento && td.length) {
             const dniOption =
               td.find(t => (t.sigla || '').toUpperCase() === 'DNI') ||
@@ -100,7 +114,7 @@ const AgregarAlumno = () => {
 
   const validarCampo = (name, value) => {
     const soloNumeros = /^[0-9]+$/;
-    const telValido = /^[0-9-]+$/; // ✅ solo dígitos y guion
+    const telValido = /^[0-9-]+$/;
     const textoValido = /^[A-ZÑa-zñáéíóúÁÉÍÓÚ0-9\s.,-]*$/;
 
     switch (name) {
@@ -118,12 +132,13 @@ const AgregarAlumno = () => {
         if (!soloNumeros.test(value)) return 'solo números';
         if (value.length > 20) return 'máximo 20 caracteres';
         break;
-      case 'id_tipo_documento': // opcional
-      case 'id_sexo':           // opcional
+      case 'id_tipo_documento':
+      case 'id_sexo':
       case 'id_año':
       case 'id_division':
       case 'id_categoria':
-        if (['id_año', 'id_division', 'id_categoria'].includes(name)) {
+      case 'id_cat_monto':
+        if (['id_año', 'id_division', 'id_categoria', 'id_cat_monto'].includes(name)) {
           if (!value) return 'obligatorio';
         }
         if (value !== '' && isNaN(Number(value))) return 'valor inválido';
@@ -140,7 +155,6 @@ const AgregarAlumno = () => {
         if (value && (!telValido.test(value) || value.length > 20)) return 'solo números y guiones (-), máx 20';
         break;
       case 'observaciones':
-        // libre
         return null;
       default:
         return null;
@@ -165,7 +179,6 @@ const AgregarAlumno = () => {
       const partes = [];
       if (faltantes.length) partes.push(`Completá: ${faltantes.join(' y ')}`);
       if (invalidos.length) partes.push(`Revisá: ${invalidos.join(' y ')}`);
-
       showToast(partes.join(' | '), 'error');
       return false;
     }
@@ -175,7 +188,6 @@ const AgregarAlumno = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // ✅ Teléfono: solo 0-9 y '-'
     if (name === 'telefono') {
       const cleaned = value.replace(/[^0-9-]/g, '');
       if (cleaned !== value) showToast('Teléfono: solo números y guiones (-).', 'error');
@@ -188,7 +200,7 @@ const AgregarAlumno = () => {
     const nextVal =
       ['apellido', 'nombre', 'domicilio', 'localidad'].includes(name)
         ? toUpper(value)
-        : value; // observaciones queda libre
+        : value;
 
     setFormData(prev => ({ ...prev, [name]: nextVal }));
   };
@@ -212,7 +224,6 @@ const AgregarAlumno = () => {
       }
     }
   };
-
   const handleFormKeyUp = (e) => {
     if (e.key === 'Enter' && enterBloqueadoRef.current) {
       e.preventDefault();
@@ -237,10 +248,11 @@ const AgregarAlumno = () => {
       id_año: 'Año',
       id_division: 'División',
       id_categoria: 'Categoría',
+      id_cat_monto: 'Categoría (monto)',
       observaciones: 'Observaciones'
     };
 
-    const obligatorios = ['apellido', 'num_documento', 'id_año', 'id_division', 'id_categoria'];
+    const obligatorios = ['apellido', 'num_documento', 'id_año', 'id_division', 'id_categoria', 'id_cat_monto'];
 
     const faltantes = [];
     const invalidos = [];
@@ -446,9 +458,7 @@ const AgregarAlumno = () => {
               <h3 className="add-alumno-section-title">Contacto y Domicilio</h3>
               <div className="add-alumno-section-content">
 
-                {/* Teléfono + Domicilio + Localidad en una sola fila */}
                 <div className="add-group">
-                  {/* Teléfono */}
                   <div
                     className={`add-input-wrapper ${formData.telefono || activeField === 'telefono' ? 'has-value' : ''}`}
                     style={{ flex: 1, minWidth: 0 }}
@@ -468,7 +478,6 @@ const AgregarAlumno = () => {
                     <span className="add-input-highlight" />
                   </div>
 
-                  {/* Domicilio (más ancho) */}
                   <div
                     className={`add-input-wrapper ${formData.domicilio || activeField === 'domicilio' ? 'has-value' : ''}`}
                     style={{ flex: 2, minWidth: 0 }}
@@ -485,7 +494,6 @@ const AgregarAlumno = () => {
                     <span className="add-input-highlight" />
                   </div>
 
-                  {/* Localidad */}
                   <div
                     className={`add-input-wrapper ${formData.localidad || activeField === 'localidad' ? 'has-value' : ''}`}
                     style={{ flex: 1, minWidth: 0 }}
@@ -503,7 +511,6 @@ const AgregarAlumno = () => {
                   </div>
                 </div>
 
-                {/* Observaciones */}
                 <div className="add-group">
                   <div className="add-input-wrapper always-active" style={{ width: '100%' }}>
                     <label className="add-label">Observaciones</label>
@@ -531,7 +538,6 @@ const AgregarAlumno = () => {
               <h3 className="add-alumno-section-title">Datos Académicos</h3>
               <div className="add-alumno-section-content">
 
-                {/* Año + División + Categoría en una sola fila */}
                 <div className="add-group">
                   <div className="add-input-wrapper always-active" style={{ flex: 1, minWidth: 0 }}>
                     <label className="add-label">Año *</label>
@@ -583,6 +589,29 @@ const AgregarAlumno = () => {
                       <option value="">Seleccionar categoría</option>
                       {listas.categorias.map(c => (
                         <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* NUEVA FILA: CATEGORÍA MONTO */}
+                <div className="add-group">
+                  <div className="add-input-wrapper always-active" style={{ flex: 1, minWidth: 0 }}>
+                    <label className="add-label">Categoría (monto) *</label>
+                    <select
+                      name="id_cat_monto"
+                      value={formData.id_cat_monto}
+                      onChange={handleChange}
+                      onFocus={() => handleFocus('id_cat_monto')}
+                      onBlur={handleBlur}
+                      className="add-input"
+                      disabled={loading || !listas.loaded}
+                    >
+                      <option value="">Seleccionar categoría de monto</option>
+                      {listas.categoriasMonto.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}{(c.monto_mensual!=null) ? ` — $${Number(c.monto_mensual).toLocaleString('es-AR')}/mes` : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
