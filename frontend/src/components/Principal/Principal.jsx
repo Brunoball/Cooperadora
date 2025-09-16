@@ -146,7 +146,9 @@ const Principal = () => {
           <div className="logo-container">
             <img src={logoRH} alt="Logo IPET 50" className="logo" />
           </div>
-          <h1 className="title">Sistema de Gestión IPET 50</h1>
+          <h1 className="title">
+              Sistema de Gestión <span className="title-accent">IPET 50</span>
+          </h1>
           <p className="subtitle">
             {isAdmin ? "Panel de administración" : "Panel de consulta"}
           </p>

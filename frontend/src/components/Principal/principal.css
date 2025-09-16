@@ -47,7 +47,10 @@
   touch-action: manipulation;
   outline: none;
 }
-
+.title-accent {
+  color: var(--reg-primary);  /* usa tu rojo principal */
+  font-weight: 700;          /* un poco más de énfasis */
+}
 .menu-button:focus { outline: none; }
 .menu-button:focus-visible {
   outline: 3px solid var(--reg-primary-light);

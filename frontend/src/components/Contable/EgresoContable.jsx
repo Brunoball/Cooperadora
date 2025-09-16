@@ -1,16 +1,24 @@
-// src/components/Contable/EgresoContable.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faEdit, faEye } from "@fortawesome/free-solid-svg-icons";
 import ContableEgresoModal from "./modalcontable/ContableEgresoModal";
 import Toast from "../Global/Toast";
+import "./EgresoContable.css";
 
 const hoy = new Date();
 const Y = hoy.getFullYear();
 
-/* Confirmación reutilizable (modal simple) */
-function ConfirmModal({ open, title = "Confirmar", message, onCancel, onConfirm, confirmText = "Eliminar", cancelText = "Cancelar" }) {
+/* Confirmación reutilizable */
+function ConfirmModal({
+  open,
+  title = "Confirmar",
+  message,
+  onCancel,
+  onConfirm,
+  confirmText = "Eliminar",
+  cancelText = "Cancelar",
+}) {
   if (!open) return null;
   return (
     <div className="lc_modal_overlay" role="dialog" aria-modal="true" onClick={onCancel}>
@@ -36,16 +44,16 @@ export default function EgresoContable() {
   const [loadingEgr, setLoadingEgr] = useState(false);
 
   const [fStart, setFStart] = useState(`${Y}-01-01`);
-  const [fEnd, setFEnd] = useState(`${Y}-12-31`);
-  const [fCat, setFCat] = useState("");
+  const [fEnd,   setFEnd]   = useState(`${Y}-12-31`);
+  const [fCat,   setFCat]   = useState("");
   const [fMedio, setFMedio] = useState("");
 
   const [mediosPago, setMediosPago] = useState([]);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editRow, setEditRow] = useState(null);
+  const [editRow,   setEditRow]   = useState(null);
 
-  // ====== TOASTS (renderizados SOLO acá) ======
+  // ====== TOASTS ======
   const [toasts, setToasts] = useState([]);
   const toastSeq = useRef(0);
   const addToast = (tipo, mensaje, duracion = 3000) => {
@@ -81,11 +89,9 @@ export default function EgresoContable() {
     setLoadingEgr(true);
     try {
       const params = new URLSearchParams({ start: fStart, end: fEnd });
-      if (fCat)  params.set("categoria", fCat);
+      if (fCat)   params.set("categoria", fCat);
       if (fMedio) params.set("medio", fMedio);
-      const raw = await fetchJSON(
-        `${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`
-      );
+      const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
       setEgresos(raw?.datos || []);
     } catch (e) {
       console.error(e);
@@ -110,43 +116,27 @@ export default function EgresoContable() {
   // ====== Abrir comprobante (imagen/PDF) ======
   const normalizeUrl = (url = "") => {
     if (!url) return "";
-    // si es absoluta, devolver tal cual
     if (/^https?:\/\//i.test(url)) return url;
-    // relativa: unir con BASE_URL cuidando las barras
     const clean = String(url).replace(/^\/+/, "");
     return `${BASE_URL}/${clean}`;
   };
-
   const onViewComprobante = (row) => {
-    // campos posibles: comprobante_url (nuevo), comprobante, url
-    const candidate =
-      row?.comprobante_url || row?.comprobante || row?.url || "";
+    const candidate = row?.comprobante_url || row?.comprobante || row?.url || "";
     const finalUrl = normalizeUrl(candidate);
-
     if (!finalUrl) {
       addToast("advertencia", "Este egreso no tiene comprobante adjunto.");
       return;
     }
-    try {
-      window.open(finalUrl, "_blank", "noopener,noreferrer");
-    } catch {
-      window.location.href = finalUrl;
-    }
+    try { window.open(finalUrl, "_blank", "noopener,noreferrer"); }
+    catch { window.location.href = finalUrl; }
   };
 
   // ===== Modal de confirmación de ELIMINAR =====
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [toDeleteId, setToDeleteId] = useState(null);
-
-  const askDeleteEgreso = (id) => {
-    setToDeleteId(id);
-    setConfirmOpen(true);
-  };
-  const cancelDelete = () => {
-    setConfirmOpen(false);
-    setToDeleteId(null);
-  };
-  const confirmDelete = async () => {
+  const [toDeleteId, setToDeleteId]   = useState(null);
+  const askDeleteEgreso = (id) => { setToDeleteId(id); setConfirmOpen(true); };
+  const cancelDelete    = () => { setConfirmOpen(false); setToDeleteId(null); };
+  const confirmDelete   = async () => {
     if (!toDeleteId) return;
     try {
       await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=delete`, {
@@ -164,125 +154,131 @@ export default function EgresoContable() {
     }
   };
 
-  // Cuando el modal guarda, SOLO refrescamos y cerramos (los toasts los dispara el modal)
-  const onSavedEgreso = () => {
-    setModalOpen(false);
-    loadEgresos();
-  };
+  const onSavedEgreso = () => { setModalOpen(false); loadEgresos(); };
 
   return (
-    <div className="lc_panel">
-      {/* TOAST STACK */}
+    <div className="ec_wrap">
+      {/* TOASTS */}
       <div className="toast-stack">
         {toasts.map((t) => (
-          <Toast
-            key={t.id}
-            tipo={t.tipo}
-            mensaje={t.mensaje}
-            duracion={t.duracion}
-            onClose={() => removeToast(t.id)}
-          />
+          <Toast key={t.id} tipo={t.tipo} mensaje={t.mensaje} duracion={t.duracion} onClose={() => removeToast(t.id)} />
         ))}
       </div>
 
-      <div className="lc_filters">
-        <label>Desde:{" "}
-          <input type="date" value={fStart} onChange={(e) => setFStart(e.target.value)} />
-        </label>
-        <label>Hasta:{" "}
-          <input type="date" value={fEnd} onChange={(e) => setFEnd(e.target.value)} />
-        </label>
-        <label>Categoría:{" "}
-          <input value={fCat} onChange={(e) => setFCat(e.target.value)} placeholder="(todas)" />
-        </label>
+      {/* Toolbar / filtros + KPI (sin botón aquí) */}
+      <div className="ec_toolbar card">
+        <div className="ec_group">
+          <label className="ec_label">Desde</label>
+          <input className="ec_input" type="date" value={fStart} onChange={(e) => setFStart(e.target.value)} />
+        </div>
 
-        <label>Medio:
+        <div className="ec_group">
+          <label className="ec_label">Hasta</label>
+          <input className="ec_input" type="date" value={fEnd} onChange={(e) => setFEnd(e.target.value)} />
+        </div>
+
+        <div className="ec_group ec_group--sm">
+          <label className="ec_label">Categoría</label>
+          <input className="ec_input" value={fCat} onChange={(e) => setFCat(e.target.value)} placeholder="(todas)" />
+        </div>
+
+        <div className="ec_group ec_group--sm">
+          <label className="ec_label">Medio</label>
           <select
+            className="ec_select"
             value={fMedio}
             onChange={(e) => setFMedio(e.target.value)}
             disabled={loadingEgr && !mediosPago.length}
           >
             <option value="">(todos)</option>
             {mediosPago.map((m) => (
-              <option key={m.id} value={m.nombre}>
-                {m.nombre}
-              </option>
+              <option key={m.id} value={m.nombre}>{m.nombre}</option>
             ))}
           </select>
-        </label>
+        </div>
 
-        <div className="lc_spacer" />
-        <button className="lc_btn primary" onClick={onCreateEgreso}>
-          <FontAwesomeIcon icon={faPlus} /> Nuevo egreso
-        </button>
-      </div>
+        <div className="ec_spacer" />
 
-      <div className="lc_cards">
-        <div className="lc_card">
-          <h3>Total egresos</h3>
-          <p className="lc_big">${totalEgresos.toLocaleString("es-AR")}</p>
+        <div className="ec_kpis">
+          <div className="ec_kpi">
+            <div className="ec_kpi__icon danger">–</div>
+            <div>
+              <p className="ec_kpi__label">Total egresos</p>
+              <p className="ec_kpi__value">${totalEgresos.toLocaleString("es-AR")}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="lc_box">
-        <table className="lc_table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Categoría</th>
-              <th>Descripción</th>
-              <th>Medio</th>
-              <th>Monto</th>
-              <th style={{ width: 180 }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {egresos.map((e) => (
-              <tr key={e.id_egreso}>
-                <td>{e.fecha}</td>
-                <td>{e.categoria}</td>
-                <td>{e.descripcion || "-"}</td>
-                <td>{e.medio_nombre || e.medio_pago || "-"}</td>
-                <td>${Number(e.monto || 0).toLocaleString("es-AR")}</td>
-                <td className="lc_actions">
-                  {/* Ver comprobante */}
-                  <button
-                    className="lc_icon"
-                    onClick={() => onViewComprobante(e)}
-                    title="Ver comprobante"
-                    disabled={!normalizeUrl(e?.comprobante_url || e?.comprobante || e?.url)}
-                  >
-                    <FontAwesomeIcon icon={faEye} />
-                  </button>
+      {/* Lista (div + CSS Grid) */}
+      <section className="ec_card card">
+        <header className="ec_card__header">
+          <h3>Egresos</h3>
+          <div className="ec_card__actions">
+            <button className="btn btn--primary" onClick={onCreateEgreso}>
+              <FontAwesomeIcon icon={faPlus} /> Nuevo egreso
+            </button>
+          </div>
+        </header>
 
-                  {/* Editar */}
-                  <button className="lc_icon" onClick={() => onEditEgreso(e)} title="Editar">
-                    <FontAwesomeIcon icon={faEdit} />
-                  </button>
+        <div className="ec_table__wrap">
+          <div className="gt_table gt_cols-6" role="table" aria-label="Listado de egresos">
+            <div className="gt_header" role="row">
+              <div className="gt_cell h" role="columnheader">Fecha</div>
+              <div className="gt_cell h" role="columnheader">Categoría</div>
+              <div className="gt_cell h" role="columnheader">Descripción</div>
+              <div className="gt_cell h" role="columnheader">Medio</div>
+              <div className="gt_cell h right" role="columnheader">Monto</div>
+              <div className="gt_cell h center" role="columnheader">Acciones</div>
+            </div>
 
-                  {/* Eliminar */}
-                  <button
-                    className="lc_icon danger"
-                    onClick={() => askDeleteEgreso(e.id_egreso)}
-                    title="Eliminar"
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {egresos.map((e) => {
+              const hasFile = Boolean(normalizeUrl(e?.comprobante_url || e?.comprobante || e?.url));
+              return (
+                <div className="gt_row" role="row" key={e.id_egreso}>
+                  <div className="gt_cell" role="cell">{e.fecha}</div>
+                  <div className="gt_cell" role="cell"><span className="badge">{e.categoria || "-"}</span></div>
+                  <div className="gt_cell" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
+                  <div className="gt_cell" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
+                  <div className="gt_cell right" role="cell">${Number(e.monto || 0).toLocaleString("es-AR")}</div>
+                  <div className="gt_cell" role="cell">
+                    <div className="row_actions">
+                      <button
+                        className="icon_btn"
+                        title="Ver comprobante"
+                        onClick={() => onViewComprobante(e)}
+                        disabled={!hasFile}
+                      >
+                        <FontAwesomeIcon icon={faEye} />
+                      </button>
+                      <button className="icon_btn" title="Editar" onClick={() => onEditEgreso(e)}>
+                        <FontAwesomeIcon icon={faEdit} />
+                      </button>
+                      <button className="icon_btn danger" title="Eliminar" onClick={() => askDeleteEgreso(e.id_egreso)}>
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
             {!egresos.length && (
-              <tr>
-                <td colSpan={6} className="lc_empty">
-                  {loadingEgr ? "Cargando..." : "Sin egresos"}
-                </td>
-              </tr>
+              <div className="gt_empty">{loadingEgr ? "Cargando…" : "Sin egresos"}</div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Modal de ABM de egresos */}
+      {/* Loader */}
+      {loadingEgr && (
+        <div className="ec_loader">
+          <div className="ec_spinner" />
+          <span>Cargando…</span>
+        </div>
+      )}
+
+      {/* Modales */}
       <ContableEgresoModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -290,8 +286,6 @@ export default function EgresoContable() {
         editRow={editRow}
         notify={addToast}
       />
-
-      {/* Modal de confirmación de eliminación */}
       <ConfirmModal
         open={confirmOpen}
         title="Eliminar egreso"
