@@ -99,7 +99,11 @@
   align-items:center;
   justify-content:center;
   padding:20px;
-background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  background: linear-gradient(
+    135deg,
+    #ffebee 30%,   /* gris suave */
+    var(--reg-primary) 70%     /* rojo principal */
+  );
   background-attachment: fixed;
   box-sizing:border-box;
 }
@@ -271,4 +275,18 @@ background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
 :where(button, [href], input):focus-visible{
   box-shadow:0 0 0 3px rgba(183,28,28,.35);
   border-radius:8px;
+}
+/* === NUEVO: dos columnas para montos === */
+.cat_agr_two_col{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px; /* consistente con .cat_agr_form */
+  width: 100%;
+}
+
+@media (max-width: 640px){
+  .cat_agr_two_col{
+    grid-template-columns: 1fr; /* en mobile se apilan */
+    gap: 12px;
+  }
 }

@@ -1,168 +1,197 @@
 import React, { useEffect, useMemo, useState } from "react";
-import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faMoneyBillWave, faChartPie } from "@fortawesome/free-solid-svg-icons";
+import { faSearch, faFilter, faChartPie } from "@fortawesome/free-solid-svg-icons";
+import BASE_URL from "../../config/config";
 import "./IngresosContable.css";
 
+/* === Utilidades === */
 const hoy = new Date();
 const Y = hoy.getFullYear();
+const MESES = [
+  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
+];
+
+/* Formateador ARS sin decimales (tablas) */
+const fmtMonto = (n) =>
+  new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(n || 0));
+
+/* Clase visual para categorías (Interno/Externo) */
+const pillClassByCategoria = (cat) => {
+  const n = (cat || "").toString().trim().toLowerCase();
+  if (n === "interno" || n === "interna") return "pill pill--interno";
+  if (n === "externo" || n === "externa") return "pill pill--externo";
+  return "pill";
+};
 
 export default function IngresosContable() {
-  const [anioIng, setAnioIng] = useState(Y);
-  const [mesIng, setMesIng] = useState(new Date().getMonth() + 1);
+  /* Filtros */
+  const [anio, setAnio] = useState(Y);
+  const [mes, setMes]   = useState(new Date().getMonth() + 1);
+  const [query, setQuery] = useState("");
 
-  const [ingresos, setIngresos] = useState([]);
-  const [detalle, setDetalle] = useState({});
-  const [mesesCat, setMesesCat] = useState([]); // [{id, nombre}]
-  const [aniosCat, setAniosCat] = useState([]); // [2025, 2024, ...]
-  const [loadingIng, setLoadingIng] = useState(false);
-  const [busqueda, setBusqueda] = useState(""); // filtro por alumno
+  /* Datos */
+  const [filas, setFilas] = useState([]);          // registros del mes
+  const [anios, setAnios] = useState([Y, Y - 1]);  // años disponibles
+  const [cargando, setCargando] = useState(false);
 
-  const fetchJSON = async (url, options) => {
-    const sep = url.includes("?") ? "&" : "?";
-    const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  };
+  /* UI: sidebar móvil */
+  const [sideOpen, setSideOpen] = useState(true);
 
-  const loadMeses = async () => {
+  /* Animación en cascada */
+  const [cascading, setCascading] = useState(false);
+
+  /* --------------------------
+     Carga de datos desde API
+  -------------------------- */
+  const loadData = async () => {
+    setCargando(true);
     try {
-      const raw = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
-      if (raw?.exito) {
-        const arr = Array.isArray(raw?.listas?.meses) ? raw.listas.meses : [];
-        setMesesCat(arr.map((m) => ({ id: Number(m.id), nombre: String(m.nombre) })));
-      } else setMesesCat([]);
+      const base = `${BASE_URL}/api.php?action=contable_ingresos&year=${anio}&detalle=1`;
+      const res = await fetch(`${base}&ts=${Date.now()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.json();
+
+      if (Array.isArray(raw?.anios_disponibles) && raw.anios_disponibles.length) {
+        setAnios(raw.anios_disponibles);
+      }
+
+      const key = `${String(anio).padStart(4, "0")}-${String(mes).padStart(2, "0")}`;
+      const det = Array.isArray(raw?.detalle?.[key]) ? raw.detalle[key] : [];
+
+      const rows = det.map((r, i) => ({
+        id: `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Monto || 0}|${i}`, // key estable
+        fecha: r?.fecha_pago ?? "",
+        alumno: r?.Alumno ?? "",
+        categoria: r?.Categoria ?? "-",
+        monto: Number(r?.Monto ?? 0),
+        mesPagado: r?.Mes_pagado || MESES[(Number(r?.Mes_pagado_id || 0) - 1)] || "-",
+      }));
+
+      setFilas(rows);
     } catch (e) {
-      console.error("obtener_listas error:", e);
-      setMesesCat([]);
+      console.error("Error al cargar ingresos:", e);
+      setFilas([]);
+    } finally {
+      setCargando(false);
     }
   };
 
-  const loadIngresos = async () => {
-    setLoadingIng(true);
-    try {
-      const base = `${BASE_URL}/api.php?action=contable_ingresos&year=${anioIng}`;
-      const raw = await fetchJSON(`${base}&detalle=1`);
-      if (raw?.exito) {
-        setIngresos(raw.resumen || []);
-        setDetalle(raw.detalle || {});
-        const anios = Array.isArray(raw.anios_disponibles) ? raw.anios_disponibles : [];
-        setAniosCat(anios);
-        if (anios.length > 0 && !anios.includes(anioIng)) setAnioIng(anios[0]);
-      } else {
-        setIngresos([]); setDetalle({}); setAniosCat([]);
-      }
-    } catch (e) {
-      console.error("contable_ingresos error:", e);
-      setIngresos([]); setDetalle({}); setAniosCat([]);
-    } finally { setLoadingIng(false); }
-  };
+  useEffect(() => { loadData(); }, [anio, mes]);
 
-  useEffect(() => { loadMeses(); }, []);
-  useEffect(() => { loadIngresos(); }, [anioIng]);
+  /* Derivados */
+  const filasFiltradas = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return !q
+      ? filas
+      : filas.filter((f) =>
+          (f.alumno || "").toLowerCase().includes(q) ||
+          (f.categoria || "").toLowerCase().includes(q) ||
+          (f.fecha || "").toLowerCase().includes(q) ||
+          (f.mesPagado || "").toLowerCase().includes(q)
+        );
+  }, [filas, query]);
 
-  const monthKey = (y, m) => `${String(y).padStart(4,"0")}-${String(m).padStart(2,"0")}`;
+  const resumen = useMemo(() => {
+    const total = filasFiltradas.reduce((acc, f) => acc + Number(f.monto || 0), 0);
+    return { total, cantidad: filasFiltradas.length };
+  }, [filasFiltradas]);
 
-  const detalleMesSel = useMemo(
-    () => detalle[monthKey(anioIng, mesIng)] || [],
-    [detalle, anioIng, mesIng]
-  );
+  const categoriasMes = useMemo(() => {
+    const map = new Map();
+    filas.forEach((f) => {
+      const key = f.categoria || "-";
+      const prev = map.get(key) || { nombre: key, cantidad: 0, monto: 0 };
+      prev.cantidad += 1;
+      prev.monto += Number(f.monto || 0);
+      map.set(key, prev);
+    });
+    return Array.from(map.values()).sort((a, b) => b.monto - a.monto);
+  }, [filas]);
 
-  const mesesOptions = useMemo(() => {
-    if (Array.isArray(mesesCat) && mesesCat.length > 0) return mesesCat;
-    return Array.from({ length: 12 }, (_, i) => ({ id: i + 1, nombre: `Mes ${i + 1}` }));
-  }, [mesesCat]);
+  /* Dispara cascada cuando cambian filtros de vista */
+  useEffect(() => {
+    setCascading(true);
+    const t = setTimeout(() => setCascading(false), 600);
+    return () => clearTimeout(t);
+  }, [anio, mes, query]);
 
-  const getNombreMesPagado = (row) => {
-    const nombre = (row?.Mes_pagado || "").toString().trim();
-    if (nombre) return nombre;
-    const id = Number(row?.Mes_pagado_id || 0);
-    const m = mesesOptions.find((x) => x.id === id);
-    return m ? m.nombre : "-";
-  };
-
-  const detalleFiltrado = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    if (!q) return detalleMesSel;
-    return detalleMesSel.filter((r) => (r.Alumno || "").toLowerCase().includes(q));
-  }, [detalleMesSel, busqueda]);
-
-  const resumenMesSel = useMemo(
-    () => ingresos.find((x) => x.anio === anioIng && x.mes === mesIng) || {},
-    [ingresos, anioIng, mesIng]
-  );
-
-  const categoriasOrdenadas = useMemo(() => {
-    const arr = Array.isArray(resumenMesSel.categorias) ? resumenMesSel.categorias : [];
-    return [...arr].sort((a, b) => (Number(b.monto||0) - Number(a.monto||0)));
-  }, [resumenMesSel]);
+  /* Clases sidebar */
+  const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
 
   return (
     <div className="ing-wrap">
-      {/* ===== Toolbar: filtros + Ventanita de categorías (derecha) + KPIs abajo ===== */}
-      <div className="ing-toolbar card">
-        {/* Filtros (Año, Mes, Buscar) */}
-        <div className="ing-filters">
-          <div className="ing-group">
-            <label className="ing-label">Año</label>
-            <select
-              className="ing-select"
-              value={anioIng}
-              onChange={(e) => setAnioIng(Number(e.target.value))}
-            >
-              {aniosCat.length === 0
-                ? <option value={anioIng}>{anioIng}</option>
-                : aniosCat.map((a) => <option key={a} value={a}>{a}</option>)
-              }
-            </select>
-          </div>
-
-          <div className="ing-group">
-            <label className="ing-label">Mes</label>
-            <select
-              className="ing-select"
-              value={mesIng}
-              onChange={(e) => setMesIng(Number(e.target.value))}
-            >
-              {mesesOptions.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-            </select>
-          </div>
-
-          <div className="ing-group ing-group--grow">
-            <label className="ing-label">Buscar alumno</label>
-            <div className="ing-search">
-              <FontAwesomeIcon icon={faSearch} />
-              <input
-                className="ing-input"
-                type="text"
-                placeholder="Apellido, nombre…"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
+      {/* ====== Layout ====== */}
+      <div className="ing-layout">
+        {/* Sidebar con filtros + categorías del mes */}
+        <aside className={sideClass} aria-label="Barra lateral">
+          <div className="ing-side__inner">
+            <div className="ing-side__row">
+              <div className="ing-sectiontitle">
+                <FontAwesomeIcon icon={faFilter} />
+                <span>Filtros</span>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Ventanita compacta de categorías (ocupa la columna derecha y abarca 2 filas) */}
-        <aside className="ing-cat-mini" aria-label="Categorías del mes">
-          <header className="ing-cat-mini__header">
-            <FontAwesomeIcon icon={faChartPie} />
-            <h4>Categorías del mes</h4>
-          </header>
+            {/* Año + Mes en la misma fila */}
+            <div className="ing-fieldrow">
+              <div className="ing-field">
+                <label htmlFor="anio">Año</label>
+                <select id="anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
+                  {anios.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="ing-cat-mini__body">
-            {categoriasOrdenadas.length === 0 ? (
-              <div className="ing-mini-empty">Sin datos</div>
+              <div className="ing-field">
+                <label htmlFor="mes">Mes</label>
+                <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
+                  {MESES.map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="ing-field">
+              <label htmlFor="buscar">Buscar alumno / categoría</label>
+              <div className="ing-inputicon">
+                <FontAwesomeIcon icon={faSearch} />
+                <input
+                  id="buscar"
+                  type="text"
+                  placeholder="Escribe para filtrar…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="ing-divider" />
+
+            <div className="ing-sectiontitle">
+              <FontAwesomeIcon icon={faChartPie} />
+              <span>Categorías del mes</span>
+            </div>
+
+            {categoriasMes.length === 0 ? (
+              <div className="ing-empty">Sin datos</div>
             ) : (
-              <ul className="ing-cat-mini__list">
-                {categoriasOrdenadas.map((c, i) => (
-                  <li key={i} className="ing-cat-mini__item">
-                    <div className="ing-cat-mini__left">
-                      <span className="ing-badge">{c.nombre || "-"}</span>
-                      <span className="ing-count" title="Registros">{c.cantidad || 0}</span>
+              <ul className="ing-catlist" role="list">
+                {categoriasMes.map((c, i) => (
+                  <li className="ing-catitem" key={i}>
+                    <div className="ing-catline">
+                      <span className="ing-catname">{(c.nombre || "-").toString().toUpperCase()}</span>
+                      <span className="ing-catamount num">{fmtMonto(c.monto)}</span>
                     </div>
-                    <div className="ing-cat-mini__right">
-                      ${Number(c.monto || 0).toLocaleString("es-AR")}
+                    <div className="ing-catmeta">
+                      {c.cantidad} {c.cantidad === 1 ? "registro" : "registros"}
                     </div>
                   </li>
                 ))}
@@ -171,70 +200,86 @@ export default function IngresosContable() {
           </div>
         </aside>
 
-        {/* KPIs debajo de los filtros (solo columna de la izquierda) */}
-        <div className="ing-kpis">
-          <div className="ing-kpi">
-            <div className="ing-kpi__icon ingresos">
-              <FontAwesomeIcon icon={faMoneyBillWave} />
-            </div>
-            <div>
-              <p className="ing-kpi__label">Ingresos del mes</p>
-              <p className="ing-kpi__value">
-                ${Number(resumenMesSel.ingresos || 0).toLocaleString("es-AR")}
-              </p>
-            </div>
+        {/* Contenido */}
+        <main className="ing-main">
+          <div className="ing-tabs card">
+            <header className="ing-page__header">
+              <div>
+                <h2 className="h2">Ingresos</h2>
+                <small className="muted">
+                  Detalle del mes — {MESES[mes - 1]} {anio}
+                </small>
+              </div>
+              <div className="ing-rightstats">
+                <div>Total ingresos: <b className="num highlight">{fmtMonto(resumen.total)}</b></div>
+                <div>Registros: <b className="num">{resumen.cantidad}</b></div>
+              </div>
+            </header>
           </div>
 
-          <div className="ing-kpi">
-            <div className="ing-kpi__icon neutral">🧾</div>
-            <div>
-              <p className="ing-kpi__label">Cobros (cant.)</p>
-              <p className="ing-kpi__value">{resumenMesSel.cantidad || 0}</p>
+          <div className="ing-page card">
+            {/* Tabla (scroll interno + header sticky + zebra + cascada + loader interno) */}
+            <div
+              className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
+              role="table"
+              aria-label="Listado de ingresos"
+            >
+              {/* Overlay de loading SOLO en la tabla */}
+              {cargando && (
+                <div className="ing-tableloader" role="status" aria-live="polite">
+                  <div className="ing-spinner" />
+                  <span>Cargando…</span>
+                </div>
+              )}
+
+              <div className="ing-row h" role="row">
+                <div className="c-fecha">Fecha</div>
+                <div className="c-alumno">Alumno</div>
+                <div className="c-cat">Categoría</div>
+                <div className="c-monto t-right">Monto</div>
+                <div className="c-mes">Mes pagado</div>
+              </div>
+
+              {filasFiltradas.map((f, idx) => (
+                <div
+                  className={`ing-row data ${cascading ? "casc" : ""}`}
+                  role="row"
+                  key={f.id}
+                  style={{ "--i": idx }}
+                >
+                  <div className="c-fecha">{f.fecha}</div>
+                  <div className="c-alumno">
+                    <div className="ing-alumno">
+                      <div className="ing-alumno__text">
+                        <div className="strong">{f.alumno}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="c-cat">
+                    <span className={pillClassByCategoria(f.categoria)}>{f.categoria}</span>
+                  </div>
+                  <div className="c-monto t-right">
+                    <span className="num highlight strong-amount">{fmtMonto(f.monto)}</span>
+                  </div>
+                  <div className="c-mes">{f.mesPagado}</div>
+                </div>
+              ))}
+
+              {!filasFiltradas.length && !cargando && (
+                <div className="ing-empty big">Sin pagos</div>
+              )}
             </div>
           </div>
-        </div>
+        </main>
       </div>
 
-      {/* ===== Contenido principal: Detalle del mes a ancho completo ===== */}
-      <section className="ing-card card">
-        <header className="ing-card__header">
-          <h3>Detalle del mes</h3>
-        </header>
-        <div className="ing-table__wrap">
-          <div className="ing-gt-table ing-gt-cols-5" role="table" aria-label="Detalle de ingresos">
-            <div className="ing-gt-headerr" role="row">
-              <div className="ing-gt-cell h" role="columnheader">Fecha</div>
-              <div className="ing-gt-cell h" role="columnheader">Alumno</div>
-              <div className="ing-gt-cell h" role="columnheader">Categoría</div>
-              <div className="ing-gt-cell h right" role="columnheader">Monto</div>
-              <div className="ing-gt-cell h" role="columnheader">Mes pagado</div>
-            </div>
-
-            {detalleFiltrado.map((r, idx) => (
-              <div className="ing-gt-roww" role="row" key={idx}>
-                <div className="ing-gt-cell" role="cell">{r.fecha_pago}</div>
-                <div className="ing-gt-cell strong" role="cell">{r.Alumno}</div>
-                <div className="ing-gt-cell" role="cell">
-                  <span className="ing-badge ing-badge--soft">{r.Categoria || "-"}</span>
-                </div>
-                <div className="ing-gt-cell right" role="cell">
-                  ${Number(r.Monto || 0).toLocaleString("es-AR")}
-                </div>
-                <div className="ing-gt-cell" role="cell">{getNombreMesPagado(r)}</div>
-              </div>
-            ))}
-
-            {!detalleFiltrado.length && <div className="ing-gt-empty">Sin pagos</div>}
-          </div>
-        </div>
-      </section>
-
-      {/* Loader */}
-      {loadingIng && (
-        <div className="ing-loader">
-          <div className="ing-spinner" />
-          <span>Cargando…</span>
-        </div>
+      {/* Overlay móvil para cerrar sidebar */}
+      {sideOpen && (
+        <button
+          className="ing-layout__overlay"
+          onClick={() => setSideOpen(false)}
+          aria-label="Cerrar panel"
+        />
       )}
     </div>
   );

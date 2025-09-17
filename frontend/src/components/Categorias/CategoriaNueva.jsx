@@ -1,4 +1,3 @@
-// src/components/Categorias/CategoriaNueva.jsx
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
@@ -91,35 +90,39 @@ const CategoriaNueva = () => {
             />
           </div>
 
-          <div className="cat_agr_form_row">
-            <label className="cat_agr_label">Monto mensual</label>
-            <input
-              className="cat_agr_input"
-              type="number"
-              inputMode="numeric"
-              value={mMensual}
-              onChange={(e) => setMMensual(e.target.value)}
-              placeholder="0"
-              min="0"
-              step="1"
-              disabled={saving}
-            />
-          </div>
+          {/* === NUEVO: fila de dos columnas === */}
+          <div className="cat_agr_two_col">
+            <div className="cat_agr_form_row">
+              <label className="cat_agr_label">Monto mensual</label>
+              <input
+                className="cat_agr_input"
+                type="number"
+                inputMode="numeric"
+                value={mMensual}
+                onChange={(e) => setMMensual(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="1"
+                disabled={saving}
+              />
+            </div>
 
-          <div className="cat_agr_form_row">
-            <label className="cat_agr_label">Monto anual</label>
-            <input
-              className="cat_agr_input"
-              type="number"
-              inputMode="numeric"
-              value={mAnual}
-              onChange={(e) => setMAnual(e.target.value)}
-              placeholder="0"
-              min="0"
-              step="1"
-              disabled={saving}
-            />
+            <div className="cat_agr_form_row">
+              <label className="cat_agr_label">Monto anual</label>
+              <input
+                className="cat_agr_input"
+                type="number"
+                inputMode="numeric"
+                value={mAnual}
+                onChange={(e) => setMAnual(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="1"
+                disabled={saving}
+              />
+            </div>
           </div>
+          {/* === /NUEVO === */}
 
           <div className="cat_agr_form_actions">
             <button type="button" className="cat_agr_btn cat_agr_btn_back" onClick={() => navigate('/categorias')} disabled={saving}>

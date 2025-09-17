@@ -127,36 +127,40 @@ const CategoriaEditar = () => {
               <input className="cat_edi_input" value={nombre} disabled style={{ textTransform: 'uppercase' }} />
             </div>
 
-            <div className="cat_edi_form_row">
-              <label className="cat_edi_label">Monto mensual</label>
-              <input
-                ref={mensualRef}
-                className="cat_edi_input"
-                type="number"
-                inputMode="numeric"
-                value={mMensual}
-                onChange={(e) => setMMensual(e.target.value)}
-                placeholder="0"
-                min="0"
-                step="1"
-                disabled={saving}
-              />
-            </div>
+            {/* === NUEVO: fila de dos columnas === */}
+            <div className="cat_edi_two_col">
+              <div className="cat_edi_form_row">
+                <label className="cat_edi_label">Monto mensual</label>
+                <input
+                  ref={mensualRef}
+                  className="cat_edi_input"
+                  type="number"
+                  inputMode="numeric"
+                  value={mMensual}
+                  onChange={(e) => setMMensual(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  step="1"
+                  disabled={saving}
+                />
+              </div>
 
-            <div className="cat_edi_form_row">
-              <label className="cat_edi_label">Monto anual</label>
-              <input
-                className="cat_edi_input"
-                type="number"
-                inputMode="numeric"
-                value={mAnual}
-                onChange={(e) => setMAnual(e.target.value)}
-                placeholder="0"
-                min="0"
-                step="1"
-                disabled={saving}
-              />
+              <div className="cat_edi_form_row">
+                <label className="cat_edi_label">Monto anual</label>
+                <input
+                  className="cat_edi_input"
+                  type="number"
+                  inputMode="numeric"
+                  value={mAnual}
+                  onChange={(e) => setMAnual(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  step="1"
+                  disabled={saving}
+                />
+              </div>
             </div>
+            {/* === /NUEVO === */}
 
             <div className="cat_edi_form_actions">
               <button type="button" className="cat_edi_btn cat_edi_btn_back" onClick={() => navigate('/categorias')} disabled={saving}>
