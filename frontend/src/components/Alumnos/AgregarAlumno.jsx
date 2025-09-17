@@ -1,5 +1,5 @@
 // src/components/Alumnos/AgregarAlumno.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faArrowLeft, faUserPlus } from '@fortawesome/free-solid-svg-icons';
@@ -42,6 +42,18 @@ const AgregarAlumno = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
   const enterBloqueadoRef = useRef(false);
+
+  // ===== Modal de confirmar volver =====
+  const [confirmBackOpen, setConfirmBackOpen] = useState(false);
+
+  // ⚠️ Solo consideramos "campos de usuario" para detectar cambios (ignoramos id_tipo_documento auto-preseleccionado)
+  const USER_DIRTY_KEYS = [
+    'apellido', 'nombre', 'num_documento', 'id_sexo', 'domicilio', 'localidad', 'telefono',
+    'id_año', 'id_division', 'id_categoria', 'id_cat_monto', 'observaciones'
+  ];
+  const isDirty = useMemo(() => {
+    return USER_DIRTY_KEYS.some(k => (formData[k] ?? '').toString().trim() !== '');
+  }, [formData]);
 
   const showToast = (message, type = 'exito', duracion = 3000) => {
     setToast({ show: true, message, type });
@@ -89,7 +101,7 @@ const AgregarAlumno = () => {
             loaded: true
           });
 
-          // Preseleccionar DNI si no hay selecc.
+          // Preseleccionar DNI si no hay selecc. (esto ya no marca dirty)
           if (!formData.id_tipo_documento && td.length) {
             const dniOption =
               td.find(t => (t.sigla || '').toUpperCase() === 'DNI') ||
@@ -124,8 +136,9 @@ const AgregarAlumno = () => {
         if (value.length > 100) return 'máximo 100 caracteres';
         break;
       case 'nombre':
-        if (value && !/^[A-ZÑa-zñáéíóúÁÉÍÓÚ\s.]+$/u.test(value)) return 'formato inválido';
-        if (value && value.length > 100) return 'máximo 100 caracteres';
+        if (!value || !value.trim()) return 'obligatorio';
+        if (!/^[A-ZÑa-zñáéíóúÁÉÍÓÚ\s.]+$/u.test(value)) return 'formato inválido';
+        if (value.length > 100) return 'máximo 100 caracteres';
         break;
       case 'num_documento':
         if (!value || !value.trim()) return 'obligatorio';
@@ -138,12 +151,13 @@ const AgregarAlumno = () => {
       case 'id_division':
       case 'id_categoria':
       case 'id_cat_monto':
-        if (['id_año', 'id_division', 'id_categoria', 'id_cat_monto'].includes(name)) {
+        if (['id_tipo_documento','id_sexo','id_año','id_division','id_categoria','id_cat_monto'].includes(name)) {
           if (!value) return 'obligatorio';
         }
         if (value !== '' && isNaN(Number(value))) return 'valor inválido';
         break;
       case 'domicilio':
+        if (!value || !value.trim()) return 'obligatorio';
         if (value && !textoValido.test(value)) return 'caracteres inválidos';
         if (value && value.length > 150) return 'máximo 150 caracteres';
         break;
@@ -162,24 +176,40 @@ const AgregarAlumno = () => {
     return null;
   };
 
+  // Paso 1: TODOS obligatorios
   const validarPaso1 = () => {
-    const eApe = validarCampo('apellido', formData.apellido);
-    const eDoc = validarCampo('num_documento', formData.num_documento);
+    const campos = ['apellido','nombre','id_tipo_documento','num_documento','id_sexo'];
+    const faltantes = [];
+    const invalidos = [];
 
-    if (eApe || eDoc) {
-      const faltantes = [];
-      const invalidos = [];
+    campos.forEach((k) => {
+      const err = validarCampo(k, formData[k]);
+      if (err === 'obligatorio') faltantes.push(k);
+      else if (err) invalidos.push(k);
+    });
 
-      if (!formData.apellido?.trim()) faltantes.push('Apellido');
-      else if (eApe) invalidos.push('Apellido');
+    const labels = {
+      apellido: 'Apellido',
+      nombre: 'Nombre',
+      id_tipo_documento: 'Tipo de documento',
+      num_documento: 'Documento',
+      id_sexo: 'Sexo',
+    };
 
-      if (!formData.num_documento?.trim()) faltantes.push('Documento');
-      else if (eDoc) invalidos.push('Documento');
+    if (faltantes.length || invalidos.length) {
+      const p1 = faltantes.length ? `Completá: ${faltantes.map(k => labels[k]).join(', ')}` : '';
+      const p2 = invalidos.length ? `Revisá: ${invalidos.map(k => labels[k]).join(', ')}` : '';
+      showToast([p1, p2].filter(Boolean).join(' | '), 'error');
+      return false;
+    }
+    return true;
+  };
 
-      const partes = [];
-      if (faltantes.length) partes.push(`Completá: ${faltantes.join(' y ')}`);
-      if (invalidos.length) partes.push(`Revisá: ${invalidos.join(' y ')}`);
-      showToast(partes.join(' | '), 'error');
+  // Paso 2: domicilio obligatorio
+  const validarPaso2 = () => {
+    const errDom = validarCampo('domicilio', formData.domicilio);
+    if (errDom) {
+      showToast('Completá: Domicilio', 'error');
       return false;
     }
     return true;
@@ -210,6 +240,7 @@ const AgregarAlumno = () => {
 
   const handleNextStep = () => {
     if (currentStep === 1 && !validarPaso1()) return;
+    if (currentStep === 2 && !validarPaso2()) return;
     setCurrentStep(s => Math.min(3, s + 1));
   };
   const handlePrevStep = () => setCurrentStep(s => Math.max(1, s - 1));
@@ -252,7 +283,12 @@ const AgregarAlumno = () => {
       observaciones: 'Observaciones'
     };
 
-    const obligatorios = ['apellido', 'num_documento', 'id_año', 'id_division', 'id_categoria', 'id_cat_monto'];
+    // Obligatorios globales (incluye Domicilio)
+    const obligatorios = [
+      'apellido', 'nombre', 'id_tipo_documento', 'num_documento', 'id_sexo',
+      'domicilio',
+      'id_año', 'id_division', 'id_categoria', 'id_cat_monto'
+    ];
 
     const faltantes = [];
     const invalidos = [];
@@ -319,6 +355,20 @@ const AgregarAlumno = () => {
     </div>
   );
 
+  // === Volver con confirmación si hay datos cargados ===
+  const handleBackClick = () => {
+    if (isDirty) {
+      setConfirmBackOpen(true);
+    } else {
+      navigate('/alumnos');
+    }
+  };
+  const confirmExit = () => {
+    setConfirmBackOpen(false);
+    navigate('/alumnos');
+  };
+  const cancelExit = () => setConfirmBackOpen(false);
+
   return (
     <div className="add-alumno-container">
       <div className="add-alumno-box">
@@ -340,15 +390,15 @@ const AgregarAlumno = () => {
             </div>
           </div>
 
-          <button
-            className="add-back-btn"
-            onClick={() => navigate('/alumnos')}
-            disabled={loading}
-            type="button"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-            Volver
-          </button>
+        <button
+          className="add-back-btn"
+          onClick={handleBackClick}
+          disabled={loading}
+          type="button"
+        >
+          <FontAwesomeIcon icon={faArrowLeft} />
+          Volver
+        </button>
         </div>
 
         <ProgressSteps />
@@ -379,7 +429,7 @@ const AgregarAlumno = () => {
                   </div>
 
                   <div className={`add-input-wrapper ${formData.nombre || activeField === 'nombre' ? 'has-value' : ''}`} style={{ flex: 1 }}>
-                    <label className="add-label">Nombre</label>
+                    <label className="add-label">Nombre *</label>
                     <input
                       name="nombre"
                       value={formData.nombre}
@@ -394,7 +444,7 @@ const AgregarAlumno = () => {
 
                 <div className="add-group">
                   <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
-                    <label className="add-label">Tipo de documento</label>
+                    <label className="add-label">Tipo de documento *</label>
                     <select
                       name="id_tipo_documento"
                       value={formData.id_tipo_documento}
@@ -430,7 +480,7 @@ const AgregarAlumno = () => {
                   </div>
 
                   <div className="add-input-wrapper always-active" style={{ flex: 1 }}>
-                    <label className="add-label">Sexo</label>
+                    <label className="add-label">Sexo *</label>
                     <select
                       name="id_sexo"
                       value={formData.id_sexo}
@@ -482,7 +532,7 @@ const AgregarAlumno = () => {
                     className={`add-input-wrapper ${formData.domicilio || activeField === 'domicilio' ? 'has-value' : ''}`}
                     style={{ flex: 2, minWidth: 0 }}
                   >
-                    <label className="add-label">Domicilio</label>
+                    <label className="add-label">Domicilio *</label>
                     <input
                       name="domicilio"
                       value={formData.domicilio}
@@ -663,6 +713,20 @@ const AgregarAlumno = () => {
           </div>
         </form>
       </div>
+
+      {/* ===== Modal confirmar volver sin guardar ===== */}
+      {confirmBackOpen && (
+        <div className="confirm-exit-overlay" role="dialog" aria-modal="true">
+          <div className="confirm-exit-card">
+            <h3>¿Salir sin guardar?</h3>
+            <p>Vas a perder todos los datos que estabas cargando.</p>
+            <div className="confirm-exit-actions">
+              <button className="btn-cancel" onClick={cancelExit}>Cancelar</button>
+              <button className="btn-danger" onClick={confirmExit}>Salir y descartar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

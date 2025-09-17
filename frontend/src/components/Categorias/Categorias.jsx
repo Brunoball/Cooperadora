@@ -94,7 +94,6 @@ function ConfirmDeleteModal({ open, categoria, onConfirm, onCancel, loading }) {
           categoría de monto quedarán <strong>sin ninguna categoría</strong>.
         </p>
 
-
         <div className="catdel-modal-buttons">
           <button className="catdel-btn catdel-btn--ghost" onClick={onCancel} autoFocus disabled={loading}>
             Cancelar
@@ -228,6 +227,7 @@ const Categorias = () => {
   // Historial por categoría
   const abrirHistorial = async (cat) => {
     try {
+      // Preparo estado pero NO abro el modal aún
       setHistCategoria({ id: cat.id, nombre: cat.descripcion || '' });
       setHist([]);
       setHistLoading(true);
@@ -249,6 +249,12 @@ const Categorias = () => {
         fecha:          (r.fecha_cambio ?? r.fecha ?? '').toString(),
         tipo:           (r.tipo ?? 'MENSUAL').toString(),
       }));
+
+      // 💡 Si no hay historial, informar y NO abrir modal
+      if (!norm.length) {
+        showToast('info', 'Esta categoría no tiene historial de precios.');
+        return;
+      }
 
       setHist(norm);
       setModalHistOpen(true);
@@ -439,7 +445,7 @@ const Categorias = () => {
       {/* TOAST */}
       {toast.show && (
         <Toast
-          tipo={toast.tipo}
+          tipo={toast.tipo}     // 'exito' | 'error' | 'info'
           mensaje={toast.mensaje}
           duracion={toast.duracion}
           onClose={closeToast}
