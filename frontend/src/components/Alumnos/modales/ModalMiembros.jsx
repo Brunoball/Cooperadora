@@ -11,28 +11,26 @@ import BASE_URL from '../../../config/config';
 import './ModalMiembros.css';
 
 /* ====== TUNING ====== */
-const ROW_HEIGHT = 64;   // alto aprox. de cada ítem para virtualización
-const OVERSCAN   = 10;   // ítems extra arriba/abajo
-const VIEWPORT_H = 360;  // alto del contenedor de la lista (ajustá si tu CSS fija otro)
+const ROW_HEIGHT = 68;   // alto aprox. de cada ítem (coincidir con CSS)
+const OVERSCAN   = 10;
+const VIEWPORT_H = 360;
+
+function Avatar({ name = '?' }) {
+  const i = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  return <div className="mm_avatar" aria-hidden>{i}</div>;
+}
 
 export default function ModalMiembros({ open, onClose, familia, notify, onDeltaCounts }) {
-  // miembros actuales
   const [miembros, setMiembros] = useState([]);
-
-  // listado completo de alumnos activos sin familia
-  const [allRows, setAllRows]   = useState([]);    // dataset completo
-  const [q, setQ]               = useState('');    // búsqueda instantánea
+  const [allRows, setAllRows]   = useState([]);
+  const [q, setQ]               = useState('');
   const [sel, setSel]           = useState(() => new Set());
   const [loading, setLoading]   = useState(false);
 
-  // scroll + virtualización
   const listRef = useRef(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const onScrollList = useCallback((e) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  }, []);
+  const onScrollList = useCallback((e) => setScrollTop(e.currentTarget.scrollTop), []);
 
-  // reset cuando abrís/cambiás familia
   useEffect(() => {
     if (!open || !familia) return;
     setQ('');
@@ -40,13 +38,10 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     setAllRows([]);
     setScrollTop(0);
     cargarMiembros();
-    cargarTodosLosCandidatos(); // una sola vez por apertura
+    cargarTodosLosCandidatos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, familia?.id_familia]);
 
-  /* =======================
-     Fetch miembros actuales
-  ======================= */
   const cargarMiembros = async () => {
     try {
       const r = await fetch(
@@ -71,42 +66,33 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     }
   };
 
-  /* ===========================================
-     Cargar TODOS los alumnos sin familia (1 shot)
-  =========================================== */
   const cargarTodosLosCandidatos = async () => {
     setLoading(true);
     try {
-      // all=1 => backend devuelve TODOS los activos sin familia
       const r = await fetch(
         `${BASE_URL}/api.php?action=alumnos_sin_familia&all=1&ts=${Date.now()}`,
         { cache: 'no-store' }
       );
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-
-      // Normalizo y creo una "searchKey" ya en minúsculas para filtro instantáneo
       const rows = (j?.alumnos || []).map(a => {
         const nombre = a.nombre_completo
           ? a.nombre_completo
           : [a.apellido, a.nombre].filter(Boolean).join(', ');
         const dni = a.dni ?? a.num_documento ?? '';
-        const dom = a.domicilio ?? '';
-        const loc = a.localidad ?? '';
         return {
           id_alumno: a.id_alumno ?? a.id ?? a.idAlumno,
           nombre,
           dni,
-          domicilio: dom,
-          localidad: loc,
+          domicilio: a.domicilio ?? '',
+          localidad: a.localidad ?? '',
           activo: Number(a.activo ?? 1),
           searchKey: `${nombre} ${dni}`.toLowerCase()
         };
       });
-
       setAllRows(rows);
-    } catch (e) {
-      // fallback de compat si aún existe alias legacy
+    } catch {
+      // fallback legacy
       try {
         const r2 = await fetch(
           `${BASE_URL}/api.php?action=socios_sin_familia&ts=${Date.now()}`,
@@ -117,14 +103,12 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
           const nombre = a.nombre_completo ??
             (a.nombre || [a.apellido, a.nombre].filter(Boolean).join(', '));
           const dni = a.dni ?? a.num_documento ?? '';
-          const dom = a.domicilio ?? '';
-          const loc = a.localidad ?? '';
           return {
             id_alumno: a.id_alumno ?? a.id_socio ?? a.id ?? a.idAlumno,
             nombre,
             dni,
-            domicilio: dom,
-            localidad: loc,
+            domicilio: a.domicilio ?? '',
+            localidad: a.localidad ?? '',
             activo: Number(a.activo ?? 1),
             searchKey: `${nombre} ${dni}`.toLowerCase()
           };
@@ -138,19 +122,13 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     }
   };
 
-  /* ============================
-     Filtro instantáneo en cliente
-  ============================ */
   const term = q.trim().toLowerCase();
   const rows = useMemo(() => {
     if (!term) return allRows;
-    // búsqueda instantánea gracias a searchKey precalculada
     return allRows.filter(r => r.searchKey.includes(term));
   }, [allRows, term]);
 
-  /* ======================
-     Virtualización simple
-  ====================== */
+  // Virtualización
   const total = rows.length;
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
   const endIndex = Math.min(
@@ -190,7 +168,6 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
         return;
       }
 
-      // Optimista
       setMiembros(prev => [...prev, ...toAdd.map(c => ({
         id_alumno: c.id_alumno,
         nombre: c.nombre,
@@ -200,7 +177,6 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
         activo: c.activo
       }))]);
 
-      // Remover del dataset completo
       setAllRows(prev => prev.filter(c => !mapSel.has(c.id_alumno)));
       setSel(new Set());
 
@@ -234,7 +210,6 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
 
       setMiembros(prev => prev.filter(x => x.id_alumno !== id_alumno));
 
-      // volver a ponerlo en la lista global si matchea el filtro actual
       if (m && eraActivo) {
         const back = {
           id_alumno: m.id_alumno,
@@ -245,10 +220,7 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
           activo: m.activo,
           searchKey: `${m.nombre} ${m.dni}`.toLowerCase(),
         };
-        setAllRows(prev => {
-          if (prev.some(x => x.id_alumno === back.id_alumno)) return prev;
-          return [back, ...prev];
-        });
+        setAllRows(prev => (prev.some(x => x.id_alumno === back.id_alumno) ? prev : [back, ...prev]));
       }
 
       onDeltaCounts?.({
@@ -268,15 +240,22 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
   return (
     <div className="mm_overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="mm_modal" onClick={e => e.stopPropagation()}>
+        {/* HEADER AZUL */}
         <div className="mm_head">
-          <h3>Miembros de “{familia.nombre_familia}”</h3>
-          <button className="mm_close" onClick={onClose}><FaTimes /></button>
+          <div className="mm_head_left">
+            <span className="mm_led" aria-hidden />
+            <h3>Miembros de “{familia.nombre_familia}”</h3>
+          </div>
+          <button className="mm_close" onClick={onClose} title="Cerrar">
+            <FaTimes />
+          </button>
         </div>
 
+        {/* BODY */}
         <div className="mm_body">
           {/* Columna izquierda: miembros actuales */}
           <div className="mm_col">
-            <h4>Miembros actuales</h4>
+            <h4 className="mm_coltitle">Miembros actuales</h4>
             <div className="mm_list" data-fixed>
               {miembros.length === 0 ? (
                 <div className="mm_empty">Sin miembros</div>
@@ -284,10 +263,14 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
                   const statusCls = Number(m.activo) === 1 ? 'status-active' : 'status-inactive';
                   return (
                     <div key={m.id_alumno} className={`mm_item ${statusCls}`} style={{ minHeight: ROW_HEIGHT }}>
+                      <div className="mm_flag" aria-hidden />
+                      <Avatar name={m.nombre} />
                       <div className="mm_main">
-                        <strong>{m.nombre}</strong>
-                        <small>DNI: {m.dni || '—'}</small>
-                        <small>{[m.domicilio, m.localidad].filter(Boolean).join(' • ')}</small>
+                        <strong className="mm_name">{m.nombre}</strong>
+                        {/* DNI + Localidad en la misma línea */}
+                        <small className="mm_meta">
+                          DNI: {m.dni || '—'}{m.localidad ? ` • ${m.localidad}` : ''}
+                        </small>
                         {Number(m.activo) !== 1 && <small className="mm_badge danger">Inactivo</small>}
                       </div>
                       <div className="mm_actions">
@@ -301,21 +284,21 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
             </div>
           </div>
 
-          {/* Columna derecha: candidatos (activos sin familia) */}
+          {/* Columna derecha: candidatos */}
           <div className="mm_col">
-            <h4>Agregar alumnos</h4>
-
-            <div className="mm_search">
-              <FaSearch />
-              <input
-                placeholder="Buscar por apellido/nombre o DNI…"
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                aria-label="Buscar alumnos"
-              />
+            <div className="mm_colhdr">
+              <h4 className="mm_coltitle">Agregar socios</h4>
+              <div className="mm_search">
+                <FaSearch className="mm_search_icon" />
+                <input
+                  placeholder="Buscar por nombre o DNI..."
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                  aria-label="Buscar alumnos"
+                />
+              </div>
             </div>
 
-            {/* Lista con virtualización (dataset completo ya cargado) */}
             <div
               className="mm_list"
               data-fixed
@@ -336,15 +319,19 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
                       className={`mm_item sel ${statusCls} ${checked ? 'checked' : ''}`}
                       style={{ minHeight: ROW_HEIGHT }}
                     >
+                      <div className="mm_flag" aria-hidden />
                       <input
+                        className="mm_check"
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleSel(c.id_alumno)}
                       />
                       <div className="mm_main">
-                        <strong>{c.nombre}</strong>
-                        <small>DNI: {c.dni || '—'}</small>
-                        <small>{[c.domicilio, c.localidad].filter(Boolean).join(' • ')}</small>
+                        <strong className="mm_name">{c.nombre}</strong>
+                        {/* DNI + Localidad en la misma línea */}
+                        <small className="mm_meta">
+                          DNI: {c.dni || '—'}{c.localidad ? ` • ${c.localidad}` : ''}
+                        </small>
                         {Number(c.activo) !== 1 && <small className="mm_badge danger">Inactivo</small>}
                       </div>
                     </label>
@@ -354,17 +341,20 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
               <div style={{ height: padBottom }} />
               {loading && <div className="mm_empty">Cargando…</div>}
             </div>
-
-            <div className="mm_footer_right">
-              <button className="mm_btn solid" onClick={agregarSeleccionados} disabled={sel.size === 0}>
-                <FaPlus /> Agregar seleccionados ({sel.size})
-              </button>
-            </div>
           </div>
         </div>
 
+        {/* FOOTER (Cerrar + Agregar seleccionados) */}
         <div className="mm_foot">
           <button className="mm_btn ghost" onClick={onClose}>Cerrar</button>
+          <button
+            className="mm_btn solid"
+            onClick={agregarSeleccionados}
+            disabled={sel.size === 0}
+            title={sel.size === 0 ? 'Seleccioná al menos uno' : 'Agregar seleccionados'}
+          >
+            <FaPlus /> Agregar seleccionados ({sel.size})
+          </button>
         </div>
       </div>
     </div>
