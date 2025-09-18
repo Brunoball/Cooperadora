@@ -87,80 +87,42 @@
 /* ======= HEADER ======= */
 .lc_header {
   padding: 18px var(--page-pad);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 16px;
   position: relative;
   overflow: hidden;
   background: var(--lc-surface);
   border-bottom: 1px solid var(--lc-border);
 }
 
-/* Neutralizamos cualquier degradado del header */
+/* Sin degradados */
 .lc_header.gradient::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: transparent; /* sin degradados */
+  background: transparent;
   pointer-events: none;
 }
 
+/* Contenedor del lado izquierdo */
 .lc_header_left {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-direction: row-reverse;
   gap: 14px;
-  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
 }
-
-.lc_header_right {
-  align-self: center;
-  justify-self: end;
-}
-
-.lc_back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid var(--lc-border);
-  color: var(--lc-primary-700);
-  font-weight: 600;
-  transition: var(--reg-transition);
-  box-shadow: var(--lc-shadow-soft);
-}
-.lc_back:hover { transform: translateY(-1px); background: var(--reg-gray-100); }
-.lc_back:active { transform: translateY(0); }
-.lc_back:focus-visible {
-  outline: 2px solid var(--reg-primary-light);
-  outline-offset: 2px;
-}
-
-/* Título (si lo usás) */
-.lc_title {
-  display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 12px;
-  align-items: center;
-}
-.lc_title_icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: var(--reg-primary); /* sólido rojo */
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
-}
-.lc_title h1 { margin: 0; font-size: 22px; line-height: 1.15; }
-.lc_subtitle { margin: 2px 0 0; color: var(--lc-muted); font-size: 13px; }
 
 /* ======= TABS ======= */
 .lc_tabs {
-  display: flex;
+  display: inline-flex;
   gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .lc_tabs--header {
@@ -185,27 +147,87 @@
   align-items: center;
   gap: 8px;
   transition: var(--reg-transition);
+  white-space: nowrap;
 }
+
 .tab_btn:hover {
   background: #fff;
   color: var(--lc-text);
   transform: translateY(-1px);
 }
+
 .tab_btn:focus-visible {
   outline: 2px solid var(--reg-primary-light);
   outline-offset: 2px;
 }
+
 .tab_btn.active {
   color: #fff;
-  background: var(--reg-primary);              /* sólido */
+  background: var(--reg-primary);
   box-shadow: var(--reg-shadow-md);
-  border: 1px solid var(--reg-primary-dark);   /* define borde leve */
+  border: 1px solid var(--reg-primary-dark);
+}
+
+/* Botón "Volver" con estilo fantasma, pero dentro del nav */
+.tab_btn--ghost {
+  background: #fff;
+  border: 1px solid var(--lc-border);
+  color: var(--lc-primary-700);
+  box-shadow: var(--lc-shadow-soft);
+  font-weight: 700;
+}
+
+.tab_btn--ghost:hover {
+  background: var(--reg-gray-100);
+  transform: translateY(-1px);
+}
+
+
+
+/* ======= TÍTULO ======= */
+.lc_title {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  
+}
+
+.lc_title_icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--reg-primary); /* sólido rojo */
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+}
+
+.lc_title_text { min-width: 0; }
+
+.lc_heading {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.lc_subtitle {
+  margin: 2px 0 0;
+  color: var(--lc-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ======= PANEL ======= */
 .lc_panel {
   min-height: calc(100dvh - 220px);
 }
+
 .fade-in { animation: fadeUp .25s ease-out; }
 @keyframes fadeUp {
   from { opacity:0; transform: translateY(6px); }
@@ -217,14 +239,14 @@
 
 /* ======= Responsive ======= */
 @media (max-width: 1024px) {
-  .lc_header { grid-template-columns: 1fr; }
-  .lc_header_left { flex-wrap: wrap; gap: 10px 12px; }
-  .lc_tabs--header { order: -1; } /* tabs arriba del título si se parte */
-  .lc_header_right { justify-self: start; margin-top: 6px; }
-}
-@media (max-width: 720px) {
   .lc_title { grid-template-columns: 44px 1fr; }
   .lc_title_icon { width: 44px; height: 44px; border-radius: 12px; }
-  .lc_title h1 { font-size: 19px; }
+  .lc_heading { font-size: 20px; }
+}
+
+@media (max-width: 720px) {
   .lc_tabs--header { width: 100%; overflow-x: auto; }
+  .lc_title { grid-template-columns: 40px 1fr; }
+  .lc_title_icon { width: 40px; height: 40px; border-radius: 10px; }
+  .lc_heading { font-size: 18px; }
 }

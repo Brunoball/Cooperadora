@@ -328,7 +328,7 @@
 /* La tabla scrollea dentro del alto compartido */
 .rc_card--table .rc_table__wrap{
   overflow:auto;
-  max-height: 100px;             /* usamos el alto flexible */
+   max-height: 60vh;       /* usamos el alto flexible */
 }
 
 /* =========================== Responsive =========================== */
@@ -342,4 +342,74 @@
 }
 @media (max-width: 640px){
   .rc_side_metrics { grid-template-columns:1fr; }
+}
+/* ====== Opción A: ocupar todo el alto menos el header (solo CSS) ====== */
+
+/* 1) Definí la altura fija del header una sola vez */
+:root{
+  --header-h: 90.33px; /* cambiá este valor si tu header cambia */
+}
+
+/* 2) Hacé que el layout use (viewport - header) */
+.rc_shell{
+  min-height: calc(100dvh - var(--header-h)); /* 100dvh respeta la UI móvil */
+  display: grid;
+  grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr;
+  gap: 1.25rem;
+
+  /* dejá tu background/tokenes existentes acá */
+}
+
+/* 3) Permití que el contenido interno crezca y scrollee */
+.rc_main{
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* clave para scroll interno */
+}
+
+/* 4) Dos columnas: gráfico + tabla usando todo el alto disponible */
+.rc_twocol{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: stretch;
+  flex: 1 1 auto; /* ocupa el resto del alto en .rc_main */
+  min-height: 0;  /* habilita scroll en hijos */
+}
+
+/* 5) Las cards reparten su alto internamente */
+.rc_twocol .rc_card{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* evita overflow no deseado */
+}
+
+/* 6) El gráfico y la tabla ocupan el espacio restante dentro de su card */
+.rc_card--chart .rc_chart_body,
+.rc_card--table .rc_table__wrap{
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 7) La tabla scrollea dentro de su tarjeta (no en toda la página) */
+.rc_card--table .rc_table__wrap{
+  overflow: auto;
+  /* asegurate de NO tener max-height fijo acá */
+}
+
+/* 8) Sidebar sticky (opcional, queda bien con header relativo) */
+.rc_side{
+  position: sticky;
+  top: 1rem;      /* separadito del borde superior del área útil */
+  align-self: start;
+  height: 100%;
+}
+
+/* 9) Responsive (opcional, si ya lo tenías, dejalo) */
+@media (max-width: 900px){
+  .rc_shell{ grid-template-columns: 1fr; }
+  .rc_side{ position: static; order: -1; }
+  .rc_twocol{ grid-template-columns: 1fr; }
 }

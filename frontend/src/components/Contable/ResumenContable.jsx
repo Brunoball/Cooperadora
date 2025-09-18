@@ -294,30 +294,7 @@ export default function ResumenContable() {
             )}
           </select>
 
-          <div className="rc_sublabel">Serie</div>
-          <div className="rc_spills">
-            <button
-              className={`rc_spill ${serie === "ingresos" ? "active" : ""}`}
-              onClick={() => setSerie("ingresos")}
-              type="button"
-            >
-              Ingresos
-            </button>
-            <button
-              className={`rc_spill ${serie === "egresos" ? "active" : ""}`}
-              onClick={() => setSerie("egresos")}
-              type="button"
-            >
-              Egresos
-            </button>
-            <button
-              className={`rc_spill ${serie === "saldo" ? "active" : ""}`}
-              onClick={() => setSerie("saldo")}
-              type="button"
-            >
-              Saldo
-            </button>
-          </div>
+
         </div>
 
         {/* Totales en el panel lateral */}

@@ -21,16 +21,27 @@ export default function LibroContable({ onBack }) {
 
   return (
     <div className="lc_wrap">
-      {/* Header con título + tabs a la izquierda y Volver a la derecha */}
-      <header className="lc_header gradient">
-        {/* IZQUIERDA: Tabs + Título */}
+      {/* Header con título + tabs (y Volver en la misma hilera) */}
+      <header className="lc_header gradient" role="banner">
         <div className="lc_header_left">
-          {/* Tabs en el header (muevas aquí) */}
+          {/* Tabs en el header + Volver adentro */}
           <nav
             className="lc_tabs lc_tabs--header"
             role="tablist"
             aria-label="Secciones contables"
           >
+            {/* Volver dentro del mismo nav */}
+            <button
+              type="button"
+              className="tab_btn tab_btn--ghost lc_backtab"
+              onClick={onBack}
+              title="Volver"
+              aria-label="Volver"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} />
+              <span>Volver</span>
+            </button>
+
             <button
               role="tab"
               aria-selected={tab === "ingresos"}
@@ -66,15 +77,15 @@ export default function LibroContable({ onBack }) {
           </nav>
 
           {/* Título */}
-
-        </div>
-
-        {/* DERECHA: Botón Volver */}
-        <div className="lc_header_right">
-          <button className="lc_back" onClick={onBack} aria-label="Volver">
-            <FontAwesomeIcon icon={faArrowLeft} />
-            <span>Volver</span>
-          </button>
+          <div className="lc_title">
+            <div className="lc_title_icon" aria-hidden>
+              <FontAwesomeIcon icon={faWallet} />
+            </div>
+            <div className="lc_title_text">
+              <h1 className="lc_heading">Contable</h1>
+              <p className="lc_subtitle">Gestión de ingresos, egresos y resumen</p>
+            </div>
+          </div>
         </div>
       </header>
 

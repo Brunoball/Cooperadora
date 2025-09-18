@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faFilter, faChartPie } from "@fortawesome/free-solid-svg-icons";
+import { faSearch, faFilter, faChartPie, faBars } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import "./IngresosContable.css";
 
@@ -39,6 +39,9 @@ export default function IngresosContable() {
   const [filas, setFilas] = useState([]);          // registros del mes
   const [anios, setAnios] = useState([Y, Y - 1]);  // años disponibles
   const [cargando, setCargando] = useState(false);
+
+  /* UI: sidebar móvil */
+  const [sideOpen, setSideOpen] = useState(true);
 
   /* Animación en cascada */
   const [cascading, setCascading] = useState(false);
@@ -111,150 +114,184 @@ export default function IngresosContable() {
     return Array.from(map.values()).sort((a, b) => b.monto - a.monto);
   }, [filas]);
 
-  /* Cascada sutil cuando cambian filtros de vista */
+  /* Dispara cascada cuando cambian filtros de vista */
   useEffect(() => {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
   }, [anio, mes, query]);
 
+  /* Clases sidebar */
+  const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
+
   return (
     <div className="ing-wrap">
-      <div className="ing-main">
-        {/* Header simple */}
-        <header className="card ing-head">
-          <div>
-            <h2 className="h2">Ingresos</h2>
-            <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
-          </div>
-          <div className="ing-kpis">
-            <div className="kpi">
-              <span className="kpi-label">Total</span>
-              <span className="kpi-value num">{fmtMonto(resumen.total)}</span>
-            </div>
-            <div className="kpi">
-              <span className="kpi-label">Registros</span>
-              <span className="kpi-value num">{resumen.cantidad}</span>
-            </div>
-          </div>
-        </header>
-
-        {/* Filtros horizontales */}
-        <section className="card ing-filterbar">
-          <div className="bar-title">
-            <FontAwesomeIcon icon={faFilter} />
-            <span>Filtros</span>
-          </div>
-
-          <div className="bar-grid">
-            <div className="field">
-              <label htmlFor="anio">Año</label>
-              <select id="anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
-                {anios.map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
+      {/* ====== Layout con sidebar ====== */}
+      <div className="ing-layout">
+        {/* Sidebar con filtros + categorías del mes */}
+        <aside className={sideClass} aria-label="Barra lateral">
+          <div className="ing-side__inner">
+            <div className="ing-side__row">
+              <div className="ing-sectiontitle">
+                <FontAwesomeIcon icon={faFilter} />
+                <span>Filtros</span>
+              </div>
             </div>
 
-            <div className="field">
-              <label htmlFor="mes">Mes</label>
-              <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-                {MESES.map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
+            {/* Año + Mes */}
+            <div className="ing-fieldrow">
+              <div className="ing-field">
+                <label htmlFor="anio">Año</label>
+                <select id="anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
+                  {anios.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="ing-field">
+                <label htmlFor="mes">Mes</label>
+                <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
+                  {MESES.map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="field">
-              <label htmlFor="buscar">Buscar</label>
-              <div className="input-icon">
+            <div className="ing-field">
+              <label htmlFor="buscar">Buscar alumno / categoría</label>
+              <div className="ing-inputicon">
                 <FontAwesomeIcon icon={faSearch} />
                 <input
                   id="buscar"
                   type="text"
-                  placeholder="Alumno, categoría, fecha…"
+                  placeholder="Escribe para filtrar…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* Chips de categorías (top 6) */}
-        <section className="card ing-cats">
-          <div className="cats-title">
-            <FontAwesomeIcon icon={faChartPie} />
-            <span>Categorías del mes</span>
-          </div>
-          <div className="cats-chips">
-            {categoriasMes.length === 0 ? (
-              <span className="muted">Sin datos</span>
-            ) : (
-              categoriasMes.slice(0, 6).map((c, i) => (
-                <div className="chip" key={i} title={`${c.cantidad} registros`}>
-                  <span className="chip-name">{(c.nombre || "-").toString().toUpperCase()}</span>
-                  <span className="chip-amount num">{fmtMonto(c.monto)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+            <div className="ing-divider" />
 
-        {/* Tabla */}
-        <section className="card ing-page">
-          <div
-            className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
-            role="table"
-            aria-label="Listado de ingresos"
-          >
-            {/* Overlay de loading SOLO en la tabla */}
-            {cargando && (
-              <div className="ing-tableloader" role="status" aria-live="polite">
-                <div className="ing-spinner" />
-                <span>Cargando…</span>
-              </div>
-            )}
-
-            <div className="ing-row h" role="row">
-              <div className="c-fecha">Fecha</div>
-              <div className="c-alumno">Alumno</div>
-              <div className="c-cat">Categoría</div>
-              <div className="c-monto t-right">Monto</div>
-              <div className="c-mes">Mes pagado</div>
+            <div className="ing-sectiontitle">
+              <FontAwesomeIcon icon={faChartPie} />
+              <span>Categorías del mes</span>
             </div>
 
-            {filasFiltradas.map((f, idx) => (
-              <div
-                className={`ing-row data ${cascading ? "casc" : ""}`}
-                role="row"
-                key={f.id}
-                style={{ "--i": idx }}
-              >
-                <div className="c-fecha">{f.fecha}</div>
-                <div className="c-alumno">
-                  <div className="ing-alumno">
-                    <div className="ing-alumno__text">
-                      <div className="strong">{f.alumno}</div>
+            {categoriasMes.length === 0 ? (
+              <div className="ing-empty">Sin datos</div>
+            ) : (
+              <ul className="ing-catlist" role="list">
+                {categoriasMes.map((c, i) => (
+                  <li className="ing-catitem" key={i}>
+                    <div className="ing-catline">
+                      <span className="ing-catname">{(c.nombre || "-").toString().toUpperCase()}</span>
+                      <span className="ing-catamount num">{fmtMonto(c.monto)}</span>
                     </div>
-                  </div>
-                </div>
-                <div className="c-cat">
-                  <span className={pillClassByCategoria(f.categoria)}>{f.categoria}</span>
-                </div>
-                <div className="c-monto t-right">
-                  <span className="num strong-amount">{fmtMonto(f.monto)}</span>
-                </div>
-                <div className="c-mes">{f.mesPagado}</div>
-              </div>
-            ))}
-
-            {!filasFiltradas.length && !cargando && (
-              <div className="ing-empty big">Sin pagos</div>
+                    <div className="ing-catmeta">
+                      {c.cantidad} {c.cantidad === 1 ? "registro" : "registros"}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-        </section>
+        </aside>
+
+        {/* Contenido */}
+        <main className="ing-main">
+          <div className="ing-head card">
+            <div>
+              <h2 className="h2">Ingresos</h2>
+              <small className="muted">
+                Detalle — {MESES[mes - 1]} {anio}
+              </small>
+            </div>
+
+            {/* Botón para abrir filtros en mobile */}
+            <button className="ghost-btn show-on-mobile" onClick={() => setSideOpen(true)}>
+              <FontAwesomeIcon icon={faBars} />
+              <span>Filtros</span>
+            </button>
+
+            <div className="ing-kpis">
+              <div className="kpi">
+                <span className="kpi-label">Total</span>
+                <span className="kpi-value num">{fmtMonto(resumen.total)}</span>
+              </div>
+              <div className="kpi">
+                <span className="kpi-label">Registros</span>
+                <span className="kpi-value num">{resumen.cantidad}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="ing-page card">
+            {/* Tabla (scroll interno + header sticky + zebra + loader interno) */}
+            <div
+              className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
+              role="table"
+              aria-label="Listado de ingresos"
+            >
+              {/* Overlay de loading SOLO en la tabla */}
+              {cargando && (
+                <div className="ing-tableloader" role="status" aria-live="polite">
+                  <div className="ing-spinner" />
+                  <span>Cargando…</span>
+                </div>
+              )}
+
+              <div className="ing-row h" role="row">
+                <div className="c-fecha">Fecha</div>
+                <div className="c-alumno">Alumno</div>
+                <div className="c-cat">Categoría</div>
+                <div className="c-monto t-right">Monto</div>
+                <div className="c-mes">Mes pagado</div>
+              </div>
+
+              {filasFiltradas.map((f, idx) => (
+                <div
+                  className={`ing-row data ${cascading ? "casc" : ""}`}
+                  role="row"
+                  key={f.id}
+                  style={{ "--i": idx }}
+                >
+                  <div className="c-fecha">{f.fecha}</div>
+                  <div className="c-alumno">
+                    <div className="ing-alumno">
+                      <div className="ing-alumno__text">
+                        <div className="strong">{f.alumno}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="c-cat">
+                    <span className={pillClassByCategoria(f.categoria)}>{f.categoria}</span>
+                  </div>
+                  <div className="c-monto t-right">
+                    <span className="num strong-amount">{fmtMonto(f.monto)}</span>
+                  </div>
+                  <div className="c-mes">{f.mesPagado}</div>
+                </div>
+              ))}
+
+              {!filasFiltradas.length && !cargando && (
+                <div className="ing-empty big">Sin pagos</div>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
+
+      {/* Overlay móvil para cerrar sidebar */}
+      {sideOpen && (
+        <button
+          className="ing-layout__overlay"
+          onClick={() => setSideOpen(false)}
+          aria-label="Cerrar panel"
+        />
+      )}
     </div>
   );
 }
