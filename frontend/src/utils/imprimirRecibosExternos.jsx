@@ -71,8 +71,7 @@ function renderCupon({
   domicilio = '',
   barrio = '',
   curso = '',
-  mesTexto = '',
-  anio = '',
+  periodoTexto = '',
   importe = 0
 }) {
   const importeFmt = Number(importe || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -89,7 +88,7 @@ function renderCupon({
       ${lineSinEtiqueta(NORMALIZAR(barrio).toUpperCase() || '')}
       ${lineConEtiqueta('Curso :', NORMALIZAR(curso).toUpperCase())}
 
-      ${lineSinEtiqueta(`${mesTexto} de ${anio}`)}
+      ${lineSinEtiqueta(periodoTexto)}
       ${lineConEtiqueta('Importe:', `$ ${importeFmt}`)}
       ${lineConEtiqueta('Cobrad.:', '—')}
 
@@ -99,14 +98,8 @@ function renderCupon({
 }
 
 /* ================= Lógica principal ================= */
-/**
- * imprimirRecibosExternos(listaSocios, periodoActual(1..12), ventana?, opciones?)
- * - 3 cupones por alumno (alumno/cooperadora/cobrador)
- * - Fuerza 4 filas por página con margen superior EXACTO de 20mm
- * - Calcula la altura de cupón para llenar el alto disponible (queda 69.25mm)
- */
 export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', ventana, opciones = {}) => {
-  // 1) Completar datos de cada alumno
+  // 1) Completar datos
   const alumnos = [];
   for (const item of (listaSocios || [])) {
     const id = getIdAlumno(item);
@@ -119,7 +112,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     } catch { alumnos.push(item); }
   }
 
-  // 2) Listas (categorías + anios + divisiones)
+  // 2) Listas
   let categoriasById = {};
   let aniosById = {};
   let divisionesById = {};
@@ -152,18 +145,17 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   const w = ventana || window.open('', '', 'width=900,height=1200');
   if (!w) return;
 
-  // 4) Medidas y estilos EXACTOS
-  const A4_W = 210;   // mm
-  const A4_H = 297;   // mm
+  // 4) Medidas y estilos
+  const A4_W = 210;
+  const A4_H = 297;
 
-  const FIRST_LEFT = 4;     // mm (margen izquierdo)
-  const FIRST_TOP  = 20;    // mm (margen superior exacto)
+  const FIRST_LEFT = 4;
+  const FIRST_TOP  = 20;
 
   const FILAS_POR_PAGINA = 4;
-  const CUP_W = 71;                                   // mm (ancho fijo)
-  const CUP_H = (A4_H - FIRST_TOP) / FILAS_POR_PAGINA; // = 69.25 mm exactos
+  const CUP_W = 71;
+  const CUP_H = (A4_H - FIRST_TOP) / FILAS_POR_PAGINA;
 
-  // 3 columnas (4 + 71*3 = 217 mm; la 3ª sobresale un poco como en tu muestra)
   const COLS = [FIRST_LEFT, FIRST_LEFT + CUP_W, FIRST_LEFT + CUP_W * 2];
 
   const css = `
@@ -177,7 +169,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       position: absolute;
       width: ${CUP_W}mm;
       height: ${CUP_H}mm;
-      padding: 0mm 3mm 1.6mm 3mm; /* sin padding arriba para clavar el top en 20mm */
+      padding: 0mm 3mm 1.6mm 3mm;
     }
 
     .enc-1 { font-weight: 600; font-size: 10pt; text-transform: uppercase; letter-spacing: .2px; margin: 0; }
@@ -189,23 +181,21 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     .line .val { flex: 1; }
     .mono { font-family: "Courier New", Courier, monospace; }
 
-    /* SIN etiqueta (todo bien pegado a la izquierda del cupón) */
     .line.nolbl { gap: 0; }
     .line.nolbl .val { flex: none; width: 100%; }
 
     .nota { margin-top: 2mm; font-size: 9pt; color: #000; }
   `;
 
-  // 5) Construcción
   const anio = (opciones?.anioPago && String(opciones.anioPago)) || new Date().getFullYear();
-  const mesTexto = nombreMes(periodoActual);
+  const mesTextoBase = nombreMes(periodoActual);
 
-  const filasPorPagina = FILAS_POR_PAGINA; // fuerza 4
+  const filasPorPagina = FILAS_POR_PAGINA;
   let cuponesHTML = '';
   let pageHTML = '';
   let fila = 0;
 
-  const pushCupon = (x, y, etiqueta, s, precio, cursoTexto) => {
+  const pushCupon = (x, y, etiqueta, s, precio, cursoTexto, periodoTexto) => {
     const html = renderCupon({
       x, y,
       etiqueta,
@@ -214,8 +204,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       domicilio: s?.domicilio || '',
       barrio: s?.localidad || '',
       curso: cursoTexto || '',
-      mesTexto,
-      anio,
+      periodoTexto, // ya viene armado (p. ej. “ENE / FEB / MAR 2025”)
       importe: precio
     });
     pageHTML += html;
@@ -232,30 +221,41 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   for (let idx = 0; idx < alumnos.length; idx++) {
     const s = alumnos[idx];
 
-    // MONTO (primer valor > 0)
+    // 🔹 MONTO: priorizar total (multi-mes) > otros
     const idCat = s?.id_categoria ?? null;
     const precioListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
     const candidatos = [
-      Number(s?.precio_unitario), Number(s?.importe_total),
-      Number(s?.monto_mensual), Number(s?.precio_categoria),
-      Number(s?.monto), Number(s?.importe), precioListas
+      Number(s?.importe_total),
+      Number(s?.precio_total),
+      Number(s?.monto_total),
+      Number(s?.precio_unitario * (Array.isArray(s?.periodos) ? s.periodos.length : 0)),
+      Number(s?.precio_unitario),
+      Number(s?.monto_mensual),
+      Number(s?.precio_categoria),
+      Number(s?.monto),
+      Number(s?.importe),
+      precioListas
     ].filter(v => Number.isFinite(v) && v > 0);
     const precio = candidatos.length ? candidatos[0] : 0;
 
-    // CURSO
+    // 🔹 PERÍODO: usar full si llega, si no usar “Mes Año”
+    const periodoTexto =
+      (s?.periodo_texto && String(s.periodo_texto).trim())
+        ? String(s.periodo_texto).trim()
+        : `${mesTextoBase} ${anio}`;
+
     const cursoTexto = resolverCurso(s, aniosById, divisionesById);
 
-    // Tres cupones por fila
     const y = FIRST_TOP + fila * CUP_H;
 
     let x = COLS[0];
-    pushCupon(x, y, 'Cupón para el alumno', s, precio, cursoTexto);
+    pushCupon(x, y, 'Cupón para el alumno', s, precio, cursoTexto, periodoTexto);
 
     x = COLS[1];
-    pushCupon(x, y, 'Cupón para la cooperadora', s, precio, cursoTexto);
+    pushCupon(x, y, 'Cupón para la cooperadora', s, precio, cursoTexto, periodoTexto);
 
     x = COLS[2];
-    pushCupon(x, y, 'Cupón para el cobrador', s, precio, cursoTexto);
+    pushCupon(x, y, 'Cupón para el cobrador', s, precio, cursoTexto, periodoTexto);
 
     fila += 1;
     if (fila >= filasPorPagina || idx === alumnos.length - 1) {
@@ -263,7 +263,6 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     }
   }
 
-  // 6) Render + auto print
   const html = `
     <html>
       <head>

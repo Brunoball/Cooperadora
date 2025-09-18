@@ -8,6 +8,8 @@ import './ModalPagos.css';
 // Utils de impresión (internos y externos)
 import { imprimirRecibos } from '../../../utils/imprimirRecibos.jsx';
 import { imprimirRecibosExternos } from '../../../utils/imprimirRecibosExternos.jsx';
+// PDF “para el alumno” (export real del archivo)
+import { generarComprobanteAlumnoPDF } from '../../../utils/ComprobanteExternoPDF.jsx';
 
 /* ====== Helpers/Config ====== */
 const MIN_YEAR = 2025; // el sistema existe desde 2025
@@ -36,8 +38,9 @@ const ModalPagos = ({ socio, onClose }) => {
   const [toast, setToast] = useState(null);
   const [todosSeleccionados, setTodosSeleccionados] = useState(false);
 
-  // Vista de éxito con botón "Comprobante"
+  // Vista de éxito con selector "Imprimir / PDF"
   const [pagoExitoso, setPagoExitoso] = useState(false);
+  const [modoComprobante, setModoComprobante] = useState('imprimir'); // 'imprimir' | 'pdf'
 
   // Condonar + selector de año
   const [condonar, setCondonar] = useState(false);
@@ -84,7 +87,7 @@ const ModalPagos = ({ socio, onClose }) => {
     return normalizar(raw) === 'externo';
   }, [nombreCategoria, socio]);
 
-  // === TOTAL: cantidad de meses * precio mensual por categoría o libre (o 0 si condona) ===
+  // === UNITARIO vigente (condonar/libre/categoría) ===
   const precioUnitarioVigente = useMemo(() => {
     if (condonar) return 0;
     if (libreActivo) {
@@ -94,20 +97,23 @@ const ModalPagos = ({ socio, onClose }) => {
     return Number(precioMensual || 0);
   }, [condonar, libreActivo, libreValor, precioMensual]);
 
+  const periodosOrdenados = useMemo(
+    () => [...seleccionados].map(Number).sort((a, b) => a - b),
+    [seleccionados]
+  );
+
   const total = useMemo(() => {
-    return condonar ? 0 : seleccionados.length * precioUnitarioVigente;
-  }, [condonar, seleccionados.length, precioUnitarioVigente]);
+    return condonar ? 0 : periodosOrdenados.length * precioUnitarioVigente;
+  }, [condonar, periodosOrdenados.length, precioUnitarioVigente]);
 
   // Texto tipo “ENE / FEB / MAR 2025”
   const periodoTextoFinal = useMemo(() => {
-    if (seleccionados.length === 0) return '';
+    if (periodosOrdenados.length === 0) return '';
     const mapById = new Map(mesesDisponibles.map(m => [Number(m.id), m.nombre]));
-    const nombres = seleccionados
-      .map(Number)
-      .sort((a,b)=>a-b)
+    const nombres = periodosOrdenados
       .map(id => (mapById.get(id) || String(id)).trim());
     return `${nombres.join(' / ')} ${anioTrabajo}`;
-  }, [seleccionados, mesesDisponibles, anioTrabajo]);
+  }, [periodosOrdenados, mesesDisponibles, anioTrabajo]);
 
   /* ================= Efectos ================= */
 
@@ -127,8 +133,6 @@ const ModalPagos = ({ socio, onClose }) => {
 
         const data = await res.json().catch(() => ({}));
 
-        // Estructura esperada:
-        // { exito: true, id_categoria, categoria_nombre, monto_mensual }
         if (data?.exito) {
           const monto = Number(
             data?.monto_mensual ??
@@ -141,7 +145,6 @@ const ModalPagos = ({ socio, onClose }) => {
           setPrecioMensual(Number.isFinite(monto) ? monto : 0);
           setNombreCategoria(nombre ? nombre.toUpperCase() : '');
         } else {
-          // Fallback si el backend no tiene info
           setPrecioMensual(0);
           setNombreCategoria('');
           if (data?.mensaje) mostrarToast('advertencia', data.mensaje);
@@ -299,7 +302,7 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
-    if (seleccionados.length === 0) return mostrarToast('advertencia', 'Seleccioná al menos un mes.');
+    if (periodosOrdenados.length === 0) return mostrarToast('advertencia', 'Seleccioná al menos un mes.');
 
     if (libreActivo && !condonar) {
       const v = Number(libreValor);
@@ -312,7 +315,7 @@ const ModalPagos = ({ socio, onClose }) => {
     try {
       const payload = {
         id_alumno: Number(idAlumno),
-        periodos: seleccionados.map(Number),
+        periodos: periodosOrdenados,
         condonar: !!condonar,
         anio: Number(anioTrabajo),
         monto_unitario: Math.round(condonar ? 0 : Number(precioUnitarioVigente || 0)),
@@ -335,7 +338,7 @@ const ModalPagos = ({ socio, onClose }) => {
         setPagoExitoso(true);
         setPeriodosPagados(prev => {
           const set = new Set(prev);
-          seleccionados.forEach(id => set.add(Number(id)));
+          periodosOrdenados.forEach(id => set.add(Number(id)));
           return Array.from(set);
         });
       } else {
@@ -354,30 +357,55 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-  const handleImprimirComprobante = async () => {
-    // Tomamos el primer periodo seleccionado (ordenado) para pasar como periodoId
-    const periodoCodigo = [...seleccionados].map(Number).sort((a,b)=>a-b)[0] || 0;
+  // === Acción post-éxito según modo seleccionado ===
+  const handleComprobante = async () => {
+    // Ordenamos y definimos el primer período (para título/compatibilidad)
+    const periodos = periodosOrdenados;
+    const periodoCodigo = periodos[0] || 0;
 
+    // Objeto unificado para los 3 flujos (print interno, print externo, PDF)
     const alumnoParaImprimir = {
       ...socio,
-      id_periodo: periodoCodigo,
-      periodo_texto: periodoTextoFinal,
-      importe_total: total,
-      anio: anioTrabajo,
+
+      // Campos clave para tus utils:
+      id_periodo: periodoCodigo,           // compat
+      periodos,                            // <-- lista completa de meses pagados
+      periodo_texto: periodoTextoFinal,    // <-- “ENE / FEB / MAR 2025”
       precio_unitario: precioUnitarioVigente,
-      // OJO: este nombre es solo descriptivo para el recibo interno;
-      // para decidir plantilla usamos `esExterno`
-      categoria_nombre: libreActivo ? 'LIBRE' : nombreCategoria,
+      importe_total: total,                // <-- monto final (multi-mes)
+      precio_total: total,                 // alias por si algún util lo usa
+      anio: anioTrabajo,
+
+      // Nombre de categoría que queremos mostrar
+      categoria_nombre: libreActivo ? 'LIBRE' : (nombreCategoria || ''),
     };
 
+    if (modoComprobante === 'pdf') {
+      try {
+        await generarComprobanteAlumnoPDF(alumnoParaImprimir, {
+          anio: anioTrabajo,
+          periodoId: periodoCodigo,
+          periodoTexto: periodoTextoFinal,
+          importeTotal: total,
+          precioUnitario: precioUnitarioVigente,
+          periodos, // también paso explícito en opciones
+        });
+      } catch (e) {
+        console.error('Error al generar PDF:', e);
+        mostrarToast('error', 'No se pudo generar el PDF.');
+      }
+      return;
+    }
+
+    // Imprimir (abre ventana y llama a tu util)
     const win = window.open('', '_blank');
     if (!win) return alert('Habilitá ventanas emergentes para imprimir el comprobante.');
 
-    // Igual que en Cuotas: externos usan su template especial
+    const opciones = { anioPago: anioTrabajo };
     if (esExterno) {
-      await imprimirRecibosExternos([alumnoParaImprimir], periodoCodigo, win, { anioPago: anioTrabajo });
+      await imprimirRecibosExternos([alumnoParaImprimir], periodoCodigo, win, opciones);
     } else {
-      await imprimirRecibos([alumnoParaImprimir], periodoCodigo, win);
+      await imprimirRecibos([alumnoParaImprimir], periodoCodigo, win, opciones);
     }
   };
 
@@ -386,7 +414,7 @@ const ModalPagos = ({ socio, onClose }) => {
   /* ================= VISTA: ÉXITO ================= */
   if (pagoExitoso) {
     const tituloExito = condonar ? '¡Condonación registrada con éxito!' : '¡Pago realizado con éxito!';
-    const subExito = 'Se generará el comprobante a continuación.';
+    const subExito = 'Elegí cómo querés obtener el comprobante.';
 
     return (
       <>
@@ -421,9 +449,38 @@ const ModalPagos = ({ socio, onClose }) => {
                 <p className="success-sub">{subExito}</p>
                 {!condonar && (
                   <p className="success-sub" style={{ marginTop: 6 }}>
-                    <strong>Valor por mes:</strong> {formatearARS(precioUnitarioVigente)} — <strong>Meses:</strong> {seleccionados.length} — <strong>Total:</strong> {formatearARS(total)}
+                    <strong>Valor por mes:</strong> {formatearARS(precioUnitarioVigente)} — <strong>Meses:</strong> {periodosOrdenados.length} — <strong>Total:</strong> {formatearARS(total)}
                   </p>
                 )}
+                {periodoTextoFinal && (
+                  <p className="success-sub" style={{ marginTop: 2 }}>
+                    <strong>Período:</strong> {periodoTextoFinal}
+                  </p>
+                )}
+              </div>
+
+              {/* Selector de modo */}
+              <div style={{ marginTop: 12, display: 'flex', gap: 18, alignItems: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="modoComprobante"
+                    value="imprimir"
+                    checked={modoComprobante === 'imprimir'}
+                    onChange={() => setModoComprobante('imprimir')}
+                  />
+                  <span>Imprimir</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="modoComprobante"
+                    value="pdf"
+                    checked={modoComprobante === 'pdf'}
+                    onChange={() => setModoComprobante('pdf')}
+                  />
+                  <span>PDF</span>
+                </label>
               </div>
             </div>
 
@@ -437,8 +494,8 @@ const ModalPagos = ({ socio, onClose }) => {
                 <button className="btn btn-secondary" onClick={() => onClose?.(true)} type="button">
                   Cerrar
                 </button>
-                <button className="btn btn-primary" onClick={handleImprimirComprobante} type="button">
-                  Comprobante
+                <button className="btn btn-primary" onClick={handleComprobante} type="button">
+                  {modoComprobante === 'pdf' ? 'Descargar PDF' : 'Abrir impresión'}
                 </button>
               </div>
             </div>
@@ -670,7 +727,7 @@ const ModalPagos = ({ socio, onClose }) => {
               <button
                 className={`btn ${condonar ? 'btn-warning' : 'btn-primary'}`}
                 onClick={confirmarPago}
-                disabled={seleccionados.length === 0 || cargando}
+                disabled={periodosOrdenados.length === 0 || cargando}
                 type="button"
               >
                 {cargando ? (<><span className="spinner-btn"></span> Procesando...</>) : (condonar ? 'Condonar' : 'Confirmar Pago')}
