@@ -43,13 +43,13 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
         <defs>
           {/* Ingresos = AZUL */}
           <linearGradient id="gradIng" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#0f172a" />
+            <stop offset="0%" stopColor="#1D428A" />
+            <stop offset="100%" stopColor="#1D428A" />
           </linearGradient>
           {/* Egresos = ROJO */}
           <linearGradient id="gradEgr" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#b91c1c" />
-            <stop offset="100%" stopColor="#b91c1c" />
+            <stop offset="0%" stopColor="#B71C1C" />
+            <stop offset="100%" stopColor="#B71C1C" />
           </linearGradient>
         </defs>
 
@@ -118,9 +118,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
 
 /* ---------- LineChart (color dinámico por serie) ---------- */
 function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
-  const W = 700,
-    H = 240,
-    P = 24;
+  const W = 700, H = 240, P = 24;
   const maxV = Math.max(...data.map((d) => d.value), 1);
   const xStep = (W - P * 2) / Math.max(data.length - 1, 1);
 
@@ -261,8 +259,8 @@ export default function ResumenContable() {
 
   // Colores por serie
   const serieColor =
-    serie === "ingresos" ? "#2563eb" : // azul
-    serie === "egresos"  ? "#ef4444" : // rojo
+    serie === "ingresos" ? "#1D428A" : // azul
+    serie === "egresos"  ? "#B71C1C" : // rojo
                            "#334155";  // gris para saldo
 
   return (
@@ -360,73 +358,76 @@ export default function ResumenContable() {
           <h2 className="rc_title">Resumen Contable</h2>
         </header>
 
-        {/* Card con pestañas (anual / mensual) */}
-        <section className="rc_card card">
-          <header className="rc_card__header">
-            <div className="rc_tabs_main">
-              <button
-                className={`rc_mtab ${chartTab === "anual" ? "active" : ""}`}
-                onClick={() => setChartTab("anual")}
-                type="button"
-              >
-                Composición anual
-              </button>
-              <button
-                className={`rc_mtab ${chartTab === "mensual" ? "active" : ""}`}
-                onClick={() => setChartTab("mensual")}
-                type="button"
-              >
-                Serie mensual
-              </button>
-            </div>
-          </header>
-
-          <div className="rc_chart_body">
-            {chartTab === "anual" ? (
-              <DonutChart ingresos={totals.ingresos} egresos={totals.egresos} />
-            ) : (
-              <LineChart data={lineData} serieName={serie} color={serieColor} />
-            )}
-          </div>
-        </section>
-
-        {/* Tabla */}
-        <section className="rc_card card">
-          <header className="rc_card__header">
-            <h3>Resumen anual</h3>
-          </header>
-
-          <div className="rc_table__wrap">
-            <div className="gt_table gt_cols-4" role="table" aria-label="Resumen por mes">
-              <div className="gt_header" role="row">
-                <div className="gt_cell h" role="columnheader">Mes</div>
-                <div className="gt_cell h right" role="columnheader">Ingresos</div>
-                <div className="gt_cell h right" role="columnheader">Egresos</div>
-                <div className="gt_cell h right" role="columnheader">Resultado</div>
+        {/* Gráfico + Tabla lado a lado con misma altura */}
+        <div className="rc_twocol">
+          {/* Card: Gráfico */}
+          <section className="rc_card card rc_card--chart">
+            <header className="rc_card__header">
+              <div className="rc_tabs_main">
+                <button
+                  className={`rc_mtab ${chartTab === "anual" ? "active" : ""}`}
+                  onClick={() => setChartTab("anual")}
+                  type="button"
+                >
+                  Composición anual
+                </button>
+                <button
+                  className={`rc_mtab ${chartTab === "mensual" ? "active" : ""}`}
+                  onClick={() => setChartTab("mensual")}
+                  type="button"
+                >
+                  Serie mensual
+                </button>
               </div>
+            </header>
 
-              {meses12.map((r, idx) => (
-                <div className="gt_row" role="row" key={idx}>
-                  <div className="gt_cell" role="cell">{r.nombre_mes}</div>
-                  <div className="gt_cell right" role="cell">
-                    ${Number(r.ingresos || 0).toLocaleString("es-AR")}
-                  </div>
-                  <div className="gt_cell right" role="cell">
-                    ${Number(r.egresos || 0).toLocaleString("es-AR")}
-                  </div>
-                  <div
-                    className={`gt_cell right ${Number(r.saldo) >= 0 ? "pos" : "neg"}`}
-                    role="cell"
-                  >
-                    ${Number(r.saldo || 0).toLocaleString("es-AR")}
-                  </div>
-                </div>
-              ))}
-
-              {!meses12.length && !loadingRes && <div className="gt_empty">Sin datos</div>}
+            <div className="rc_chart_body">
+              {chartTab === "anual" ? (
+                <DonutChart ingresos={totals.ingresos} egresos={totals.egresos} />
+              ) : (
+                <LineChart data={lineData} serieName={serie} color={serieColor} />
+              )}
             </div>
-          </div>
-        </section>
+          </section>
+
+          {/* Card: Tabla */}
+          <section className="rc_card card rc_card--table">
+            <header className="rc_card__header">
+              <h3>Resumen anual</h3>
+            </header>
+
+            <div className="rc_table__wrap">
+              <div className="gt_table gt_cols-4" role="table" aria-label="Resumen por mes">
+                <div className="gt_header" role="row">
+                  <div className="gt_cell h" role="columnheader">Mes</div>
+                  <div className="gt_cell h right" role="columnheader">Ingresos</div>
+                  <div className="gt_cell h right" role="columnheader">Egresos</div>
+                  <div className="gt_cell h right" role="columnheader">Resultado</div>
+                </div>
+
+                {meses12.map((r, idx) => (
+                  <div className="gt_row" role="row" key={idx}>
+                    <div className="gt_cell" role="cell">{r.nombre_mes}</div>
+                    <div className="gt_cell right" role="cell">
+                      ${Number(r.ingresos || 0).toLocaleString("es-AR")}
+                    </div>
+                    <div className="gt_cell right" role="cell">
+                      ${Number(r.egresos || 0).toLocaleString("es-AR")}
+                    </div>
+                    <div
+                      className={`gt_cell right ${Number(r.saldo) >= 0 ? "pos" : "neg"}`}
+                      role="cell"
+                    >
+                      ${Number(r.saldo || 0).toLocaleString("es-AR")}
+                    </div>
+                  </div>
+                ))}
+
+                {!meses12.length && !loadingRes && <div className="gt_empty">Sin datos</div>}
+              </div>
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   );

@@ -40,9 +40,6 @@ export default function IngresosContable() {
   const [anios, setAnios] = useState([Y, Y - 1]);  // años disponibles
   const [cargando, setCargando] = useState(false);
 
-  /* UI: sidebar móvil */
-  const [sideOpen, setSideOpen] = useState(true);
-
   /* Animación en cascada */
   const [cascading, setCascading] = useState(false);
 
@@ -114,173 +111,150 @@ export default function IngresosContable() {
     return Array.from(map.values()).sort((a, b) => b.monto - a.monto);
   }, [filas]);
 
-  /* Dispara cascada cuando cambian filtros de vista */
+  /* Cascada sutil cuando cambian filtros de vista */
   useEffect(() => {
     setCascading(true);
-    const t = setTimeout(() => setCascading(false), 600);
+    const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
   }, [anio, mes, query]);
 
-  /* Clases sidebar */
-  const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
-
   return (
     <div className="ing-wrap">
-      {/* ====== Layout ====== */}
-      <div className="ing-layout">
-        {/* Sidebar con filtros + categorías del mes */}
-        <aside className={sideClass} aria-label="Barra lateral">
-          <div className="ing-side__inner">
-            <div className="ing-side__row">
-              <div className="ing-sectiontitle">
-                <FontAwesomeIcon icon={faFilter} />
-                <span>Filtros</span>
-              </div>
+      <div className="ing-main">
+        {/* Header simple */}
+        <header className="card ing-head">
+          <div>
+            <h2 className="h2">Ingresos</h2>
+            <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
+          </div>
+          <div className="ing-kpis">
+            <div className="kpi">
+              <span className="kpi-label">Total</span>
+              <span className="kpi-value num">{fmtMonto(resumen.total)}</span>
+            </div>
+            <div className="kpi">
+              <span className="kpi-label">Registros</span>
+              <span className="kpi-value num">{resumen.cantidad}</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Filtros horizontales */}
+        <section className="card ing-filterbar">
+          <div className="bar-title">
+            <FontAwesomeIcon icon={faFilter} />
+            <span>Filtros</span>
+          </div>
+
+          <div className="bar-grid">
+            <div className="field">
+              <label htmlFor="anio">Año</label>
+              <select id="anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
+                {anios.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Año + Mes en la misma fila */}
-            <div className="ing-fieldrow">
-              <div className="ing-field">
-                <label htmlFor="anio">Año</label>
-                <select id="anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
-                  {anios.map((a) => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="ing-field">
-                <label htmlFor="mes">Mes</label>
-                <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-                  {MESES.map((m, i) => (
-                    <option key={m} value={i + 1}>{m}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="field">
+              <label htmlFor="mes">Mes</label>
+              <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
+                {MESES.map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="ing-field">
-              <label htmlFor="buscar">Buscar alumno / categoría</label>
-              <div className="ing-inputicon">
+            <div className="field">
+              <label htmlFor="buscar">Buscar</label>
+              <div className="input-icon">
                 <FontAwesomeIcon icon={faSearch} />
                 <input
                   id="buscar"
                   type="text"
-                  placeholder="Escribe para filtrar…"
+                  placeholder="Alumno, categoría, fecha…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="ing-divider" />
-
-            <div className="ing-sectiontitle">
-              <FontAwesomeIcon icon={faChartPie} />
-              <span>Categorías del mes</span>
-            </div>
-
+        {/* Chips de categorías (top 6) */}
+        <section className="card ing-cats">
+          <div className="cats-title">
+            <FontAwesomeIcon icon={faChartPie} />
+            <span>Categorías del mes</span>
+          </div>
+          <div className="cats-chips">
             {categoriasMes.length === 0 ? (
-              <div className="ing-empty">Sin datos</div>
+              <span className="muted">Sin datos</span>
             ) : (
-              <ul className="ing-catlist" role="list">
-                {categoriasMes.map((c, i) => (
-                  <li className="ing-catitem" key={i}>
-                    <div className="ing-catline">
-                      <span className="ing-catname">{(c.nombre || "-").toString().toUpperCase()}</span>
-                      <span className="ing-catamount num">{fmtMonto(c.monto)}</span>
-                    </div>
-                    <div className="ing-catmeta">
-                      {c.cantidad} {c.cantidad === 1 ? "registro" : "registros"}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              categoriasMes.slice(0, 6).map((c, i) => (
+                <div className="chip" key={i} title={`${c.cantidad} registros`}>
+                  <span className="chip-name">{(c.nombre || "-").toString().toUpperCase()}</span>
+                  <span className="chip-amount num">{fmtMonto(c.monto)}</span>
+                </div>
+              ))
             )}
           </div>
-        </aside>
+        </section>
 
-        {/* Contenido */}
-        <main className="ing-main">
-          <div className="ing-tabs card">
-            <header className="ing-page__header">
-              <div>
-                <h2 className="h2">Ingresos</h2>
-                <small className="muted">
-                  Detalle del mes — {MESES[mes - 1]} {anio}
-                </small>
+        {/* Tabla */}
+        <section className="card ing-page">
+          <div
+            className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
+            role="table"
+            aria-label="Listado de ingresos"
+          >
+            {/* Overlay de loading SOLO en la tabla */}
+            {cargando && (
+              <div className="ing-tableloader" role="status" aria-live="polite">
+                <div className="ing-spinner" />
+                <span>Cargando…</span>
               </div>
-              <div className="ing-rightstats">
-                <div>Total ingresos: <b className="num highlight">{fmtMonto(resumen.total)}</b></div>
-                <div>Registros: <b className="num">{resumen.cantidad}</b></div>
-              </div>
-            </header>
-          </div>
+            )}
 
-          <div className="ing-page card">
-            {/* Tabla (scroll interno + header sticky + zebra + cascada + loader interno) */}
-            <div
-              className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
-              role="table"
-              aria-label="Listado de ingresos"
-            >
-              {/* Overlay de loading SOLO en la tabla */}
-              {cargando && (
-                <div className="ing-tableloader" role="status" aria-live="polite">
-                  <div className="ing-spinner" />
-                  <span>Cargando…</span>
-                </div>
-              )}
+            <div className="ing-row h" role="row">
+              <div className="c-fecha">Fecha</div>
+              <div className="c-alumno">Alumno</div>
+              <div className="c-cat">Categoría</div>
+              <div className="c-monto t-right">Monto</div>
+              <div className="c-mes">Mes pagado</div>
+            </div>
 
-              <div className="ing-row h" role="row">
-                <div className="c-fecha">Fecha</div>
-                <div className="c-alumno">Alumno</div>
-                <div className="c-cat">Categoría</div>
-                <div className="c-monto t-right">Monto</div>
-                <div className="c-mes">Mes pagado</div>
-              </div>
-
-              {filasFiltradas.map((f, idx) => (
-                <div
-                  className={`ing-row data ${cascading ? "casc" : ""}`}
-                  role="row"
-                  key={f.id}
-                  style={{ "--i": idx }}
-                >
-                  <div className="c-fecha">{f.fecha}</div>
-                  <div className="c-alumno">
-                    <div className="ing-alumno">
-                      <div className="ing-alumno__text">
-                        <div className="strong">{f.alumno}</div>
-                      </div>
+            {filasFiltradas.map((f, idx) => (
+              <div
+                className={`ing-row data ${cascading ? "casc" : ""}`}
+                role="row"
+                key={f.id}
+                style={{ "--i": idx }}
+              >
+                <div className="c-fecha">{f.fecha}</div>
+                <div className="c-alumno">
+                  <div className="ing-alumno">
+                    <div className="ing-alumno__text">
+                      <div className="strong">{f.alumno}</div>
                     </div>
                   </div>
-                  <div className="c-cat">
-                    <span className={pillClassByCategoria(f.categoria)}>{f.categoria}</span>
-                  </div>
-                  <div className="c-monto t-right">
-                    <span className="num highlight strong-amount">{fmtMonto(f.monto)}</span>
-                  </div>
-                  <div className="c-mes">{f.mesPagado}</div>
                 </div>
-              ))}
+                <div className="c-cat">
+                  <span className={pillClassByCategoria(f.categoria)}>{f.categoria}</span>
+                </div>
+                <div className="c-monto t-right">
+                  <span className="num strong-amount">{fmtMonto(f.monto)}</span>
+                </div>
+                <div className="c-mes">{f.mesPagado}</div>
+              </div>
+            ))}
 
-              {!filasFiltradas.length && !cargando && (
-                <div className="ing-empty big">Sin pagos</div>
-              )}
-            </div>
+            {!filasFiltradas.length && !cargando && (
+              <div className="ing-empty big">Sin pagos</div>
+            )}
           </div>
-        </main>
+        </section>
       </div>
-
-      {/* Overlay móvil para cerrar sidebar */}
-      {sideOpen && (
-        <button
-          className="ing-layout__overlay"
-          onClick={() => setSideOpen(false)}
-          aria-label="Cerrar panel"
-        />
-      )}
     </div>
   );
 }
