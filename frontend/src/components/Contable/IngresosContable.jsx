@@ -1,7 +1,14 @@
 // src/components/Contable/IngresosContable.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faFilter, faChartPie, faBars, faPlus, faTableList } from "@fortawesome/free-solid-svg-icons";
+import {
+  faSearch,
+  faFilter,
+  faChartPie,
+  faBars,
+  faPlus,
+  faTableList,
+} from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import "./IngresosContable.css";
 
@@ -29,7 +36,7 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
     denominacion: "",
     descripcion: "",
     importe: "",
-    id_medio_pago: medios?.[0]?.id || "", // ← usa obtener_listas: {id, nombre}
+    id_medio_pago: medios?.[0]?.id || "",
   });
 
   useEffect(() => {
@@ -99,9 +106,7 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
               <label>Medio de pago</label>
               <select value={form.id_medio_pago} onChange={onChange("id_medio_pago")}>
                 {Array.isArray(medios) && medios.length ? (
-                  medios.map(mp => (
-                    <option key={mp.id} value={mp.id}>{mp.nombre}</option>
-                  ))
+                  medios.map(mp => <option key={mp.id} value={mp.id}>{mp.nombre}</option>)
                 ) : (
                   <option value="">(sin medios)</option>
                 )}
@@ -126,7 +131,11 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
 
           <div className="ing-modal__foot">
             <button type="button" className="ghost-btn" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="primary-btn">Guardar ingreso</button>
+            {/* Cambio solicitado: mismo estilo que "Añadir nuevo" */}
+            <button type="submit" className="btn sm solid" disabled={saving}>
+              <FontAwesomeIcon icon={faPlus} />
+              <span>{saving ? "Guardando…" : "Guardar ingreso"}</span>
+            </button>
           </div>
         </form>
       </div>
@@ -140,19 +149,17 @@ export default function IngresosContable() {
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [query, setQuery] = useState("");
 
-  // Alumnos (API contable_ingresos)
-  const [filas, setFilas] = useState([]);
+  const [filas, setFilas] = useState([]);           // alumnos
   const [anios, setAnios] = useState([Y, Y - 1]);
   const [cargando, setCargando] = useState(false);
 
-  // Tabla ingresos
-  const [filasIngresos, setFilasIngresos] = useState([]);
+  const [filasIngresos, setFilasIngresos] = useState([]); // ingresos manuales
   const [cargandoIngresos, setCargandoIngresos] = useState(false);
   const [mediosPago, setMediosPago] = useState([]);
 
   const [sideOpen, setSideOpen] = useState(true);
   const [cascading, setCascading] = useState(false);
-  const [innerTab, setInnerTab] = useState("alumnos");
+  const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
   const [openModal, setOpenModal] = useState(false);
 
   /* ====== CARGA API ====== */
@@ -189,7 +196,6 @@ export default function IngresosContable() {
     }
   }, [anio, mes]);
 
-  // Medios de pago desde global/obtener_listas.php
   const loadMediosPago = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=obtener_listas&ts=${Date.now()}`);
@@ -315,7 +321,13 @@ export default function IngresosContable() {
               <label htmlFor="buscar">Buscar</label>
               <div className="ing-inputicon">
                 <FontAwesomeIcon icon={faSearch} />
-                <input id="buscar" type="text" placeholder="Escribe para filtrar…" value={query} onChange={(e) => setQuery(e.target.value)} />
+                <input
+                  id="buscar"
+                  type="text"
+                  placeholder="Escribe para filtrar…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
               </div>
             </div>
 
@@ -344,81 +356,110 @@ export default function IngresosContable() {
           </div>
         </aside>
 
-        {/* Contenido */}
+        {/* ======== CONTENIDO: HEAD + TOOLBAR + TABLA unidos ======== */}
         <main className="ing-main">
-          <div className="ing-head card">
-            <div className="ing-head__left">
-              <h2 className="h2">Ingresos</h2>
-              <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
-            </div>
-
-            <div className="ing-tabs">
-              <button className={`mini-tab ${innerTab === "alumnos" ? "active" : ""}`} onClick={() => setInnerTab("alumnos")} title="Pagos de Alumnos">
-                <FontAwesomeIcon icon={faTableList} /><span>Alumnos</span>
-              </button>
-              <button className={`mini-tab ${innerTab === "manuales" ? "active" : ""}`} onClick={() => setInnerTab("manuales")} title="Ingresos (tabla ingresos)">
-                <FontAwesomeIcon icon={faTableList} /><span>Ingresos</span>
-              </button>
-            </div>
-
-            <button className="ghost-btn show-on-mobile" onClick={() => setSideOpen(true)}>
-              <FontAwesomeIcon icon={faBars} /><span>Filtros</span>
-            </button>
-
-            <div className="ing-kpis">
-              <div className="kpi"><span className="kpi-label">Total</span><span className="kpi-value num">{fmtMonto(resumen.total)}</span></div>
-              <div className="kpi"><span className="kpi-label">Registros</span><span className="kpi-value num">{resumen.cantidad}</span></div>
-              <button className="primary-btn" onClick={() => setOpenModal(true)} title="Registrar ingreso">
-                <FontAwesomeIcon icon={faPlus} /><span>Registrar ingreso</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="ing-page card">
-            {innerTab === "alumnos" ? (
-              <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
-                {cargando && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
-                <div className="ing-row h" role="row">
-                  <div className="c-fecha">Fecha</div>
-                  <div className="c-alumno">Alumno</div>
-                  <div className="c-cat">Categoría</div>
-                  <div className="c-monto t-right">Monto</div>
-                  <div className="c-mes">Mes pagado</div>
-                </div>
-                {filasFiltradasAlu.map((f, idx) => (
-                  <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
-                    <div className="c-fecha">{f.fecha}</div>
-                    <div className="c-alumno"><div className="ing-alumno"><div className="ing-alumno__text"><div className="strong">{f.alumno}</div></div></div></div>
-                    <div className="c-cat"><span className="pill">{f.categoria}</span></div>
-                    <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.monto)}</span></div>
-                    <div className="c-mes">{f.mesPagado}</div>
-                  </div>
-                ))}
-                {!filasFiltradasAlu.length && !cargando && <div className="ing-empty big">Sin pagos</div>}
+          <section className="ing-stack card">
+            {/* HEAD unido */}
+            <div className="ing-head ing-stack__head">
+              <div className="ing-head__left">
+                <h2 className="h2">Ingresos</h2>
+                <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
               </div>
-            ) : (
-              <div className={`ing-tablewrap ${cargandoIngresos ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (tabla ingresos)">
-                {cargandoIngresos && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
-                <div className="ing-row h" role="row">
-                  <div className="c-fecha">Fecha</div>
-                  <div className="c-alumno">Denominación</div>
-                  <div className="c-concepto">Descripción</div>
-                  <div className="c-monto t-right">Importe</div>
-                  <div className="c-medio">Medio</div>
-                </div>
-                {filasFiltradasIng.map((f, idx) => (
-                  <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
-                    <div className="c-fecha">{f.fecha}</div>
-                    <div className="c-alumno"><div className="ing-alumno"><div className="ing-alumno__text"><div className="strong">{f.denominacion}</div></div></div></div>
-                    <div className="c-concepto">{f.descripcion}</div>
-                    <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
-                    <div className="c-medio">{f.medio}</div>
-                  </div>
-                ))}
-                {!filasFiltradasIng.length && !cargandoIngresos && <div className="ing-empty big">Sin ingresos</div>}
+              <button className="ghost-btn show-on-mobile" onClick={() => setSideOpen(true)}>
+                <FontAwesomeIcon icon={faBars} /><span>Filtros</span>
+              </button>
+
+              <div className="ing-kpis">
+                <div className="kpi"><span className="kpi-label">Total</span><span className="kpi-value num">{fmtMonto(resumen.total)}</span></div>
+                <div className="kpi"><span className="kpi-label">Registros</span><span className="kpi-value num">{resumen.cantidad}</span></div>
+                {/* Cambio solicitado: estilos de "Añadir nuevo" */}
+                <button className="btn sm solid" onClick={() => setOpenModal(true)} title="Registrar ingreso">
+                  <FontAwesomeIcon icon={faPlus} /><span>Registrar ingreso</span>
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+
+            {/* BODY unido: toolbar + tabla */}
+            <div className="ing-page ing-stack__body">
+              {/* Tabs grandes: ahora visualmente iguales a ing-tabs/mini-tab */}
+              <div className="seg-tabs" role="tablist" aria-label="Vista de tabla">
+                <button
+                  role="tab"
+                  aria-selected={innerTab === "alumnos"}
+                  className={`seg-tab ${innerTab === "alumnos" ? "active" : ""}`}
+                  onClick={() => setInnerTab("alumnos")}
+                >
+                  Alumnos
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={innerTab === "manuales"}
+                  className={`seg-tab ${innerTab === "manuales" ? "active" : ""}`}
+                  onClick={() => setInnerTab("manuales")}
+                >
+                  Ingresos
+                </button>
+              </div>
+
+
+
+              {innerTab === "alumnos" ? (
+                <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
+                  {cargando && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
+                  <div className="ing-row h" role="row">
+                    <div className="c-fecha">Fecha</div>
+                    <div className="c-alumno">Alumno</div>
+                    <div className="c-cat">Categoría</div>
+                    <div className="c-monto t-right">Monto</div>
+                    <div className="c-mes">Mes pagado</div>
+                  </div>
+                  {filasFiltradasAlu.map((f, idx) => (
+                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                      <div className="c-fecha">{f.fecha}</div>
+                      <div className="c-alumno">
+                        <div className="ing-alumno">
+                          <div className="ing-alumno__text">
+                            <div className="strong">{f.alumno}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="c-cat"><span className="pill">{f.categoria}</span></div>
+                      <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.monto)}</span></div>
+                      <div className="c-mes">{f.mesPagado}</div>
+                    </div>
+                  ))}
+                  {!filasFiltradasAlu.length && !cargando && <div className="ing-empty big">Sin pagos</div>}
+                </div>
+              ) : (
+                <div className={`ing-tablewrap ${cargandoIngresos ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (tabla ingresos)">
+                  {cargandoIngresos && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
+                  <div className="ing-row h" role="row">
+                    <div className="c-fecha">Fecha</div>
+                    <div className="c-alumno">Denominación</div>
+                    <div className="c-concepto">Descripción</div>
+                    <div className="c-monto t-right">Importe</div>
+                    <div className="c-medio">Medio</div>
+                  </div>
+                  {filasFiltradasIng.map((f, idx) => (
+                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                      <div className="c-fecha">{f.fecha}</div>
+                      <div className="c-alumno">
+                        <div className="ing-alumno">
+                          <div className="ing-alumno__text">
+                            <div className="strong">{f.denominacion}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="c-concepto">{f.descripcion}</div>
+                      <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
+                      <div className="c-medio">{f.medio}</div>
+                    </div>
+                  ))}
+                  {!filasFiltradasIng.length && !cargandoIngresos && <div className="ing-empty big">Sin ingresos</div>}
+                </div>
+              )}
+            </div>
+          </section>
         </main>
       </div>
 
