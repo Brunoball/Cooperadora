@@ -21,7 +21,6 @@ const fetchJSON = async (url, options) => {
 function DonutChart({ ingresos = 0, egresos = 0 }) {
   const total = Math.max(ingresos + egresos, 1);
   const pIng = ingresos / total;
-  const pEgr = egresos / total;
 
   const size = 180;
   const stroke = 18;
@@ -29,7 +28,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
   const c = 2 * Math.PI * r;
 
   const arcIng = `${c * pIng} ${c * (1 - pIng)}`;
-  const arcEgr = `${c * pEgr} ${c * (1 - pEgr)}`;
+  const arcEgr = `${c * (1 - pIng)} ${c * pIng}`;
 
   return (
     <div className="rc_donut">
@@ -84,7 +83,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
           fill="none"
           strokeDasharray={arcEgr}
           strokeLinecap="round"
-          transform={`rotate(${pIng * 360 - 90} ${size / 2} ${size / 2})`}
+          transform={`rotate(${(ingresos / Math.max(ingresos + egresos, 1)) * 360 - 90} ${size / 2} ${size / 2})`}
         />
 
         {/* Centro */}
@@ -211,8 +210,9 @@ export default function ResumenContable() {
   const loadResumen = async () => {
     setLoadingRes(true);
     try {
+      // ✅ Nuevo endpoint separado para el resumen (suma pagos + ingresos manuales)
       const raw = await fetchJSON(
-        `${BASE_URL}/api.php?action=contable_egresos&op=resumen&year=${anioRes}`
+        `${BASE_URL}/api.php?action=contable_resumen&year=${anioRes}`
       );
       setResumen(raw?.resumen || []);
     } catch (e) {
@@ -293,8 +293,6 @@ export default function ResumenContable() {
               <option value={anioRes}>{anioRes}</option>
             )}
           </select>
-
-
         </div>
 
         {/* Totales en el panel lateral */}
