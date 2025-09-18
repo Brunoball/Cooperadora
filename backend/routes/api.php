@@ -184,8 +184,6 @@ try {
 
         /* ===========================
            ✅ CONTABLE NUEVO
-           - Ingresos (desde pagos + categoría)
-           - Egresos (ABM, resumen)
         ============================ */
         case 'contable_ingresos':
             require_once __DIR__ . '/../modules/contable/ingresos.php';
@@ -201,6 +199,18 @@ try {
 
         case 'medio_pago_crear':
             require_once __DIR__ . '/../modules/contable/medio_pago_crear.php';
+            exit;
+
+        /* ✅ NUEVO: resumen (ingresos pagos + ingresos manuales − egresos) */
+        case 'contable_resumen':
+            require_once __DIR__ . '/../modules/contable/resumen.php';
+            exit;
+
+        /* ✅ INGRESOS (tabla ingresos, para lista/alta manual) */
+        case 'ingresos_list':   // GET ?year=YYYY&month=MM
+        case 'ingresos_create': // POST JSON body
+        case 'ingresos':        // alias GET/POST
+            require_once __DIR__ . '/../modules/contable/agregar_ingresos.php';
             exit;
 
         /* ===========================

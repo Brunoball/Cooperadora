@@ -74,6 +74,19 @@ const getDni = (s) =>
 const COMP_W = 105;   // mm (210 / 2)
 const COMP_H = 99;    // mm (297 / 3)
 
+/**
+ * Render de un comprobante individual.
+ * @param {Object} opts
+ * @param {string} opts.nroRecibo
+ * @param {string} opts.localidad
+ * @param {string} opts.fecha
+ * @param {string} opts.nombreCompleto
+ * @param {string|number} opts.dni
+ * @param {number} opts.montoEntero
+ * @param {string} opts.categoriaNombre
+ * @param {string} opts.periodoTexto
+ * @param {string} [opts.destino]  // "CUPÓN PARA EL ALUMNO" | "CUPÓN PARA LA COOPERADORA"
+ */
 function renderComprobante({
   nroRecibo = '',
   localidad = 'San Francisco',
@@ -83,6 +96,7 @@ function renderComprobante({
   montoEntero = 0,
   categoriaNombre = '',
   periodoTexto = '',
+  destino = '',
 }) {
   const montoLetras = numeroALetras(Math.round(montoEntero));
   const leyenda = `como aporte de alumno ${String(categoriaNombre || '').toUpperCase()} ${Math.round(montoEntero)} correspondiente a ${periodoTexto}`;
@@ -91,7 +105,7 @@ function renderComprobante({
   return `
     <div class="comprobante">
       <!-- Cabecera -->
-      <div class="titulo">COOPERADORA IPET N° 5O ING.E.F.OLMOS</div>
+      <div class="titulo">COOPERADORA IPET N° 50 ING.E.F.OLMOS</div>
 
       <div class="fila cabecera">
         <div class="izq">Recibo N° ${nroRecibo}</div>
@@ -120,14 +134,17 @@ function renderComprobante({
       <!-- Leyenda -->
       <div class="fila leyenda">${leyenda}</div>
 
-      <!-- SON $ ... -->
+      <!-- SON $ ... (siempre arriba del pie) -->
       <div class="fila son">${textoSon}</div>
 
-      <!-- Pie: sello y firma -->
+      <!-- Pie: sello y firma (más arriba para no superponer con destino) -->
       <div class="pie">
         <div class="sello">Sello</div>
         <div class="firma">Firma</div>
       </div>
+
+      <!-- Destino (abajo del todo, centrado) -->
+      <div class="destino">${destino || ''}</div>
     </div>
   `;
 }
@@ -143,6 +160,11 @@ const chunk6 = (arr) => {
 /**
  * imprimirRecibos(lista, periodoActual(1..12), ventana?, opciones?)
  * opciones: { reciboBase?: number, localidad?: string, fecha?: string }
+ *
+ * NOTA: Duplicamos cada alumno (dos cupones por fila):
+ *       - Columna izquierda: "CUPÓN PARA EL ALUMNO"
+ *       - Columna derecha:   "CUPÓN PARA LA COOPERADORA"
+ *       Por lo tanto, entran 3 alumnos por página (6 cupones).
  */
 export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, opciones = {}) => {
   // 1) Completar información de cada alumno
@@ -179,7 +201,7 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
   const w = ventana || window.open('', '', 'width=900,height=1200');
   if (!w) return;
 
-  // 4) Estilos para 6 por página (2×3)
+  // 4) Estilos (A4, 2x3). Ajuste: pie más arriba para no chocar con destino.
   const css = `
     @page { size: 210mm 297mm; margin: 0; }
     html, body { margin: 0; padding: 0; }
@@ -196,8 +218,10 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
     .comprobante {
       width: ${COMP_W}mm; height: ${COMP_H}mm;
       border: 1px solid #000;
-      padding: 5mm 6mm 6mm 6mm;
+      /* más espacio inferior para que el pie no choque con el destino */
+      padding: 5mm 6mm 12mm 6mm;
       display: flex; flex-direction: column; gap: 2mm;
+      position: relative;
     }
     .titulo { text-align: center; font-weight: 700; letter-spacing: .3px; font-size: 10pt; margin-bottom: 1.5mm; }
     .fila { display: flex; align-items: center; width: 100%; font-size: 9.5pt; line-height: 1.28; }
@@ -221,8 +245,38 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
 
     .leyenda { color: #555; }
     .son { font-weight: 700; font-size: 11pt; margin-top: 0.5mm; }
-    .pie { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 4mm; gap: 10mm; }
-    .sello, .firma { width: 38mm; text-align: center; font-size: 9.5pt; color: #666; border-top: 1px solid #000; padding-top: 8mm; }
+
+    /* Destino en la parte inferior, centrado */
+    .destino {
+      position: absolute;
+      bottom: 2mm; /* un poco más abajo para despegarse del pie */
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 9pt;
+      font-weight: bold;
+      color: #000;
+    }
+
+    .pie { 
+      margin-top: auto; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-end; 
+      padding-top: 2mm; 
+      gap: 10mm; 
+      /* nuevo: levantar el pie para no superponer con destino */
+      margin-bottom: 1mm;
+    }
+    .sello, .firma { 
+      width: 38mm; 
+      text-align: center; 
+      font-size: 9.5pt; 
+      color: #666; 
+      border-top: 1px solid #000; 
+      padding-top: 2mm; 
+      margin-top: 2mm;
+    }
   `;
 
   // 5) Datos comunes
@@ -232,8 +286,9 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
   const localidad = opciones?.localidad || 'San Francisco';
   const fecha = opciones?.fecha || fechaHoy();
 
-  // 6) Armar comprobantes
-  const comps = alumnos.map((s, idx) => {
+  // 6) Armar cupones: DUPLICAMOS cada alumno (izq = alumno, der = cooperadora)
+  const cuponesDuplicados = [];
+  alumnos.forEach((s, idx) => {
     const nombreCompleto = getNombreCompleto(s);
     const dni = getDni(s);
 
@@ -261,22 +316,41 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
         ? String(s.periodo_texto).trim()
         : `${mesNombre} ${anioActual}`;
 
+    // Número de recibo base por alumno (igual para las dos copias)
     const nroRecibo = (s?.nro_recibo ?? String(reciboBase + idx)).toString().padStart(6, '0');
 
-    return renderComprobante({
-      nroRecibo,
-      localidad,
-      fecha,
-      nombreCompleto,
-      dni,
-      montoEntero: Math.round(Number(precio) || 0),
-      categoriaNombre: catNombre,
-      periodoTexto,
-    });
+    // Izquierda: alumno
+    cuponesDuplicados.push(
+      renderComprobante({
+        nroRecibo,
+        localidad,
+        fecha,
+        nombreCompleto,
+        dni,
+        montoEntero: Math.round(Number(precio) || 0),
+        categoriaNombre: catNombre,
+        periodoTexto,
+        destino: 'CUPÓN PARA EL ALUMNO',
+      })
+    );
+    // Derecha: cooperadora
+    cuponesDuplicados.push(
+      renderComprobante({
+        nroRecibo,
+        localidad,
+        fecha,
+        nombreCompleto,
+        dni,
+        montoEntero: Math.round(Number(precio) || 0),
+        categoriaNombre: catNombre,
+        periodoTexto,
+        destino: 'CUPÓN PARA LA COOPERADORA',
+      })
+    );
   });
 
-  // 7) Paginado 6 por hoja
-  const paginas = chunk6(comps).map(items => `
+  // 7) Paginado 6 por hoja (2×3). Dos cupones por alumno => 3 alumnos por página.
+  const paginas = chunk6(cuponesDuplicados).map(items => `
     <div class="page">
       <div class="grid-2x3">
         ${items.map(html => html).join('')}

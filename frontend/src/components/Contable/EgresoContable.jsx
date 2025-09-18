@@ -1,7 +1,8 @@
+// src/components/Contable/EgresoContable.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faEdit, faEye } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faEdit, faEye, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 import ContableEgresoModal from "./modalcontable/ContableEgresoModal";
 import Toast from "../Global/Toast";
 import "./EgresoContable.css";
@@ -156,6 +157,62 @@ export default function EgresoContable() {
 
   const onSavedEgreso = () => { setModalOpen(false); loadEgresos(); };
 
+  /* ========= Exportar “Excel” (CSV UTF-8 con BOM) ========= */
+  const csvEscape = (value) => {
+    const s = String(value ?? "");
+    // Doble comillas para escapar comillas internas
+    const escaped = s.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+
+  const exportarCSV = () => {
+    if (!egresos.length) {
+      addToast("advertencia", "No hay datos para exportar.");
+      return;
+    }
+
+    const headers = ["Fecha","Categoría","Descripción","Medio","Monto"];
+    const sep = ";"; // Ideal para región es-AR (Excel espera ; por coma decimal)
+
+    const rows = egresos.map((e) => [
+      e.fecha || "",
+      e.categoria || "",
+      e.descripcion || "",
+      e.medio_nombre || e.medio_pago || "",
+      // Exportar el número como valor “crudo” (sin separador de miles) para que Excel lo tome como número
+      Number(e.monto || 0).toString().replace(".", ",") // cambiar punto por coma decimal
+    ]);
+
+    const csvLines = [
+      headers.map(csvEscape).join(sep),
+      ...rows.map((r) => r.map(csvEscape).join(sep)),
+    ];
+
+    // BOM para que Excel reconozca UTF-8 y muestre bien acentos
+    const bom = "\uFEFF";
+    const csvContent = bom + csvLines.join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const ahora = new Date();
+    const dd = String(ahora.getDate()).padStart(2, "0");
+    const mm = String(ahora.getMonth() + 1).padStart(2, "0");
+    const yyyy = ahora.getFullYear();
+    const hh = String(ahora.getHours()).padStart(2, "0");
+    const min = String(ahora.getMinutes()).padStart(2, "0");
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Egresos_${dd}-${mm}-${yyyy}_${hh}${min}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    addToast("exito", "Archivo exportado.");
+  };
+
   return (
     <div className="ec_wrap">
       {/* TOASTS */}
@@ -165,7 +222,7 @@ export default function EgresoContable() {
         ))}
       </div>
 
-      {/* Toolbar / filtros + KPI (sin botón aquí) */}
+      {/* Toolbar / filtros + KPI */}
       <div className="ec_toolbar card">
         <div className="ec_group">
           <label className="ec_label">Desde</label>
@@ -210,11 +267,14 @@ export default function EgresoContable() {
         </div>
       </div>
 
-      {/* Lista (div + CSS Grid) */}
+      {/* Lista */}
       <section className="ec_card card">
         <header className="ec_card__header">
           <h3>Egresos</h3>
           <div className="ec_card__actions">
+            <button className="btn" onClick={exportarCSV} disabled={!egresos.length}>
+              <FontAwesomeIcon icon={faFileExcel} /> Exportar Excel
+            </button>
             <button className="btn btn--primary" onClick={onCreateEgreso}>
               <FontAwesomeIcon icon={faPlus} /> Nuevo egreso
             </button>
