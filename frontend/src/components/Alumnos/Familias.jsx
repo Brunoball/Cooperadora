@@ -176,7 +176,7 @@ export default function Familias() {
       )}
 
       <div className="fam-header">
-        <button className="fam-back" onClick={() => navigate('/panel')}>
+        <button className="fam-back" onClick={() => navigate('/alumnos')}>
           <FaArrowLeft /> Volver
         </button>
         <h1><FaUsers /> Grupos Familiares</h1>
@@ -204,7 +204,7 @@ export default function Familias() {
           <div>Apellido</div>
           <div>Observaciones</div>
           <div>Fecha alta</div>
-          <div>Miembros (activos / totales)</div>
+          <div>Miembros</div>
           <div>Acciones</div>
         </div>
 
@@ -227,8 +227,9 @@ export default function Familias() {
                   <div title={f.fecha_alta || f.creado_en || ''}>
                     {f.fecha_alta ? f.fecha_alta : fmtFechaSolo(f.creado_en)}
                   </div>
+                  {/* Solo un número: total de miembros */}
                   <div>
-                    {f.miembros_activos} / {f.miembros_totales}
+                    {Number(f.miembros_totales) || 0}
                   </div>
                   <div className="fam-actions">
                     <button title="Gestionar miembros" onClick={() => abrirMiembros(f)}>

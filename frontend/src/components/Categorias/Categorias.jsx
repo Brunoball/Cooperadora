@@ -249,11 +249,11 @@ const Categorias = () => {
         tipo:           (r.tipo ?? 'MENSUAL').toString(),
       }));
 
-      // ⬅️ NUEVO: si no hay historial, mostrar toast y NO abrir modal
-      if (norm.length === 0) {
+      // Si no hay historial, avisar y no abrir modal
+      if (!norm.length) {
         showToast('info', 'No hay historial para esta categoría.');
-        setHist([]);
         setModalHistOpen(false);
+        setHist([]);
       } else {
         setHist(norm);
         setModalHistOpen(true);
@@ -445,7 +445,7 @@ const Categorias = () => {
       {/* TOAST */}
       {toast.show && (
         <Toast
-          tipo={toast.tipo}
+          tipo={toast.tipo}     // 'exito' | 'error' | 'info'
           mensaje={toast.mensaje}
           duracion={toast.duracion}
           onClose={closeToast}

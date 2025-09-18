@@ -1,3 +1,4 @@
+// src/utils/imprimirRecibos.js
 import BASE_URL from '../config/config';
 
 /* ================= Utilidades ================= */
@@ -53,71 +54,7 @@ function numeroALetras(n) {
   return out.replace(/\buno\b/g, 'un').toUpperCase();
 }
 
-/* ================= Plantilla (11cm x 15cm) ================= */
-
-function plantillaRecibo({
-  nroRecibo = '',
-  localidad = 'San Francisco',
-  fecha = fechaHoy(),
-  nombreCompleto = '',
-  dni = '',
-  montoEntero = 0,
-  categoriaNombre = '',
-  periodoTexto = '',
-}) {
-  const montoLetras = numeroALetras(Math.round(montoEntero));
-  const leyenda = `como aporte de alumno ${String(categoriaNombre || '').toUpperCase()} ${Math.round(montoEntero)} correspondiente a ${periodoTexto}`;
-  const textoSon = `SON $ ${Number(montoEntero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`;
-
-  return `
-    <div class="page">
-      <div class="comprobante">
-        <!-- Cabecera -->
-        <div class="titulo">COOPERADORA IPET N° 5O ING.E.F.OLMOS</div>
-
-        <div class="fila cabecera">
-          <div class="izq">Recibo N° ${nroRecibo}</div>
-          <div class="der">${localidad}, ${fecha}</div>
-        </div>
-
-        <!-- Datos persona -->
-        <div class="fila">
-          <span>Recibimos de</span>
-          <span class="dato largo">${nombreCompleto}</span>
-        </div>
-        <div class="fila">
-          <span>DNI</span>
-          <span class="dato">${dni || ''}</span>
-        </div>
-
-        <!-- Cantidad de pesos -->
-        <div class="fila etiqueta">la cantidad de pesos:</div>
-
-        <!-- TRES RAYAS: la primera arranca PEGADA al texto del monto -->
-        <div class="raya-triple">
-          <div class="texto">${montoLetras}</div>
-          <div class="linea linea1"></div>
-          <div class="linea linea2"></div>
-          <div class="linea linea3"></div>
-        </div>
-
-        <!-- Leyenda -->
-        <div class="fila leyenda">${leyenda}</div>
-
-        <!-- SON $ ... -->
-        <div class="fila son">${textoSon}</div>
-
-        <!-- Pie: sello y firma -->
-        <div class="pie">
-          <div class="sello">Sello</div>
-          <div class="firma">Firma</div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/* ================= Normalizadores ================= */
+/* ============== Normalizadores / getters ============== */
 
 const getIdAlumno = (s) => s?.id_alumno ?? s?.id ?? '';
 
@@ -132,7 +69,77 @@ function getNombreCompleto(s) {
 const getDni = (s) =>
   s?.num_documento ?? s?.dni ?? s?.documento ?? s?.numDocumento ?? '';
 
-/* ================= Impresión principal ================= */
+/* ============== Plantilla de comprobante (2×3 por hoja) ============== */
+/* Tamaño exacto de cada comprobante para 2 columnas × 3 filas en A4 */
+const COMP_W = 105;   // mm (210 / 2)
+const COMP_H = 99;    // mm (297 / 3)
+
+function renderComprobante({
+  nroRecibo = '',
+  localidad = 'San Francisco',
+  fecha = fechaHoy(),
+  nombreCompleto = '',
+  dni = '',
+  montoEntero = 0,
+  categoriaNombre = '',
+  periodoTexto = '',
+}) {
+  const montoLetras = numeroALetras(Math.round(montoEntero));
+  const leyenda = `como aporte de alumno ${String(categoriaNombre || '').toUpperCase()} ${Math.round(montoEntero)} correspondiente a ${periodoTexto}`;
+  const textoSon = `SON $ ${Number(montoEntero || 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`;
+
+  return `
+    <div class="comprobante">
+      <!-- Cabecera -->
+      <div class="titulo">COOPERADORA IPET N° 5O ING.E.F.OLMOS</div>
+
+      <div class="fila cabecera">
+        <div class="izq">Recibo N° ${nroRecibo}</div>
+        <div class="der">${localidad}, ${fecha}</div>
+      </div>
+
+      <!-- Datos persona -->
+      <div class="fila">
+        <span>Recibimos de</span>
+        <span class="dato largo">${nombreCompleto}</span>
+      </div>
+      <div class="fila">
+        <span>DNI</span>
+        <span class="dato">${dni || ''}</span>
+      </div>
+
+      <!-- Cantidad de pesos -->
+      <div class="fila etiqueta">la cantidad de pesos:</div>
+
+      <!-- Línea única (sin punteado) -->
+      <div class="raya-simple">
+        <div class="texto">${montoLetras}</div>
+        <div class="linea"></div>
+      </div>
+
+      <!-- Leyenda -->
+      <div class="fila leyenda">${leyenda}</div>
+
+      <!-- SON $ ... -->
+      <div class="fila son">${textoSon}</div>
+
+      <!-- Pie: sello y firma -->
+      <div class="pie">
+        <div class="sello">Sello</div>
+        <div class="firma">Firma</div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============== Helpers html ============== */
+const chunk6 = (arr) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i += 6) out.push(arr.slice(i, i + 6));
+  return out;
+};
+
+/* ============== Impresión principal (2×3 por hoja) ============== */
 /**
  * imprimirRecibos(lista, periodoActual(1..12), ventana?, opciones?)
  * opciones: { reciboBase?: number, localidad?: string, fecha?: string }
@@ -172,70 +179,83 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
   const w = ventana || window.open('', '', 'width=900,height=1200');
   if (!w) return;
 
-  // 4) Estilos
+  // 4) Estilos para 6 por página (2×3)
   const css = `
-    @page { size: A4 portrait; margin: 0; }
+    @page { size: 210mm 297mm; margin: 0; }
     html, body { margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
     body { font-family: "Courier New", Courier, monospace; color: #222; }
-    .page { position: relative; width: 210mm; height: 297mm; page-break-after: always; }
-    .comprobante {
-      position: absolute; top: 0; left: 0; width: 110mm; height: 150mm;
-      border: 1px solid #000; box-sizing: border-box; padding: 8mm 9mm 10mm 9mm;
-      display: flex; flex-direction: column; gap: 2.6mm;
+    .page { position: relative; width: 210mm; height: 297mm; page-break-after: always; padding: 0; }
+    .grid-2x3 {
+      display: grid;
+      grid-template-columns: ${COMP_W}mm ${COMP_W}mm;
+      grid-template-rows: ${COMP_H}mm ${COMP_H}mm ${COMP_H}mm;
+      column-gap: 0; row-gap: 0;
+      width: 210mm; height: 297mm;
     }
-    .titulo { text-align: center; font-weight: 700; letter-spacing: .4px; font-size: 11pt; margin-bottom: 2mm; }
-    .fila { display: flex; align-items: center; width: 100%; font-size: 10.5pt; line-height: 1.35; }
+    .comprobante {
+      width: ${COMP_W}mm; height: ${COMP_H}mm;
+      border: 1px solid #000;
+      padding: 5mm 6mm 6mm 6mm;
+      display: flex; flex-direction: column; gap: 2mm;
+    }
+    .titulo { text-align: center; font-weight: 700; letter-spacing: .3px; font-size: 10pt; margin-bottom: 1.5mm; }
+    .fila { display: flex; align-items: center; width: 100%; font-size: 9.5pt; line-height: 1.28; }
     .cabecera { justify-content: space-between; color: #555; }
-    .izq, .der { font-size: 10.5pt; }
+    .izq, .der { font-size: 9.5pt; }
     .dato { margin-left: 6px; font-weight: 700; }
-    .dato.largo { margin-left: 8px; max-width: 82%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .etiqueta { margin-top: 1mm; color: #666; }
-    .raya-triple { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 7mm 7mm 7mm;
-      align-items: center; column-gap: 4mm; row-gap: 4mm; margin: 1mm 0 2mm 0; width: 100%; }
-    .raya-triple .texto { grid-column: 1 / 2; grid-row: 1 / 2; font-weight: 700; font-size: 12pt; letter-spacing: .5px; white-space: nowrap; }
-    .raya-triple .linea { border-bottom: 1px dashed #777; height: 0; width: 100%; }
-    .raya-triple .linea1 { grid-column: 2 / 3; grid-row: 1 / 2; }
-    .raya-triple .linea2 { grid-column: 1 / 3; grid-row: 2 / 3; }
-    .raya-triple .linea3 { grid-column: 1 / 3; grid-row: 3 / 4; }
+    .dato.largo { margin-left: 8px; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .etiqueta { margin-top: 0.5mm; color: #666; }
+
+    /* Línea simple (sin punteado) para el monto en letras */
+    .raya-simple {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      column-gap: 4mm;
+      margin: 0.5mm 0 1.2mm 0;
+      width: 100%;
+    }
+    .raya-simple .texto { font-weight: 700; font-size: 11pt; letter-spacing: .4px; white-space: nowrap; }
+    .raya-simple .linea { border-bottom: 1px solid #444; height: 0; width: 100%; }
+
     .leyenda { color: #555; }
-    .son { font-weight: 700; font-size: 12pt; margin-top: 1mm; }
-    .pie { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 6mm; gap: 12mm; }
-    .sello, .firma { width: 40mm; text-align: center; font-size: 10pt; color: #666; border-top: 1px solid #000; padding-top: 10mm; }
+    .son { font-weight: 700; font-size: 11pt; margin-top: 0.5mm; }
+    .pie { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 4mm; gap: 10mm; }
+    .sello, .firma { width: 38mm; text-align: center; font-size: 9.5pt; color: #666; border-top: 1px solid #000; padding-top: 8mm; }
   `;
 
-  // 5) HTML
+  // 5) Datos comunes
   const anioActual = new Date().getFullYear();
   const mesNombre = nombreMes(periodoActual);
   const reciboBase = Number(opciones?.reciboBase ?? 1);
   const localidad = opciones?.localidad || 'San Francisco';
   const fecha = opciones?.fecha || fechaHoy();
 
-  const cuerpo = alumnos.map((s, idx) => {
+  // 6) Armar comprobantes
+  const comps = alumnos.map((s, idx) => {
     const nombreCompleto = getNombreCompleto(s);
     const dni = getDni(s);
 
-    // ======= MONTO =======
-    // Tomamos el PRIMER valor > 0 entre todas las fuentes posibles.
+    // MONTO: primer valor > 0
     const idCat = s?.id_categoria ?? null;
     const precioDesdeListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
-
     const candidatos = [
-      Number(s?.precio_unitario),   // del modal (si vino)
-      Number(s?.importe_total),     // del modal (pago de varios meses, si lo usás)
-      Number(s?.monto_mensual),     // del endpoint obtener_socio_comprobante (categoria_monto)
-      Number(s?.precio_categoria),  // alias
-      Number(s?.monto),             // dato viejo en grilla (suele venir 0)
-      Number(s?.importe),           // otro alias
-      precioDesdeListas             // listas (obtener_listas)
+      Number(s?.precio_unitario),
+      Number(s?.importe_total),
+      Number(s?.monto_mensual),
+      Number(s?.precio_categoria),
+      Number(s?.monto),
+      Number(s?.importe),
+      precioDesdeListas
     ].filter(v => Number.isFinite(v) && v > 0);
-
     const precio = candidatos.length ? candidatos[0] : 0;
 
-    // ======= CATEGORÍA =======
+    // CATEGORÍA
     const catNombre =
       (s?.categoria_nombre || s?.nombre_categoria || categoriasById[String(idCat)]?.nombre || '').toString();
 
-    // ======= PERIODO =======
+    // PERIODO
     const periodoTexto =
       (s?.periodo_texto && String(s.periodo_texto).trim())
         ? String(s.periodo_texto).trim()
@@ -243,7 +263,7 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
 
     const nroRecibo = (s?.nro_recibo ?? String(reciboBase + idx)).toString().padStart(6, '0');
 
-    return plantillaRecibo({
+    return renderComprobante({
       nroRecibo,
       localidad,
       fecha,
@@ -253,8 +273,18 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
       categoriaNombre: catNombre,
       periodoTexto,
     });
-  }).join('\n');
+  });
 
+  // 7) Paginado 6 por hoja
+  const paginas = chunk6(comps).map(items => `
+    <div class="page">
+      <div class="grid-2x3">
+        ${items.map(html => html).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // 8) HTML final
   const html = `
     <html>
       <head>
@@ -263,8 +293,8 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
         <style>${css}</style>
       </head>
       <body>
-        ${cuerpo}
-        <script>window.onload = function(){ window.print(); };</script>
+        ${paginas}
+        <script>window.onload = function(){ try{window.focus();}catch(e){} window.print(); };</script>
       </body>
     </html>
   `;

@@ -28,6 +28,7 @@ import ModalCodigoBarras from './modales/ModalCodigoBarras';
 import ModalEliminarPago from './modales/ModalEliminarPago';
 import ModalEliminarCondonacion from './modales/ModalEliminarCondonacion';
 import { imprimirRecibos } from '../../utils/imprimirRecibos';
+import { imprimirRecibosExternos } from '../../utils/imprimirRecibosExternos';
 import Toast from '../Global/Toast';
 import './Cuotas.css';
 
@@ -49,7 +50,7 @@ const Cuotas = () => {
   // Año **de pago** (viene de pagos.fecha_pago). Lo fijamos luego de fetchAniosPago.
   const [anioPagoSeleccionado, setAnioPagoSeleccionado] = useState('');
 
-  // Nuevo: Año lectivo (tabla anio de obtener_listas)
+  // Año lectivo
   const [anioLectivoSeleccionado, setAnioLectivoSeleccionado] = useState('');
 
   // Otros filtros
@@ -181,7 +182,7 @@ const Cuotas = () => {
 
   useEffect(() => {
     obtenerCuotasYListas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesSeleccionado, anioPagoSeleccionado]);
 
   // ===== Patch optimista tras pagar/condonar =====
@@ -200,7 +201,7 @@ const Cuotas = () => {
     );
   }, []);
 
-  // Filtros locales (NO filtramos por año de pago en el cliente: lo aplica el backend)
+  // Filtros locales
   const coincideBusquedaLibre = (c) => {
     if (!busqueda) return true;
     const q = normalizar(busqueda);
@@ -219,7 +220,7 @@ const Cuotas = () => {
   const coincideEstadoPago = (c) =>
     !estadoPagoSeleccionado || String(c?.estado_pago ?? '').toLowerCase() === estadoPagoSeleccionado;
 
-  // Nuevo: filtro Año lectivo (por id; si no hay id, por nombre)
+  // Año lectivo
   const coincideAnioLectivo = (c) => {
     if (!anioLectivoSeleccionado) return true;
     const idCuota = String(getIdAnioLectivo(c));
@@ -256,7 +257,7 @@ const Cuotas = () => {
       .sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
   }, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, estadoPagoSeleccionado, orden]);
 
-  // Contadores SIEMPRE sobre el dataset completo del mes, respetando filtros visibles
+  // Contadores
   const contarConFiltros = (estadoPago) =>
     cuotas.filter((c) =>
       String(getIdMesFromCuota(c)) === String(mesSeleccionado || '') &&
@@ -276,16 +277,47 @@ const Cuotas = () => {
     triggerCascade();
   }, [triggerCascade]);
 
+  // === Imprimir TODOS: separar internos/externos ===
   const handleImprimirTodos = async () => {
-    const ventanaImpresion = window.open('', '_blank');
-    if (!ventanaImpresion) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+    // Bloqueo si NO hay categoría seleccionada
+    if (!categoriaSeleccionada) {
+      setToastTipo('advertencia');
+      setToastMensaje('Seleccioná una categoría (Interno o Externo) para habilitar la impresión.');
+      setToastVisible(true);
+      return;
+    }
+
+    if (!mesSeleccionado || cuotasFiltradas.length === 0) return;
     setLoadingPrint(true);
-    try { await imprimirRecibos(cuotasFiltradas, mesSeleccionado, ventanaImpresion); }
-    catch (e) { console.error('Error al imprimir:', e); ventanaImpresion.close(); }
-    finally { setLoadingPrint(false); }
+    try {
+      const getCatNombreDeCuota = (c) => (categorias.find(x => String(x.id) === String(c?.id_categoria))?.nombre) || '';
+      const internos = [];
+      const externos = [];
+
+      for (const c of cuotasFiltradas) {
+        const tipo = normalizar(getCatNombreDeCuota(c));
+        if (tipo === 'externo') externos.push(c);
+        else internos.push(c); // por defecto, internos
+      }
+
+      if (internos.length) {
+        const w1 = window.open('', '_blank');
+        if (!w1) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+        await imprimirRecibos(internos, mesSeleccionado, w1);
+      }
+      if (externos.length) {
+        const w2 = window.open('', '_blank');
+        if (!w2) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+        await imprimirRecibosExternos(externos, mesSeleccionado, w2, { anioPago: anioPagoSeleccionado });
+      }
+    } catch (e) {
+      console.error('Error al imprimir:', e);
+    } finally {
+      setLoadingPrint(false);
+    }
   };
 
-  // 🚫 Bloquear selección de filas durante cascada
+  // Selección de filas
   const handleRowClick = useCallback((index) => {
     if (cascadeActive) return;
     if (typeof index === 'number' && index >= 0) {
@@ -296,9 +328,19 @@ const Cuotas = () => {
   const handlePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalPagos(true); }, []);
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
+
+  // === Imprimir UNO: según categoría ===
   const handlePrintClick = useCallback((item) => {
-    const w = window.open('', '_blank'); if (w) imprimirRecibos([item], mesSeleccionado, w); else alert('Deshabilite el bloqueador de popups para imprimir');
-  }, [mesSeleccionado]);
+    const nombreCat = getNombreCategoria(item?.id_categoria);
+    const tipo = normalizar(nombreCat);
+    const w = window.open('', '_blank');
+    if (!w) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+    if (tipo === 'externo') {
+      imprimirRecibosExternos([item], mesSeleccionado, w, { anioPago: anioPagoSeleccionado });
+    } else {
+      imprimirRecibos([item], mesSeleccionado, w);
+    }
+  }, [mesSeleccionado, anioPagoSeleccionado, categorias]);
 
   const handleExportExcel = useCallback(() => {
     if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione un mes'); setToastVisible(true); return; }
@@ -308,7 +350,7 @@ const Cuotas = () => {
   }, [mesSeleccionado, loading, cuotasFiltradas.length]);
 
   const onChangeMes        = (e) => { setMesSeleccionado(e.target.value); triggerCascade(); };
-  const onChangeAnioPago   = (e) => { setAnioPagoSeleccionado(e.target.value); triggerCascade(); }; // AÑO de pago (backend)
+  const onChangeAnioPago   = (e) => { setAnioPagoSeleccionado(e.target.value); triggerCascade(); };
   const onChangeCategoria  = (e) => { setCategoriaSeleccionada(e.target.value); triggerCascade(); };
   const onChangeDivision   = (e) => { setDivisionSeleccionada(e.target.value); triggerCascade(); };
   const onChangeAnioLect   = (e) => { setAnioLectivoSeleccionado(e.target.value); triggerCascade(); };
@@ -327,7 +369,6 @@ const Cuotas = () => {
     const cascadeClass = cascadeActive && index < 15 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
     const zebraClass   = index % 2 === 0 ? 'gcuotas-row-even' : 'gcuotas-row-odd';
 
-    // 🔧 Botones SIEMPRE visibles (sin condicionar por isSelected)
     const actionButtons = (
       <div className="gcuotas-actions-inline">
         <button
@@ -403,7 +444,6 @@ const Cuotas = () => {
             </span>
           </div>
 
-          {/* 🔧 Acciones SIEMPRE visibles en mobile */}
           <div className="gcuotas-mobile-actions">
             <button
               className="gcuotas-mobile-print-button"
@@ -483,7 +523,7 @@ const Cuotas = () => {
     </div>
   );
 
-  // Tras cerrar modales, refrescamos **años de pago** y **datos**
+  // Tras cerrar modales, refrescar
   const resyncAll = useCallback(() => { fetchAniosPago(); obtenerCuotasYListas(); }, [fetchAniosPago, obtenerCuotasYListas]);
 
   return (
@@ -558,7 +598,7 @@ const Cuotas = () => {
               </div>
 
               <div className="gcuotas-select-container">
-                {/* AÑO DE PAGO (arriba del Mes) */}
+                {/* AÑO DE PAGO */}
                 <div className="gcuotas-input-group">
                   <label htmlFor="anioPago" className="gcuotas-input-label">
                     <FontAwesomeIcon icon={faFilter} /> Año de pago
@@ -616,7 +656,7 @@ const Cuotas = () => {
                   </select>
                 </div>
 
-                {/* ⬅️ Nuevo: Año lectivo a la IZQUIERDA de División */}
+                {/* Año lectivo */}
                 <div className="gcuotas-input-group">
                   <label htmlFor="anioLectivo" className="gcuotas-input-label">
                     <FontAwesomeIcon icon={faFilter} /> Año
@@ -715,7 +755,14 @@ const Cuotas = () => {
               <button
                 className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
                 onClick={handleImprimirTodos}
-                disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
+                disabled={
+                  loadingPrint ||
+                  !mesSeleccionado ||
+                  cuotasFiltradas.length === 0 ||
+                  loading ||
+                  !categoriaSeleccionada   /* <-- bloqueo si no hay categoría */
+                }
+                title={categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo'}
               >
                 <FontAwesomeIcon icon={faPrint} /><span>{loadingPrint ? 'Generando...' : 'Imprimir'}</span>
               </button>
@@ -830,7 +877,14 @@ const Cuotas = () => {
           <button
             className="gcuotas-mbar-btn mbar-imprimir"
             onClick={handleImprimirTodos}
-            disabled={loadingPrint || !mesSeleccionado || cuotasFiltradas.length === 0 || loading}
+            disabled={
+              loadingPrint ||
+              !mesSeleccionado ||
+              cuotasFiltradas.length === 0 ||
+              loading ||
+              !categoriaSeleccionada   /* <-- bloqueo también en mobile */
+            }
+            title={categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo'}
           >
             <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
           </button>

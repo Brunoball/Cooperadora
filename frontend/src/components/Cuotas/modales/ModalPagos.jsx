@@ -5,11 +5,14 @@ import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalPagos.css';
 
-// Usamos el named export del util
+// Utils de impresión (internos y externos)
 import { imprimirRecibos } from '../../../utils/imprimirRecibos.jsx';
+import { imprimirRecibosExternos } from '../../../utils/imprimirRecibosExternos.jsx';
 
-/* ====== Config ====== */
+/* ====== Helpers/Config ====== */
 const MIN_YEAR = 2025; // el sistema existe desde 2025
+const normalizar = (s = '') =>
+  String(s).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 
 const construirListaAnios = (nowYear) => {
   const start = MIN_YEAR;
@@ -44,7 +47,7 @@ const ModalPagos = ({ socio, onClose }) => {
 
   // ===== Precio por categoría (dinámico) =====
   const [precioMensual, setPrecioMensual] = useState(0);
-  const [nombreCategoria, setNombreCategoria] = useState('');
+  const [nombreCategoria, setNombreCategoria] = useState(''); // p.ej. "INTERNO" | "EXTERNO"
 
   // ===== Modo libre =====
   const [libreActivo, setLibreActivo] = useState(false);
@@ -69,6 +72,17 @@ const ModalPagos = ({ socio, onClose }) => {
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(monto);
 
   const mesesDisponibles = useMemo(() => meses, [meses]);
+
+  // === ¿Externo o Interno? (tolerante a distintas fuentes) ===
+  const esExterno = useMemo(() => {
+    const raw =
+      nombreCategoria ||
+      socio?.categoria_nombre ||
+      socio?.nombre_categoria ||
+      socio?.categoria ||
+      '';
+    return normalizar(raw) === 'externo';
+  }, [nombreCategoria, socio]);
 
   // === TOTAL: cantidad de meses * precio mensual por categoría o libre (o 0 si condona) ===
   const precioUnitarioVigente = useMemo(() => {
@@ -341,6 +355,7 @@ const ModalPagos = ({ socio, onClose }) => {
   };
 
   const handleImprimirComprobante = async () => {
+    // Tomamos el primer periodo seleccionado (ordenado) para pasar como periodoId
     const periodoCodigo = [...seleccionados].map(Number).sort((a,b)=>a-b)[0] || 0;
 
     const alumnoParaImprimir = {
@@ -350,13 +365,20 @@ const ModalPagos = ({ socio, onClose }) => {
       importe_total: total,
       anio: anioTrabajo,
       precio_unitario: precioUnitarioVigente,
+      // OJO: este nombre es solo descriptivo para el recibo interno;
+      // para decidir plantilla usamos `esExterno`
       categoria_nombre: libreActivo ? 'LIBRE' : nombreCategoria,
     };
 
     const win = window.open('', '_blank');
     if (!win) return alert('Habilitá ventanas emergentes para imprimir el comprobante.');
 
-    await imprimirRecibos([alumnoParaImprimir], periodoCodigo, win);
+    // Igual que en Cuotas: externos usan su template especial
+    if (esExterno) {
+      await imprimirRecibosExternos([alumnoParaImprimir], periodoCodigo, win, { anioPago: anioTrabajo });
+    } else {
+      await imprimirRecibos([alumnoParaImprimir], periodoCodigo, win);
+    }
   };
 
   if (!socio) return null;
