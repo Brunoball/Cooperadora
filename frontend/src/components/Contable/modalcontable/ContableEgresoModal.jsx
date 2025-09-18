@@ -1,4 +1,3 @@
-// src/components/Contable/modalcontable/ContableEgresoModal.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import BASE_URL from "../../../config/config";
@@ -145,8 +144,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
 
       if (!res.ok || !data.ok) throw new Error(data?.mensaje || "Error al subir el archivo");
 
-      // Ideal: que el backend ya devuelva una URL pública absoluta.
-      // Si devuelve relative_url, concatenamos con BASE_URL.
+      // Ideal: backend devuelve absolute_url; si no, armamos con BASE_URL
       const finalUrl = data.absolute_url ? data.absolute_url : `${BASE_URL}/${data.relative_url}`;
       setComp(finalUrl);
       notify?.("exito", "Comprobante subido.");
@@ -174,7 +172,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     notify?.("advertencia", "Comprobante quitado.");
   };
 
-  // Ahora abre el visor modal interno
+  // Abre visor
   const openComprobante = () => {
     if (!comp && !localPreview) return;
     setViewerOpen(true);
@@ -241,6 +239,17 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       notify?.("advertencia", "Esperá a que termine la subida…");
       return;
     }
+
+    // ===== Validación amigable del MEDIO DE PAGO =====
+    if (!medioEsOtro && !String(medioId || "").trim()) {
+      notify?.("advertencia", "Seleccioná el medio de pago.");
+      return;
+    }
+    if (medioEsOtro && !String(medioNuevo || "").trim()) {
+      notify?.("advertencia", "Escribí el nuevo medio de pago.");
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -287,7 +296,13 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       onSaved?.();
     } catch (e2) {
       console.error(e2);
-      notify?.("error", e2.message || "Error al guardar el egreso.");
+      const msg = String(e2?.message || "").toLowerCase();
+      // Mapeo de mensaje técnico del backend -> toast amigable
+      if (msg.includes("id_medio_pago o medio_pago requerido")) {
+        notify?.("advertencia", "Seleccioná el medio de pago.");
+      } else {
+        notify?.("error", e2.message || "Error al guardar el egreso.");
+      }
     } finally {
       setSaving(false);
     }
@@ -314,7 +329,12 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
             </label>
 
             <label>Medio
-              <select value={medioEsOtro ? VALOR_OTRO : medioId} onChange={(e) => onChangeMedio(e.target.value)}>
+              <select
+                value={medioEsOtro ? VALOR_OTRO : medioId}
+                onChange={(e) => onChangeMedio(e.target.value)}
+                required={!medioEsOtro}
+                aria-invalid={!medioEsOtro && !String(medioId || "").trim() ? true : undefined}
+              >
                 <option value="">SELECCIONE…</option>
                 {mediosPago.map((m) => (
                   <option key={m.id} value={m.id}>{m.nombre}</option>
@@ -330,7 +350,8 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                 <input
                   value={medioNuevo}
                   onChange={(e) => setMedioNuevo(e.target.value.toUpperCase())}
-                  placeholder="EJ.: Vale, cupón, transferencia bancaria…"
+                  placeholder="EJ.: VALE, CUPÓN, TRANSFERENCIA BANCARIA…"
+                  required={medioEsOtro}
                 />
               </label>
             </div>
@@ -341,7 +362,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
               <input
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value.toUpperCase())}
-                placeholder="Servicios, insumos, etc."
+                placeholder="SERVICIOS, INSUMOS, ETC."
               />
             </label>
             <label>Monto
@@ -353,7 +374,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
             <input
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value.toUpperCase())}
-              placeholder="Detalle..."
+              placeholder="DETALLE..."
             />
           </label>
 
@@ -407,7 +428,6 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                       <FontAwesomeIcon icon={faTrash} /> Quitar
                     </button>
                   </div>
-                  {/* Se quitó el link de texto con la URL */}
                 </div>
               </div>
             )}
