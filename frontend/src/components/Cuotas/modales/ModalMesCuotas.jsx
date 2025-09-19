@@ -6,6 +6,7 @@ import { imprimirRecibos } from "../../../utils/imprimirRecibos";
 import { imprimirRecibosExternos } from "../../../utils/imprimirRecibosExternos";
 import { generarComprobanteAlumnoPDF } from "../../../utils/ComprobanteExternoPDF.jsx";
 import BASE_URL from "../../../config/config";
+import Toast from "../../Global/Toast";
 import "./ModalMesCuotas.css";
 
 /**
@@ -50,6 +51,11 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   const [seleccionados, setSeleccionados] = useState([]); // [id_mes,...]
   const [modoSalida, setModoSalida] = useState("imprimir"); // 'imprimir' | 'pdf'
   const [cargando, setCargando] = useState(false);
+
+  // Toast local
+  const [toast, setToast] = useState(null);
+  const showToast = (tipo, mensaje, duracion = 1800) =>
+    setToast({ tipo, mensaje, duracion });
 
   // ===== Precio por categoría (dinámico) =====
   const [precioMensual, setPrecioMensual] = useState(0);
@@ -133,7 +139,6 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
         } else {
           setPrecioMensual(0);
           setNombreCategoria("");
-          // silencioso acá; si querés, podés agregar tu Toast
         }
       } catch (e) {
         console.error("ModalMesCuotas obtener_monto_categoria error:", e);
@@ -160,7 +165,6 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   // ------- Salidas (idéntico “contrato” que ModalPagos) -------
 
   const abrirImpresion = async () => {
-    // Un SOLO llamado con todos los meses: el util toma importe_total y periodo_texto
     const periodoCodigo = periodosOrdenados[0] || 0;
 
     const alumnoParaImprimir = {
@@ -190,7 +194,6 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   };
 
   const descargarPDF = async () => {
-    // Un SOLO PDF con todos los meses (como ModalPagos)
     const periodoCodigo = periodosOrdenados[0] || 0;
 
     const alumnoParaImprimir = {
@@ -205,23 +208,38 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
       categoria_nombre: nombreCategoria || "",
     };
 
-    await generarComprobanteAlumnoPDF(alumnoParaImprimir, {
-      anio: year,
-      periodoId: periodoCodigo,
-      periodoTexto: periodoTextoFinal,
-      importeTotal: total,
-      precioUnitario: Number(precioMensual || 0),
-      periodos: periodosOrdenados,
-    });
+    try {
+      await generarComprobanteAlumnoPDF(alumnoParaImprimir, {
+        anio: year,
+        periodoId: periodoCodigo,
+        periodoTexto: periodoTextoFinal,
+        importeTotal: total,
+        precioUnitario: Number(precioMensual || 0),
+        periodos: periodosOrdenados,
+      });
+      showToast("exito", "PDF descargado correctamente");
+      return true;
+    } catch (e) {
+      console.error("Error al generar PDF:", e);
+      showToast("error", "No se pudo generar el PDF");
+      return false;
+    }
   };
 
   const handleConfirmar = async () => {
     if (periodosOrdenados.length === 0) return;
     try {
       setCargando(true);
-      if (modoSalida === "imprimir") await abrirImpresion();
-      else await descargarPDF();
-      onClose?.();
+      if (modoSalida === "imprimir") {
+        await abrirImpresion();
+        onClose?.();
+      } else {
+        const ok = await descargarPDF();
+        // Dejar visible el toast un instante antes de cerrar
+        if (ok) {
+          setTimeout(() => onClose?.(), 1000);
+        }
+      }
     } finally {
       setCargando(false);
     }
@@ -241,6 +259,15 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
   return (
     <div className="modmes_overlay">
+      {toast && (
+        <Toast
+          tipo={toast.tipo}
+          mensaje={toast.mensaje}
+          duracion={toast.duracion}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="modmes_contenido">
         {/* Header */}
         <div className="modmes_header">
@@ -264,7 +291,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
         {/* Body */}
         <div className="modmes_body">
-          {/* Info monto y total (igual criterio que ModalPagos) */}
+          {/* Info monto y total */}
           <div className="modmes_info-row">
             <span className="modmes_chip">
               Valor mensual {nombreCategoria ? `(${nombreCategoria})` : ""}: <strong>{formatearARS(precioMensual)}</strong>

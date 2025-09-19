@@ -413,8 +413,10 @@ const ModalPagos = ({ socio, onClose }) => {
 
   /* ================= VISTA: ÉXITO ================= */
   if (pagoExitoso) {
-    const tituloExito = condonar ? '¡Condonación registrada con éxito!' : '¡Pago realizado con éxito!';
-    const subExito = 'Elegí cómo querés obtener el comprobante.';
+    const tituloExito = condonar ? '¡Condonación registrada!' : '¡Pago registrado!';
+    const subExito = condonar
+      ? 'El período seleccionado quedó marcado como Condonado.'
+      : 'Generá o imprimí el comprobante cuando quieras.';
 
     return (
       <>
@@ -428,13 +430,14 @@ const ModalPagos = ({ socio, onClose }) => {
         )}
 
         <div className="modal-pagos-overlay">
-          <div className="modal-pagos-contenido">
-            <div className="modal-header">
+          <div className="modal-pagos-contenido success-elevated">
+            {/* Header minimalista */}
+            <div className="modal-header success-header">
               <div className="modal-header-content">
-                <div className="modal-icon-circle">
+                <div className="modal-icon-circle success-icon">
                   <FaCoins size={20} />
                 </div>
-                <h2 className="modal-title">Registro de Pagos</h2>
+                <h2 className="modal-title">{tituloExito}</h2>
               </div>
               <button className="modal-close-btn" onClick={() => onClose?.(true)} disabled={cargando} aria-label="Cerrar">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -443,48 +446,67 @@ const ModalPagos = ({ socio, onClose }) => {
               </button>
             </div>
 
-            <div className="modal-body">
-              <div className="success-card">
-                <h3 className="success-title">{tituloExito}</h3>
-                <p className="success-sub">{subExito}</p>
-                {!condonar && (
-                  <p className="success-sub" style={{ marginTop: 6 }}>
-                    <strong>Valor por mes:</strong> {formatearARS(precioUnitarioVigente)} — <strong>Meses:</strong> {periodosOrdenados.length} — <strong>Total:</strong> {formatearARS(total)}
-                  </p>
-                )}
-                {periodoTextoFinal && (
-                  <p className="success-sub" style={{ marginTop: 2 }}>
-                    <strong>Período:</strong> {periodoTextoFinal}
-                  </p>
-                )}
-              </div>
+            {/* Cuerpo con tarjeta de éxito mejorada */}
+            <div className="modal-body success-body">
+              <div className="success-panel">
+                <div className="success-left">
+                  <div className="success-check">
+                    <span className="checkmark-giant" aria-hidden="true">✓</span>
+                  </div>
+                  <div className="success-texts">
+                    <h3 className="success-title">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
+                    <p className="success-sub">{subExito}</p>
+                    {!condonar && (
+                      <ul className="summary-list" aria-label="Resumen de pago">
+                        <li><span>Valor por mes</span><strong>{formatearARS(precioUnitarioVigente)}</strong></li>
+                        <li><span>Meses</span><strong>{periodosOrdenados.length}</strong></li>
+                        <li><span>Total</span><strong>{formatearARS(total)}</strong></li>
+                        {periodoTextoFinal && (
+                          <li className="full-row"><span>Período</span><strong>{periodoTextoFinal}</strong></li>
+                        )}
+                      </ul>
+                    )}
+                    {condonar && periodoTextoFinal && (
+                      <div className="badge-line">
+                        <span className="badge-soft">Período: {periodoTextoFinal}</span>
+                        <span className="badge-warning">CONDONADO</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              {/* Selector de modo */}
-              <div style={{ marginTop: 12, display: 'flex', gap: 18, alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="modoComprobante"
-                    value="imprimir"
-                    checked={modoComprobante === 'imprimir'}
-                    onChange={() => setModoComprobante('imprimir')}
-                  />
-                  <span>Imprimir</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="modoComprobante"
-                    value="pdf"
-                    checked={modoComprobante === 'pdf'}
-                    onChange={() => setModoComprobante('pdf')}
-                  />
-                  <span>PDF</span>
-                </label>
+                {/* Selector segmentado */}
+                <div className="success-right">
+                  <div className="segmented" role="tablist" aria-label="Modo de comprobante">
+                    <button
+                      role="tab"
+                      aria-selected={modoComprobante === 'imprimir'}
+                      className={`segmented-item ${modoComprobante === 'imprimir' ? 'active' : ''}`}
+                      onClick={() => setModoComprobante('imprimir')}
+                    >
+                      Imprimir
+                    </button>
+                    <button
+                      role="tab"
+                      aria-selected={modoComprobante === 'pdf'}
+                      className={`segmented-item ${modoComprobante === 'pdf' ? 'active' : ''}`}
+                      onClick={() => setModoComprobante('pdf')}
+                    >
+                      PDF
+                    </button>
+                  </div>
+
+                  <div className="hint">
+                    {modoComprobante === 'pdf'
+                      ? 'Descargá un PDF listo para enviar o guardar.'
+                      : 'Abrí la vista de impresión con tu diseño de recibo.'}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="modal-footer">
+            {/* Footer con CTA claro */}
+            <div className="modal-footer success-footer">
               <div className="footer-left">
                 <span className={`total-badge ${condonar ? 'total-badge-warning' : ''}`}>
                   Total: {formatearARS(total)}
@@ -492,7 +514,7 @@ const ModalPagos = ({ socio, onClose }) => {
               </div>
               <div className="footer-actions">
                 <button className="btn btn-secondary" onClick={() => onClose?.(true)} type="button">
-                  Cerrar
+                  Listo
                 </button>
                 <button className="btn btn-primary" onClick={handleComprobante} type="button">
                   {modoComprobante === 'pdf' ? 'Descargar PDF' : 'Abrir impresión'}

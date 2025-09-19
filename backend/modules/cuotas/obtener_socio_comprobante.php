@@ -1,8 +1,9 @@
 <?php
 /**
  * Endpoint: action=obtener_socio_comprobante&id={id_alumno}
- * Devuelve la ficha del alumno lista para el comprobante,
- * tomando el MONTO desde categoria_monto (monto_mensual).
+ * Devuelve la ficha del alumno lista para el comprobante.
+ * - Monto desde categoria_monto (monto_mensual)
+ * - Nombres de AÑO (anio.nombre_año) y DIVISIÓN (division.nombre_division)
  */
 require_once __DIR__ . '/../../config/db.php';
 
@@ -23,7 +24,13 @@ if ($id <= 0) {
 }
 
 try {
-    // Traemos alumno + su categoria_monto (si la tiene)
+    /**
+     * Tablas según tu esquema:
+     *  - alumnos (id_alumno, ..., id_año, id_division, id_categoria, id_cat_monto, ...)
+     *  - division (id_division, nombre_division)
+     *  - anio (id_año, nombre_año)
+     *  - categoria_monto (id_cat_monto, nombre_categoria, monto_mensual, monto_anual)
+     */
     $sql = "
         SELECT
             a.id_alumno,
@@ -33,19 +40,27 @@ try {
             a.domicilio,
             a.localidad,
             a.telefono,
+            a.`id_año`           AS a_id_anio,
             a.id_division,
             a.id_categoria,
             a.id_cat_monto,
 
             cm.nombre_categoria   AS cm_nombre_categoria,
             cm.monto_mensual      AS cm_monto_mensual,
-            cm.monto_anual        AS cm_monto_anual
+            cm.monto_anual        AS cm_monto_anual,
+
+            d.nombre_division     AS d_nombre_division,
+
+            an.nombre_año         AS an_nombre_anio
+
         FROM alumnos a
-        LEFT JOIN categoria_monto cm
-               ON cm.id_cat_monto = a.id_cat_monto
+        LEFT JOIN categoria_monto cm ON cm.id_cat_monto = a.id_cat_monto
+        LEFT JOIN `division`     d   ON d.id_division   = a.id_division
+        LEFT JOIN `anio`         an  ON an.`id_año`     = a.`id_año`
         WHERE a.id_alumno = :id
         LIMIT 1
     ";
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -55,10 +70,14 @@ try {
         exit;
     }
 
-    // Si el alumno tiene id_cat_monto válido, usamos su monto_mensual y nombre
+    // Precio por categoría (si existe)
     $tieneCatMonto   = !empty($row['id_cat_monto']) && $row['cm_monto_mensual'] !== null;
     $categoriaNombre = $tieneCatMonto ? (string)($row['cm_nombre_categoria'] ?? '') : '';
     $montoMensual    = $tieneCatMonto ? (int)$row['cm_monto_mensual'] : 0;
+
+    // Nombres human-friendly
+    $nombreDivision  = (string)($row['d_nombre_division'] ?? '');
+    $nombreAnio      = (string)($row['an_nombre_anio']   ?? '');
 
     $socio = [
         'id_alumno'        => (int)$row['id_alumno'],
@@ -71,14 +90,24 @@ try {
         'domicilio'        => (string)($row['domicilio'] ?? ''),
         'localidad'        => (string)($row['localidad'] ?? ''),
         'telefono'         => (string)($row['telefono'] ?? ''),
-        'id_division'      => isset($row['id_division'])  ? (int)$row['id_division']  : null,
+
+        // IDs crudos
+        'id_division'      => isset($row['id_division']) ? (int)$row['id_division'] : null,
         'id_categoria'     => isset($row['id_categoria']) ? (int)$row['id_categoria'] : null,
         'id_cat_monto'     => isset($row['id_cat_monto']) ? (int)$row['id_cat_monto'] : null,
+        'id_año'           => isset($row['a_id_anio']) ? (int)$row['a_id_anio'] : null,
 
-        // Datos efectivos para el comprobante
+        // Nombres para el comprobante (y alias de compatibilidad)
+        'nombre_division'  => $nombreDivision,
+        'division'         => $nombreDivision,   // alias
+        'nombre_año'       => $nombreAnio,
+        'anio_nombre'      => $nombreAnio,       // alias
+        'nombre_anio'      => $nombreAnio,       // alias
+
+        // Precio efectivo
         'nombre_categoria' => $categoriaNombre,
-        'monto_mensual'    => $montoMensual,   // <— ESTE es el que debe imprimirse
-        'precio_categoria' => $montoMensual,   // alias por compatibilidad
+        'monto_mensual'    => $montoMensual,
+        'precio_categoria' => $montoMensual,
         'fuente_categoria' => $tieneCatMonto ? 'categoria_monto' : 'sin_categoria_monto'
     ];
 

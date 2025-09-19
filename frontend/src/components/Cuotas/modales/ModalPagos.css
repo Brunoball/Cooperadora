@@ -1,3 +1,4 @@
+/* src/components/Cuotas/modales/ModalPagos.css */
 /* =========================================================
    Variables y base (PRIMARIO = GRAY 700)
    ========================================================= */
@@ -163,6 +164,10 @@
   overflow: hidden;
 }
 
+.modal-pagos-contenido.success-elevated {
+  max-width: 680px;
+}
+
 .modal-pagos-overlay.active .modal-pagos-contenido { transform: scale(1); }
 
 @keyframes fadeIn {
@@ -177,9 +182,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   background: var(--gradient-primary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header.success-header {
+  background: linear-gradient(135deg, var(--success-500), var(--success-700));
 }
 
 .modal-header-content {
@@ -197,6 +206,10 @@
   align-items: center;
   justify-content: center;
   color: var(--text-on-primary);
+}
+
+.modal-icon-circle.success-icon {
+  background-color: rgba(255, 255, 255, 0.25);
 }
 
 .modal-title {
@@ -234,7 +247,149 @@
   max-height: 80vh;
 }
 
-/* Tarjeta info socio */
+/* ——— Pantalla de Éxito ——— */
+.success-body {
+  background: linear-gradient(180deg, var(--gray-50), #fff 40%);
+}
+
+.success-panel {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.25rem;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+}
+
+.success-left {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.success-check {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--success-50);
+  border: 1px solid #b7f3da;
+}
+
+.checkmark-giant {
+  font-size: 28px;
+  color: var(--success-600);
+  line-height: 1;
+}
+
+.success-texts .success-title {
+  margin: 0 0 .25rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+.success-sub {
+  margin: 0 0 .75rem 0;
+  color: var(--gray-700);
+  font-size: .95rem;
+}
+
+.summary-list {
+  list-style: none;
+  margin: .25rem 0 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .4rem .75rem;
+}
+.summary-list li {
+  display: contents;
+}
+.summary-list li span {
+  color: var(--text-secondary);
+}
+.summary-list li strong {
+  text-align: right;
+  color: var(--gray-900);
+}
+
+.summary-list .full-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.badge-line {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-top: .5rem;
+}
+.badge-soft {
+  background: var(--secondary-50);
+  color: var(--secondary-700);
+  border: 1px solid var(--secondary-200);
+  padding: .25rem .6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: .8rem;
+}
+.badge-warning {
+  background: var(--warning-100);
+  color: #92400e;
+  border: 1px solid var(--warning-200);
+  padding: .25rem .6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: .8rem;
+}
+
+.success-right {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  padding: .25rem;
+}
+.segmented-item {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: .6rem .8rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--gray-700);
+  transition: var(--transition-fast);
+}
+.segmented-item:hover { background: var(--gray-200); }
+.segmented-item.active {
+  background: #fff;
+  color: var(--gray-900);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.hint {
+  font-size: .85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Tarjeta info socio (vista normal) */
 .socio-info-card {
   background-color: var(--surface-secondary);
   border-radius: var(--border-radius);
@@ -324,7 +479,7 @@
 }
 .switch-label strong { font-weight: 700; color: var(--gray-900); }
 
-/* Selector de año (botón pastilla + popover) */
+/* Selector de año */
 .year-picker {
   margin-left: auto;
   display: flex;
@@ -410,7 +565,6 @@
   margin: 0;
 }
 .section-header-actions { display: flex; align-items: center; gap: 1rem; }
-.selection-info { font-size: 0.8125rem; color: var(--text-muted); font-weight: 500; }
 
 .loading-state {
   display: flex;
@@ -542,6 +696,10 @@
   border-top: 1px solid var(--border-color);
 }
 
+.success-footer {
+  background: #fff;
+}
+
 .total-badge {
   display: inline-flex;
   align-items: center;
@@ -633,24 +791,19 @@
 }
 
 /* =========================================================
-   Estados de éxito (vista post-registro)
-   ========================================================= */
-.success-card {
-  background: var(--surface-secondary);
-  border-radius: var(--border-radius);
-  padding: 1rem 1.25rem;
-  border-left: 4px solid var(--success-500);
-}
-.success-title { margin: 0 0 .25rem; font-size: 1.05rem; font-weight: 700; color: var(--gray-900); }
-.success-sub { margin: 0; color: var(--gray-700); }
-
-/* =========================================================
    Breakpoints
    ========================================================= */
+@media (max-width: 720px) {
+  .success-panel {
+    grid-template-columns: 1fr;
+  }
+  .success-right { align-items: stretch; }
+}
+
 @media (max-width: 600px) {
-  .modal-header { padding: 1.25rem; }
+  .modal-header { padding: 1.1rem 1.25rem; }
   .modal-body   { padding: 1.25rem; }
-  .modal-footer { padding: 1.25rem; }
+  .modal-footer { padding: 1.1rem 1.25rem; }
 
   .periodos-grid { grid-template-columns: 1fr; }
   .modal-footer  { flex-direction: column-reverse; }
@@ -673,4 +826,5 @@
   .modal-header-content { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .modal-icon-circle { display: none; }
 }
+
 .footer-actions{display: flex; gap: 1rem;}
