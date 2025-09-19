@@ -1,56 +1,219 @@
-// src/components/Familias/modales/ModalMiembros.jsx
 import React, {
   useEffect,
   useMemo,
-  useRef,
   useState,
+  useDeferredValue,
   useCallback,
+  useTransition,
+  useRef,
+  memo,
 } from 'react';
 import { FaTimes, FaPlus, FaTrash, FaSearch } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
 import './ModalMiembros.css';
 
-/* ====== TUNING ====== */
-const ROW_HEIGHT = 68;   // alto aprox. de cada ítem (coincidir con CSS)
-const OVERSCAN   = 10;
-const VIEWPORT_H = 360;
+/* Utilidad: inicial del nombre */
+const getInitial = (str) => {
+  const s = (str || '').trim();
+  return s ? s.charAt(0).toUpperCase() : '?';
+};
 
-function Avatar({ name = '?' }) {
-  const i = (name || '?').trim().charAt(0).toUpperCase() || '?';
-  return <div className="mm_avatar" aria-hidden>{i}</div>;
+/* ---------- Modal de confirmación (estética famdel) ---------- */
+function ConfirmRemoveMemberModal({ open, miembro, isWorking, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div
+      className="famdel-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="miembro-del-title"
+      onClick={onCancel}
+    >
+      <div
+        className="famdel-modal-container famdel-modal--danger"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="famdel-modal__icon" aria-hidden="true">
+          <FaTrash />
+        </div>
+
+        <h3 id="miembro-del-title" className="famdel-modal-title famdel-modal-title--danger">
+          Quitar miembro
+        </h3>
+
+        <p className="famdel-modal-text">
+          ¿Seguro que querés quitar a <strong>“{miembro?.nombre || '—'}”</strong> de la familia?
+        </p>
+
+        <div className="famdel-modal-buttons">
+          <button className="famdel-btn famdel-btn--ghost" onClick={onCancel} disabled={isWorking}>
+            Cancelar
+          </button>
+          <button
+            className="famdel-btn famdel-btn--solid-danger"
+            onClick={onConfirm}
+            disabled={isWorking}
+          >
+            {isWorking ? 'Quitando…' : 'Quitar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+/* ---------- Tarjetas memoizadas ---------- */
+const MiembroCard = memo(function MiembroCard({
+  m,
+  onRemoveClick,
+  cascadeIndex = -1,
+  playCascade = false,
+  isAdmin = true,
+}) {
+  const active = Number(m.activo) === 1;
+  const cascadeClass =
+    playCascade && cascadeIndex > -1 && cascadeIndex < 10 ? 'modalmi-cascade' : '';
+  const cascadeStyle = cascadeClass ? { '--mi-cascade-i': cascadeIndex } : undefined;
+
+  return (
+    <div
+      className={`modalmi-card ${active ? 'is-active' : 'is-inactive'} ${cascadeClass}`}
+      style={cascadeStyle}
+    >
+      <div className="modalmi-avatar" title={m.nombre} aria-hidden="true">
+        {getInitial(m.nombre)}
+      </div>
+
+      <div className="modalmi-info">
+        <div className="modalmi-name-row">
+          <span className={`modalmi-status-dot ${active ? 'ok' : 'off'}`} />
+          <span className="modalmi-name" title={m.nombre}>{m.nombre}</span>
+        </div>
+        <div className="modalmi-meta">
+          <span className="modalmi-dni"><strong>DNI:</strong> {m.dni || '—'}</span>
+          {m.localidad ? <span className="modalmi-dni">• {m.localidad}</span> : null}
+          {Number(m.activo) !== 1 && <span className="modalmi-badge danger">Inactivo</span>}
+        </div>
+      </div>
+
+      {isAdmin && (
+        <button className="modalmi-remove" title="Quitar" onClick={() => onRemoveClick(m)}>
+          <FaTrash />
+        </button>
+      )}
+    </div>
+  );
+});
+
+const CandidatoCard = memo(function CandidatoCard({
+  c,
+  checked,
+  onToggle,
+  cascadeIndex = -1,
+  playCascade = false,
+}) {
+  const active = Number(c.activo) === 1;
+  const cascadeClass =
+    playCascade && cascadeIndex > -1 && cascadeIndex < 10 ? 'modalmi-cascade' : '';
+  const cascadeStyle = cascadeClass ? { '--mi-cascade-i': cascadeIndex } : undefined;
+
+  return (
+    <label
+      className={`modalmi-card modalmi-selectable ${active ? 'is-active' : 'is-inactive'} ${checked ? 'is-checked' : ''} ${cascadeClass}`}
+      style={cascadeStyle}
+    >
+      <input type="checkbox" checked={checked} onChange={() => onToggle(c.id_alumno)} />
+      <div className="modalmi-checkslot" aria-hidden="true" />
+      <div className="modalmi-info">
+        <div className="modalmi-name-row">
+          <span className={`modalmi-status-dot ${active ? 'ok' : 'off'}`} />
+          <span className="modalmi-name" title={c.nombre}>{c.nombre}</span>
+        </div>
+        <div className="modalmi-meta">
+          <span className="modalmi-dni"><strong>DNI:</strong> {c.dni || '—'}</span>
+          {c.localidad ? <span className="modalmi-dni">• {c.localidad}</span> : null}
+          {Number(c.activo) !== 1 && <span className="modalmi-badge danger">Inactivo</span>}
+        </div>
+      </div>
+    </label>
+  );
+});
+
+/* ---------- Modal principal ---------- */
 export default function ModalMiembros({ open, onClose, familia, notify, onDeltaCounts }) {
   const [miembros, setMiembros] = useState([]);
-  const [allRows, setAllRows]   = useState([]);
-  const [q, setQ]               = useState('');
-  const [sel, setSel]           = useState(() => new Set());
-  const [loading, setLoading]   = useState(false);
+  const [candidatosAll, setCandidatosAll] = useState([]);
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(new Set());
 
-  const listRef = useRef(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const onScrollList = useCallback((e) => setScrollTop(e.currentTarget.scrollTop), []);
+  const [loading, setLoading] = useState(false);
+  const [miembrosLoading, setMiembrosLoading] = useState(false);
+
+  // Skeleton + cascada primera vez
+  const [showMiembrosSkeleton, setShowMiembrosSkeleton] = useState(false);
+  const [showCandidatosSkeleton, setShowCandidatosSkeleton] = useState(false);
+  const [playCascade, setPlayCascade] = useState(false);
+  const didFirstIntroRef = useRef(false);
+
+  const [isPending, startTransition] = useTransition();
+  const qDeferred = useDeferredValue(q);
+
+  // Infinite scroll
+  const BATCH = 60;
+  const [visibleCount, setVisibleCount] = useState(BATCH);
+
+  const searchInputRef = useRef(null);
+
+  // Modal quitar
+  const [delOpen, setDelOpen] = useState(false);
+  const [delTarget, setDelTarget] = useState(null);
+  const [delWorking, setDelWorking] = useState(false);
+
+  const [isAdmin] = useState(true);
 
   useEffect(() => {
     if (!open || !familia) return;
+
     setQ('');
     setSel(new Set());
-    setAllRows([]);
-    setScrollTop(0);
-    cargarMiembros();
-    cargarTodosLosCandidatos();
+    setVisibleCount(BATCH);
+
+    if (!didFirstIntroRef.current) {
+      setShowMiembrosSkeleton(true);
+      setShowCandidatosSkeleton(true);
+      setPlayCascade(false);
+
+      const t = setTimeout(() => {
+        setShowMiembrosSkeleton(false);
+        setShowCandidatosSkeleton(false);
+        setPlayCascade(true);
+        didFirstIntroRef.current = true;
+
+        const off = setTimeout(() => setPlayCascade(false), 900);
+        return () => clearTimeout(off);
+      }, 220);
+
+      return () => clearTimeout(t);
+    }
+  }, [open, familia?.id_familia]);
+
+  // Carga datos
+  useEffect(() => {
+    if (!open || !familia) return;
+    setMiembrosLoading(true);
+    cargarMiembros().finally(() => setMiembrosLoading(false));
+    cargarCandidatosIniciales();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, familia?.id_familia]);
 
-  const cargarMiembros = async () => {
+  const cargarMiembros = useCallback(async () => {
     try {
       const r = await fetch(
         `${BASE_URL}/api.php?action=familia_miembros&id_familia=${familia.id_familia}&ts=${Date.now()}`,
         { cache: 'no-store' }
       );
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-      const rows = (j?.miembros || []).map(a => ({
+      const rows = (j?.miembros || j?.alumnos || []).map(a => ({
         id_alumno: a.id_alumno ?? a.id ?? a.idAlumno,
         nombre: a.nombre_completo
           ? a.nombre_completo
@@ -64,16 +227,15 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     } catch {
       notify?.('Error al obtener miembros', 'error');
     }
-  };
+  }, [familia, notify]);
 
-  const cargarTodosLosCandidatos = async () => {
+  const cargarCandidatosIniciales = useCallback(async () => {
     setLoading(true);
     try {
       const r = await fetch(
         `${BASE_URL}/api.php?action=alumnos_sin_familia&all=1&ts=${Date.now()}`,
         { cache: 'no-store' }
       );
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       const rows = (j?.alumnos || []).map(a => {
         const nombre = a.nombre_completo
@@ -90,9 +252,8 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
           searchKey: `${nombre} ${dni}`.toLowerCase()
         };
       });
-      setAllRows(rows);
+      setCandidatosAll(rows);
     } catch {
-      // fallback legacy
       try {
         const r2 = await fetch(
           `${BASE_URL}/api.php?action=socios_sin_familia&ts=${Date.now()}`,
@@ -113,250 +274,296 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
             searchKey: `${nombre} ${dni}`.toLowerCase()
           };
         });
-        setAllRows(rows);
+        setCandidatosAll(rows);
       } catch {
         notify?.('Error al obtener alumnos sin familia', 'error');
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [notify]);
 
-  const term = q.trim().toLowerCase();
-  const rows = useMemo(() => {
-    if (!term) return allRows;
-    return allRows.filter(r => r.searchKey.includes(term));
-  }, [allRows, term]);
+  const candidatosFiltrados = useMemo(() => {
+    const t = (qDeferred || '').trim().toLowerCase();
+    if (!t) return candidatosAll;
+    return candidatosAll.filter(c =>
+      (c.searchKey || `${c.nombre} ${c.dni}`.toLowerCase()).includes(t)
+    );
+  }, [candidatosAll, qDeferred]);
 
-  // Virtualización
-  const total = rows.length;
-  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
-  const endIndex = Math.min(
-    total,
-    Math.ceil((scrollTop + VIEWPORT_H) / ROW_HEIGHT) + OVERSCAN
-  );
-  const visible   = rows.slice(startIndex, endIndex);
-  const padTop    = startIndex * ROW_HEIGHT;
-  const padBottom = Math.max(0, (total - endIndex) * ROW_HEIGHT);
+  useEffect(() => { setVisibleCount(BATCH); }, [qDeferred]);
+  const visibles = useMemo(() => candidatosFiltrados.slice(0, visibleCount), [candidatosFiltrados, visibleCount]);
 
-  const toggleSel = (id) => {
+  const onGridScroll = useCallback((e) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 160) {
+      setVisibleCount(v => (v < candidatosFiltrados.length ? v + BATCH : v));
+    }
+  }, [candidatosFiltrados.length]);
+
+  const toggleSel = useCallback((id_alumno) => {
     setSel(prev => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      n.has(id_alumno) ? n.delete(id_alumno) : n.add(id_alumno);
       return n;
     });
-  };
+  }, []);
 
-  const agregarSeleccionados = async () => {
+  const agregarSeleccionados = useCallback(async () => {
+    if (!isAdmin) return;
     if (sel.size === 0) return;
-    const mapSel = new Set(sel);
-    const toAdd = rows.filter(c => mapSel.has(c.id_alumno));
-    if (toAdd.length === 0) return;
+    const ids = Array.from(sel);
+    const setIds = new Set(ids);
+    const toAdd = candidatosAll.filter(c => setIds.has(c.id_alumno));
+    if (!toAdd.length) return;
 
     try {
       const r = await fetch(`${BASE_URL}/api.php?action=familia_agregar_miembros`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_familia: familia.id_familia,
-          ids_alumno: toAdd.map(x => x.id_alumno),
-        }),
+        body: JSON.stringify({ id_familia: familia.id_familia, ids_alumno: ids }),
       });
       const j = await r.json();
-      if (!j?.exito) {
-        notify?.(j?.mensaje || 'No se pudo agregar', 'error');
-        return;
-      }
+      if (!j?.exito) { notify?.(j?.mensaje || 'No se pudo agregar', 'error'); return; }
 
-      setMiembros(prev => [...prev, ...toAdd.map(c => ({
-        id_alumno: c.id_alumno,
-        nombre: c.nombre,
-        dni: c.dni,
-        domicilio: c.domicilio,
-        localidad: c.localidad,
-        activo: c.activo
-      }))]);
-
-      setAllRows(prev => prev.filter(c => !mapSel.has(c.id_alumno)));
+      setMiembros(prev => [
+        ...prev,
+        ...toAdd.map(c => ({
+          id_alumno: c.id_alumno,
+          nombre: c.nombre,
+          dni: c.dni,
+          domicilio: c.domicilio,
+          localidad: c.localidad,
+          activo: c.activo
+        })),
+      ]);
+      setCandidatosAll(prev => prev.filter(c => !setIds.has(c.id_alumno)));
       setSel(new Set());
 
       const deltaTotales = toAdd.length;
       const deltaActivos = toAdd.reduce((acc, c) => acc + (Number(c.activo) === 1 ? 1 : 0), 0);
       onDeltaCounts?.({ id_familia: familia.id_familia, deltaActivos, deltaTotales });
-
       notify?.('Miembros agregados');
     } catch {
       notify?.('Error al agregar miembros', 'error');
     }
-  };
+  }, [isAdmin, sel, candidatosAll, familia, notify, onDeltaCounts]);
 
-  const quitarMiembro = async (id_alumno) => {
-    if (!window.confirm('¿Quitar este miembro de la familia?')) return;
+  const abrirModalQuitar = useCallback((miembro) => {
+    if (!isAdmin) return;
+    setDelTarget(miembro);
+    setDelOpen(true);
+  }, [isAdmin]);
 
-    const m = miembros.find(x => x.id_alumno === id_alumno);
-    const eraActivo = Number(m?.activo) === 1;
+  const cerrarModalQuitar = useCallback(() => {
+    if (delWorking) return;
+    setDelOpen(false);
+    setDelTarget(null);
+  }, [delWorking]);
+
+  const confirmarQuitar = useCallback(async () => {
+    if (!isAdmin || !delTarget) return;
+    setDelWorking(true);
+    const id_alumno = delTarget.id_alumno;
+    const eraActivo = Number(delTarget?.activo) === 1;
 
     try {
       const r = await fetch(`${BASE_URL}/api.php?action=familia_quitar_miembro`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_alumno })
+        body: JSON.stringify({ id_alumno }),
       });
       const j = await r.json();
-      if (!j?.exito) {
-        notify?.(j?.mensaje || 'No se pudo quitar', 'error');
-        return;
-      }
+      if (!j?.exito) { notify?.(j?.mensaje || 'No se pudo quitar', 'error'); return; }
 
       setMiembros(prev => prev.filter(x => x.id_alumno !== id_alumno));
+      setCandidatosAll(prev =>
+        prev.some(x => x.id_alumno === delTarget.id_alumno)
+          ? prev
+          : [{
+              id_alumno: delTarget.id_alumno,
+              nombre: delTarget.nombre,
+              dni: delTarget.dni,
+              domicilio: delTarget.domicilio,
+              localidad: delTarget.localidad,
+              activo: delTarget.activo,
+              searchKey: `${delTarget.nombre} ${delTarget.dni}`.toLowerCase()
+            }, ...prev]
+      );
 
-      if (m && eraActivo) {
-        const back = {
-          id_alumno: m.id_alumno,
-          nombre: m.nombre,
-          dni: m.dni,
-          domicilio: m.domicilio,
-          localidad: m.localidad,
-          activo: m.activo,
-          searchKey: `${m.nombre} ${m.dni}`.toLowerCase(),
-        };
-        setAllRows(prev => (prev.some(x => x.id_alumno === back.id_alumno) ? prev : [back, ...prev]));
-      }
-
-      onDeltaCounts?.({
-        id_familia: familia.id_familia,
-        deltaActivos: eraActivo ? -1 : 0,
-        deltaTotales: -1
-      });
-
+      onDeltaCounts?.({ id_familia: familia.id_familia, deltaActivos: eraActivo ? -1 : 0, deltaTotales: -1 });
       notify?.('Miembro quitado');
+      setDelOpen(false);
+      setDelTarget(null);
     } catch {
       notify?.('Error al quitar miembro', 'error');
+    } finally {
+      setDelWorking(false);
     }
-  };
+  }, [isAdmin, delTarget, familia, notify, onDeltaCounts]);
+
+  // buscador (lupa/clear + ESC)
+  const handleSearchIcon = useCallback(() => {
+    if (!q) {
+      searchInputRef.current?.focus();
+      return;
+    }
+    startTransition(() => setQ(''));
+    searchInputRef.current?.focus();
+  }, [q]);
+
+  const onSearchKeyDown = useCallback((e) => {
+    if (e.key === 'Escape' && q) {
+      e.preventDefault();
+      e.stopPropagation();
+      startTransition(() => setQ(''));
+    }
+  }, [q, startTransition]);
 
   if (!open || !familia) return null;
 
+  const showMiembrosSkeletonNow = !didFirstIntroRef.current && showMiembrosSkeleton;
+  const showCandidatosSkeletonNow = !didFirstIntroRef.current && showCandidatosSkeleton;
+
   return (
-    <div className="mm_overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="mm_modal" onClick={e => e.stopPropagation()}>
-        {/* HEADER AZUL */}
-        <div className="mm_head">
-          <div className="mm_head_left">
-            <span className="mm_led" aria-hidden />
-            <h3>Miembros de “{familia.nombre_familia}”</h3>
-          </div>
-          <button className="mm_close" onClick={onClose} title="Cerrar">
+    <div className="modalmi-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="modalmi-modal" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="modalmi-head">
+          <h3 className="modalmi-title">
+            <span className="modalmi-title-dot" />
+            Miembros de “{familia.nombre_familia}”
+          </h3>
+          <button className="modalmi-close" onClick={onClose} aria-label="Cerrar">
             <FaTimes />
           </button>
         </div>
 
-        {/* BODY */}
-        <div className="mm_body">
-          {/* Columna izquierda: miembros actuales */}
-          <div className="mm_col">
-            <h4 className="mm_coltitle">Miembros actuales</h4>
-            <div className="mm_list" data-fixed>
-              {miembros.length === 0 ? (
-                <div className="mm_empty">Sin miembros</div>
-              ) : miembros.map(m => {
-                  const statusCls = Number(m.activo) === 1 ? 'status-active' : 'status-inactive';
-                  return (
-                    <div key={m.id_alumno} className={`mm_item ${statusCls}`} style={{ minHeight: ROW_HEIGHT }}>
-                      <div className="mm_flag" aria-hidden />
-                      <Avatar name={m.nombre} />
-                      <div className="mm_main">
-                        <strong className="mm_name">{m.nombre}</strong>
-                        {/* DNI + Localidad en la misma línea */}
-                        <small className="mm_meta">
-                          DNI: {m.dni || '—'}{m.localidad ? ` • ${m.localidad}` : ''}
-                        </small>
-                        {Number(m.activo) !== 1 && <small className="mm_badge danger">Inactivo</small>}
-                      </div>
-                      <div className="mm_actions">
-                        <button className="danger" title="Quitar" onClick={() => quitarMiembro(m.id_alumno)}>
-                          <FaTrash />
-                        </button>
-                      </div>
+        <div className="modalmi-body">
+          {/* Columna izquierda: miembros actuales (usamos misma subbar para alinear con la derecha) */}
+          <div className="modalmi-col">
+            <div className="modalmi-subbar">
+              <h4 className="modalmi-subtitle">Miembros actuales</h4>
+              {/* placeholder para mantener misma altura que la subbar derecha */}
+              <div className="modalmi-subbar-spacer" aria-hidden />
+            </div>
+
+            <div className="modalmi-grid" data-fixed>
+              {showMiembrosSkeletonNow ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div className="modalmi-skel-card" key={`skel-left-${i}`}>
+                    <div className="modalmi-skel-avatar" />
+                    <div className="modalmi-skel-lines">
+                      <div className="modalmi-skel-line long" />
+                      <div className="modalmi-skel-line short" />
                     </div>
-                  );
-                })}
+                  </div>
+                ))
+              ) : miembrosLoading ? (
+                <div className="modalmi-empty">Cargando miembros…</div>
+              ) : miembros.length === 0 ? (
+                <div className="modalmi-empty">Sin miembros</div>
+              ) : (
+                miembros.map((m, idx) => (
+                  <MiembroCard
+                    key={m.id_alumno}
+                    m={m}
+                    onRemoveClick={abrirModalQuitar}
+                    cascadeIndex={idx}
+                    playCascade={playCascade}
+                    isAdmin={isAdmin}
+                  />
+                ))
+              )}
             </div>
           </div>
 
           {/* Columna derecha: candidatos */}
-          <div className="mm_col">
-            <div className="mm_colhdr">
-              <h4 className="mm_coltitle">Agregar socios</h4>
-              <div className="mm_search">
-                <FaSearch className="mm_search_icon" />
+          <div className="modalmi-col">
+            <div className="modalmi-subbar">
+              <h4 className="modalmi-subtitle">
+                Agregar socios {isPending && <span className="modalmi-hint"></span>}
+              </h4>
+
+              <div className={`modalmi-search modalmi-search--compact ${q ? 'is-filled' : ''}`} role="search">
                 <input
-                  placeholder="Buscar por nombre o DNI..."
+                  ref={searchInputRef}
+                  placeholder="Buscar por nombre o DNI…"
                   value={q}
-                  onChange={e => setQ(e.target.value)}
+                  onChange={(e) => startTransition(() => setQ(e.target.value))}
+                  onKeyDown={onSearchKeyDown}
                   aria-label="Buscar alumnos"
                 />
+                <button
+                  className="modalmi-search-ico"
+                  onClick={handleSearchIcon}
+                  aria-label={q ? 'Limpiar búsqueda' : 'Buscar'}
+                  title={q ? 'Limpiar' : 'Buscar'}
+                  type="button"
+                >
+                  {q ? <FaTimes /> : <FaSearch />}
+                </button>
               </div>
             </div>
 
-            <div
-              className="mm_list"
-              data-fixed
-              ref={listRef}
-              onScroll={onScrollList}
-              style={{ position: 'relative', overflow: 'auto', height: VIEWPORT_H }}
-            >
-              <div style={{ height: padTop }} />
-              {visible.length === 0 && !loading ? (
-                <div className="mm_empty">{term ? 'Sin resultados' : 'No hay alumnos disponibles'}</div>
+            <div className="modalmi-grid" data-fixed onScroll={onGridScroll}>
+              {showCandidatosSkeletonNow ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div className="modalmi-skel-card modalmi-skel-card--cand" key={`skel-right-${i}`}>
+                    <div className="modalmi-skel-check" />
+                    <div className="modalmi-skel-lines">
+                      <div className="modalmi-skel-line long" />
+                      <div className="modalmi-skel-line short" />
+                    </div>
+                  </div>
+                ))
+              ) : loading && visibles.length === 0 ? (
+                <div className="modalmi-empty">Cargando socios…</div>
+              ) : visibles.length === 0 ? (
+                <div className="modalmi-empty">Sin resultados</div>
               ) : (
-                visible.map(c => {
-                  const checked = sel.has(c.id_alumno);
-                  const statusCls = Number(c.activo) === 1 ? 'status-active' : 'status-inactive';
-                  return (
-                    <label
-                      key={c.id_alumno}
-                      className={`mm_item sel ${statusCls} ${checked ? 'checked' : ''}`}
-                      style={{ minHeight: ROW_HEIGHT }}
-                    >
-                      <div className="mm_flag" aria-hidden />
-                      <input
-                        className="mm_check"
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleSel(c.id_alumno)}
-                      />
-                      <div className="mm_main">
-                        <strong className="mm_name">{c.nombre}</strong>
-                        {/* DNI + Localidad en la misma línea */}
-                        <small className="mm_meta">
-                          DNI: {c.dni || '—'}{c.localidad ? ` • ${c.localidad}` : ''}
-                        </small>
-                        {Number(c.activo) !== 1 && <small className="mm_badge danger">Inactivo</small>}
-                      </div>
-                    </label>
-                  );
-                })
+                visibles.map((c, idx) => (
+                  <CandidatoCard
+                    key={c.id_alumno}
+                    c={c}
+                    checked={sel.has(c.id_alumno)}
+                    onToggle={toggleSel}
+                    cascadeIndex={idx}
+                    playCascade={playCascade}
+                  />
+                ))
               )}
-              <div style={{ height: padBottom }} />
-              {loading && <div className="mm_empty">Cargando…</div>}
+              {visibles.length < candidatosFiltrados.length && !showCandidatosSkeletonNow && (
+                <div className="modalmi-sentinel">Cargando más…</div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* FOOTER (Cerrar + Agregar seleccionados) */}
-        <div className="mm_foot">
-          <button className="mm_btn ghost" onClick={onClose}>Cerrar</button>
-          <button
-            className="mm_btn solid"
-            onClick={agregarSeleccionados}
-            disabled={sel.size === 0}
-            title={sel.size === 0 ? 'Seleccioná al menos uno' : 'Agregar seleccionados'}
-          >
-            <FaPlus /> Agregar seleccionados ({sel.size})
-          </button>
+        {/* Footer */}
+        <div className="modalmi-foot">
+          {isAdmin && (
+            <button
+              className="modalmi-btn modalmi-solid"
+              onClick={agregarSeleccionados}
+              disabled={sel.size === 0}
+              title="Agregar seleccionados"
+            >
+              <FaPlus /> Agregar seleccionados ({sel.size})
+            </button>
+          )}
+          <button className="modalmi-btn modalmi-ghost" onClick={onClose}>Cerrar</button>
         </div>
       </div>
+
+      {/* Modal de quitar miembro */}
+      <ConfirmRemoveMemberModal
+        open={delOpen}
+        miembro={delTarget}
+        isWorking={delWorking}
+        onConfirm={confirmarQuitar}
+        onCancel={cerrarModalQuitar}
+      />
     </div>
   );
 }

@@ -928,3 +928,63 @@ input:-webkit-autofill { background-color: transparent !important; }
 @media (max-width: 768px){
   .alu-alfabeto-filtros { grid-template-columns: repeat(6, 1fr); }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================
+   Botón FAMILIAS (desktop)
+   ============================ */
+.alu-alumno-button.alu-btn-familias {
+  background: #6a1b9a; /* Violeta sólido */
+  color: var(--text-on-primary);
+  border: none;
+  box-shadow: var(--reg-shadow-sm);
+  transition: all 0.25s ease;
+}
+
+.alu-alumno-button.alu-btn-familias .alu-alumno-icon-button {
+  color: var(--text-on-primary);
+}
+
+.alu-alumno-button.alu-btn-familias:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--reg-shadow-md);
+  background: #4a148c; /* Violeta más oscuro en hover */
+}
+
+/* Enfoque accesible */
+.alu-alumno-button.alu-btn-familias:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+/* ============================
+   Botón FAMILIAS (mobile)
+   ============================ */
+@media (max-width: 768px) {
+  .alu-botones-container .alu-alumno-button.alu-btn-familias {
+    border: none;
+    color: #fff;
+    background: #6a1b9a; /* mismo violeta sólido */
+  }
+
+  .alu-botones-container .alu-alumno-button.alu-btn-familias .alu-alumno-icon-button {
+    color: #fff;
+  }
+
+  .alu-botones-container .alu-alumno-button.alu-btn-familias:hover {
+    background: #4a148c;
+  }
+}

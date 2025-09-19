@@ -1,235 +1,317 @@
-/* ====== :root ROJO (sin degradados) — variables con prefijo reg- ====== */
-:root {
-  /* 🎨 PALETA ROJA */
-  --reg-primary: #B71C1C;          /* Rojo principal */
-  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
-  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
+/* ===== Paleta ROJA (tu sistema) ===== */
+:root{
+  --reg-primary:#B71C1C;
+  --reg-primary-light:#E53935;
+  --reg-primary-dark:#7F0000;
 
-  --reg-secondary: #1D428A;        /* Azul secundario opcional */
-  --reg-accent: #C62828;
+  --reg-success:#10B981;
+  --reg-danger:#D32F2F;
 
-  --reg-success: #10B981;
-  --reg-warning: #F59E0B;
-  --reg-danger: #D32F2F;
+  --reg-gray-50:#F8FAFC;
+  --reg-gray-100:#F1F5F9;
+  --reg-gray-200:#E2E8F0;
+  --reg-gray-300:#CBD5E1;
+  --reg-gray-400:#94A3B8;
+  --reg-gray-600:#475569;
+  --reg-dark:#0F172A;
 
-  --reg-light: #F8FAFC;
-  --reg-dark: #0F172A;
+  --reg-radius:12px;
+  --reg-radius-lg:18px;
 
-  --reg-gray-100: #F1F5F9;
-  --reg-gray-200: #E2E8F0;
-  --reg-gray-300: #CBD5E1;
-  --reg-gray-400: #94A3B8;
-  --reg-gray-500: #64748B;
-  --reg-gray-600: #475569;
-  --reg-gray-700: #334155;
-  --reg-gray-800: #1E293B;
-  --reg-gray-900: #0F172A;
+  --reg-shadow-sm:0 1px 3px rgba(0,0,0,.05);
+  --reg-shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);
+  --reg-shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04);
 
-  --reg-border-radius: 12px;
-  --reg-border-radius-lg: 16px;
-  --reg-border-radius-xl: 20px;
-
-  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  --reg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --reg-trans:all .25s cubic-bezier(.4,0,.2,1);
 }
 
-/* ============ Overlay & container ============ */
-.mm_overlay{
+/* ===== Tokens del modal ===== */
+:root{
+  --modalmi-accent: var(--reg-primary);
+  --modalmi-accent-2: var(--reg-primary);
+
+  --modalmi-bg-soft: #f7f8fe;
+  --modalmi-ok: var(--reg-success);
+  --modalmi-off: var(--reg-danger);
+  --modalmi-gray-50: var(--reg-gray-50);
+  --modalmi-gray-100: var(--reg-gray-100);
+  --modalmi-gray-200: var(--reg-gray-200);
+  --modalmi-gray-400: var(--reg-gray-400);
+  --modalmi-dark: var(--reg-dark);
+  --modalmi-radius: var(--reg-radius);
+  --modalmi-radius-lg: var(--reg-radius-lg);
+  --modalmi-shadow: var(--reg-shadow-md);
+  --modalmi-trans: var(--reg-trans);
+
+  --modalmi-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --modalmi-fsz-name: .97rem;
+  --modalmi-fsz-meta: .86rem;
+}
+
+/* ===== Overlay / container ===== */
+.modalmi-overlay{
   position:fixed; inset:0;
-  background:rgba(2,6,23,.55);
-  display:flex; align-items:center; justify-content:center;
-  z-index:1000;
-}
-.mm_modal{
-  width:min(1120px,96vw);
-  background:#fff; border-radius:var(--reg-border-radius-lg); overflow:hidden;
-  box-shadow:var(--reg-shadow-xl);
-  display:flex; flex-direction:column;
-  max-height:92vh;
+  background:linear-gradient(0deg, rgba(15,23,42,.55), rgba(15,23,42,.55));
+  backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px;
+  animation: modalmi-overlay-in .18s ease-out;
 }
 
-/* ============ Header ROJO (sin degradado) ============ */
-.mm_head{
-  background: var(--reg-primary);
-  color:#fff;
-  padding:14px 18px;
-  display:flex; align-items:center; justify-content:space-between;
-}
-.mm_head_left{display:flex; align-items:center; gap:10px;}
-.mm_led{
-  width:10px; height:10px; border-radius:999px;
-  background: var(--reg-primary-light);
-  box-shadow:0 0 0 6px rgba(229,57,53,.25); /* reg-primary-light con alpha */
-}
-.mm_head h3{font-size:20px; font-weight:700; margin:0;}
-.mm_close{
-  border:none; background:transparent; color: #ffe3e3;
-  cursor:pointer; font-size:18px; line-height:1;
-  transition: var(--reg-transition);
-}
-.mm_close:hover{ color:#fff; transform: scale(1.06); }
-
-/* ============ Footer ============ */
-.mm_foot{
-  padding:12px 16px;
-  border-top:1px solid var(--reg-gray-200);
-  display:flex; justify-content:flex-end; gap:10px;
+.modalmi-modal{
+  width:min(1100px, 96vw);
   background:#fff;
+  border-radius:var(--modalmi-radius-lg);
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  display:flex; flex-direction:column; justify-content: space-between;
+  height: min(720px, 92vh);
+  font-family: var(--modalmi-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  animation: modalmi-modal-in .22s ease-out;
 }
 
-/* ============ Body layout ============ */
-.mm_body{
-  display:grid; grid-template-columns:1fr 1fr; gap:14px;
-  padding:14px; overflow:auto; background: var(--reg-gray-100);
+/* ===== Header / Footer ===== */
+.modalmi-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; background:var(--modalmi-accent); color:#fff;
 }
-.mm_col{ display:flex; flex-direction:column; gap:10px; min-height:0; }
+.modalmi-title{ margin:0; font-weight:800; display:flex; align-items:center; gap:10px; letter-spacing:.2px; }
+.modalmi-title-dot{ width:10px; height:10px; border-radius:999px; background:#fff; display:inline-block; }
 
-/* Títulos de columna */
-.mm_coltitle{ margin:0; font-size:16px; color: var(--reg-dark); }
+.modalmi-close{
+  height: 27px;
+  border:1px solid color-mix(in srgb, #fff 40%, var(--modalmi-accent));
+  background:#fff; color:var(--modalmi-dark);
+  border-radius:10px; padding:6px 8px; cursor:pointer; transition:var(--modalmi-trans);
+}
+.modalmi-close:hover{ background:var(--modalmi-gray-100); box-shadow:var(--modalmi-shadow); }
 
-/* Cabecera de la columna derecha */
-.mm_colhdr{
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
+.modalmi-foot{
+  border-top:1px solid var(--modalmi-gray-200);
+  padding:12px 16px; background:#fff; display:flex; justify-content:flex-end; gap:10px;
 }
 
-/* ============ Lista fija ============ */
-.mm_list[data-fixed]{
-  border:1px solid var(--reg-gray-200); border-radius:14px;
-  background:#fff; padding:8px;
-  overflow-y:auto; height: clamp(300px, 56vh, 560px);
+/* ===== Body ===== */
+.modalmi-body{
+  display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px; height: 100%;
+  overflow: hidden;
 }
+.modalmi-col{ display:flex; flex-direction:column; gap:12px; min-height:0; }
 
-/* ============ Items ============ */
-.mm_item{
+/* Subbar (en ambas columnas para alinear las cajas) */
+.modalmi-subbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  min-height:44px; /* asegura misma altura en ambos lados */
+}
+.modalmi-subbar-spacer{ width:320px; height:38px; } /* "fantasma" para igualar la barra de búsqueda */
+.modalmi-subtitle{ margin:0; font-weight:800; color:var(--modalmi-dark); }
+
+/* ===== Buscador ===== */
+.modalmi-search{
+  position: relative;
+  display:flex; align-items:center;
+  border:1px solid var(--modalmi-gray-200);
+  border-radius:14px; background:#fff;
+  transition: var(--modalmi-trans);
+}
+.modalmi-search input{
+  border:none; outline:none; flex:1;
+  padding:10px 40px 10px 12px;
+  font-size:.95rem;
+  background: transparent;
+  height:38px;
+}
+.modalmi-search:focus-within{
+  border-color: color-mix(in srgb, var(--modalmi-accent-2) 45%, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--modalmi-accent-2) 18%, #fff);
+}
+.modalmi-search--compact{
+  min-width:260px;
+  flex: 0 1 340px;
+}
+.modalmi-search-ico{
+  position:absolute; right:6px; top:50%; transform: translateY(-50%);
+  width:28px; height:28px; display:grid; place-items:center;
+  border:none; background:transparent; border-radius:8px;
+  color: var(--modalmi-gray-400);
+  cursor: pointer; transition: var(--modalmi-trans);
+}
+.modalmi-search-ico:hover{ color: var(--modalmi-accent-2); background: var(--modalmi-gray-50); }
+.modalmi-search-ico:focus-visible{ outline:0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--modalmi-accent-2) 22%, #fff); }
+.modalmi-search.is-filled .modalmi-search-ico{ color: var(--modalmi-accent-2); }
+
+/* ===== Grid con scroll interno ===== */
+.modalmi-grid[data-fixed]{
+  border:1px solid var(--modalmi-gray-200);
+  border-radius:16px; background:var(--modalmi-bg-soft);
+  padding:12px;
+  overflow:auto;
+  display:grid; gap:12px;         /* mayor separación entre tarjetas */
+}
+.modalmi-sentinel{ grid-column:1/-1; padding:8px; text-align:center; color:#64748B; font-size:.9rem; }
+
+/* ===== Tarjeta ===== */
+.modalmi-card{
   position:relative;
-  display:flex; align-items:center; gap:12px;
-  background:#fff; border:1px solid var(--reg-gray-200);
-  border-radius:14px; padding:12px 12px; margin:8px 2px;
-  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
-  box-shadow: var(--reg-shadow-sm);
-  min-height:68px;      /* debe coincidir con ROW_HEIGHT */
+  display:grid;
+  grid-template-columns:40px 1fr auto;  /* más ancho para el avatar / checkbox */
+  align-items:center;
+  background:#fff;
+  border:1px solid var(--modalmi-gray-200);
+  border-radius:var(--modalmi-radius);
+  padding:12px 12px 12px 16px;          /* más padding izquierdo para despegar de la banda */
+  transition:var(--modalmi-trans);
+  gap: 12px; /* Añadido: margen entre elementos internos */
 }
-.mm_item:hover{ box-shadow: var(--reg-shadow-md); }
-
-/* Banda vertical izquierda (verde/roja) */
-.mm_flag{
-  position:absolute; left:8px; top:8px; bottom:8px; width:4px;
-  border-radius:8px;
+.modalmi-card:hover{
+  border-color: color-mix(in srgb, var(--modalmi-accent-2) 25%, #fff);
+  box-shadow: var(--modalmi-shadow);
 }
-.mm_item.status-active .mm_flag{ background: var(--reg-success); }
-.mm_item.status-inactive .mm_flag{ background: var(--reg-danger); }
+.modalmi-card::before{
+  content:""; position:absolute; left:10px; top:10px; bottom:10px; width:4px; border-radius:3px; background:transparent;
+}
+.modalmi-card.is-active::before{ background:var(--modalmi-ok); }
+.modalmi-card.is-inactive::before{ background:var(--modalmi-off); }
 
-/* Versión "selectable" (lista derecha) */
-.mm_item.sel{ align-items:center; padding-left:28px; }
-.mm_item.sel.checked{ box-shadow:0 0 0 2px rgba(183,28,28,.20) inset; } /* reg-primary alpha */
-
-/* Avatar para miembros actuales */
-.mm_avatar{
-  width:36px; height:36px; border-radius:999px;
-  display:grid; place-items:center;
-  font-weight:700; color: var(--reg-primary);
-  background:#FFF5F5;                 /* pill suave rojo */
-  border:1px solid rgba(183,28,28,.25); /* reg-primary con alpha */
-  flex:0 0 auto;
+/* Avatar */
+.modalmi-avatar{
+  width:36px; height:36px; border-radius:999px; display:grid; place-items:center;
+  background: color-mix(in srgb, var(--modalmi-accent) 12%, #fff);
+  color: var(--modalmi-accent);
+  border:1px solid color-mix(in srgb, var(--modalmi-accent) 24%, #fff);
+  font-size:14px; font-weight:800; text-transform: uppercase; letter-spacing: .2px; line-height: 1;
+  margin-left: 4px; /* Añadido: margen a la izquierda del avatar */
 }
 
-/* Contenido */
-.mm_main{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-.mm_name{ color: var(--reg-dark); line-height:1.2; }
-.mm_meta{ color: var(--reg-gray-600); }
+/* Checklist */
+.modalmi-checkslot{
+  width:28px; height:28px; border-radius:8px; display:grid; place-items:center;
+  border:2px solid var(--modalmi-gray-200); color:var(--modalmi-accent-2);
+  background:#fff; transition:var(--modalmi-trans);
+  margin-left: 6px; /* Añadido: margen a la izquierda del checkbox */
+}
+.modalmi-selectable input{ position:absolute; inset:0; opacity:0; pointer-events:none; }
+.modalmi-selectable.is-checked .modalmi-checkslot{
+  border-color: var(--modalmi-accent-2);
+  background: var(--modalmi-accent-2);
+  color:#fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--modalmi-accent-2) 20%, #fff);
+}
+.modalmi-checkslot::before{ content:""; }
+.modalmi-selectable.is-checked .modalmi-checkslot::before{
+  content:"✓"; font-size:16px; font-weight:900; line-height:1;
+}
 
-/* Badges */
-.mm_badge{
-  display:inline-block; padding:2px 8px; border-radius:999px;
-  font-size:11px; line-height:1.2; width:max-content;
+/* Info */
+.modalmi-info{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.modalmi-name-row{ display:flex; align-items:center; gap:8px; min-width:0; }
+.modalmi-status-dot{ display:none; }
+.modalmi-name{
+  font-weight:700; color:var(--modalmi-dark); line-height:1.2;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  letter-spacing:.1px; font-size: var(--modalmi-fsz-name);
 }
-.mm_badge.danger{
-  background:#FEE2E2;
-  color:#B91C1C;
-  border:1px solid #FECACA;
+.modalmi-meta{
+  display:flex; gap:10px; flex-wrap:wrap;
+  color:#475569; font-size: var(--modalmi-fsz-meta);
 }
+.modalmi-dni strong{ font-weight:700; }
+.modalmi-badge{
+  padding:2px 8px; border-radius:999px; font-weight:800; font-size:.8rem;
+}
+.modalmi-badge.danger{ background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA; }
 
 /* Botón eliminar */
-.mm_actions{ margin-left:auto; }
-.mm_actions button{
-  border:1px solid rgba(211,47,47,.35);  /* reg-danger con alpha */
-  color: var(--reg-danger); background:#fff;
-  border-radius:10px; padding:8px 10px; cursor:pointer;
-  transition: var(--reg-transition);
+.modalmi-remove{
+  align-self:flex-start; border:1px solid #fecaca; color:#dc2626; background:white;
+  border-radius:10px; padding:6px 8px; cursor:pointer; transition:var(--modalmi-trans);
 }
-.mm_actions button:hover{ background:#FEE2E2; }
+.modalmi-remove:hover{ background:#fee2e2; }
 
-/* Vacíos */
-.mm_empty{ text-align:center; color: var(--reg-gray-600); padding:18px; }
-
-/* ============ Buscador pill (más chico) ============ */
-.mm_search{
-  position:relative;
-  flex:0 0 320px;
-  max-width:100%;
-}
-.mm_search input{
-  width:100%; height:38px;
-  padding:0 42px 0 12px;
-  background:#fff; border:1px solid var(--reg-gray-200); border-radius:999px;
-  outline:none; color:#111827;
-  transition: var(--reg-transition);
-}
-.mm_search input:focus{
-  border-color: var(--reg-primary-light);
-  box-shadow:0 0 0 3px rgba(229,57,53,.20); /* reg-primary-light con alpha */
-}
-.mm_search_icon{
-  position:absolute; right:12px; top:50%; transform:translateY(-50%);
-  opacity:.7; pointer-events:none;
+/* Empty */
+.modalmi-empty{
+  text-align:center; color:#475569; padding:16px; grid-column:1/-1;
+  border-radius:12px; background:#fff; border:1px dashed var(--modalmi-gray-200);
 }
 
-/* Responsive: si no entra, que salte abajo el buscador */
-@media (max-width: 900px){
-  .mm_colhdr{ flex-wrap:wrap; }
-  .mm_search{ flex:1 1 100%; }
+/* Botones footer */
+.modalmi-btn{
+  border-radius:12px; padding:9px 12px; cursor:pointer; transition:var(--modalmi-trans);
+  display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:.92rem;
+}
+.modalmi-btn.modalmi-ghost{ border:1px solid var(--modalmi-gray-200); background:#fff; }
+.modalmi-btn.modalmi-ghost:hover{ background:var(--modalmi-gray-100); }
+.modalmi-btn.modalmi-solid{
+  border:none; color:#fff;
+  background: linear-gradient(135deg, var(--modalmi-accent-2), color-mix(in srgb, var(--modalmi-accent-2) 85%, #000));
+  box-shadow: var(--reg-shadow-sm, 0 1px 3px rgba(0,0,0,.05));
+}
+.modalmi-btn.modalmi-solid:hover{ transform:translateY(-1px); box-shadow:var(--modalmi-shadow); }
+.modalmi-btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+/* Skeleton */
+.modalmi-skel-card{
+  display:grid; grid-template-columns:36px 1fr; gap:12px; align-items:center;
+  background:#fff; border:1px solid var(--modalmi-gray-200);
+  border-radius:var(--modalmi-radius); padding:10px 12px; overflow:hidden;
+}
+.modalmi-skel-avatar{ width:32px; height:32px; border-radius:999px; background:var(--modalmi-gray-100); }
+.modalmi-skel-lines{ display:flex; flex-direction:column; gap:8px; }
+.modalmi-skel-line{ height:10px; border-radius:6px; background: var(--modalmi-gray-100); position:relative; overflow:hidden; }
+.modalmi-skel-line.long{ width:85%; }
+.modalmi-skel-line.short{ width:60%; }
+@keyframes modalmi-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.modalmi-skel-line::after{
+  content:""; position:absolute; inset:0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,.06), transparent);
+  animation: modalmi-shimmer .9s linear infinite;
 }
 
-/* ============ Checkbox custom ============ */
-.mm_check{
-  -webkit-appearance:none; appearance:none;
-  width:26px; height:26px; margin-top:2px;
-  border:2px solid var(--reg-gray-200); border-radius:8px; background:#fff;
-  display:inline-grid; place-items:center; cursor:pointer; flex:0 0 auto;
-  transition:border-color .15s ease, background .15s ease;
-}
-.mm_check:checked{
-  border-color: var(--reg-primary); background: var(--reg-primary);
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath fill='white' d='M6.2 11.2a1 1 0 0 1-1.4 0L.9 7.3A1 1 0 1 1 2.3 6l3 3 8.3-8.3a1 1 0 1 1 1.4 1.4L6.2 11.2z'/%3E%3C/svg%3E");
-  background-repeat:no-repeat; background-position:center; background-size:14px 14px;
+/* Cascada */
+@keyframes modalmi-fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.modalmi-cascade{ animation: modalmi-fadeUp .36s ease-out both; animation-delay: calc(var(--mi-cascade-i) * 40ms); }
+
+/* Responsive */
+@media (max-width:980px){
+  .modalmi-body{ grid-template-columns:1fr; }
+  .modalmi-search--compact{ flex:1 1 100%; min-width:0; }
+  .modalmi-subbar-spacer{ display:none; }
 }
 
-/* ============ Botones ============ */
-.mm_btn{
-  border-radius:12px; padding:11px 16px; cursor:pointer; font-weight:600;
-  transition: var(--reg-transition);
-}
-.mm_btn.ghost{
-  border:1px solid var(--reg-gray-200); background:#fff; color:#111827;
-}
-.mm_btn.ghost:hover{ background: var(--reg-gray-100); }
-.mm_btn.solid{
-  border:none; background: var(--reg-primary); color:#fff;
-  box-shadow: 0 8px 22px rgba(183,28,28,.25); /* reg-primary alpha */
-}
-.mm_btn.solid:hover{
-  background: var(--reg-primary-dark);
-}
-.mm_btn.solid:disabled{
-  background: var(--reg-primary-light); box-shadow:none; cursor:not-allowed; opacity:.85;
-}
+/* Appear */
+@keyframes modalmi-overlay-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes modalmi-modal-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-/* Scrollbar sutil (WebKit) */
-.mm_list[data-fixed]::-webkit-scrollbar{ height:8px; width:10px; }
-.mm_list[data-fixed]::-webkit-scrollbar-thumb{ background: var(--reg-gray-200); border-radius:10px; }
-.mm_list[data-fixed]::-webkit-scrollbar-thumb:hover{ background: var(--reg-gray-300); }
+/* ===== Modal de confirmación (famdel) ===== */
+@keyframes famdel-fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes famdel-pop { from { transform: translateY(4px); opacity: .98 } to { transform: translateY(0); opacity: 1 } }
+
+.famdel-modal-overlay{
+  position: fixed; inset: 0; background-color: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+  display:flex; justify-content:center; align-items:center; z-index:1001; animation: famdel-fadeIn .2s ease-out;
+  padding:20px; box-sizing:border-box;
+}
+.famdel-modal-container{
+  background:#fff; border-radius:16px; width:90%; max-width:420px; padding:24px;
+  box-shadow: var(--reg-shadow-xl); text-align:center; position:relative;
+  border-top:4px solid transparent; animation: famdel-pop .18s ease-out; box-sizing:border-box;
+}
+.famdel-modal--danger{ border-top-color: var(--reg-danger); }
+.famdel-modal__icon{ font-size:2.2rem; color: var(--reg-danger); margin-bottom:.8rem; }
+.famdel-modal-title{ font-size:1.2rem; font-weight:700; color: var(--reg-dark); margin-bottom:10px; line-height:1.4; }
+.famdel-modal-title--danger{ color: var(--reg-danger); }
+.famdel-modal-text{ font-size:.95rem; color: var(--modalmi-gray-400); margin-bottom:12px; line-height:1.5; }
+.famdel-modal-buttons{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.famdel-btn{ padding:.6rem 1rem; border-radius:10px; font-weight:700; font-size:.9rem; cursor:pointer; transition:var(--reg-trans); flex:1; max-width:160px; min-width:110px; border:1px solid transparent; box-sizing:border-box; }
+.famdel-btn--ghost{ background:#fff; color:#374151; border-color:#CBD5E1; }
+.famdel-btn--ghost:hover{ background:#F1F5F9; transform:translateY(-2px); box-shadow:0 10px 18px rgba(0,0,0,.12); }
+.famdel-btn--solid-danger{ background: var(--reg-danger); color:#fff; border-color: var(--reg-danger); }
+.famdel-btn--solid-danger:hover{ filter:brightness(.95); transform:translateY(-2px); box-shadow:0 10px 18px rgba(211,47,47,.2); }
+@media (max-width:360px){
+  .famdel-modal-container{ padding:20px; }
+  .famdel-modal__icon{ font-size:2rem; }
+  .famdel-modal-title{ font-size:1.1rem; }
+  .famdel-modal-text{ font-size:.88rem; }
+  .famdel-btn{ padding:.5rem .8rem; font-size:.85rem; min-width:96px; }
+}

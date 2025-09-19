@@ -1292,7 +1292,7 @@ const Alumnos = () => {
 
             {/* ➕ Botón Familias */}
             <button
-              className="alu-alumno-button alu-hover-effect"
+              className="alu-alumno-button alu-hover-effect alu-btn-familias"
               onClick={() => navigate('/familias')}
               aria-label="Familias"
               title="Familias"
@@ -1300,6 +1300,7 @@ const Alumnos = () => {
               <FaUsers className="alu-alumno-icon-button" />
               <p>Familias</p>
             </button>
+
 
             <button
               className="alu-alumno-button alu-hover-effect alu-btn-baja-nav"
