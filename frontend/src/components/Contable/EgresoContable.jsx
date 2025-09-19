@@ -160,7 +160,6 @@ export default function EgresoContable() {
   /* ========= Exportar “Excel” (CSV UTF-8 con BOM) ========= */
   const csvEscape = (value) => {
     const s = String(value ?? "");
-    // Doble comillas para escapar comillas internas
     const escaped = s.replace(/"/g, '""');
     return `"${escaped}"`;
   };
@@ -172,15 +171,14 @@ export default function EgresoContable() {
     }
 
     const headers = ["Fecha","Categoría","Descripción","Medio","Monto"];
-    const sep = ";"; // Ideal para región es-AR (Excel espera ; por coma decimal)
+    const sep = ";"; // región es-AR (Excel espera ; por coma decimal)
 
     const rows = egresos.map((e) => [
       e.fecha || "",
       e.categoria || "",
       e.descripcion || "",
       e.medio_nombre || e.medio_pago || "",
-      // Exportar el número como valor “crudo” (sin separador de miles) para que Excel lo tome como número
-      Number(e.monto || 0).toString().replace(".", ",") // cambiar punto por coma decimal
+      Number(e.monto || 0).toString().replace(".", ","),
     ]);
 
     const csvLines = [
@@ -188,7 +186,6 @@ export default function EgresoContable() {
       ...rows.map((r) => r.map(csvEscape).join(sep)),
     ];
 
-    // BOM para que Excel reconozca UTF-8 y muestre bien acentos
     const bom = "\uFEFF";
     const csvContent = bom + csvLines.join("\r\n");
 
@@ -282,7 +279,20 @@ export default function EgresoContable() {
         </header>
 
         <div className="ec_table__wrap">
-          <div className="gt_table gt_cols-6" role="table" aria-label="Listado de egresos">
+          {/* Overlay SOLO para la tabla */}
+          {loadingEgr && (
+            <div className="ec_table_loader" role="status" aria-live="polite" aria-label="Cargando egresos">
+              <div className="ec_spinner" />
+              <span>Cargando…</span>
+            </div>
+          )}
+
+          <div
+            className="gt_table gt_cols-6"
+            role="table"
+            aria-label="Listado de egresos"
+            aria-busy={loadingEgr ? "true" : "false"}
+          >
             <div className="gt_header" role="row">
               <div className="gt_cell h" role="columnheader">Fecha</div>
               <div className="gt_cell h" role="columnheader">Categoría</div>
@@ -329,14 +339,6 @@ export default function EgresoContable() {
           </div>
         </div>
       </section>
-
-      {/* Loader */}
-      {loadingEgr && (
-        <div className="ec_loader">
-          <div className="ec_spinner" />
-          <span>Cargando…</span>
-        </div>
-      )}
 
       {/* Modales */}
       <ContableEgresoModal

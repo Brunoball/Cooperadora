@@ -155,3 +155,48 @@
 @media (max-width:1024px){
   .gt_table{ min-width:640px; }
 }
+
+/* El wrapper de la tabla debe ser relativo para posicionar el overlay */
+.ec_table__wrap{
+  position: relative;
+  width: 100%;
+  overflow-x: auto; /* ya lo tenías, lo dejo para contexto */
+}
+
+/* Overlay que cubre SOLO la tabla */
+.ec_table_loader{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.65);
+  backdrop-filter: saturate(180%) blur(2px);
+  z-index: 2;
+  border-radius: 12px; /* acompaña las tarjetas redondeadas */
+  font-weight: 800;
+  color: #4338ca;
+}
+
+/* Reutilizamos tu spinner */
+.ec_spinner{
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid #dbeafe;
+  border-top-color: var(--primary);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+/* Cuando está cargando, atenuamos el contenido de la tabla */
+.gt_table[aria-busy="true"]{
+  opacity: .55;
+  filter: saturate(.8);
+  pointer-events: none; /* evita clicks durante la carga */
+}
+
+/* (Opcional) si querés que el overlay no tape el header de la card: 
+   cambiá el overlay a que arranque debajo del header: */
+.ec_card .ec_table__wrap{ margin-top: 8px; }
+.ec_card .ec_table_loader{ top: 0; bottom: 0; left: 0; right: 0; }

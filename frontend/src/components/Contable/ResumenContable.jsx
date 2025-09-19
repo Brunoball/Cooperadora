@@ -344,14 +344,14 @@ export default function ResumenContable() {
                   onClick={() => setChartTab("anual")}
                   type="button"
                 >
-                  Composición anual
+                  Resumen  anual
                 </button>
                 <button
                   className={`rc_mtab ${chartTab === "mensual" ? "active" : ""}`}
                   onClick={() => setChartTab("mensual")}
                   type="button"
                 >
-                  Serie mensual
+                  Resumen  mensual
                 </button>
               </div>
             </header>

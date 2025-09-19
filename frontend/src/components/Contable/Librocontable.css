@@ -86,7 +86,7 @@
 
 /* ======= HEADER ======= */
 .lc_header {
-  padding: 18px var(--page-pad);
+  padding: 16px var(--page-pad);
   display: flex;
   flex-wrap: wrap;
   align-items: center;

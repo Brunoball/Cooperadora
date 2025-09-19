@@ -1,5 +1,5 @@
 // src/components/Contable/IngresosContable.jsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSearch,
@@ -8,6 +8,12 @@ import {
   faBars,
   faPlus,
   faTableList,
+  faCalendarDays,
+  faCreditCard,
+  faUser,
+  faFileLines,
+  faDollarSign,
+  faFloppyDisk,
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import "./IngresosContable.css";
@@ -28,7 +34,57 @@ const fmtMonto = (n) =>
     maximumFractionDigits: 0,
   }).format(Number(n || 0));
 
-/* ========= Modal de Ingreso (tabla ingresos) ========= */
+/* ===== helpers export (versión robusta) ===== */
+function toCSV(rows, headers) {
+  const esc = (v) => {
+    const s = String(v ?? "");
+    const needs = /[",\n;]/.test(s);
+    const withQ = s.replace(/"/g, '""');
+    return needs ? `"${withQ}"` : withQ;
+  };
+  const head = headers.map(esc).join(",");
+  const body = rows.map((r) => headers.map((h) => esc(r[h])).join(",")).join("\n");
+  // BOM para que Excel abra UTF-8 con acentos correctamente
+  return `\uFEFF${head}\n${body}`;
+}
+
+async function exportToExcelLike({ workbookName, sheetName, rows }) {
+  const safeDownload = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000); // revocar luego para no interrumpir descarga
+  };
+
+  if (!rows || !rows.length) return;
+
+  // Intentar XLSX
+  try {
+    // Asegurate de tener: npm i xlsx
+    const maybe = await import("xlsx");
+    const XLSX = maybe.default || maybe;
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName || "Datos");
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    safeDownload(blob, `${workbookName}.xlsx`);
+    return;
+  } catch (e) {
+    // Fallback a CSV si no está xlsx o falla el import
+  }
+
+  const headers = Object.keys(rows[0] || {});
+  const csv = toCSV(rows, headers);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  safeDownload(blob, `${workbookName}.csv`);
+}
+
+/* ========= Modal de Ingreso ========= */
 function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -38,6 +94,8 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
     importe: "",
     id_medio_pago: medios?.[0]?.id || "",
   });
+
+  const dateRef = useRef(null);
 
   useEffect(() => {
     setForm((f) => ({
@@ -90,50 +148,136 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
   if (!open) return null;
   return (
     <div className="ing-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ingModalTitle">
-      <div className="ing-modal">
-        <div className="ing-modal__head">
-          <h3 id="ingModalTitle">Registrar ingreso</h3>
-          <button className="ghost-btn" onClick={onClose} aria-label="Cerrar">✕</button>
+      <div className="ing-modal ing-modal--elev">
+        {/* HEAD */}
+        <div className="ing-modal__head gradient--brand-red">
+          <div className="ing-modal__title">
+            <div className="ing-modal__badge">
+              <FontAwesomeIcon icon={faPlus} />
+            </div>
+            <h3 id="ingModalTitle">Registrar ingreso</h3>
+          </div>
+          <button className="ghost-btn ghost-btn--light" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
+        {/* BODY */}
         <form className="ing-modal__body" onSubmit={submit}>
           <div className="grid2">
-            <div className="field">
+            {/* Fecha: click en TODO el control abre el calendario */}
+            <div className="field field--icon field--date">
               <label>Fecha</label>
-              <input type="date" value={form.fecha} onChange={onChange("fecha")} />
+              <div
+                className="control control--clickable"
+                onMouseDown={(e) => {
+                  if (e.target !== dateRef.current) e.preventDefault();
+                  const el = dateRef.current;
+                  if (!el) return;
+                  if (typeof el.showPicker === "function") {
+                    try { el.showPicker(); return; } catch {}
+                  }
+                  el.focus();
+                  el.click();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    const el = dateRef.current;
+                    if (!el) return;
+                    if (typeof el.showPicker === "function") {
+                      try { el.showPicker(); return; } catch {}
+                    }
+                    el.focus();
+                    el.click();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="Abrir selector de fecha"
+              >
+                <span className="i">
+                  <FontAwesomeIcon icon={faCalendarDays} />
+                </span>
+                <input
+                  ref={dateRef}
+                  type="date"
+                  value={form.fecha}
+                  onChange={onChange("fecha")}
+                  onMouseDown={(e) => {
+                    if (dateRef.current?.showPicker) {
+                      e.preventDefault(); // deja que el wrapper haga el gesto
+                    }
+                  }}
+                />
+              </div>
             </div>
-            <div className="field">
+
+            <div className="field field--icon">
               <label>Medio de pago</label>
-              <select value={form.id_medio_pago} onChange={onChange("id_medio_pago")}>
-                {Array.isArray(medios) && medios.length ? (
-                  medios.map(mp => <option key={mp.id} value={mp.id}>{mp.nombre}</option>)
-                ) : (
-                  <option value="">(sin medios)</option>
-                )}
-              </select>
+              <div className="control">
+                <span className="i">
+                  <FontAwesomeIcon icon={faCreditCard} />
+                </span>
+                <select value={form.id_medio_pago} onChange={onChange("id_medio_pago")}>
+                  {Array.isArray(medios) && medios.length ? (
+                    medios.map(mp => <option key={mp.id} value={mp.id}>{mp.nombre}</option>)
+                  ) : (
+                    <option value="">(sin medios)</option>
+                  )}
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="field">
+          <div className="field field--icon">
             <label>Denominación</label>
-            <input type="text" placeholder="Ej: GAMBOGGI ALEXANDER" value={form.denominacion} onChange={onChange("denominacion")} />
+            <div className="control">
+              <span className="i">
+                <FontAwesomeIcon icon={faUser} />
+              </span>
+              <input
+                type="text"
+                placeholder="Ej: GAMBOGGI ALEXANDER"
+                value={form.denominacion}
+                onChange={onChange("denominacion")}
+              />
+            </div>
           </div>
 
-          <div className="field">
+          <div className="field field--icon">
             <label>Descripción</label>
-            <input type="text" placeholder="Ej: INTERNADO, ALQ. CARTEL" value={form.descripcion} onChange={onChange("descripcion")} />
+            <div className="control">
+              <span className="i">
+                <FontAwesomeIcon icon={faFileLines} />
+              </span>
+              <input
+                type="text"
+                placeholder="Ej: INTERNADO, ALQ. CARTEL"
+                value={form.descripcion}
+                onChange={onChange("descripcion")}
+              />
+            </div>
           </div>
 
-          <div className="field">
+          <div className="field field--icon">
             <label>Importe (ARS)</label>
-            <input inputMode="decimal" placeholder="0" value={form.importe} onChange={onChange("importe")} />
+            <div className="control">
+              <span className="i">
+                <FontAwesomeIcon icon={faDollarSign} />
+              </span>
+              <input
+                inputMode="decimal"
+                placeholder="0"
+                value={form.importe}
+                onChange={onChange("importe")}
+              />
+            </div>
           </div>
 
+          {/* FOOT */}
           <div className="ing-modal__foot">
             <button type="button" className="ghost-btn" onClick={onClose}>Cancelar</button>
-            {/* Cambio solicitado: mismo estilo que "Añadir nuevo" */}
             <button type="submit" className="btn sm solid" disabled={saving}>
-              <FontAwesomeIcon icon={faPlus} />
+              <FontAwesomeIcon icon={faFloppyDisk} />
               <span>{saving ? "Guardando…" : "Guardar ingreso"}</span>
             </button>
           </div>
@@ -289,19 +433,54 @@ export default function IngresosContable() {
 
   const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
 
+  /* ===== Export handler ===== */
+  const onExport = async () => {
+    const isAlu = innerTab === "alumnos";
+    const base = isAlu ? filasFiltradasAlu : filasFiltradasIng;
+    if (!base.length) {
+      alert("No hay datos para exportar.");
+      return;
+    }
+    let rows;
+    if (isAlu) {
+      rows = base.map((r) => ({
+        Fecha: r.fecha,
+        Alumno: r.alumno,
+        Categoría: r.categoria,
+        Monto: r.monto,
+        "Mes pagado": r.mesPagado,
+      }));
+    } else {
+      rows = base.map((r) => ({
+        Fecha: r.fecha,
+        Denominación: r.denominacion,
+        Descripción: r.descripcion,
+        Importe: r.importe,
+        Medio: r.medio,
+      }));
+    }
+    const wbName = `Ingresos_${MESES[mes - 1]}_${anio}_${isAlu ? "Alumnos" : "Ingresos"}`;
+    await exportToExcelLike({ workbookName: wbName, sheetName: "Datos", rows });
+  };
+
   return (
     <div className="ing-wrap">
       <div className="ing-layout">
         {/* Sidebar */}
         <aside className={sideClass} aria-label="Barra lateral">
           <div className="ing-side__inner">
-            <div className="ing-side__row">
+            {/* Fila título + Detalle al lado */}
+            <div className="ing-side__row ing-side__row--top gradient--brand-red">
               <div className="ing-sectiontitle">
                 <FontAwesomeIcon icon={faFilter} />
                 <span>Filtros</span>
               </div>
+              <div className="ing-detail-inline">
+                <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
+              </div>
             </div>
 
+            {/* Año / Mes */}
             <div className="ing-fieldrow">
               <div className="ing-field">
                 <label htmlFor="anio">Año</label>
@@ -312,22 +491,29 @@ export default function IngresosContable() {
               <div className="ing-field">
                 <label htmlFor="mes">Mes</label>
                 <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-                  {MESES.map((m, i) => (<option key={m} value={i + 1}>{m}</option>))}
+                  {MESES.map((m, i) => (
+                    <option key={m} value={i + 1}>{m.toUpperCase()}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            <div className="ing-field">
-              <label htmlFor="buscar">Buscar</label>
-              <div className="ing-inputicon">
-                <FontAwesomeIcon icon={faSearch} />
-                <input
-                  id="buscar"
-                  type="text"
-                  placeholder="Escribe para filtrar…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
+            {/* Tarjetas KPI */}
+            <div className="ing-kpi-cards">
+              <div className="kpi-card">
+                <div className="kpi-card__icon" aria-hidden>$</div>
+                <div className="kpi-card__text">
+                  <div className="kpi-card__label">Total</div>
+                  <div className="kpi-card__value num">{fmtMonto(resumen.total)}</div>
+                </div>
+              </div>
+
+              <div className="kpi-card">
+                <div className="kpi-card__icon" aria-hidden>#</div>
+                <div className="kpi-card__text">
+                  <div className="kpi-card__label">Registros</div>
+                  <div className="kpi-card__value num">{resumen.cantidad}</div>
+                </div>
               </div>
             </div>
 
@@ -356,53 +542,63 @@ export default function IngresosContable() {
           </div>
         </aside>
 
-        {/* ======== CONTENIDO: HEAD + TOOLBAR + TABLA unidos ======== */}
+        {/* ======== CONTENIDO: HEAD + TOOLBAR + TABLA ======== */}
         <main className="ing-main">
-          <section className="ing-stack card">
-            {/* HEAD unido */}
+          <section className="ing-stack cards">
+            {/* HEAD */}
             <div className="ing-head ing-stack__head">
-              <div className="ing-head__left">
-                <h2 className="h2">Ingresos</h2>
-                <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
-              </div>
               <button className="ghost-btn show-on-mobile" onClick={() => setSideOpen(true)}>
                 <FontAwesomeIcon icon={faBars} /><span>Filtros</span>
               </button>
-
-              <div className="ing-kpis">
-                <div className="kpi"><span className="kpi-label">Total</span><span className="kpi-value num">{fmtMonto(resumen.total)}</span></div>
-                <div className="kpi"><span className="kpi-label">Registros</span><span className="kpi-value num">{resumen.cantidad}</span></div>
-                {/* Cambio solicitado: estilos de "Añadir nuevo" */}
-                <button className="btn sm solid" onClick={() => setOpenModal(true)} title="Registrar ingreso">
-                  <FontAwesomeIcon icon={faPlus} /><span>Registrar ingreso</span>
-                </button>
-              </div>
             </div>
 
-            {/* BODY unido: toolbar + tabla */}
+            {/* BODY: toolbar + tabla */}
             <div className="ing-page ing-stack__body">
-              {/* Tabs grandes: ahora visualmente iguales a ing-tabs/mini-tab */}
-              <div className="seg-tabs" role="tablist" aria-label="Vista de tabla">
-                <button
-                  role="tab"
-                  aria-selected={innerTab === "alumnos"}
-                  className={`seg-tab ${innerTab === "alumnos" ? "active" : ""}`}
-                  onClick={() => setInnerTab("alumnos")}
-                >
-                  Alumnos
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={innerTab === "manuales"}
-                  className={`seg-tab ${innerTab === "manuales" ? "active" : ""}`}
-                  onClick={() => setInnerTab("manuales")}
-                >
-                  Ingresos
-                </button>
+              {/* Tabs + acciones */}
+              <div className="seg-tabs gradient--brand-red" role="tablist" aria-label="Vista de tabla">
+                <div className="seg-tabs-left">
+                  <button
+                    role="tab"
+                    aria-selected={innerTab === "alumnos"}
+                    className={`seg-tab ${innerTab === "alumnos" ? "active" : ""}`}
+                    onClick={() => setInnerTab("alumnos")}
+                  >
+                    Alumnos
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={innerTab === "manuales"}
+                    className={`seg-tab ${innerTab === "manuales" ? "active" : ""}`}
+                    onClick={() => setInnerTab("manuales")}
+                  >
+                    Ingresos
+                  </button>
+                </div>
+
+                <div className="seg-tabs-actions">
+                  <div className="seg-search">
+                    <FontAwesomeIcon icon={faSearch} />
+                    <input
+                      type="text"
+                      placeholder="Buscar…"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      aria-label="Buscar en la tabla"
+                    />
+                  </div>
+
+                  <button className="btn sm ghost" onClick={onExport} title="Exportar Excel/CSV">
+                    <FontAwesomeIcon icon={faTableList} />
+                    <span>Exportar Excel</span>
+                  </button>
+                  <button className="btn sm solid" onClick={() => setOpenModal(true)} title="Registrar ingreso">
+                    <FontAwesomeIcon icon={faPlus} />
+                    <span>Registrar ingreso</span>
+                  </button>
+                </div>
               </div>
 
-
-
+              {/* Tablas */}
               {innerTab === "alumnos" ? (
                 <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
                   {cargando && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
@@ -419,7 +615,7 @@ export default function IngresosContable() {
                       <div className="c-alumno">
                         <div className="ing-alumno">
                           <div className="ing-alumno__text">
-                            <div className="strong">{f.alumno}</div>
+                            <div className="strong name-small">{f.alumno}</div>
                           </div>
                         </div>
                       </div>
@@ -446,7 +642,7 @@ export default function IngresosContable() {
                       <div className="c-alumno">
                         <div className="ing-alumno">
                           <div className="ing-alumno__text">
-                            <div className="strong">{f.denominacion}</div>
+                            <div className="strong name-small">{f.denominacion}</div>
                           </div>
                         </div>
                       </div>
