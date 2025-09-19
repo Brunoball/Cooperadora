@@ -373,13 +373,21 @@ const AlumnoBaja = () => {
 
   return (
     <div className="emp-baja-container">
-      {/* Franja superior */}
+      {/* Franja superior con botón Volver (derecha) */}
       <div className="emp-baja-glass">
         <div className="emp-baja-barra-superior">
           <div className="emp-baja-titulo-container">
             <h2 className="emp-baja-titulo">Alumnos Dados de Baja</h2>
           </div>
-          {/* (El botón "Volver" quedó en la barra inferior) */}
+
+          <button
+            className="emp-baja-nav-btn emp-baja-nav-btn--volver-top"
+            onClick={() => navigate("/alumnos")}
+            title="Volver"
+          >
+            <FaArrowLeft className="ico" />
+            <span>Volver</span>
+          </button>
         </div>
       </div>
 
@@ -429,9 +437,8 @@ const AlumnoBaja = () => {
               Mostrando <strong>{alumnosFiltrados.length}</strong> alumnos
             </div>
 
-            {/* === Acciones a la derecha: Exportar + Eliminar todos === */}
+            {/* Acciones derecha: Exportar + Eliminar todos */}
             <div className="emp-baja-acciones-derecha">
-              {/* Exportar visible a Excel: disponible para todos los roles */}
               <button
                 className="emp-baja-exportar"
                 title="Exportar lo visible a Excel (.xlsx)"
@@ -442,7 +449,6 @@ const AlumnoBaja = () => {
                 <span className="txt">Exportar Excel</span>
               </button>
 
-              {/* Ocultar "Eliminar todos" si es rol vista */}
               {!isVista && (
                 <button
                   className="emp-baja-eliminar-todos"
@@ -469,7 +475,7 @@ const AlumnoBaja = () => {
 
           <div className="emp-baja-tabla-body">
             {alumnosFiltrados.length === 0 ? (
-              <div className="emp-baja-sin-resultados">
+              <div className="emp-baja-sin-resultados emp-baja-sin-resultados--fill">
                 <FaUserCheck className="emp-baja-sin-icono" />
                 No hay alumnos dados de baja
               </div>
@@ -488,7 +494,6 @@ const AlumnoBaja = () => {
                   </div>
                   <div className="emp-baja-col-acciones">
                     <div className="emp-baja-iconos">
-                      {/* 🔒 Ocultar acciones en rol "vista" */}
                       {!isVista && (
                         <>
                           <FaUserCheck
@@ -519,7 +524,7 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Modal DAR ALTA (no se renderiza en rol vista) */}
+      {/* Modal DAR ALTA */}
       {!isVista && mostrarConfirmacionAlta && alumnoSeleccionado && (
         <div
           className="emp-baja-modal-overlay"
@@ -587,7 +592,7 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Modal ELIMINAR UNO (no se renderiza en rol vista) */}
+      {/* Modal ELIMINAR UNO */}
       {!isVista && mostrarConfirmacionEliminarUno && alumnoAEliminar && (
         <div
           className="emp-baja-modal-overlay"
@@ -636,7 +641,7 @@ const AlumnoBaja = () => {
         </div>
       )}
 
-      {/* Modal ELIMINAR TODOS (no se renderiza en rol vista) */}
+      {/* Modal ELIMINAR TODOS */}
       {!isVista && mostrarConfirmacionEliminarTodos && (
         <div
           className="emp-baja-modal-overlay"
@@ -678,21 +683,6 @@ const AlumnoBaja = () => {
           </div>
         </div>
       )}
-
-      {/* === Barra inferior fija (solo Volver) === */}
-      <div
-        className="emp-baja-bottombar"
-        role="toolbar"
-        aria-label="Acciones de navegación"
-      >
-        <button
-          className="emp-baja-nav-btn emp-baja-nav-btn--volver"
-          onClick={() => navigate("/alumnos")}
-        >
-          <FaArrowLeft className="ico" />
-          <span>Volver</span>
-        </button>
-      </div>
     </div>
   );
 };
