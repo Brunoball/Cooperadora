@@ -472,3 +472,36 @@ small { font-size: var(--fs-small); color: var(--muted); }
   pointer-events: none !important;
 }
 .lc_panel {border-radius: 0 !important;}
+/* ===== Invertir colores en hover para botones marcados con .btn-invert ===== */
+
+/* Caso general (fondo claro): ghost pasa a fondo = color del texto, texto = blanco */
+.btn.btn-invert.ghost:hover{
+  background: currentColor;
+  color: #fff;
+  border-color: currentColor;
+}
+
+/* Caso general: solid pasa a fondo blanco y texto al color principal */
+.btn.btn-invert.solid:hover{
+  background: #fff;
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 8px 18px rgba(37,99,235,.12);
+}
+
+/* Dentro de barras con fondo rojo (gradient--brand-red): 
+   - el ghost invierte a fondo blanco y texto rojo
+   - el solid invierte a fondo rojo y texto blanco
+*/
+.gradient--brand-red .btn.btn-invert.ghost:hover{
+  background: #fff;
+  color: var(--reg-primary);
+  border-color: #fff;
+}
+
+.gradient--brand-red .btn.btn-invert.solid:hover{
+  background: var(--reg-primary);
+  color: #fff;
+  border-color: var(--reg-primary);
+  box-shadow: 0 8px 18px rgba(184,28,28,.22);
+}

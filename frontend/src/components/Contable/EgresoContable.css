@@ -1,102 +1,175 @@
-/* ===========================
-   Egreso Contable - Estilo moderno (Grid, no <table>)
-   =========================== */
+/* src/components/Contable/EgresoContable.css */
 
-.ec_wrap{
-  --bg:#f5f7fb; --surface:#fff; --border:#e8ecf4; --text:#0f172a; --muted:#64748b;
-  --primary:#5b48f4; --primary-600:#4f46e5; --accent:#7ec8ff;
+/* ======= Paleta y base ======= */
+.eg_layout{
+  --red-700:#b91c1c; --red-600:#dc2626; --red-500:#ef4444; --red-400:#f87171;
+  --bg:#f6f7fb; --surface:#fff; --border:#e8ecf4; --text:#0f172a; --muted:#64748b;
+  --primary:#b91c1c; --primary-600:#991b1b; --accent:#fecaca;
   --ok:#10b981; --danger:#ef4444;
-  --r-lg:18px; --r-md:14px;
+  --r-xl:18px; --r-lg:16px; --r-md:12px;
   --shadow:0 10px 30px rgba(15,23,42,.08);
   --shadow-soft:0 6px 18px rgba(2,6,23,.06);
+  background:var(--bg);
 }
-.ec_wrap *{ box-sizing:border-box; }
+.eg_layout *{ box-sizing:border-box; }
 
-/* Cards */
-.card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow); }
+/* ======= Body two columns ======= */
+.eg_body{
+  display:grid; grid-template-columns: 340px 1fr; gap:16px; padding:16px;
+}
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow); }
 
-/* ===== Toolbar (grid) ===== */
-.ec_toolbar{
+/* ======= Sidebar (Filtros) ======= */
+.eg_filters{ padding:14px; }
+.eg_filters__title{
+  display:flex; align-items:center; gap:10px; margin:0 0 10px; color:var(--text);
+}
+.eg_filters__subtitle{
+  margin:14px 0 8px; font-size:14px; color:var(--text); font-weight:900;
+  display:flex; align-items:center; gap:10px;
+}
+.eg_filters .dot{
+  width:14px; height:14px; border-radius:50%;
+  background:linear-gradient(135deg, var(--red-500), var(--red-700));
+  display:inline-block;
+}
+
+/* Fila Año + Mes lado a lado */
+.eg_row{
   display:grid;
-  grid-template-columns: auto auto 220px 200px 1fr auto auto; 
-  /* Desde | Hasta | Categoría(sm) | Medio(sm) | spacer | KPI | Nuevo */
-  align-items:end;
-  gap:12px;
-  padding:12px;
-  margin-bottom:14px;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin-bottom:10px;
 }
 
-.ec_group{ min-width:200px; }
-.ec_group--sm{ min-width:160px; max-width:240px; }
-.ec_group--grow{ flex:1 1 280px; } /* por compatibilidad si lo usas en otro lado */
-
-.ec_label{
-  display:block; font-size:12px; font-weight:800; color:var(--muted);
-  margin:2px 0 6px;
+/* Campos */
+.eg_field{ display:flex; flex-direction:column; gap:6px; }
+.eg_field label{ font-size:12px; font-weight:900; color:var(--muted); }
+.eg_field select{
+  width:100%; border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+  background:#fff; color:#0f172a;
 }
+.eg_field select:focus{ outline:none; border-color:var(--red-600); box-shadow:0 0 0 4px rgba(220,38,38,.12); }
 
-.ec_input,.ec_select{
-  width:100%; background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; color:var(--text);
-  transition:border .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.ec_input:focus,.ec_select:focus{ outline:none; border-color:var(--primary-600); box-shadow:0 0 0 4px rgba(79,70,229,.12); }
-
-.ec_spacer{ width:100%; height:1px; } /* ocupa la columna flexible */
-
-.ec_actions{ display:flex; gap:10px; justify-content:flex-end; }
-
-/* ===== KPI compacto en toolbar ===== */
-.ec_kpis{ display:flex; gap:10px; }
-.ec_kpi{
+/* KPIs (Total / Registros) */
+.eg_stats{ display:grid; grid-template-columns:1fr; gap:10px; margin:8px 0 6px; }
+.eg_stat{
   display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center;
-  padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff;
-  box-shadow:var(--shadow-soft); min-width:210px;
+  padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; box-shadow:var(--shadow-soft);
 }
-.ec_kpi__icon{
-  width:48px; height:48px; border-radius:12px; display:grid; place-items:center; color:#fff;
+.eg_stat__icon{
+  width:48px; height:48px; border-radius:12px; display:grid; place-items:center; color:#fff; font-weight:900;
+  background:linear-gradient(135deg, var(--red-500), var(--red-700));
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);
-  background:linear-gradient(135deg,#ef4444,#fb7185);
-  font-weight:900;
 }
-.ec_kpi__label{ margin:0; font-size:12px; color:var(--muted); font-weight:700; }
-.ec_kpi__value{ margin:4px 0 0; font-size:18px; font-weight:900; }
+.eg_stat__label{ margin:0; font-size:12px; color:#64748b; font-weight:800; }
+.eg_stat__value{ margin:4px 0 0; font-size:18px; font-weight:900; }
 
-/* Buttons (utilitarios globales) */
-.btn{ appearance:none; border:0; cursor:pointer; display:inline-flex; align-items:center; gap:8px; font-weight:800;
-  border-radius:999px; padding:10px 14px; transition:transform .12s ease, box-shadow .16s ease, background .16s ease, color .16s ease; }
-.btn:active{ transform:translateY(0); }
-.btn--primary{ color:#fff; background:linear-gradient(135deg,var(--primary),var(--primary-600) 55%,var(--accent)); box-shadow:0 12px 24px rgba(91,72,244,.25); }
-.btn--primary:hover{ transform:translateY(-1px); }
-.btn--ghost{ background:#f1f4fb; color:var(--text); border:1px solid var(--border); }
-.btn--ghost:hover{ background:#fff; transform:translateY(-1px); }
+/* Categorías */
+.eg_cats{ display:flex; flex-direction:column; gap:10px; }
+.eg_cat{
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#fff; border:1px solid var(--border); border-radius:14px; padding:10px 12px;
+  text-align:left; cursor:pointer; transition:transform .12s ease, box-shadow .16s ease;
+}
+.eg_cat:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(2,6,23,.08); }
+.eg_cat.active{ outline:2px solid var(--red-400); box-shadow:0 0 0 4px rgba(248,113,113,.12) inset; }
+.eg_cat__left{ display:flex; flex-direction:column; }
+.eg_cat__count{ color:#64748b; }
+.eg_cat__value{ font-weight:900; }
+.eg_chip{
+  display:inline-block; padding:6px 10px; font-weight:800; font-size:12px; border-radius:999px;
+  background:#fff1f1; border:1px solid #ffe0e0; color:var(--primary-600);
+}
+.eg_empty_side{
+  text-align:center; color:#64748b; padding:10px; border:1px dashed var(--border); border-radius:12px;
+}
 
-/* ===== Lista / tabla ===== */
-.ec_card{ padding:12px; }
-.ec_card__header{ display:flex; align-items:center; justify-content:space-between; padding:6px 4px 10px; border-bottom:1px solid var(--border); margin:0 0 8px; }
-.ec_card__header h3{ margin:0; font-size:1rem; }
+/* ======= Contenido (tabla) ======= */
+.eg_content{ padding:12px; }
 
-/* Scroll si hay muchas columnas */
-.ec_table__wrap{ width:100%; overflow-x:auto; }
+/* === BANDA ROJA en el header de la caja === */
+.eg_content__header{
+  position:relative;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px;
+  padding:10px;
+  margin:0 0 8px;
+  border-bottom:0;
+  border-radius:14px;
+  z-index:0;
+}
+.eg_content__header::before{
+  content:"";
+  position:absolute; inset:0;
+  border-radius:14px;
+  background:linear-gradient(135deg, var(--red-600), var(--red-700));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+  z-index:-1;
+}
+.eg_content__header h3{ margin:0; font-size:1rem; color:#fff; }
 
-/* GRID TABLE */
+/* Acciones DENTRO del header de la caja */
+.eg_header_actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+.eg_content__header .eg_btn{
+  background:#fff; color:#7f1d1d; border:1px solid #fecaca;
+  border-radius:999px; padding:10px 14px; font-weight:800; display:inline-flex; align-items:center; gap:8px;
+  box-shadow:var(--shadow-soft);
+}
+.eg_content__header .eg_btn:hover{ background:#fff; transform:translateY(-1px); box-shadow:0 8px 18px rgba(2,6,23,.12); }
+.eg_content__header .eg_btn.eg_btn--primary-plain{
+  background:#fff; color:var(--primary-600); border-color:#fecaca; box-shadow:none;
+}
+
+/* 🔎 Buscador en línea (sigue siendo blanco) */
+.eg_search{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px; border-radius:999px;
+  border:1px solid var(--border);
+}
+.eg_search input{
+  border:0; background:transparent; outline:0; color:var(--text); width:16ch;
+}
+.eg_search input::placeholder{ color:#6b7280; }
+.eg_search--inline{ background:#fff; box-shadow:var(--shadow-soft); }
+.eg_search--inline:focus-within{ box-shadow:0 0 0 4px rgba(220,38,38,.10), var(--shadow-soft); border-color:#f1b3b3; }
+
+/* Wrapper tabla: sin scroll X */
+.ec_table__wrap{
+  position:relative;
+  width:100%;
+  overflow-x:hidden;
+  margin-top:8px;
+}
+
+/* Tabla grid - columnas compactas y flexibles */
 .gt_table{ --cols:auto; display:grid; gap:10px; }
-.gt_table.gt_cols-6{ --cols: 120px 180px minmax(280px,1.2fr) 150px 140px 160px; }
 
-.gt_header{ display:grid; grid-template-columns:var(--cols); }
-.gt_header .gt_cell.h{ font-size:.85rem; color:var(--muted); font-weight:900; padding:0 12px 8px; }
+/* 6 columnas */
+.gt_table.gt_cols-6{
+  /* Fecha | Cat | Desc (flex) | Medio | Monto | Acciones */
+  --cols: 96px 128px minmax(140px, 1fr) 120px 110px 120px;
+}
 
-.gt_row{
-  display:grid; grid-template-columns:var(--cols);
+.gt_headerd{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr; }
+.gt_headerd .gt_cell.h{ font-size:.85rem; color:#64748b; font-weight:900; padding:0 12px 8px; }
+
+.gt_rowd{
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;
   background:#fff; border:1px solid var(--border); border-radius:12px;
   box-shadow:var(--shadow-soft); align-items:center;
 }
-.gt_cell{ padding:14px 12px; }
+.gt_cell{ padding:14px 12px; min-width:0; }
 .gt_cell.right{ text-align:right; font-weight:800; }
 .gt_cell.center{ text-align:center; }
 
-.badge{ display:inline-block; padding:6px 10px; font-weight:800; font-size:12px; border-radius:999px; background:#f1f4fb; border:1px solid var(--border); color:var(--text); }
+.truncate{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.badge{
+  display:inline-block; padding:6px 10px; font-weight:800; font-size:12px; border-radius:999px;
+  background:#f1f4fb; border:1px solid var(--border); color:#0f172a;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
 
-/* Acciones */
 .row_actions{ display:flex; gap:8px; justify-content:center; }
 .icon_btn{
   width:34px; height:34px; border-radius:999px; display:grid; place-items:center;
@@ -110,93 +183,52 @@
 
 /* Vacío */
 .gt_empty{
-  text-align:center; color:var(--muted); padding:16px 8px;
+  text-align:center; color:#64748b; padding:16px 8px;
   border:1px dashed var(--border); border-radius:12px; background:#fafbff;
 }
 
-/* Loader */
-.ec_loader{ position:fixed; inset:0; background:rgba(245,247,251,.5); display:grid; place-items:center; gap:10px; font-weight:800; color:#4338ca; z-index:30; }
-.ec_spinner{ width:36px; height:36px; border-radius:50%; border:3px solid #dbeafe; border-top-color:var(--primary); animation:spin .8s linear infinite; }
+/* Loader SOLO tabla */
+.ec_table_loader{
+  position:absolute; inset:0; display:grid; place-items:center; gap:10px;
+  background:rgba(255,255,255,.65); backdrop-filter:saturate(180%) blur(2px);
+  z-index:2; border-radius:12px; font-weight:800; color:#7f1d1d;
+}
+.ec_spinner{
+  width:36px; height:36px; border-radius:50%; border:3px solid #fecaca; border-top-color:var(--primary); animation:spin .8s linear infinite;
+}
 @keyframes spin{ to{ transform:rotate(360deg); } }
+.gt_table[aria-busy="true"]{ opacity:.55; filter:saturate(.9); pointer-events:none; }
 
-/* ===== Modales (confirmación) ===== */
-.lc_modal_overlay{
-  position:fixed; inset:0; background:rgba(15,23,42,.45);
-  display:grid; place-items:center; z-index:40;
-}
-.lc_modal{
-  background:#fff; border:1px solid var(--border); border-radius:16px; width:min(520px, 92vw);
-  box-shadow:0 24px 48px rgba(2,6,23,.24);
-}
+/* ======= Modales confirm ======= */
+.lc_modal_overlay{ position:fixed; inset:0; background:rgba(15,23,42,.45); display:grid; place-items:center; z-index:40; }
+.lc_modal{ background:#fff; border:1px solid var(--border); border-radius:16px; width:min(520px,92vw); box-shadow:0 24px 48px rgba(2,6,23,.24); }
 .lc_modal_head{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
 .lc_modal_body{ padding:16px; color:#334155; }
 .lc_modal_footer{ padding:12px 16px 16px; display:flex; gap:10px; justify-content:flex-end; }
 .lc_icon{ appearance:none; background:transparent; border:0; font-size:20px; cursor:pointer; }
-.lc_btn{
-  appearance:none; border:1px solid var(--border); background:#f1f4fb; color:#0f172a;
-  padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer;
-}
+.lc_btn{ appearance:none; border:1px solid var(--border); background:#f1f4fb; color:#0f172a; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer; }
 .lc_btn:hover{ background:#fff; }
 .lc_btn.danger{ background:#fee2e2; border-color:#fecaca; color:#991b1b; }
 .lc_btn.danger:hover{ background:#fff1f1; }
 
-/* ===== Responsive ===== */
+/* ======= Responsive ======= */
 @media (max-width:1200px){
-  .ec_toolbar{
-    grid-template-columns: auto auto 1fr; /* fechas + resto apila */
-    grid-auto-rows: auto;
+  .eg_body{ grid-template-columns: 1fr; }
+  .eg_filters{ order:2; }
+  .eg_content{ order:1; }
+  .gt_table.gt_cols-6{
+    --cols: 88px 116px minmax(120px, 1fr) 108px 96px 108px;
   }
-  .ec_group--sm{ min-width:unset; }
-  .ec_spacer{ display:none; }
-  .ec_kpis{ grid-column: 1 / -1; }
-  .ec_actions{ grid-column: 1 / -1; justify-content:flex-start; }
+  .eg_search input{ width:14ch; }
 }
 
-@media (max-width:1024px){
-  .gt_table{ min-width:640px; }
+@media (max-width:980px){
+  .gt_table.gt_cols-6{
+    --cols: 80px 108px minmax(110px, 1fr) 100px 90px 100px;
+  }
+  .gt_cell{ padding:12px 10px; }
+  .eg_header_actions{ justify-content:stretch; }
+  .eg_content__header{ align-items:stretch; }
+  .eg_search{ flex:1 1 220px; }
+  .eg_search input{ width:100%; }
 }
-
-/* El wrapper de la tabla debe ser relativo para posicionar el overlay */
-.ec_table__wrap{
-  position: relative;
-  width: 100%;
-  overflow-x: auto; /* ya lo tenías, lo dejo para contexto */
-}
-
-/* Overlay que cubre SOLO la tabla */
-.ec_table_loader{
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  gap: 10px;
-  background: rgba(255,255,255,.65);
-  backdrop-filter: saturate(180%) blur(2px);
-  z-index: 2;
-  border-radius: 12px; /* acompaña las tarjetas redondeadas */
-  font-weight: 800;
-  color: #4338ca;
-}
-
-/* Reutilizamos tu spinner */
-.ec_spinner{
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 3px solid #dbeafe;
-  border-top-color: var(--primary);
-  animation: spin .8s linear infinite;
-}
-@keyframes spin{ to{ transform: rotate(360deg); } }
-
-/* Cuando está cargando, atenuamos el contenido de la tabla */
-.gt_table[aria-busy="true"]{
-  opacity: .55;
-  filter: saturate(.8);
-  pointer-events: none; /* evita clicks durante la carga */
-}
-
-/* (Opcional) si querés que el overlay no tape el header de la card: 
-   cambiá el overlay a que arranque debajo del header: */
-.ec_card .ec_table__wrap{ margin-top: 8px; }
-.ec_card .ec_table_loader{ top: 0; bottom: 0; left: 0; right: 0; }

@@ -7,13 +7,13 @@ import {
   faChartPie,
   faBars,
   faPlus,
-  faTableList,
   faCalendarDays,
   faCreditCard,
   faUser,
   faFileLines,
   faDollarSign,
   faFloppyDisk,
+  faFileExcel,
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import "./IngresosContable.css";
@@ -587,11 +587,22 @@ export default function IngresosContable() {
                     />
                   </div>
 
-                  <button className="btn sm ghost" onClick={onExport} title="Exportar Excel/CSV">
-                    <FontAwesomeIcon icon={faTableList} />
+                  {/* Botón Exportar Excel con inversión de colores en hover */}
+                  <button
+                    className="btn sm ghost btn-invert"
+                    onClick={onExport}
+                    title="Exportar Excel/CSV"
+                  >
+                    <FontAwesomeIcon icon={faFileExcel} />
                     <span>Exportar Excel</span>
                   </button>
-                  <button className="btn sm solid" onClick={() => setOpenModal(true)} title="Registrar ingreso">
+
+                  {/* Botón Registrar ingreso con inversión de colores en hover */}
+                  <button
+                    className="btn sm solid btn-invert"
+                    onClick={() => setOpenModal(true)}
+                    title="Registrar ingreso"
+                  >
                     <FontAwesomeIcon icon={faPlus} />
                     <span>Registrar ingreso</span>
                   </button>
