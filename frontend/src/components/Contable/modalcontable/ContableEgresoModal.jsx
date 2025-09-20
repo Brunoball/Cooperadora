@@ -10,6 +10,7 @@ const VALOR_OTRO = "__OTRO__";
 export default function ContableEgresoModal({ open, onClose, onSaved, editRow, notify }) {
   const [fecha, setFecha] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [numeroFactura, setNumeroFactura] = useState("");           // ⬅️ NUEVO
   const [descripcion, setDescripcion] = useState("");
 
   // mediosPago: [{id, nombre}]
@@ -77,6 +78,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     if (editRow) {
       setFecha(editRow.fecha || "");
       setCategoria(String(editRow.categoria || "").toUpperCase());
+      setNumeroFactura(String(editRow.numero_factura || ""));       // ⬅️ NUEVO
       setDescripcion(String(editRow.descripcion || "").toUpperCase());
 
       if (editRow.id_medio_pago) {
@@ -102,6 +104,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       const d = new Date();
       setFecha(d.toISOString().slice(0, 10));
       setCategoria("");
+      setNumeroFactura("");                                         // ⬅️ NUEVO
       setDescripcion("");
       setMedioId("");
       setMedioEsOtro(false);
@@ -144,7 +147,6 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
 
       if (!res.ok || !data.ok) throw new Error(data?.mensaje || "Error al subir el archivo");
 
-      // Ideal: backend devuelve absolute_url; si no, armamos con BASE_URL
       const finalUrl = data.absolute_url ? data.absolute_url : `${BASE_URL}/${data.relative_url}`;
       setComp(finalUrl);
       notify?.("exito", "Comprobante subido.");
@@ -172,7 +174,6 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     notify?.("advertencia", "Comprobante quitado.");
   };
 
-  // Abre visor
   const openComprobante = () => {
     if (!comp && !localPreview) return;
     setViewerOpen(true);
@@ -208,6 +209,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     const cur = {
       fecha,
       categoria: norm(categoria || "SIN CATEGORÍA"),
+      numero_factura: String(numeroFactura || ""),                   // ⬅️ NUEVO
       descripcion: norm(descripcion),
       id_medio_pago: Number(medioId || 0),
       monto: Number(monto || 0),
@@ -217,6 +219,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     const orig = {
       fecha: editRow.fecha || "",
       categoria: norm(editRow.categoria || "SIN CATEGORÍA"),
+      numero_factura: String(editRow.numero_factura || ""),          // ⬅️ NUEVO
       descripcion: norm(editRow.descripcion || ""),
       id_medio_pago: origIdMedio,
       monto: Number(editRow.monto || 0),
@@ -226,6 +229,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     return (
       cur.fecha === orig.fecha &&
       cur.categoria === orig.categoria &&
+      cur.numero_factura === orig.numero_factura &&                 // ⬅️ NUEVO
       cur.descripcion === orig.descripcion &&
       cur.id_medio_pago === orig.id_medio_pago &&
       cur.monto === orig.monto &&
@@ -240,13 +244,16 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       return;
     }
 
-    // ===== Validación amigable del MEDIO DE PAGO =====
     if (!medioEsOtro && !String(medioId || "").trim()) {
       notify?.("advertencia", "Seleccioná el medio de pago.");
       return;
     }
     if (medioEsOtro && !String(medioNuevo || "").trim()) {
       notify?.("advertencia", "Escribí el nuevo medio de pago.");
+      return;
+    }
+    if (numeroFactura && numeroFactura.length > 50) {
+      notify?.("advertencia", "El N° de factura no puede superar 50 caracteres.");
       return;
     }
 
@@ -274,6 +281,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       const payload = {
         fecha,
         categoria: (categoria || "SIN CATEGORÍA").toUpperCase(),
+        numero_factura: numeroFactura || null,                       // ⬅️ NUEVO
         descripcion: String(descripcion || "").toUpperCase(),
         id_medio_pago: Number(idMedio || 0),
         monto: Number(monto || 0),
@@ -296,13 +304,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       onSaved?.();
     } catch (e2) {
       console.error(e2);
-      const msg = String(e2?.message || "").toLowerCase();
-      // Mapeo de mensaje técnico del backend -> toast amigable
-      if (msg.includes("id_medio_pago o medio_pago requerido")) {
-        notify?.("advertencia", "Seleccioná el medio de pago.");
-      } else {
-        notify?.("error", e2.message || "Error al guardar el egreso.");
-      }
+      notify?.("error", e2.message || "Error al guardar el egreso.");
     } finally {
       setSaving(false);
     }
@@ -365,6 +367,16 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                 placeholder="SERVICIOS, INSUMOS, ETC."
               />
             </label>
+
+            <label>N° factura {/* ⬅️ NUEVO */}
+              <input
+                value={numeroFactura}
+                onChange={(e) => setNumeroFactura(e.target.value)}
+                placeholder="Ej.: A-0001-00123456"
+                maxLength={50}
+              />
+            </label>
+
             <label>Monto
               <input type="number" min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
             </label>
@@ -444,7 +456,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
         </form>
       </div>
 
-      {/* ===== Visor / Lightbox ===== */}
+      {/* Visor / Lightbox */}
       {viewerOpen && (
         <div
           className="lc_viewer_overlay"

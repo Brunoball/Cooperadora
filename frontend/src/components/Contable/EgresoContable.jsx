@@ -141,7 +141,7 @@ export default function EgresoContable() {
     [egresos]
   );
 
-  // Búsqueda local
+  // Búsqueda local (incluye N° factura)
   const egresosFiltrados = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return egresos;
@@ -149,6 +149,7 @@ export default function EgresoContable() {
       const src = [
         e.descripcion,
         e.categoria,
+        e.numero_factura,                   // ⬅️ búsqueda por N° factura
         e.medio_nombre || e.medio_pago,
         e.fecha,
       ].join(" ").toLowerCase();
@@ -217,11 +218,12 @@ export default function EgresoContable() {
   const exportarCSV = () => {
     const rows = egresosFiltrados;
     if (!rows.length) { addToast("advertencia", "No hay datos para exportar."); return; }
-    const headers = ["Fecha","Categoría","Descripción","Medio","Monto"];
+    const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto"]; // ⬅️ incluye N° Factura
     const sep = ";";
     const data = rows.map((e) => [
       e.fecha || "",
       e.categoria || "",
+      e.numero_factura || "", // ⬅️ exporta N° Factura
       e.descripcion || "",
       e.medio_nombre || e.medio_pago || "",
       Number(e.monto || 0).toString().replace(".", ","),
@@ -282,7 +284,7 @@ export default function EgresoContable() {
             </div>
           </div>
 
-          {/* ✅ Solo KPI Total (se quitó Registros) */}
+          {/* KPI Total */}
           <div className="eg_stats">
             <div className="eg_stat">
               <div className="eg_stat__icon">$</div>
@@ -293,7 +295,7 @@ export default function EgresoContable() {
             </div>
           </div>
 
-          {/* ✅ Medio de pago arriba de Categorías */}
+          {/* Medio de pago arriba de Categorías */}
           <div className="eg_field" style={{ marginTop: 8 }}>
             <label>Medio de pago</label>
             <select value={fMedio} onChange={(e) => setFMedio(e.target.value)}>
@@ -343,7 +345,7 @@ export default function EgresoContable() {
           <header className="eg_content__header">
             <h3>Egresos — {MESES[month]} {year}</h3>
 
-            {/* === Acciones dentro del header de la caja === */}
+            {/* Acciones dentro del header */}
             <div className="eg_header_actions">
               {/* 🔎 Buscador */}
               <div className="eg_search eg_search--inline">
@@ -376,7 +378,7 @@ export default function EgresoContable() {
             )}
 
             <div
-              className="gt_table gt_cols-6"
+              className="gt_table gt_cols-7"   // ⬅️ se suma una columna para N° Factura
               role="table"
               aria-label="Listado de egresos"
               aria-busy={loadingEgr ? "true" : "false"}
@@ -384,6 +386,7 @@ export default function EgresoContable() {
               <div className="gt_headerd" role="row">
                 <div className="gt_cell h" role="columnheader">Fecha</div>
                 <div className="gt_cell h" role="columnheader">Categoría</div>
+                <div className="gt_cell h" role="columnheader">N° Factura</div>{/* ⬅️ NUEVO */}
                 <div className="gt_cell h" role="columnheader">Descripción</div>
                 <div className="gt_cell h" role="columnheader">Medio</div>
                 <div className="gt_cell h right" role="columnheader">Monto</div>
@@ -396,6 +399,7 @@ export default function EgresoContable() {
                   <div className="gt_rowd" role="row" key={e.id_egreso}>
                     <div className="gt_cell" role="cell">{e.fecha}</div>
                     <div className="gt_cell" role="cell"><span className="badge">{e.categoria || "-"}</span></div>
+                    <div className="gt_cell" role="cell">{e.numero_factura || "-"}</div>{/* ⬅️ NUEVO */}
                     <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
                     <div className="gt_cell" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
                     <div className="gt_cell right" role="cell">${Number(e.monto || 0).toLocaleString("es-AR")}</div>

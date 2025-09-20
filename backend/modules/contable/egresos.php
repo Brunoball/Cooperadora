@@ -4,7 +4,7 @@
  *
  * Métodos por parámetro 'op':
  *  - op=list   [GET]    ?start=YYYY-MM-DD&end=YYYY-MM-DD&categoria=...&medio=...
- *  - op=create [POST]   JSON: {fecha, categoria, descripcion, id_medio_pago, monto, comprobante_url?}
+ *  - op=create [POST]   JSON: {fecha, categoria, numero_factura?, descripcion, id_medio_pago|medio_pago, monto, comprobante_url?}
  *  - op=update [POST]   JSON: {id_egreso, ...}
  *  - op=delete [POST]   JSON: {id_egreso}
  *
@@ -55,24 +55,32 @@ try {
   /* -------- CREATE -------- */
   if ($op === 'create') {
     $in = json_input();
+
     $fecha       = $in['fecha'] ?? date('Y-m-d');
     $categoria   = strtoupper(trim((string)($in['categoria'] ?? 'SIN CATEGORÍA')));
+    $numFac      = trim((string)($in['numero_factura'] ?? ''));
+    if ($numFac === '') $numFac = null;                 // nullable
+    if ($numFac !== null && mb_strlen($numFac) > 50) {
+      throw new InvalidArgumentException('El número de factura no puede superar 50 caracteres.');
+    }
     $descripcion = strtoupper(trim((string)($in['descripcion'] ?? '')));
     $idMedio     = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
     $monto       = (int)($in['monto'] ?? 0);
     $comp        = $in['comprobante_url'] ?? null;
 
-    $sql = "INSERT INTO egresos (fecha, categoria, descripcion, id_medio_pago, monto, comprobante_url)
-            VALUES (:fecha,:categoria,:descripcion,:idmedio,:monto,:comp)";
+    $sql = "INSERT INTO egresos (fecha, categoria, numero_factura, descripcion, id_medio_pago, monto, comprobante_url)
+            VALUES (:fecha,:categoria,:numfac,:descripcion,:idmedio,:monto,:comp)";
     $st = $pdo->prepare($sql);
     $st->execute([
-      ':fecha'      => $fecha,
-      ':categoria'  => $categoria,
-      ':descripcion'=> ($descripcion !== '' ? $descripcion : null),
-      ':idmedio'    => $idMedio,
-      ':monto'      => $monto,
-      ':comp'       => $comp,
+      ':fecha'       => $fecha,
+      ':categoria'   => $categoria,
+      ':numfac'      => $numFac,
+      ':descripcion' => ($descripcion !== '' ? $descripcion : null),
+      ':idmedio'     => $idMedio,
+      ':monto'       => $monto,
+      ':comp'        => $comp,
     ]);
+
     echo json_encode(['exito'=>true, 'id_egreso' => (int)$pdo->lastInsertId()], JSON_UNESCAPED_UNICODE);
     exit;
   }
@@ -85,25 +93,37 @@ try {
 
     $fecha       = $in['fecha'] ?? date('Y-m-d');
     $categoria   = strtoupper(trim((string)($in['categoria'] ?? 'SIN CATEGORÍA')));
+    $numFac      = trim((string)($in['numero_factura'] ?? ''));
+    if ($numFac === '') $numFac = null;
+    if ($numFac !== null && mb_strlen($numFac) > 50) {
+      throw new InvalidArgumentException('El número de factura no puede superar 50 caracteres.');
+    }
     $descripcion = strtoupper(trim((string)($in['descripcion'] ?? '')));
     $idMedio     = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
     $monto       = (int)($in['monto'] ?? 0);
     $comp        = $in['comprobante_url'] ?? null;
 
     $sql = "UPDATE egresos SET
-              fecha=:fecha, categoria=:categoria, descripcion=:descripcion,
-              id_medio_pago=:idmedio, monto=:monto, comprobante_url=:comp
+              fecha=:fecha,
+              categoria=:categoria,
+              numero_factura=:numfac,
+              descripcion=:descripcion,
+              id_medio_pago=:idmedio,
+              monto=:monto,
+              comprobante_url=:comp
             WHERE id_egreso=:id";
     $st = $pdo->prepare($sql);
     $st->execute([
-      ':id'         => $id,
-      ':fecha'      => $fecha,
-      ':categoria'  => $categoria,
-      ':descripcion'=> ($descripcion !== '' ? $descripcion : null),
-      ':idmedio'    => $idMedio,
-      ':monto'      => $monto,
-      ':comp'       => $comp,
+      ':id'          => $id,
+      ':fecha'       => $fecha,
+      ':categoria'   => $categoria,
+      ':numfac'      => $numFac,
+      ':descripcion' => ($descripcion !== '' ? $descripcion : null),
+      ':idmedio'     => $idMedio,
+      ':monto'       => $monto,
+      ':comp'        => $comp,
     ]);
+
     echo json_encode(['exito'=>true], JSON_UNESCAPED_UNICODE);
     exit;
   }
