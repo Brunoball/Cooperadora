@@ -27,7 +27,7 @@ import ModalPagos from './modales/ModalPagos';
 import ModalCodigoBarras from './modales/ModalCodigoBarras';
 import ModalEliminarPago from './modales/ModalEliminarPago';
 import ModalEliminarCondonacion from './modales/ModalEliminarCondonacion';
-import ModalMesCuotas from './modales/ModalMesCuotas'; // ⬅️ NUEVO: modal de selección de meses
+import ModalMesCuotas from './modales/ModalMesCuotas'; // ⬅️ selector de meses
 import { imprimirRecibos } from '../../utils/imprimirRecibos';
 import { imprimirRecibosExternos } from '../../utils/imprimirRecibosExternos';
 import Toast from '../Global/Toast';
@@ -45,7 +45,7 @@ const Cuotas = () => {
 
   const [busqueda, setBusqueda] = useState('');
 
-  // Estado de pestaña (deudor | pagado | condonado)
+  // pestaña: deudor | pagado | condonado
   const [estadoPagoSeleccionado, setEstadoPagoSeleccionado] = useState('deudor');
 
   // Año **de pago**
@@ -79,7 +79,7 @@ const Cuotas = () => {
 
   const [socioParaPagar, setSocioParaPagar] = useState(null);
 
-  // ⬇️ NUEVO: estado para abrir el selector de meses (impresión)
+  // Selector de meses (impresión)
   const [mostrarModalMesCuotas, setMostrarModalMesCuotas] = useState(false);
   const [socioParaImprimir, setSocioParaImprimir] = useState(null);
 
@@ -105,7 +105,7 @@ const Cuotas = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Helpers de lectura (según estructura recibida del backend)
+  // Helpers de lectura (según estructura del backend)
   const getIdMesFromCuota = (c) => c?.id_mes ?? c?.id_periodo ?? '';
   const getNombreCuota = (c) => c?.nombre ?? '';
   const getDomicilioCuota = (c) => c?.domicilio ?? '';
@@ -122,7 +122,7 @@ const Cuotas = () => {
   const getNombreCategoria = (id) => (categorias.find(c => String(c.id) === String(id))?.nombre) || '';
   const getNombreMes = (id) => (meses.find(m => String(m.id) === String(id))?.nombre) || id;
 
-  // === Traer años que tienen pagos ===
+  // === Años con pagos ===
   const fetchAniosPago = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`);
@@ -274,7 +274,7 @@ const Cuotas = () => {
     triggerCascade();
   }, [triggerCascade]);
 
-  // === Imprimir TODOS: separar internos/externos ===
+  // Imprimir TODOS: separar internos/externos
   const handleImprimirTodos = async () => {
     if (!categoriaSeleccionada) {
       setToastTipo('advertencia');
@@ -325,14 +325,14 @@ const Cuotas = () => {
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
 
-  // === Imprimir UNO: ahora abre el ModalMesCuotas ===
+  // Imprimir UNO → ModalMesCuotas
   const handlePrintClick = useCallback((item) => {
     setSocioParaImprimir(item);
     setMostrarModalMesCuotas(true);
   }, []);
 
   const handleExportExcel = useCallback(() => {
-    if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione un mes'); setToastVisible(true); return; }
+    if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione mes'); setToastVisible(true); return; }
     if (loading) { setToastTipo('advertencia'); setToastMensaje('Esperando datos...'); setToastVisible(true); return; }
     if (cuotasFiltradas.length === 0) { setToastTipo('advertencia'); setToastMensaje('No hay datos'); setToastVisible(true); return; }
     setToastTipo('exito'); setToastMensaje('Exportación a Excel iniciada'); setToastVisible(true);
@@ -568,7 +568,7 @@ const Cuotas = () => {
         />
       )}
 
-      {/* ⬇️ NUEVO: Modal para seleccionar meses y elegir Imprimir/PDF */}
+      {/* Modal para seleccionar meses e Imprimir/PDF */}
       {mostrarModalMesCuotas && socioParaImprimir && (
         <ModalMesCuotas
           socio={socioParaImprimir}
@@ -598,101 +598,111 @@ const Cuotas = () => {
                 </div>
               </div>
 
+              {/* === FILTROS EN BLOQUES PROFESIONALES === */}
               <div className="gcuotas-select-container">
-                {/* AÑO DE PAGO */}
-                <div className="gcuotas-input-group">
-                  <label htmlFor="anioPago" className="gcuotas-input-label">
-                    <FontAwesomeIcon icon={faFilter} /> Año de pago
-                  </label>
-                  <select
-                    id="anioPago"
-                    value={anioPagoSeleccionado}
-                    onChange={onChangeAnioPago}
-                    className="gcuotas-dropdown"
-                    disabled={loading || aniosPago.length === 0}
-                  >
-                    {aniosPago.length === 0 ? (
-                      <option value="">Sin pagos</option>
-                    ) : (
-                      aniosPago.map((a, idx) => (
+
+                {/* Bloque 1: Año de pago + Mes (dos columnas en desktop) */}
+                <div className="gcuotas-input-row">
+                  <div className="gcuotas-input-group">
+                    <label htmlFor="anioPago" className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> Año de pago
+                    </label>
+                    <select
+                      id="anioPago"
+                      value={anioPagoSeleccionado}
+                      onChange={onChangeAnioPago}
+                      className="gcuotas-dropdown"
+                      disabled={loading || aniosPago.length === 0}
+                    >
+                      {aniosPago.length === 0 ? (
+                        <option value="">Sin pagos</option>
+                      ) : (
+                        aniosPago.map((a, idx) => (
+                          <option key={idx} value={a.id}>{a.nombre}</option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="gcuotas-input-group">
+                    <label htmlFor="meses" className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faCalendarAlt} /> Mes
+                    </label>
+                    <select
+                      id="meses"
+                      value={mesSeleccionado}
+                      onChange={onChangeMes}
+                      className="gcuotas-dropdown"
+                      disabled={loading}
+                    >
+                      <option value="">Mes</option>
+                      {meses.map((mes, idx) => (
+                        <option key={idx} value={mes.id}>{mes.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Bloque 2: Categoría (full) */}
+                <div className="gcuotas-input-row gcuotas-input-row--single">
+                  <div className="gcuotas-input-group">
+                    <label htmlFor="categoria" className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> Categoría
+                    </label>
+                    <select
+                      id="categoria"
+                      value={categoriaSeleccionada}
+                      onChange={onChangeCategoria}
+                      className="gcuotas-dropdown"
+                      disabled={loading}
+                    >
+                      <option value="">Todas</option>
+                      {categorias.map((c, idx) => (
+                        <option key={idx} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Bloque 3: Año lectivo + División (⟵ pedido: lado a lado) */}
+                <div className="gcuotas-input-row">
+                  <div className="gcuotas-input-group">
+                    <label htmlFor="anioLectivo" className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> Año
+                    </label>
+                    <select
+                      id="anioLectivo"
+                      value={anioLectivoSeleccionado}
+                      onChange={onChangeAnioLect}
+                      className="gcuotas-dropdown"
+                      disabled={loading}
+                    >
+                      <option value="">Todos</option>
+                      {aniosLectivos.map((a, idx) => (
                         <option key={idx} value={a.id}>{a.nombre}</option>
-                      ))
-                    )}
-                  </select>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="gcuotas-input-group">
+                    <label htmlFor="division" className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> División
+                    </label>
+                    <select
+                      id="division"
+                      value={divisionSeleccionada}
+                      onChange={onChangeDivision}
+                      className="gcuotas-dropdown"
+                      disabled={loading}
+                    >
+                      <option value="">Todas</option>
+                      {divisiones.map((d, idx) => (
+                        <option key={idx} value={d.id}>{d.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="gcuotas-input-group">
-                  <label htmlFor="meses" className="gcuotas-input-label">
-                    <FontAwesomeIcon icon={faCalendarAlt} /> Mes
-                  </label>
-                  <select
-                    id="meses"
-                    value={mesSeleccionado}
-                    onChange={onChangeMes}
-                    className="gcuotas-dropdown"
-                    disabled={loading}
-                  >
-                    <option value="">Seleccione un Mes</option>
-                    {meses.map((mes, idx) => (
-                      <option key={idx} value={mes.id}>{mes.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="gcuotas-input-group">
-                  <label htmlFor="categoria" className="gcuotas-input-label">
-                    <FontAwesomeIcon icon={faFilter} /> Categoría
-                  </label>
-                  <select
-                    id="categoria"
-                    value={categoriaSeleccionada}
-                    onChange={onChangeCategoria}
-                    className="gcuotas-dropdown"
-                    disabled={loading}
-                  >
-                    <option value="">Todas</option>
-                    {categorias.map((c, idx) => (
-                      <option key={idx} value={c.id}>{c.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Año lectivo */}
-                <div className="gcuotas-input-group">
-                  <label htmlFor="anioLectivo" className="gcuotas-input-label">
-                    <FontAwesomeIcon icon={faFilter} /> Año
-                  </label>
-                  <select
-                    id="anioLectivo"
-                    value={anioLectivoSeleccionado}
-                    onChange={onChangeAnioLect}
-                    className="gcuotas-dropdown"
-                    disabled={loading}
-                  >
-                    <option value="">Todos</option>
-                    {aniosLectivos.map((a, idx) => (
-                      <option key={idx} value={a.id}>{a.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="gcuotas-input-group">
-                  <label htmlFor="division" className="gcuotas-input-label">
-                    <FontAwesomeIcon icon={faFilter} /> División
-                  </label>
-                  <select
-                    id="division"
-                    value={divisionSeleccionada}
-                    onChange={onChangeDivision}
-                    className="gcuotas-dropdown"
-                    disabled={loading}
-                  >
-                    <option value="">Todas</option>
-                    {divisiones.map((d, idx) => (
-                      <option key={idx} value={d.id}>{d.nombre}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
 

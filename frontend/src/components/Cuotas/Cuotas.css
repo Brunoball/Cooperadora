@@ -1,14 +1,12 @@
 /* -----------------------------------------------------------
-   ====== :root ROJO (sin degradados) — variables con prefijo reg- ======
-   (Se agregan como tema + puente de alias para tu UI)
-   ----------------------------------------------------------- */
+   :root ROJO (paleta REG) + puente de alias
+----------------------------------------------------------- */
 :root {
-  /* 🎨 PALETA ROJA */
-  --reg-primary: #B71C1C;          /* Rojo principal */
-  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
-  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
+  --reg-primary: #B71C1C;
+  --reg-primary-light: #E53935;
+  --reg-primary-dark: #7F0000;
 
-  --reg-secondary: #1D428A;        /* Azul secundario opcional */
+  --reg-secondary: #1D428A;
   --reg-accent: #C62828;
 
   --reg-success: #10B981;
@@ -40,16 +38,12 @@
   --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* -----------------------------------------------------------
-   BRIDGE A REG: reasigna tokens existentes a la paleta --reg-
-   (Activa el tema rojo sin cambiar tus clases)
-   ----------------------------------------------------------- */
+/* Puente a variables usadas en tu UI */
 :root {
-  /* —— Primario ahora es ROJO —— */
   --primary-400: var(--reg-primary-light);
   --primary-500: var(--reg-primary);
   --primary-600: var(--reg-primary);
-  --primary-700: var(--reg-primary); /* principal */
+  --primary-700: var(--reg-primary);
   --primary-800: var(--reg-primary-dark);
   --primary-900: var(--reg-primary-dark);
 
@@ -59,12 +53,8 @@
   --primary-dark: var(--reg-primary-dark);
   --primary-accent: var(--reg-accent);
 
-  /* —— Secundario: azul corporativo de reg —— */
   --secondary-color: var(--reg-secondary);
-  /* mantenemos el scale original de secondary-*** para compatibilidad */
-  /* si deseas, puedes ajustar --secondary-600 = #163372 (más oscuro) */
 
-  /* —— Semánticos —— */
   --success-500: var(--reg-success);
   --success-600: #0a9a72;
   --success-700: #077255;
@@ -74,7 +64,6 @@
   --danger-500: var(--reg-danger);
   --danger-600: #b91c1c;
 
-  /* —— Neutros / superficies desde reg —— */
   --gray-100: var(--reg-gray-100);
   --gray-200: var(--reg-gray-200);
   --gray-300: var(--reg-gray-300);
@@ -93,18 +82,15 @@
   --text-secondary: var(--reg-gray-600);
   --text-muted: var(--reg-gray-400);
 
-  /* —— Gradientes rebasados a rojo —— */
   --gradient-primary: linear-gradient(135deg, var(--reg-primary-light), var(--reg-primary));
   --gradient-hero: linear-gradient(135deg, var(--reg-primary-light) 0%, var(--reg-primary) 55%, var(--reg-primary-dark) 100%);
   --gradient-background: linear-gradient(135deg, var(--reg-gray-100) 30%, var(--reg-primary) 70%);
   --gradient-accent: linear-gradient(90deg, var(--reg-primary), var(--reg-primary-dark));
 
-  /* —— Botones custom —— */
   --btn-agregar-alumno: var(--reg-primary-dark);
   --btn-exportar-excel: var(--reg-gray-400);
   --btn-dados-baja: var(--reg-accent);
 
-  /* —— Radios / sombras / transiciones desde reg —— */
   --border-radius: var(--reg-border-radius);
   --border-radius-lg: var(--reg-border-radius-lg);
   --border-radius-xl: var(--reg-border-radius-xl);
@@ -115,12 +101,43 @@
   --shadow-xl: var(--reg-shadow-xl);
 
   --transition-smooth: var(--reg-transition);
+  --border-focus: #93c5fd;
+
+  /* Secundarios */
+  --secondary-50:  #eef2ff;
+  --secondary-100: #e0e7ff;
+  --secondary-200: #c7d2fe;
+  --secondary-300: #a5b4fc;
+  --secondary-400: #818cf8;
+  --secondary-500: #6366f1;
+  --secondary-600: #4f46e5;
+  --secondary-700: #4338ca;
+  --secondary-800: #3730a3;
+  --secondary-900: #312e81;
+  --secondary-hover: #163372;
+
+  /* Primarios extra */
+  --primary-50:  #fef2f2;
+  --primary-100: #fee2e2;
+  --primary-200: #fecaca;
+  --primary-300: #fca5a5;
+  --primary-800: #991b1b;
+  --primary-900: #7f1d1d;
+
+  --success-100: #d1fae5;
+  --danger-50:  #fef2f2;
+  --danger-100: #fee2e2;
+
+  --text-on-primary: #ffffff;
+
+  /* Timing para cascada */
+  --cascade-duration: .35s;
+  --cascade-ease: cubic-bezier(.24,.8,.25,1);
 }
 
-
-/* =========================== 
-   Estilos generales 
-   =========================== */
+/* ===========================
+   Layout general
+=========================== */
 
 .gcuotas-container {
   display: flex;
@@ -142,8 +159,8 @@
 }
 
 /* ===========================
-   Sección izquierda - Filtros y controles
-   =========================== */
+   Izquierda: Filtros + acciones
+=========================== */
 
 .gcuotas-left-section {
   flex: 0 0 340px;
@@ -154,6 +171,7 @@
   padding: 0;
   overflow: hidden;
   position: relative;
+  border-right: 1px solid var(--border-color);
 }
 
 .gcuotas-header-section {
@@ -173,10 +191,11 @@
 .gcuotas-title {
   margin: 0;
   font-size: 1.65rem;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 12px;
+  letter-spacing: .2px;
 }
 
 .gcuotas-title-icon { font-size: 20px; color: var(--text-on-primary); }
@@ -188,28 +207,22 @@
   padding-top: 6px;
 }
 
+/* Tarjetas */
 .gcuotas-filter-card, .gcuotas-tabs-card, .gcuotas-actions-card {
   background: var(--surface-color);
   border-radius: var(--border-radius);
-
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
-  margin-top: 12px;
+  margin: 12px 12px 0 12px;
 }
 
-/* ====== FILTROS: Header ====== */
-.gcuotas-filter-header {
+.gcuotas-filter-header,
+.gcuotas-actions-header {
   padding: 12px 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.gcuotas-filter-header-left {
-  display: inline-flex;
   align-items: center;
   gap: 8px;
 }
@@ -219,35 +232,46 @@
   font-size: 14px;
 }
 
-/* Contenido de selects */
+/* ======= FILTROS ======= */
 .gcuotas-select-container {
   padding: 14px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+/* NUEVO: fila de filtros (dos columnas en desktop) */
+.gcuotas-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+.gcuotas-input-row--single {
+  grid-template-columns: 1fr;
 }
 
 .gcuotas-input-group {
-  min-width: 280px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .gcuotas-input-label {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 6px;
+  letter-spacing: .2px;
+  text-transform: uppercase;
 }
 
 .gcuotas-dropdown {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 10px;
   background-color: var(--surface-color);
   cursor: pointer;
   font-size: 14px;
@@ -258,6 +282,7 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 10px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02);
 }
 .gcuotas-dropdown:hover { border-color: var(--gray-300); }
 .gcuotas-dropdown:focus {
@@ -266,15 +291,15 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
 }
 
-/* Tabs */
+/* ======= TABS ======= */
+.gcuotas-tabs-card { margin-top: 12px; }
 .gcuotas-tabs-header {
   padding: 12px 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: none;
 }
 
 .gcuotas-tab-container {
@@ -288,12 +313,12 @@
 
 .gcuotas-tab-button {
   flex: 1;
-  padding: 12px;
+  padding: 12px 10px;
   border: none;
   margin: 0;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 13.5px;
   transition: var(--transition-smooth);
   display: flex;
   align-items: center;
@@ -301,28 +326,20 @@
   background-color: transparent;
   color: var(--text-secondary);
   border-radius: 0;
+  gap: 8px;
+  letter-spacing: .2px;
 }
 .gcuotas-active-tab { background-color: var(--secondary-color); color: var(--text-on-primary); }
 
 .gcuotas-tab-badge {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.22);
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 800;
 }
 
-/* Botones */
-.gcuotas-actions-header {
-  padding: 12px 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+/* ======= ACCIONES ======= */
 .gcuotas-buttons-container {
   padding: 14px;
   display: flex;
@@ -337,12 +354,13 @@
   gap: 8px;
   padding: 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
   transition: var(--transition-smooth);
   width: 100%;
+  letter-spacing: .2px;
 }
 
 .gcuotas-button-back { background-color: var(--primary-color); color: var(--text-on-primary); border: 1px solid var(--primary-hover); }
@@ -351,20 +369,14 @@
 .gcuotas-button-export { background-color: var(--success-500); color: var(--text-on-primary); }
 .gcuotas-button-export:hover { background-color: var(--success-600); }
 
-.gcuotas-button-print { background-color: var(--gray-200); color: var(--gray-800); border: 1px solid var(--gray-300); }
-.gcuotas-button-print:hover { background-color: var(--gray-300); border-color: var(--gray-400); }
-
 .gcuotas-button-print-all { background-color: var(--secondary-color); color: var(--text-on-primary); }
 .gcuotas-button-print-all:hover { background-color: var(--secondary-hover); }
 
-.gcuotas-button-loading {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
+.gcuotas-button-loading { opacity: 0.7; cursor: not-allowed; }
 
 /* ===========================
-   Sección derecha - Tabla / listado
-   =========================== */
+   Derecha: Tabla
+=========================== */
 
 .gcuotas-right-section {
   flex: 1;
@@ -388,31 +400,30 @@
 .gcuotas-table-header h3 {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: .2px;
 }
 
 .gcuotas-periodo-seleccionado {
-  font-weight: normal;
+  font-weight: 600;
   font-size: 16px;
   color: var(--text-secondary);
 }
 
-.gcuotas-input-group.gcuotas-search-group {
-  max-width: 520px;
-}
+.gcuotas-input-group.gcuotas-search-group { max-width: 520px; }
 
 .gcuotas-search-integrated { position: relative; width: 100%; }
 .gcuotas-search-integrated input {
   width: 100%;
   padding: 8px 10px 8px 34px;
-  height: 36px;
-  border-radius: 6px;
+  height: 38px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text-primary);
   background-color: var(--surface-color);
   box-sizing: border-box;
@@ -446,26 +457,17 @@
   align-items: center;
   gap: 6px;
   min-width: 90px;
+  font-weight: 700;
 }
 
-.gcuotas-table-container {
-  flex: 1;
-  padding: 0 24px;
-}
+/* Contenedor tabla */
+.gcuotas-table-container { flex: 1; padding: 0 24px; }
 
-/* ===========================
-   Tabla virtual (desktop)
-   =========================== */
+/* Tabla virtual */
+.gcuotas-virtual-tables { width: 100%; font-size: 15px; }
 
-.gcuotas-virtual-tables {
-  width: 100%;
-  font-size: 15px;
-
-}
-
-/* Header - centrado + compensación de scrollbar */
 .gcuotas-virtual-header {
-  font-weight: 500;
+  font-weight: 700;
   display: flex;
   background-color: var(--surface-secondary);
   color: var(--text-primary);
@@ -476,7 +478,7 @@
 }
 .gcuotas-virtual-header .gcuotas-virtual-cell {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 800;
   text-align: center;
   display: flex;
   align-items: center;
@@ -486,7 +488,7 @@
   white-space: nowrap;
 }
 
-/* Celdas: MENOS padding lateral y TODO CENTRADO */
+/* Celdas centradas */
 .gcuotas-virtual-cell {
   padding: 8px 10px;
   text-align: center;
@@ -499,31 +501,24 @@
   white-space: nowrap;
   line-height: 1.35;
   cursor: pointer;
-  font-size: .8rem;
+  font-size: .85rem;
   color: var(--text-primary);
 }
 
-/* Ajustes de ancho para las 7 columnas */
+/* Anchos columnas */
 .gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(1),
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(1) { width: 33%;  }
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(1) {  justify-content:  flex-start;}
 .gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(2),
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(2) { width: 9%; }
-
 .gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(3),
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(3) { width: 25%; }
-
 .gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(4),
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(4) { width: 10%; }
-
 .gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(5),
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(5) { width: 12%; }
-
 .gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(6),
 .gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(6) { width: 12%; }
-
-.gcuotas-virtual-header > .gcuotas-virtual-cell:nth-child(7),
-.gcuotas-virtual-row > .gcuotas-virtual-cell:nth-child(7) { width: 12%; }
 
 /* Filas */
 .gcuotas-virtual-row {
@@ -531,13 +526,13 @@
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-smooth);
   background: var(--surface-color);
 }
 .gcuotas-virtual-row:hover { background-color: var(--secondary-50); }
 .gcuotas-selected-row { background-color: var(--secondary-100) !important; }
 
-/* Botones inline de la fila */
+/* Botones inline */
 .gcuotas-actions-inline { display: flex; gap: 8px; align-items: center; justify-content: center; }
 
 .gcuotas-action-button {
@@ -545,7 +540,7 @@
   border: none;
   cursor: pointer;
   padding: 6px;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: var(--transition-smooth);
   font-size: 16px;
   line-height: 1;
@@ -567,7 +562,7 @@
 .gcuotas-print-button { color: var(--secondary-color); }
 .gcuotas-print-button:hover { background-color: var(--secondary-color); color: var(--text-on-primary); }
 
-/* === Estética específica del botón Eliminar (X) === */
+/* Eliminar */
 .gcuotas-deletepay-button {
   color: var(--danger-600);
   border: 1px solid transparent;
@@ -587,21 +582,18 @@
   outline-offset: 2px;
 }
 
-/* Iconos de ordenamiento */
+/* Ordenamiento */
 .gcuotas-sort-icon {
-  margin-left: 5px;
+  margin-left: 6px;
   font-size: 12px;
-  opacity: 0.5;
+  opacity: 0.55;
 }
-
 .gcuotas-sort-active {
   opacity: 1;
   color: var(--secondary-color);
 }
 
-/* ===========================
-   Mensajes / Estados
-   =========================== */
+/* Mensajes / estados */
 .gcuotas-info-message {
   display: flex;
   flex-direction: column;
@@ -622,8 +614,7 @@
   justify-content: center;
   height: 100%;
 }
-.gcuotas-listoverflow{  scrollbar-gutter: stable;   /* o stable both-edges; */
-  overflow: auto;   }
+.gcuotas-listoverflow{ scrollbar-gutter: stable; overflow: auto; }
 .gcuotas-loading-spinner {
   border: 4px solid rgba(0, 0, 0, 0.08);
   border-radius: 50%;
@@ -635,10 +626,7 @@
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* ===========================
-   Lista móvil (Cards)
-   =========================== */
-
+/* Lista móvil (Cards) */
 .gcuotas-mobile-list {
   padding: 8px;
   display: flex;
@@ -661,7 +649,6 @@
   box-shadow: 0 6px 14px rgba(59,130,246,0.12);
 }
 
-/* Filas de la card */
 .gcuotas-mobile-row {
   display: flex;
   justify-content: space-between;
@@ -674,7 +661,7 @@
 .gcuotas-mobile-row:last-child { margin-bottom: 0; }
 
 .gcuotas-mobile-label {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   min-width: 96px;
 }
@@ -694,7 +681,7 @@
   border: 1px solid var(--border-color);
   padding: 10px 8px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -704,26 +691,15 @@
   transition: var(--transition-smooth);
 }
 
-/* Pago en verde con texto/icono blancos */
 .gcuotas-mobile-payment-button {
   background: var(--success-600) !important;
   border-color: var(--success-700) !important;
   color: var(--text-on-primary) !important;
 }
 .gcuotas-mobile-payment-button span,
-.gcuotas-mobile-payment-button svg,
-.gcuotas-mobile-payment-button i,
-.gcuotas-mobile-payment-button .fa,
-.gcuotas-mobile-payment-button .fa-solid {
-  color: var(--text-on-primary) !important;
-  fill: var(--text-on-primary) !important;
-}
-.gcuotas-mobile-payment-button:hover {
-  background: var(--success-700) !important;
-  border-color: #065f46 !important;
-}
+.gcuotas-mobile-payment-button svg { color: var(--text-on-primary) !important; fill: var(--text-on-primary) !important; }
+.gcuotas-mobile-payment-button:hover { background: var(--success-700) !important; border-color: #065f46 !important; }
 
-/* Eliminar en rojo en móvil */
 .gcuotas-mobile-deletepay-button {
   background: var(--danger-50);
   color: var(--danger-600);
@@ -735,10 +711,7 @@
   border-color: var(--danger-500);
 }
 
-/* ===========================
-   MODAL genérico
-   =========================== */
-
+/* MODAL genérico */
 .gcuotas-modal-overlay {
   position: fixed;
   inset: 0;
@@ -771,7 +744,7 @@
 .gcuotas-modal-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -787,11 +760,7 @@
   padding: 4px;
 }
 
-.gcuotas-modal-body {
-  padding: 24px;
-  text-align: center;
-}
-
+.gcuotas-modal-body { padding: 24px; text-align: center; }
 .gcuotas-modal-icon { font-size: 48px; color: var(--secondary-color); margin-bottom: 16px; }
 
 .gcuotas-modal-text {
@@ -828,8 +797,8 @@
 
 .gcuotas-modal-button {
   padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 500;
+  border-radius: 10px;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   transition: var(--transition-smooth);
@@ -844,8 +813,8 @@
 .gcuotas-modal-button.primary:hover { background-color: var(--secondary-hover); }
 
 /* ===========================
-   MOBILE (≤ 768px)
-   =========================== */
+   Mobile
+=========================== */
 @media (max-width: 768px) {
   html, body {
     height: auto !important;
@@ -861,7 +830,6 @@
     flex-direction: column;
     background: var(--surface-secondary);
     overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
     align-items: center;
   }
 
@@ -888,7 +856,6 @@
     background: transparent;
   }
 
-  /* Franja superior edge-to-edge solo mobile */
   .gcuotas-header-section {
     position: relative !important;
     padding: 12px;
@@ -898,46 +865,14 @@
     margin-right: calc(50% - 50vw);
     border-radius: 0;
     justify-content: center;
-    border-bottom: 2px solid #000; /* línea divisoria visible */
+    border-bottom: 2px solid #000;
   }
 
-  .gcuotas-title { font-size: 1.35rem; }
+  /* En mobile, la fila de filtros pasa a una columna */
+  .gcuotas-input-row { grid-template-columns: 1fr; }
 
-  .gcuotas-filter-card,
-  .gcuotas-tabs-card,
-  .gcuotas-actions-card {
-    margin: 8px 0;
-    border-radius: 10px;
-  }
-
-  .gcuotas-actions-card { display: none !important; }
-
-  .gcuotas-filter-card { overflow: hidden; }
-  .gcuotas-filter-header { padding: 12px 12px; }
-
-  .gcuotas-select-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding: 12px;
-  }
-  .gcuotas-input-group { min-width: auto; margin: 0; }
-  .gcuotas-input-group.gcuotas-input-full { grid-column: span 2; }
-
-  /* padding lateral para los botones Pagado/Deudores */
-  .gcuotas-tabs-card { padding: 0 12px; }
-
-  /* FIX de puntas */
-  .gcuotas-tab-container {
-    margin: 8px 0;
-    padding: 0;
-    border-radius: 12px;
-    overflow: hidden;
-    background-color: var(--surface-secondary);
-    border: 1px solid var(--border-color);
-  }
-
-  .gcuotas-tab-button { padding: 10px 8px; font-size: 13px; }
+  .gcuotas-tabs-card { padding: 0 0; margin: 8px 12px; }
+  .gcuotas-tabs-header { padding: 12px 0; font-size: 15px; }
 
   .gcuotas-right-section {
     order: 2;
@@ -958,23 +893,9 @@
     gap: 10px;
     align-items: start;
   }
-  .gcuotas-table-header h3 {
-    font-size: 16px;
-    line-height: 1.2;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
 
-  .gcuotas-input-group.gcuotas-search-group {
-    max-width: 100%;
-    width: 100%;
-  }
-  .gcuotas-search-integrated input {
-    height: 38px;
-    padding: 8px 10px 8px 34px;
-    font-size: 14px;
-  }
+  .gcuotas-input-group.gcuotas-search-group { max-width: 100%; width: 100%; }
+  .gcuotas-search-integrated input { height: 38px; }
 
   .gcuotas-summary-info {
     display: flex;
@@ -993,14 +914,8 @@
     padding: 6px 10px;
   }
 
-  .gcuotas-table-container {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    padding: 0 0 10px;
-  }
+  .gcuotas-table-container { height: auto !important; max-height: none !important; overflow: visible !important; padding: 0 0 10px; }
 
-  /* Tarjetas móviles */
   .gcuotas-mobile-card {
     position: relative;
     padding: 12px 12px 12px 14px;
@@ -1008,55 +923,13 @@
   }
   .gcuotas-selected-card { border-left-color: var(--primary-hover); }
 
-  .gcuotas-mobile-row { 
-    align-items: center; 
-    gap: 12px; 
-    border-bottom: none !important;
-    padding-bottom: 6px;
-  }
-  .gcuotas-mobile-row:last-child {
-    border-bottom: none !important;
-    padding-bottom: 0;
-  }
+  .gcuotas-mobile-row { align-items: center; gap: 12px; border-bottom: none !important; padding-bottom: 6px; }
+  .gcuotas-mobile-row:last-child { border-bottom: none !important; padding-bottom: 0; }
 
-  .gcuotas-mobile-label {
-    flex: 0 0 40%;
-    min-width: 110px;
-    text-align: left;
-    color: var(--text-secondary);
-    font-weight: 700;
-  }
+  .gcuotas-mobile-label { flex: 0 0 40%; min-width: 110px; text-align: left; color: var(--text-secondary); font-weight: 800; }
+  .gcuotas-mobile-row span:last-child { flex: 1 1 auto; text-align: right; color: var(--text-primary); word-break: break-word; overflow-wrap: anywhere; }
 
-  .gcuotas-mobile-row span:last-child {
-    flex: 1 1 auto;
-    text-align: right;
-    color: var(--text-primary);
-    word-break: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .gcuotas-mobile-actions {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
-  }
-  .gcuotas-mobile-print-button,
-  .gcuotas-mobile-payment-button,
-  .gcuotas-mobile-deletepay-button {
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 10px 8px;
-    font-size: 14px;
-    font-weight: 700;
-    background: var(--surface-color);
-  }
-
-  .gcuotas-divider,
-  .gcuotas-tabs-icon,
-  .gcuotas-filter-icon,
-  .gcuotas-actions-icon { display: none; }
-
-  .gcuotas-tabs-header { padding: 12px 0; font-size: 15px; }
+  .gcuotas-mobile-actions { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 
   .gcuotas-virtual-row { animation: none !important; }
 
@@ -1086,7 +959,7 @@
     border: 1px solid var(--border-color);
     background: var(--surface-color);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 800;
     padding: 8px 6px;
     color: var(--text-primary);
   }
@@ -1104,94 +977,18 @@
   }
 }
 
-/* ===========================================================
-   LÍNEAS NEGRAS DIVISORIAS PARA VISUALIZAR LA TABLA Y CABECERAS
-   =========================================================== */
+/* Zebra rows desktop */
+.gcuotas-virtual-row.gcuotas-row-even { background-color: var(--surface-color); }
+.gcuotas-virtual-row.gcuotas-row-odd  { background-color: var(--secondary-50); }
 
-/* Marco general de la tabla virtual */
-.gcuotas-table-container .gcuotas-virtual-tables {
-  border-radius: 4px;
-}
-
-/* En móvil: destacar también con líneas negras para visualizar estructura */
-@media (max-width: 768px) {
-  .gcuotas-mobile-row {
-    border-bottom: 1px dashed #000;
-    padding-bottom: 6px;
-  }
-  .gcuotas-mobile-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-  .gcuotas-right-section {
-    border-radius: 12px;
-  }
-  .gcuotas-header-section {
-    border-bottom: 2px solid #000;
-  }
-}
-
-.gcuotas-viewport {
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-
-/* ===========================
-   Animación en cascada filas
-   =========================== */
-@keyframes gcuotasFadeSlide {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.gcuotas-cascade {
-  opacity: 0;
-  animation: gcuotasFadeSlide var(--cascade-duration) var(--cascade-ease) forwards;
-}
-
-/* Generamos delays progresivos (0.05s entre fila y fila) */
-.gcuotas-cascade-0  { animation-delay: 0s; }
-.gcuotas-cascade-1  { animation-delay: 0.05s; }
-.gcuotas-cascade-2  { animation-delay: 0.10s; }
-.gcuotas-cascade-3  { animation-delay: 0.15s; }
-.gcuotas-cascade-4  { animation-delay: 0.20s; }
-.gcuotas-cascade-5  { animation-delay: 0.25s; }
-.gcuotas-cascade-6  { animation-delay: 0.30s; }
-.gcuotas-cascade-7  { animation-delay: 0.35s; }
-.gcuotas-cascade-8  { animation-delay: 0.40s; }
-.gcuotas-cascade-9  { animation-delay: 0.45s; }
-.gcuotas-cascade-10 { animation-delay: 0.50s; }
-.gcuotas-cascade-11 { animation-delay: 0.55s; }
-.gcuotas-cascade-12 { animation-delay: 0.60s; }
-.gcuotas-cascade-13 { animation-delay: 0.65s; }
-.gcuotas-cascade-14 { animation-delay: 0.70s; }
-
-/* Cuotas.css — solo lo nuevo/relevante añadido para tu pedido */
-
-/* ====== ZEBRA (escalonado) en filas desktop ====== */
-.gcuotas-virtual-row.gcuotas-row-even {
-  background-color: var(--surface-color);
-}
-.gcuotas-virtual-row.gcuotas-row-odd {
-  background-color: var(--secondary-50); /* gris/azul muy suave */
-}
-
-/* Hover y seleccionado por encima del zebra */
-.gcuotas-virtual-row:hover {
-  background-color: var(--secondary-100);
-}
+/* Hover / Selección */
+.gcuotas-virtual-row:hover { background-color: var(--secondary-100); }
 .gcuotas-selected-row {
   background-color: var(--secondary-200) !important;
   box-shadow: inset 0 0 0 1px var(--secondary-300);
 }
 
-/* ====== CHIP / BADGE para Categoría ====== */
+/* Chips categoría */
 .gcuotas-chip {
   display: inline-flex;
   align-items: center;
@@ -1199,7 +996,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
   border: 1px solid transparent;
   letter-spacing: .2px;
@@ -1215,53 +1012,31 @@
   border-color: var(--secondary-300);
   text-transform: uppercase;
 }
-
-
-
-
-/* —— Derivados que faltaban (secundario, focus, on-primary, escalas semánticas) —— */
-:root {
-  /* Texto sobre fondos intensos */
-  --text-on-primary: #ffffff;
-
-  /* Focus genérico (azulado suave) */
-  --border-focus: #93c5fd;
-
-  /* Escala secundaria (derivada de --reg-secondary: #1D428A) */
-  --secondary-50:  #eef2ff;  /* tinte muy suave */
-  --secondary-100: #e0e7ff;
-  --secondary-200: #c7d2fe;
-  --secondary-300: #a5b4fc;
-  --secondary-400: #818cf8;
-  --secondary-500: #6366f1;
-  --secondary-600: #4f46e5;
-  --secondary-700: #4338ca;
-  --secondary-800: #3730a3;
-  --secondary-900: #312e81;
-  --secondary-hover: #163372; /* hover más oscuro para botones secundarios */
-
-  /* Escala primaria rápida (rojo) para chips/estados */
-  --primary-50:  #fef2f2;
-  --primary-100: #fee2e2;
-  --primary-200: #fecaca;
-  --primary-300: #fca5a5;
-  --primary-800: #991b1b; /* útil p/contraste en chip */
-  --primary-900: #7f1d1d;
-
-  /* Semánticos extra usados en móvil/badges */
-  --success-100: #d1fae5;
-  --success-600: #0a9a72; /* ya lo tenías arriba, aquí dejamos igual por coherencia */
-  --danger-50:  #fef2f2;
-  --danger-100: #fee2e2;
-  --danger-600: #b91c1c; /* ya declarado, lo reafirmamos para referencia */
-}
-/* ====== CHIP / BADGE para Categoría ====== */
-/* ... (tus reglas .gcuotas-chip y .gcuotas-chip--default / --interno quedan igual) ... */
-
-/* Externo = paleta ROJA (primaria), con buen contraste de texto */
 .gcuotas-chip--externo {
   background: var(--primary-100);
   color: var(--primary-800);
   border-color: var(--primary-300);
   text-transform: uppercase;
 }
+
+/* Cascada */
+@keyframes gcuotasFadeSlide {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.gcuotas-cascade { opacity: 0; animation: gcuotasFadeSlide var(--cascade-duration) var(--cascade-ease) forwards; }
+.gcuotas-cascade-0  { animation-delay: 0s; }
+.gcuotas-cascade-1  { animation-delay: 0.05s; }
+.gcuotas-cascade-2  { animation-delay: 0.10s; }
+.gcuotas-cascade-3  { animation-delay: 0.15s; }
+.gcuotas-cascade-4  { animation-delay: 0.20s; }
+.gcuotas-cascade-5  { animation-delay: 0.25s; }
+.gcuotas-cascade-6  { animation-delay: 0.30s; }
+.gcuotas-cascade-7  { animation-delay: 0.35s; }
+.gcuotas-cascade-8  { animation-delay: 0.40s; }
+.gcuotas-cascade-9  { animation-delay: 0.45s; }
+.gcuotas-cascade-10 { animation-delay: 0.50s; }
+.gcuotas-cascade-11 { animation-delay: 0.55s; }
+.gcuotas-cascade-12 { animation-delay: 0.60s; }
+.gcuotas-cascade-13 { animation-delay: 0.65s; }
+.gcuotas-cascade-14 { animation-delay: 0.70s; }
