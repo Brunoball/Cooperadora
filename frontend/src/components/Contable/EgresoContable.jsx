@@ -3,13 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faPlus,
-  faTrash,
-  faEdit,
-  faEye,
-  faFileExcel,
-  faTableList,
-  faSearch,
+  faPlus, faTrash, faEdit, faEye, faFileExcel, faTableList,
+  faSearch, faFilter, faChartPie,
 } from "@fortawesome/free-solid-svg-icons";
 import ContableEgresoModal from "./modalcontable/ContableEgresoModal";
 import Toast from "../Global/Toast";
@@ -17,26 +12,15 @@ import "./EgresoContable.css";
 
 const hoy = new Date();
 const Y = hoy.getFullYear();
-
-const MESES = [
-  "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
-  "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE",
-];
+const MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+const cap1 = (s="") => s.charAt(0) + s.slice(1).toLowerCase();
 
 /* ===== Confirmación simple ===== */
-function ConfirmModal({
-  open,
-  title = "Confirmar",
-  message,
-  onCancel,
-  onConfirm,
-  confirmText = "Eliminar",
-  cancelText = "Cancelar",
-}) {
+function ConfirmModal({ open, title="Confirmar", message, onCancel, onConfirm, confirmText="Eliminar", cancelText="Cancelar" }) {
   if (!open) return null;
   return (
     <div className="lc_modal_overlay" role="dialog" aria-modal="true" onClick={onCancel}>
-      <div className="lc_modal" onClick={(e) => e.stopPropagation()}>
+      <div className="lc_modal" onClick={(e)=>e.stopPropagation()}>
         <div className="lc_modal_head">
           <h3>{title}</h3>
           <button className="lc_icon" onClick={onCancel} aria-label="Cerrar">×</button>
@@ -51,38 +35,31 @@ function ConfirmModal({
   );
 }
 
-/* ======= Componente ======= */
-export default function EgresoContable() {
-  // Datos
+export default function EgresoContable(){
   const [egresos, setEgresos] = useState([]);
   const [loadingEgr, setLoadingEgr] = useState(false);
   const [mediosPago, setMediosPago] = useState([]);
 
-  // Filtros sidebar (Año/Mes) + otros
   const [year, setYear] = useState(Y);
-  const [month, setMonth] = useState(hoy.getMonth()); // 0..11
-  const [fCat, setFCat] = useState("");     // también filtrable desde "Categorías"
+  const [month, setMonth] = useState(hoy.getMonth());
+  const [fCat, setFCat] = useState("");
   const [fMedio, setFMedio] = useState("");
-  const [q, setQ] = useState("");           // búsqueda (header de la tabla)
+  const [q, setQ] = useState("");
 
-  // Modal CRUD
   const [modalOpen, setModalOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
 
-  // Confirm delete
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState(null);
 
-  // Toasts
   const [toasts, setToasts] = useState([]);
   const toastSeq = useRef(0);
-  const addToast = (tipo, mensaje, duracion = 3000) => {
+  const addToast = (tipo, mensaje, duracion=3000) => {
     const id = `${Date.now()}_${toastSeq.current++}`;
-    setToasts((prev) => [...prev, { id, tipo, mensaje, duracion }]);
+    setToasts(prev=>[...prev, {id,tipo,mensaje,duracion}]);
   };
-  const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  const removeToast = (id)=> setToasts(prev=>prev.filter(t=>t.id!==id));
 
-  // Helpers fetch
   const fetchJSON = async (url, options) => {
     const sep = url.includes("?") ? "&" : "?";
     const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
@@ -94,197 +71,160 @@ export default function EgresoContable() {
     return res.json();
   };
 
-  // Rango de fechas según año/mes
   const { fStart, fEnd } = useMemo(() => {
     const first = new Date(year, month, 1);
     const last = new Date(year, month + 1, 0);
-    const toISO = (d) => d.toISOString().slice(0, 10);
+    const toISO = (d) => d.toISOString().slice(0,10);
     return { fStart: toISO(first), fEnd: toISO(last) };
   }, [year, month]);
 
-  // Cargar listas
   const loadMediosPago = async () => {
     try {
       const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
       setMediosPago(Array.isArray(data?.listas?.medios_pago) ? data.listas.medios_pago : []);
-    } catch (e) {
-      console.error(e);
-      addToast("error", "No se pudieron cargar los medios de pago.");
+    } catch {
+      addToast("error","No se pudieron cargar los medios de pago.");
       setMediosPago([]);
     }
   };
 
-  // Cargar egresos
   const loadEgresos = async () => {
     setLoadingEgr(true);
     try {
-      const params = new URLSearchParams({ start: fStart, end: fEnd });
+      const params = new URLSearchParams({ start:fStart, end:fEnd });
       if (fCat) params.set("categoria", fCat);
       if (fMedio) params.set("medio", fMedio);
       const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
       setEgresos(raw?.datos || []);
-    } catch (e) {
-      console.error(e);
-      addToast("error", "Error al cargar los egresos.");
+    } catch {
+      addToast("error","Error al cargar los egresos.");
       setEgresos([]);
-    } finally {
-      setLoadingEgr(false);
-    }
+    } finally { setLoadingEgr(false); }
   };
 
-  useEffect(() => { loadMediosPago(); }, []);
-  useEffect(() => { loadEgresos(); }, [fStart, fEnd, fCat, fMedio]);
+  useEffect(()=>{ loadMediosPago(); },[]);
+  useEffect(()=>{ loadEgresos(); },[fStart,fEnd,fCat,fMedio]);
 
-  // KPI
-  const totalEgresos = useMemo(
-    () => egresos.reduce((a, b) => a + Number(b.monto || 0), 0),
-    [egresos]
-  );
+  const totalEgresos = useMemo(()=> egresos.reduce((a,b)=> a + Number(b.monto||0),0),[egresos]);
 
-  // Búsqueda local (incluye N° factura)
-  const egresosFiltrados = useMemo(() => {
+  const egresosFiltrados = useMemo(()=>{
     const needle = q.trim().toLowerCase();
     if (!needle) return egresos;
-    return egresos.filter((e) => {
-      const src = [
-        e.descripcion,
-        e.categoria,
-        e.numero_factura,                   // ⬅️ búsqueda por N° factura
-        e.medio_nombre || e.medio_pago,
-        e.fecha,
-      ].join(" ").toLowerCase();
+    return egresos.filter(e=>{
+      const src = [e.descripcion, e.categoria, e.numero_factura, e.medio_nombre || e.medio_pago, e.fecha]
+        .join(" ").toLowerCase();
       return src.includes(needle);
     });
-  }, [egresos, q]);
+  },[egresos,q]);
 
-  // Desglose de categorías (para el panel izquierdo)
-  const catBreakdown = useMemo(() => {
+  const catBreakdown = useMemo(()=>{
     const map = new Map();
-    for (const e of egresos) {
+    for (const e of egresos){
       const k = e.categoria || "SIN CATEGORÍA";
       const monto = Number(e.monto || 0);
-      if (!map.has(k)) map.set(k, { label: k, total: 0, count: 0 });
+      if (!map.has(k)) map.set(k, { label:k, total:0, count:0 });
       const obj = map.get(k);
       obj.total += monto; obj.count += 1;
     }
-    return Array.from(map.values())
-      .sort((a, b) => b.total - a.total);
-  }, [egresos]);
+    return Array.from(map.values()).sort((a,b)=> b.total - a.total);
+  },[egresos]);
 
-  // Acciones básicas
-  const onCreateEgreso = () => { setEditRow(null); setModalOpen(true); };
-  const onEditEgreso = (row) => { setEditRow(row); setModalOpen(true); };
+  const onCreateEgreso = ()=>{ setEditRow(null); setModalOpen(true); };
+  const onEditEgreso = (row)=>{ setEditRow(row); setModalOpen(true); };
 
-  // Ver comprobante
-  const normalizeUrl = (url = "") => {
+  const normalizeUrl = (url="")=>{
     if (!url) return "";
     if (/^https?:\/\//i.test(url)) return url;
     const clean = String(url).replace(/^\/+/, "");
     return `${BASE_URL}/${clean}`;
   };
-  const onViewComprobante = (row) => {
+  const onViewComprobante = (row)=>{
     const candidate = row?.comprobante_url || row?.comprobante || row?.url || "";
     const finalUrl = normalizeUrl(candidate);
-    if (!finalUrl) { addToast("advertencia", "Este egreso no tiene comprobante adjunto."); return; }
-    try { window.open(finalUrl, "_blank", "noopener,noreferrer"); }
+    if (!finalUrl){ addToast("advertencia","Este egreso no tiene comprobante adjunto."); return; }
+    try { window.open(finalUrl,"_blank","noopener,noreferrer"); }
     catch { window.location.href = finalUrl; }
   };
 
-  // Eliminar
-  const askDeleteEgreso = (id) => { setToDeleteId(id); setConfirmOpen(true); };
-  const cancelDelete = () => { setConfirmOpen(false); setToDeleteId(null); };
-  const confirmDelete = async () => {
+  const askDeleteEgreso = (id)=>{ setToDeleteId(id); setConfirmOpen(true); };
+  const cancelDelete = ()=>{ setConfirmOpen(false); setToDeleteId(null); };
+  const confirmDelete = async ()=>{
     if (!toDeleteId) return;
-    try {
-      await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+    try{
+      await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=delete`,{
+        method:"POST", headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ id_egreso: toDeleteId }),
       });
-      addToast("exito", "Egreso eliminado correctamente.");
+      addToast("exito","Egreso eliminado correctamente.");
       loadEgresos();
-    } catch (e) {
-      console.error(e);
-      addToast("error", "No se pudo eliminar el egreso.");
-    } finally {
-      cancelDelete();
-    }
+    }catch{ addToast("error","No se pudo eliminar el egreso."); }
+    finally{ cancelDelete(); }
   };
 
-  const onSavedEgreso = () => { setModalOpen(false); loadEgresos(); };
+  const onSavedEgreso = ()=>{ setModalOpen(false); loadEgresos(); };
 
-  /* ===== Export CSV (Excel) ===== */
-  const csvEscape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-  const exportarCSV = () => {
+  const csvEscape = (v)=> `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const exportarCSV = ()=>{
     const rows = egresosFiltrados;
-    if (!rows.length) { addToast("advertencia", "No hay datos para exportar."); return; }
-    const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto"]; // ⬅️ incluye N° Factura
+    if (!rows.length){ addToast("advertencia","No hay datos para exportar."); return; }
+    const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto"];
     const sep = ";";
-    const data = rows.map((e) => [
-      e.fecha || "",
-      e.categoria || "",
-      e.numero_factura || "", // ⬅️ exporta N° Factura
-      e.descripcion || "",
-      e.medio_nombre || e.medio_pago || "",
-      Number(e.monto || 0).toString().replace(".", ","),
+    const data = rows.map(e=>[
+      e.fecha||"", e.categoria||"", e.numero_factura||"", e.descripcion||"",
+      e.medio_nombre || e.medio_pago || "", Number(e.monto||0).toString().replace(".",","),
     ]);
     const bom = "\uFEFF";
-    const lines = [
-      headers.map(csvEscape).join(sep),
-      ...data.map((r) => r.map(csvEscape).join(sep)),
-    ];
-    const blob = new Blob([bom + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const lines = [ headers.map(csvEscape).join(sep), ...data.map(r=> r.map(csvEscape).join(sep)) ];
+    const blob = new Blob([bom + lines.join("\r\n")], { type:"text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const d = new Date();
     const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.csv`;
     const a = document.createElement("a");
     a.href = url; a.download = name; document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
-    addToast("exito", "Archivo exportado.");
+    addToast("exito","Archivo exportado.");
   };
 
-  // Años para el select
-  const years = useMemo(() => {
-    const arr = [];
-    for (let k = Y - 2; k <= Y + 1; k++) arr.push(k);
-    return arr.reverse();
-  }, []);
+  const years = useMemo(()=>{
+    const arr=[]; for(let k=Y-2;k<=Y+1;k++) arr.push(k); return arr.reverse();
+  },[]);
 
   return (
     <div className="eg_layout">
-      {/* Toasts */}
       <div className="toast-stack">
-        {toasts.map((t) => (
-          <Toast key={t.id} tipo={t.tipo} mensaje={t.mensaje} duracion={t.duracion} onClose={() => removeToast(t.id)} />
+        {toasts.map(t=>(
+          <Toast key={t.id} tipo={t.tipo} mensaje={t.mensaje} duracion={t.duracion} onClose={()=>removeToast(t.id)} />
         ))}
       </div>
 
-      {/* ===== Cuerpo dividido en sidebar + contenido ===== */}
       <div className="eg_body">
-        {/* Sidebar filtros */}
-        <aside className="eg_filters card">
-          <h2 className="eg_filters__title">
-            <FontAwesomeIcon icon={faTableList} /> Filtros
+        {/* Panel izquierdo */}
+        <aside className="eg_filters cardd">
+          <div className="textcenterfiltros">
+            <h2 className="eg_filters__title">
+            <FontAwesomeIcon icon={faFilter} />
+            Filtros
           </h2>
+                      <h3>Detalle — {cap1(MESES[month])} {year}</h3>
+          </div>
+          <div className="paddingcenter">
 
-          {/* Año y Mes en la MISMA fila */}
           <div className="eg_row">
             <div className="eg_field">
               <label>Año</label>
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              <select value={year} onChange={e=>setYear(Number(e.target.value))}>
+                {years.map(y=> <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
 
             <div className="eg_field">
               <label>Mes</label>
-              <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-                {MESES.map((m, i) => <option key={m} value={i}>{m}</option>)}
+              <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
+                {MESES.map((m,i)=> <option key={m} value={i}>{cap1(m)}</option>)}
               </select>
             </div>
           </div>
 
-          {/* KPI Total */}
           <div className="eg_stats">
             <div className="eg_stat">
               <div className="eg_stat__icon">$</div>
@@ -295,36 +235,34 @@ export default function EgresoContable() {
             </div>
           </div>
 
-          {/* Medio de pago arriba de Categorías */}
           <div className="eg_field" style={{ marginTop: 8 }}>
             <label>Medio de pago</label>
-            <select value={fMedio} onChange={(e) => setFMedio(e.target.value)}>
+            <select value={fMedio} onChange={e=>setFMedio(e.target.value)}>
               <option value="">(todos)</option>
-              {mediosPago.map((m) => (
-                <option key={m.id} value={m.nombre}>{m.nombre}</option>
-              ))}
+              {mediosPago.map(m=> <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
             </select>
           </div>
 
-          <h3 className="eg_filters__subtitle" style={{ marginTop: 12 }}>
-            <span className="dot" /> Categorías
+          <h3 className="eg_cats__header">
+            <FontAwesomeIcon icon={faChartPie} />
+            Categorías 
           </h3>
 
           <div className="eg_cats">
-            {catBreakdown.map((c) => {
+            {catBreakdown.map(c=>{
               const active = fCat && fCat === c.label;
               return (
                 <button
                   key={c.label}
-                  className={`eg_cat ${active ? "active" : ""}`}
-                  onClick={() => setFCat(active ? "" : c.label)}
-                  title={`${c.count} registros`}
+                  className={`eg_catcard ${active ? "active" : ""}`}
+                  onClick={()=> setFCat(active ? "" : c.label)}
+                  title={`${c.count} registro${s(c.count)}`}
                 >
-                  <div className="eg_cat__left">
-                    <span className="eg_chip">{c.label}</span>
-                    <small className="eg_cat__count">{c.count} registro{s(c.count)}</small>
+                  <div className="eg_catcard__left">
+                    <div className="eg_catcard__title">{(c.label || "").toUpperCase()}</div>
+                    <div className="eg_catcard__count">{c.count} registro{s(c.count)}</div>
                   </div>
-                  <div className="eg_cat__value">
+                  <div className="eg_catcard__value">
                     ${c.total.toLocaleString("es-AR")}
                   </div>
                 </button>
@@ -334,35 +272,41 @@ export default function EgresoContable() {
           </div>
 
           {(fCat || fMedio) && (
-            <button className="eg_btn eg_btn--ghost" onClick={() => { setFCat(""); setFMedio(""); }}>
+            <button className="eg_btn eg_btn--ghost" onClick={()=>{ setFCat(""); setFMedio(""); }}>
               Limpiar filtros
             </button>
           )}
+          </div>
         </aside>
 
-        {/* Contenido principal: tabla */}
-        <section className="eg_content card">
+        {/* Panel derecho (ocupa todo alto/ancho restante) */}
+        <section className="eg_content cardd">
           <header className="eg_content__header">
-            <h3>Egresos — {MESES[month]} {year}</h3>
+                              <button
 
-            {/* Acciones dentro del header */}
+                    className={`seg-tabbb `}
+
+                  >
+                    Ingresos
+                  </button>
+
             <div className="eg_header_actions">
-              {/* 🔎 Buscador */}
-              <div className="eg_search eg_search--inline">
+              <div className="eg_search eg_search--redpill">
                 <FontAwesomeIcon icon={faSearch} />
                 <input
                   placeholder="Buscar..."
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={e=>setQ(e.target.value)}
                   aria-label="Buscar egresos"
                 />
               </div>
 
-              <button className="eg_btn eg_btn--ghost" onClick={exportarCSV}>
+              <button className="eg_btn eg_btn--redpill" onClick={exportarCSV}>
                 <FontAwesomeIcon icon={faFileExcel} />
                 Exportar Excel
               </button>
-              <button className="eg_btn eg_btn--primary-plain" onClick={onCreateEgreso}>
+
+              <button className="eg_btn eg_btn--whitepill" onClick={onCreateEgreso}>
                 <FontAwesomeIcon icon={faPlus} />
                 Registrar egreso
               </button>
@@ -377,41 +321,36 @@ export default function EgresoContable() {
               </div>
             )}
 
-            <div
-              className="gt_table gt_cols-7"   // ⬅️ se suma una columna para N° Factura
-              role="table"
-              aria-label="Listado de egresos"
-              aria-busy={loadingEgr ? "true" : "false"}
-            >
+            <div className="gt_table gt_cols-7" role="table" aria-label="Listado de egresos" aria-busy={loadingEgr ? "true" : "false"}>
               <div className="gt_headerd" role="row">
-                <div className="gt_cell h" role="columnheader">Fecha</div>
-                <div className="gt_cell h" role="columnheader">Categoría</div>
-                <div className="gt_cell h" role="columnheader">N° Factura</div>{/* ⬅️ NUEVO */}
+                <div className="gt_cell h center" role="columnheader">Fecha</div>
+                <div className="gt_cell h center" role="columnheader">Categoría</div>
+                <div className="gt_cell h center" role="columnheader">N° Factura</div>
                 <div className="gt_cell h" role="columnheader">Descripción</div>
-                <div className="gt_cell h" role="columnheader">Medio</div>
-                <div className="gt_cell h right" role="columnheader">Monto</div>
+                <div className="gt_cell h center" role="columnheader">Medio</div>
+                <div className="gt_cell h center" role="columnheader">Monto</div>
                 <div className="gt_cell h center" role="columnheader">Acciones</div>
               </div>
 
-              {egresosFiltrados.map((e) => {
+              {egresosFiltrados.map(e=>{
                 const hasFile = Boolean(normalizeUrl(e?.comprobante_url || e?.comprobante || e?.url));
                 return (
                   <div className="gt_rowd" role="row" key={e.id_egreso}>
                     <div className="gt_cell" role="cell">{e.fecha}</div>
-                    <div className="gt_cell" role="cell"><span className="badge">{e.categoria || "-"}</span></div>
-                    <div className="gt_cell" role="cell">{e.numero_factura || "-"}</div>{/* ⬅️ NUEVO */}
+                    <div className="gt_cell center" role="cell"><span className="badge">{e.categoria || "-"}</span></div>
+                    <div className="gt_cell center" role="cell">{e.numero_factura || "-"}</div>
                     <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
-                    <div className="gt_cell" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
-                    <div className="gt_cell right" role="cell">${Number(e.monto || 0).toLocaleString("es-AR")}</div>
+                    <div className="gt_cell center" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
+                    <div className="gt_cell center" role="cell">${Number(e.monto || 0).toLocaleString("es-AR")}</div>
                     <div className="gt_cell" role="cell">
                       <div className="row_actions">
-                        <button className="icon_btn" title="Ver comprobante" onClick={() => onViewComprobante(e)} disabled={!hasFile}>
+                        <button className="icon_btn view" title="Ver comprobante" onClick={()=>onViewComprobante(e)} disabled={!hasFile}>
                           <FontAwesomeIcon icon={faEye} />
                         </button>
-                        <button className="icon_btn" title="Editar" onClick={() => onEditEgreso(e)}>
+                        <button className="icon_btn edit" title="Editar" onClick={()=>onEditEgreso(e)}>
                           <FontAwesomeIcon icon={faEdit} />
                         </button>
-                        <button className="icon_btn danger" title="Eliminar" onClick={() => askDeleteEgreso(e.id_egreso)}>
+                        <button className="icon_btn danger" title="Eliminar" onClick={()=>askDeleteEgreso(e.id_egreso)}>
                           <FontAwesomeIcon icon={faTrash} />
                         </button>
                       </div>
@@ -420,34 +359,16 @@ export default function EgresoContable() {
                 );
               })}
 
-              {!egresosFiltrados.length && (
-                <div className="gt_empty">{loadingEgr ? "Cargando…" : "Sin egresos"}</div>
-              )}
+              {!egresosFiltrados.length && (<div className="gt_empty">{loadingEgr ? "Cargando…" : "Sin egresos"}</div>)}
             </div>
           </div>
         </section>
       </div>
 
-      {/* Modales */}
-      <ContableEgresoModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSaved={onSavedEgreso}
-        editRow={editRow}
-        notify={addToast}
-      />
-      <ConfirmModal
-        open={confirmOpen}
-        title="Eliminar egreso"
-        message="¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer."
-        onCancel={cancelDelete}
-        onConfirm={confirmDelete}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-      />
+      <ContableEgresoModal open={modalOpen} onClose={()=>setModalOpen(false)} onSaved={onSavedEgreso} editRow={editRow} notify={addToast} />
+      <ConfirmModal open={confirmOpen} title="Eliminar egreso" message="¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer." onCancel={cancelDelete} onConfirm={confirmDelete} confirmText="Eliminar" cancelText="Cancelar" />
     </div>
   );
 }
 
-/* util plural */
-function s(n){ return n === 1 ? "" : "s"; }
+function s(n){ return n===1 ? "" : "s"; }

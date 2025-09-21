@@ -1,5 +1,3 @@
-/* src/components/Contable/EgresoContable.css */
-
 /* ======= Paleta y base ======= */
 .eg_layout{
   --red-700:#b91c1c; --red-600:#dc2626; --red-500:#ef4444; --red-400:#f87171;
@@ -15,14 +13,13 @@
 
 /* ======= Body two columns ======= */
 .eg_body{
-  display:grid; grid-template-columns: 340px 1fr; gap:16px; padding:16px;
+  display:grid; grid-template-columns: 340px 1fr; gap:16px; 
 }
-.card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow); }
+.cardd{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-xl); box-shadow:var(--shadow); }
 
 /* ======= Sidebar (Filtros) ======= */
-.eg_filters{ padding:14px; }
 .eg_filters__title{
-  display:flex; align-items:center; gap:10px; margin:0 0 10px; color:var(--text);
+  display:flex; align-items:center; gap:10px; font-size: 1rem; ;
 }
 .eg_filters__subtitle{
   margin:14px 0 8px; font-size:14px; color:var(--text); font-weight:900;
@@ -59,7 +56,7 @@
 }
 .eg_stat__icon{
   width:48px; height:48px; border-radius:12px; display:grid; place-items:center; color:#fff; font-weight:900;
-  background:linear-gradient(135deg, var(--red-500), var(--red-700));
+  background:var(--kpi-icon-bg);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);
 }
 .eg_stat__label{ margin:0; font-size:12px; color:#64748b; font-weight:800; }
@@ -98,43 +95,65 @@
   border-bottom:0;
   border-radius:14px;
   z-index:0;
-}
-.eg_content__header::before{
-  content:"";
-  position:absolute; inset:0;
-  border-radius:14px;
-  background:linear-gradient(135deg, var(--red-600), var(--red-700));
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
-  z-index:-1;
-}
-.eg_content__header h3{ margin:0; font-size:1rem; color:#fff; }
-
-/* Acciones DENTRO del header de la caja */
-.eg_header_actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
-.eg_content__header .eg_btn{
-  background:#fff; color:#7f1d1d; border:1px solid #fecaca;
-  border-radius:999px; padding:10px 14px; font-weight:800; display:inline-flex; align-items:center; gap:8px;
-  box-shadow:var(--shadow-soft);
-}
-.eg_content__header .eg_btn:hover{ background:#fff; transform:translateY(-1px); box-shadow:0 8px 18px rgba(2,6,23,.12); }
-.eg_content__header .eg_btn.eg_btn--primary-plain{
-  background:#fff; color:var(--primary-600); border-color:#fecaca; box-shadow:none;
+  background-color: var(--reg-primary);
 }
 
-/* 🔎 Buscador en línea (sigue siendo blanco) */
-.eg_search{
+.eg_content__header h3{ margin:0; font-size:.9rem; color:#fff; font-weight:300; }
+
+/* ===== Acciones del header – “pills” como la foto ===== */
+.eg_header_actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+/* 🔎 Buscador pill rojo */
+.eg_search.eg_search--redpill{
   display:flex; align-items:center; gap:8px;
-  padding:8px 12px; border-radius:999px;
-  border:1px solid var(--border);
-}
-.eg_search input{
-  border:0; background:transparent; outline:0; color:var(--text); width:16ch;
-}
-.eg_search input::placeholder{ color:#6b7280; }
-.eg_search--inline{ background:#fff; box-shadow:var(--shadow-soft); }
-.eg_search--inline:focus-within{ box-shadow:0 0 0 4px rgba(220,38,38,.10), var(--shadow-soft); border-color:#f1b3b3; }
+  padding:10px 14px; border-radius:12px;
+  background:rgba(255,255,255,.12);
 
-/* Wrapper tabla: sin scroll X */
+  border:1px solid rgba(255,255,255,.28);
+
+  color:#fff;
+}
+.eg_search.eg_search--redpill svg{ color:#fff; opacity:.95; }
+.eg_search.eg_search--redpill input{
+  border:0; background:transparent; outline:0; color:#fff; width:220px;
+}
+.eg_search.eg_search--redpill input::placeholder{ color:rgba(255,255,255,.9); }
+.eg_search.eg_search--redpill:focus-within{
+  border-color:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 8px 18px rgba(0,0,0,.16);
+}
+
+/* Botón rojo tipo pill (Exportar) */
+.eg_btn.eg_btn--redpill{
+  appearance:none; border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.12);
+  color:#fff; border-radius:10px; padding:10px 16px; font-weight:800;
+  display:inline-flex; align-items:center; gap:8px;
+  transition: all .3s;
+ }
+.eg_btn.eg_btn--redpill:hover{
+  background-color: #fff;
+  color: var(--primary);
+}
+
+/* Botón blanco tipo pill (Registrar egreso) */
+.eg_btn.eg_btn--whitepill{
+  appearance:none; border:1px solid #fecaca; background:#fff; color:#7f1d1d;
+  border-radius:10px; padding:10px 16px; font-weight:800;
+  display:inline-flex; align-items:center; gap:8px;
+  transition: all .3s;
+
+}
+.eg_btn.eg_btn--whitepill:hover{
+  background-color: var(--primary);
+  color: white;
+  border-color:transparent ;
+}
+
+/* (Opcional) si querés ocultar estilos viejos dentro del header */
+.eg_content__header .eg_btn:not(.eg_btn--redpill):not(.eg_btn--whitepill){ display:none; }
+.eg_content__header .eg_search:not(.eg_search--redpill){ display:none; }
+
+/* Wrapper tabla */
 .ec_table__wrap{
   position:relative;
   width:100%;
@@ -142,24 +161,26 @@
   margin-top:8px;
 }
 
-/* Tabla grid - columnas compactas y flexibles */
-.gt_table{ --cols:auto; display:grid; gap:10px; }
+/* Tabla grid */
+.gt_table{ display:grid; gap:10px; }
 
-/* 6 columnas */
-.gt_table.gt_cols-6{
-  /* Fecha | Cat | Desc (flex) | Medio | Monto | Acciones */
-  --cols: 96px 128px minmax(140px, 1fr) 120px 110px 120px;
+/* Header y filas de 7 columnas */
+.gt_headerd{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.gt_headerd .gt_cell.h{
+  font-size:.85rem; color:#64748b; font-weight:900; padding:0 12px 8px;
 }
 
-.gt_headerd{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr; }
-.gt_headerd .gt_cell.h{ font-size:.85rem; color:#64748b; font-weight:900; padding:0 12px 8px; }
-
 .gt_rowd{
-  display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
   background:#fff; border:1px solid var(--border); border-radius:12px;
   box-shadow:var(--shadow-soft); align-items:center;
 }
-.gt_cell{ padding:14px 12px; min-width:0; }
+
+.gt_cell{ padding:14px 0; min-width:0; ;}
 .gt_cell.right{ text-align:right; font-weight:800; }
 .gt_cell.center{ text-align:center; }
 
@@ -216,19 +237,241 @@
   .eg_body{ grid-template-columns: 1fr; }
   .eg_filters{ order:2; }
   .eg_content{ order:1; }
-  .gt_table.gt_cols-6{
-    --cols: 88px 116px minmax(120px, 1fr) 108px 96px 108px;
+
+  .gt_headerd,
+  .gt_rowd{
+    grid-template-columns: 90px 128px 120px minmax(160px,1fr) 118px 108px 120px;
   }
-  .eg_search input{ width:14ch; }
+
+  .eg_search.eg_search--redpill input{ width:16ch; }
 }
 
 @media (max-width:980px){
-  .gt_table.gt_cols-6{
-    --cols: 80px 108px minmax(110px, 1fr) 100px 90px 100px;
+  .gt_headerd,
+  .gt_rowd{
+    grid-template-columns: 84px 112px 112px minmax(120px,1fr) 110px 96px 110px;
   }
   .gt_cell{ padding:12px 10px; }
   .eg_header_actions{ justify-content:stretch; }
   .eg_content__header{ align-items:stretch; }
-  .eg_search{ flex:1 1 220px; }
-  .eg_search input{ width:100%; }
+  .eg_search.eg_search--redpill{ flex:1 1 220px; }
+  .eg_search.eg_search--redpill input{ width:100%; }
 }
+
+/* ===== Header rojo de Categorías (como la imagen) ===== */
+.eg_cats__header{
+  display:flex; align-items:center; gap:10px;
+  margin:10px 0 10px;
+  padding:14px 16px;
+  background: var(--reg-primary);           /* tu rojo principal */
+  color:#fff;
+  border-radius:14px;
+  font-weight:900;
+  font-size:1rem;
+  box-shadow: var(--shadow);
+}
+.eg_cats__header svg{ opacity:.95; }
+
+/* ===== Tarjetas de categorías (blancas, monto azul) ===== */
+.eg_cats{ display:flex; flex-direction:column; gap:14px; }
+
+.eg_catcard{
+  width:100%;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px 16px;
+  text-align:left; cursor:pointer;
+  box-shadow: var(--shadow-soft);
+  transition: transform .12s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.eg_catcard:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(2,6,23,.08);
+}
+
+.eg_catcard.active{
+  border-color: #fecaca;                 /* borde rojito cuando está activa */
+  box-shadow: 0 0 0 4px rgba(248,113,113,.12) inset;
+}
+
+.eg_catcard__left{ display:flex; flex-direction:column; gap:4px; }
+.eg_catcard__title{
+  font-weight:900;
+  letter-spacing:.3px;
+  color: var(--text);
+  line-height:1.1;
+}
+.eg_catcard__count{
+  font-size:.95rem;       /* como en la imagen se ve grandecito */
+  color:#6b7280;          /* gris medio */
+}
+
+.eg_catcard__value{
+  font-weight:900;
+  font-size:1.2rem;
+  color:#2563eb;          /* azul (parecido al de la captura) */
+  white-space:nowrap;
+}
+
+/* Base (ya la tenías, dejo mejoras sutiles) */
+.row_actions{ display:flex; gap:8px; justify-content:center; }
+.icon_btn{
+  width:34px; height:34px; border-radius:999px; display:grid; place-items:center;
+  background:#f1f4fb; border:1px solid var(--border); color:#334155;
+  transition:transform .12s ease, background .16s ease, color .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.icon_btn:hover{
+  background:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 8px 20px rgba(2,6,23,.08);
+}
+
+/* Variantes por tipo */
+.icon_btn.view{    background:#eef2ff; border-color:#e0e7ff; color:#3730a3; }  /* indigo suave */
+.icon_btn.edit{    background:#ecfeff; border-color:#cffafe; color:#0369a1; }  /* cyan */
+.icon_btn.danger{  background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+
+/* Hovers más marcados por variante */
+.icon_btn.view:hover{   background:#e0e7ff; border-color:#c7d2fe; color:#312e81; }
+.icon_btn.edit:hover{   background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
+.icon_btn.danger:hover{ background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
+
+/* Accesibilidad: foco visible */
+.icon_btn:focus-visible{
+  outline:0;
+  box-shadow:0 0 0 3px rgba(59,130,246,.35);  /* aro azul suave */
+  transform:none;
+}
+
+/* Disabled consistente */
+.icon_btn:disabled{
+  opacity:.45; cursor:not-allowed; transform:none; box-shadow:none;
+}
+
+/* ==== Layout full screen, sin islas flotantes ==== */
+html, body, #root { height:100%; }
+.eg_layout{
+  --red-700:#b91c1c; --red-600:#dc2626; --red-500:#ef4444; --red-400:#f87171;
+  --bg:#fff; --surface:#fff; --border:#e8ecf4; --text:#0f172a; --muted:#64748b;
+  --primary:#b91c1c; --primary-600:#991b1b; --accent:#fecaca;
+  --ok:#10b981; --danger:#ef4444;
+  --shadow:none; --shadow-soft:none;
+  --r-xl:0; --r-lg:0; --r-md:0;
+  background:#fff;
+  min-height:100vh;
+}
+.eg_body{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap:0;                 /* sin separación entre paneles */
+  height:100vh;          /* ocupa toda la pantalla */
+}
+
+/* “card” sin borde ni sombra ni radios */
+.cardd{ background:transparent; border:0; border-radius:0; box-shadow:none; }
+
+/* Sidebar como panel sólido con separador derecho */
+.eg_filters{  border-right:1px solid var(--border); }
+.eg_filters__title{ border-radius:0; }
+
+/* Contenido: columna flexible que scrollea */
+.eg_content{
+  display:flex; flex-direction:column; min-height:100%; padding:0;
+}
+
+/* Header rojo de contenido: full width, plano */
+.eg_content__header{
+  margin:0;
+  border-radius:0;
+  background-color: var(--reg-primary);
+  padding:10px 16px;
+}
+
+/* El wrapper de la tabla ocupa todo y permite scroll interno */
+.ec_table__wrap{ position:relative; flex:1 1 auto; overflow:auto;  }
+
+/* Tabla plana sin “tarjetas” */
+.gt_table{ gap:0; }
+.gt_headerd{
+  grid-template-columns: repeat(7, 1fr);
+  background:#f8fafc;
+  border-bottom:1px solid var(--border);
+}
+.gt_headerd .gt_cell.h{ padding:10px 12px; }
+
+.gt_rowd{
+  grid-template-columns: repeat(7, 1fr);
+  background:transparent;
+  border:0;
+  border-bottom:1px solid var(--border); /* separador de filas */
+  border-radius:0;
+  box-shadow:none;
+}
+.gt_cell{ padding:12px 12px; min-width:0; }
+.gt_cell.center{ text-align:center; }
+
+/* Centrar categorías, N° factura, medio, monto (por si alguna clase se pierde) */
+.gt_headerd > .gt_cell:nth-child(2),
+.gt_headerd > .gt_cell:nth-child(3),
+.gt_headerd > .gt_cell:nth-child(5),
+.gt_headerd > .gt_cell:nth-child(6),
+.gt_rowd    > .gt_cell:nth-child(2),
+.gt_rowd    > .gt_cell:nth-child(3),
+.gt_rowd    > .gt_cell:nth-child(5),
+.gt_rowd    > .gt_cell:nth-child(6){ text-align:center !important; }
+
+/* Vacío plano */
+.gt_empty{
+  background:transparent;
+  border:0;
+  padding:24px 8px;
+  color:#64748b;
+}
+
+/* Loader tapa el área pero sin sombras redondeadas */
+.ec_table_loader{ border-radius:0; background:rgba(255,255,255,.65); }
+
+/* ===== Header rojo Categorías ===== */
+.eg_cats__header{
+  margin:12px 0 10px; padding:14px 16px; border-radius:6px;
+  background: var(--reg-primary); color:#fff; font-weight:900; display:flex; gap:10px; align-items:center;
+}
+
+/* Tarjetas de categorías más planas (sin sombra fuerte) */
+.eg_cats{ display:flex; flex-direction:column; gap:10px; }
+.eg_catcard{
+  background:#fff; border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; transition:background .15s ease, border-color .15s ease;
+}
+.eg_catcard:hover{ background:#f9fafb; }
+
+/* Acciones con variantes y hover (ya venían) */
+.row_actions{ display:flex; gap:8px; justify-content:center; }
+.icon_btn{
+  width:34px; height:34px; border-radius:999px; display:grid; place-items:center;
+  background:#f1f4fb; border:1px solid var(--border); color:#334155;
+  transition:transform .12s ease, background .16s ease, color .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.icon_btn:hover{ background:#fff; transform:translateY(-1px); box-shadow:0 8px 20px rgba(2,6,23,.08); }
+.icon_btn.view{   background:#eef2ff; border-color:#e0e7ff; color:#3730a3; }
+.icon_btn.edit{   background:#ecfeff; border-color:#cffafe; color:#0369a1; }
+.icon_btn.danger{ background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+.icon_btn.view:hover{   background:#e0e7ff; border-color:#c7d2fe; color:#312e81; }
+.icon_btn.edit:hover{   background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
+.icon_btn.danger:hover{ background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
+.icon_btn:focus-visible{ outline:0; box-shadow:0 0 0 3px rgba(59,130,246,.35); transform:none; }
+.icon_btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* Responsive sin “islas” */
+@media (max-width:1200px){
+  .eg_body{ grid-template-columns: 1fr; height:auto; min-height:100vh; }
+  .eg_filters{ border-right:0; border-bottom:1px solid var(--border); }
+}
+.paddingcenter{padding: 16px;}
+.seg-tabbb{ background-color: rgba(255,255,255,.18);; color: white; padding: .5rem; border: none; border-radius: 10px; font-weight: 800;
+    font-size: .92rem;}
+.textcenterfiltros{display: flex; gap: 0; justify-content: space-between; padding: 17px 16px; color:white; background-color: var(--reg-primary)}
+
+.textcenterfiltros h3{ font-size: .9rem; font-weight: 400;}

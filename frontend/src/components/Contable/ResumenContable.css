@@ -1,15 +1,13 @@
 /* ====== :root ROJO (sin degradados) — variables con prefijo reg- ====== */
 :root {
-  /* 🎨 PALETA ROJA */
-  --reg-primary: #B71C1C;          /* Rojo principal */
-  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
-  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
+  --reg-primary: #B71C1C;
+  --reg-primary-light: #E53935;
+  --reg-primary-dark: #7F0000;
 
-  --reg-secondary: #1D428A;        /* Azul secundario (para ingresos) */
-  --reg-accent: #C62828;           /* Rojo acento (para egresos) */
+  --reg-secondary: #1D428A;
+  --reg-accent: #C62828;
 
   --reg-success: #10B981;
-  --reg-warning: #F59E0B;
   --reg-danger: #D32F2F;
 
   --reg-light: #F8FAFC;
@@ -22,394 +20,258 @@
   --reg-gray-500: #64748B;
   --reg-gray-600: #475569;
   --reg-gray-700: #334155;
-  --reg-gray-800: #1E293B;
-  --reg-gray-900: #0F172A;
 
   --reg-border-radius: 12px;
   --reg-border-radius-lg: 16px;
-  --reg-border-radius-xl: 20px;
 
-  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  --reg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --reg-transition: all .25s ease;
+  --reg-shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+  --reg-shadow-md: 0 6px 14px rgba(15,23,42,.08);
+  --reg-shadow-lg: 0 14px 28px rgba(15,23,42,.10);
 }
 
-/* =============== Tokens del componente mapeados a la paleta roja =============== */
+/* =============== Tokens del componente =============== */
 .rc_shell{
   --bg: var(--reg-gray-100);
   --surface: #fff;
   --border: var(--reg-gray-200);
-  --text: var(--reg-dark);
-  --muted: var(--reg-gray-500);
-
+  --text: #0f172a;
+  --muted: var(--reg-gray-600);
   --primary: var(--reg-primary);
-  --primary-600: var(--reg-primary-dark);
-  --accent: var(--reg-accent);
-
-  --green: var(--reg-success);
-  --red: var(--reg-danger);
-
-  --ok: var(--reg-success);
-  --warn: var(--reg-danger);
-
-  --r-lg: var(--reg-border-radius-lg);
-  --r-md: var(--reg-border-radius);
-  --shadow: var(--reg-shadow-lg);
-  --shadow-soft: var(--reg-shadow-sm);
 }
 
 /* =========================== Layout base =========================== */
 .rc_shell{
   display:grid;
-  grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr; /* sidebar + main */
+  grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr;
   gap:1.25rem;
-  padding:0 1.25rem;
   background:var(--bg);
+  height: 100vh;             /* ocupa toda la ventana */
 }
-
 .rc_shell *{ box-sizing:border-box; }
 
-/* ---------- SIDEBAR ---------- */
-.rc_side{
-  position:sticky;
-  top:1rem;
-  align-self:start;
+/* ---------- SIDEBAR a ras, 100% height ---------- */
+.rc_side.rc_side--photo{
+  background:#fff;
+  color:var(--text);
+  /* sin isla flotante */
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+  /* sin espaciamientos propios */
+  margin:0;
+  padding:0;
+  /* ocupa todo el alto */
+  height:100vh;
 
-  background:var(--reg-dark);
-  color:#e5e7eb;
-  border-radius:var(--r-lg);
-  box-shadow:var(--shadow);
-  padding:1rem;
-  min-height:min(80vh, 100%);
   display:flex;
   flex-direction:column;
-  gap:1rem;
+  gap:0;
+  overflow:hidden; /* para el header */
 }
 
-.rc_brand{
-  font-weight:900;
-  letter-spacing:.06em;
-  font-size:clamp(0.9rem, 1.2vw, 1rem);
-  color:#e2e8f0;
-  opacity:.9;
-}
-
-.rc_side_group{
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(148,163,184,.18);
-  border-radius:var(--r-md);
-  padding:1rem;
-}
-
-.rc_side_title{
-  display:flex;
-  align-items:center;
-  gap:.5rem;
-  font-weight:800;
-  margin-bottom:.75rem;
-  color:#cbd5e1;
-  font-size:.95rem;
-}
-
-.rc_slabel{
-  display:block;
-  font-size:.75rem;
-  font-weight:700;
-  color:#a3aed0;
-  margin-bottom:.35rem;
-}
-
-.rc_sselect{
-  width:100%;
-  background:#0f172a;
-  color:#e2e8f0;
-  border:1px solid rgba(148,163,184,.28);
-  border-radius:.75rem;
-  padding:.6rem .75rem;
-  outline:none;
-  transition: var(--reg-transition);
-}
-.rc_sselect:focus{
-  border-color: var(--reg-primary-light);
-  box-shadow:0 0 0 .2rem rgba(229,57,53,.18);
-}
-
-.rc_sublabel{
-  margin:.9rem 0 .35rem;
-  color:#a3aed0;
-  font-weight:800;
-  font-size:.75rem;
-}
-
-.rc_spills{
-  display:flex; gap:.5rem; flex-wrap:wrap;
-}
-.rc_spill{
-  border:1px solid rgba(148,163,184,.25);
-  background:#0f172a;
-  color:#cbd5e1;
-  border-radius:999px;
-  padding:.4rem .75rem;
-  font-weight:800;
-  font-size:.8rem;
-  cursor:pointer;
-  transition: var(--reg-transition);
-}
-.rc_spill:hover{ border-color:var(--reg-primary-light); color:#fff; }
-.rc_spill.active{
+/* Franja roja superior de la sidebar */
+.rc_side_header{
+  background: var(--reg-primary);
   color:#fff;
-  background: var(--primary);          /* sin degradados */
-  border-color: var(--primary);
-  box-shadow: var(--reg-shadow-md);
-}
-
-/* Totales en sidebar */
-.rc_side_metrics{
-  display:grid;
-  gap:.75rem;
-}
-.rc_side .rc_metric{
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(148,163,184,.18);
-  border-radius:var(--r-md);
-  box-shadow:none;
-}
-.rc_side .rc_metric__label{ color:#a3aed0; }
-.rc_side .rc_metric__value{ color:#e5e7eb; }
-
-/* ---------- MAIN ---------- */
-.rc_main{ min-width:0; }
-
-.rc_topbar{
+  padding:.9rem .95rem;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  margin-bottom:1rem;
+  gap:.75rem;
 }
-.rc_title{
-  margin:0;
-  font-size:clamp(1rem, 2vw, 1.25rem);
-  color:var(--text);
+.rc_side_header_l{
+  display:flex; align-items:center; gap:.55rem;
+}
+.rc_side_badge{
+  width:1.6rem; height:1.6rem;
+  display:grid; place-items:center;
+  border-radius:10px;
+  background:#ffffff22;
+  border:1px solid #ffffff55;
+}
+.rc_side_title{
+  font-weight:900;
+  letter-spacing:.01em;
+}
+.rc_side_sub{
+  opacity:.95;
+  font-weight:600;
 }
 
-/* Tarjetas base */
+/* Contenido del panel */
+.rc_field{
+  padding:1rem .95rem 0.25rem;
+}
+.rc_field_label{
+  display:block;
+  font-size:.9rem;
+  font-weight:800;
+  color:#334155;
+  margin:0 0 .4rem;
+}
+.rc_field_input{
+  width:100%;
+  appearance:none;
+  background:#fff;
+  color:#0f172a;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:.7rem .85rem;
+  outline:none;
+  transition: var(--reg-transition);
+  box-shadow: var(--reg-shadow-sm);
+}
+.rc_field_input:focus{
+  border-color: var(--reg-primary-light);
+  box-shadow: 0 0 0 .15rem rgba(183,28,28,.12);
+}
+
+/* Tarjetas KPI */
+.rc_kpis{
+  padding:.75rem .95rem 1rem;
+  display:grid;
+  gap:.75rem;
+}
+.rc_kpi{
+  display:grid;
+  grid-template-columns: 3.2rem 1fr;
+  align-items:center;
+  gap:.75rem;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:.8rem .85rem;
+  box-shadow: var(--reg-shadow-sm);
+}
+.rc_kpi_icon{
+  width:3.2rem; height:3.2rem;
+  border-radius:12px;
+  display:grid; place-items:center;
+  font-weight:900; color:#fff;
+  background: var(--reg-primary);
+  box-shadow: inset 0 0 0 1px #ffffff66;
+}
+
+.rc_kpi_icon.warn{ background: var(--reg-danger); }
+.rc_kpi_txt .rc_kpi_label{
+  margin:0; font-size:.9rem; font-weight:800; color:#475569;
+}
+.rc_kpi_txt .rc_kpi_value{
+  margin:.15rem 0 0; font-size:1.2rem; font-weight:900; color:#0f172a;
+}
+
+/* ---------- MAIN / tarjetas ---------- */
+.rc_main{
+  min-width:0;
+  padding: 1rem 0; /* respiro solo al main, sidebar queda a ras */
+}
+.rc_topbar{
+  display:none; 
+}
+.rc_title{ margin:0; font-size:1.15rem; }
+
 .card{
   background:var(--surface);
   border:1px solid var(--border);
-  border-radius:var(--r-lg);
-  box-shadow:var(--shadow);
+  border-radius:16px;
+  box-shadow:var(--reg-shadow-md);
 }
 
-/* =========================== Métricas =========================== */
-.rc_metric{
-  display:grid;
-  grid-template-columns:3.2rem 1fr;
-  gap:.75rem; align-items:center;
-  padding:.9rem;
+/* Header rojo en todas las tarjetas */
+.rc_card__header{
+  background: var(--reg-primary);
+  color: #fff;
+  border-bottom: 1px solid var(--reg-primary-dark);
+  padding: .9rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
 }
-.rc_metric__icon{
-  width:3.2rem; height:3.2rem;
-  border-radius:1rem;
-  display:grid; place-items:center;
-  color:#fff; font-weight:900;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);
+.rc_card__icon{
+  width: 1.85rem;
+  height: 1.85rem;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #ffffff22;
+  border: 1px solid #ffffff55;
+  margin: .45rem 0;
 }
-.rc_metric__icon.ing{ background: var(--green); } /* sólido */
-.rc_metric__icon.egr{ background: var(--red);   } /* sólido */
-.rc_metric__icon.ok{  background: var(--ok);    }
-.rc_metric__icon.warn{ background: var(--warn); }
+.rc_card__title{
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: .01em;
+}
 
-.rc_metric__label{ margin:0; font-size:.75rem; color:var(--muted); font-weight:700; }
-.rc_metric__value{ margin:.2rem 0 0; font-size:clamp(1rem, 2vw, 1.35rem); font-weight:900; }
-
-/* =========================== Tabs de gráficos =========================== */
+/* Tabs sobre fondo rojo */
 .rc_tabs_main{
-  display:inline-flex;
-  gap:.5rem;
-  background: var(--reg-light);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:.35rem;
+  margin-left: auto;
+  background: #ffffff22;
+  border: 1px solid #ffffff55;
+  border-radius:14px; padding:.35rem;
+  display:inline-flex; gap:.5rem;
 }
 .rc_mtab{
-  border:0;
-  background:transparent;
-  font-weight:900;
-  color:var(--reg-gray-600);
-  padding:.5rem .9rem;
-  border-radius:999px;
-  cursor:pointer;
-  transition: var(--reg-transition);
+  border:0; background:transparent; font-weight:900; color:#fff;
+  padding:.5rem .9rem; border-radius:999px; cursor:pointer; transition:var(--reg-transition);
 }
-.rc_mtab:hover{ background:#fff; color: var(--primary-600); }
-.rc_mtab.active{
-  color:#fff;
-  background: var(--primary);          /* sin degradados */
-  box-shadow: var(--reg-shadow-md);
-}
-.rc_card__header{
-  padding: .9rem 1rem;
-  border-bottom: 1px solid var(--border);
-}
+.rc_mtab:hover{ background:#ffffff33; color:#fff; }
+.rc_mtab.active{ color: var(--reg-primary); background:#fff; box-shadow:var(--reg-shadow-sm); }
+
 .rc_chart_body{ padding:.75rem; }
 
-/* =========================== Donut =========================== */
+/* Donut/linea */
 .rc_donut{ display:flex; gap:1rem; align-items:center; justify-content:center; padding:.75rem; }
-.rc_donut_total{ font-weight:900; font-size:1.125rem; fill:var(--text); }
-.rc_donut_label{ font-size:.75rem; fill:var(--muted); }
+.rc_donut_total{ font-weight:900; font-size:1.125rem; fill:#0f172a; }
+.rc_donut_label{ font-size:.75rem; fill:#64748b; }
 .rc_legend{ display:grid; gap:.4rem; }
-.rc_legend_item{ display:flex; align-items:center; gap:.5rem; color:var(--reg-gray-700); font-weight:700; }
+.rc_legend_item{ display:flex; align-items:center; gap:.5rem; color:#334155; font-weight:700; }
 .rc_legend_item strong{ margin-left:.5rem; }
 .dot{ width:.75rem; height:.75rem; border-radius:999px; display:inline-block; }
-.dot.ing{ background: var(--reg-secondary); } /* azul ingresos */
-.dot.egr{ background: var(--reg-accent); }    /* rojo egresos */
-
-/* =========================== Línea =========================== */
+.dot.ing{ background: var(--reg-secondary); }
+.dot.egr{ background: var(--reg-accent); }
 .rc_line{ padding:.5rem; }
 .rc_line .axis line{ stroke: var(--reg-gray-200); stroke-width:1; }
-.rc_line_label{ font-size:.7rem; fill:var(--muted); }
+.rc_line_label{ font-size:.7rem; fill:#64748b; }
 
-/* =========================== Tabla =========================== */
-.rc_table__wrap{ width:100%; overflow:auto; /* max-height controlado por flex */ }
+/* Tabla */
+.rc_table__wrap{ width:100%; overflow:auto; background:#fff; }
 .gt_table{ --cols:auto; display:grid; gap:.6rem; }
 .gt_table.gt_cols-4{ --cols: 8rem 1fr 1fr 1fr; }
-
 .gt_header{ display:grid; grid-template-columns:var(--cols); }
-.gt_header .gt_cell.h{ font-size:.85rem; color:var(--muted); font-weight:900; padding:0 .75rem .45rem; }
-
+.gt_header .gt_cell.h{ font-size:.85rem; color:#64748b; font-weight:900; padding:0 .75rem .45rem; }
 .gt_row{
   display:grid; grid-template-columns:var(--cols);
-  background:#fff; border:1px solid var(--border); border-radius:.9rem;
-  box-shadow:var(--shadow-soft); align-items:center;
+  background:#fff; border:1px solid var(--border); border-radius:12px;
+  box-shadow:var(--reg-shadow-sm); align-items:center;
 }
 .gt_cell{ padding:.9rem .75rem; }
 .gt_cell.right{ text-align:right; font-weight:800; }
 .gt_cell.pos{ color:#15803d; }
 .gt_cell.neg{ color:#b91c1c; }
-
 .gt_empty{
-  text-align:center; color:var(--muted); padding:1rem .5rem;
-  border:1px dashed var(--border); border-radius:.9rem; background:var(--reg-light);
+  text-align:center; color:#64748b; padding:1rem .5rem;
+  border:1px dashed var(--border); border-radius:12px; background:#f8fafc;
 }
 
-/* =========================== Dos columnas: gráfico + tabla =========================== */
+/* Dos columnas */
 .rc_twocol{
   display:grid;
   grid-template-columns: 1fr 1fr;
   gap:1rem;
-  align-items: stretch;          /* estira ambas tarjetas a la misma fila */
+  align-items:stretch;
 }
-
-/* Las tarjetas llenan la fila y reparten interior en columna */
-.rc_twocol .rc_card{
-  height:100%;
-  display:flex;
-  flex-direction:column;
-}
-
-/* Cuerpo estira para igualar alturas */
+.rc_twocol .rc_card{ height:100%; display:flex; flex-direction:column; }
 .rc_card--chart .rc_chart_body,
-.rc_card--table .rc_table__wrap{
-  flex:1 1 auto;                 /* ocupa el alto disponible */
-  min-height: 320px;             /* altura mínima común (podés subirla) */
-}
+.rc_card--table .rc_table__wrap{ flex:1 1 auto; max-height:320px; }
 
-/* Centrado agradable del gráfico dentro de su área */
-.rc_card--chart .rc_chart_body{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding: .75rem;
-}
-
-/* La tabla scrollea dentro del alto compartido */
-.rc_card--table .rc_table__wrap{
-  overflow:auto;
-   max-height: 60vh;       /* usamos el alto flexible */
-}
-
-/* =========================== Responsive =========================== */
+/* Responsive */
 @media (max-width: 1100px){
   .gt_table{ min-width:40rem; }
 }
 @media (max-width: 900px){
-  .rc_shell{ grid-template-columns: 1fr; }
-  .rc_side{ position:static; order:-1; }
+  .rc_shell{ grid-template-columns: 1fr; height: auto; }
   .rc_twocol{ grid-template-columns: 1fr; }
-}
-@media (max-width: 640px){
-  .rc_side_metrics { grid-template-columns:1fr; }
-}
-/* ====== Opción A: ocupar todo el alto menos el header (solo CSS) ====== */
-
-/* 1) Definí la altura fija del header una sola vez */
-:root{
-  --header-h: 90.33px; /* cambiá este valor si tu header cambia */
-}
-
-/* 2) Hacé que el layout use (viewport - header) */
-.rc_shell{
-  min-height: calc(100dvh - var(--header-h)); /* 100dvh respeta la UI móvil */
-  display: grid;
-  grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr;
-  gap: 1.25rem;
-
-  /* dejá tu background/tokenes existentes acá */
-}
-
-/* 3) Permití que el contenido interno crezca y scrollee */
-.rc_main{
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* clave para scroll interno */
-}
-
-/* 4) Dos columnas: gráfico + tabla usando todo el alto disponible */
-.rc_twocol{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  align-items: stretch;
-  flex: 1 1 auto; /* ocupa el resto del alto en .rc_main */
-  min-height: 0;  /* habilita scroll en hijos */
-}
-
-/* 5) Las cards reparten su alto internamente */
-.rc_twocol .rc_card{
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* evita overflow no deseado */
-}
-
-/* 6) El gráfico y la tabla ocupan el espacio restante dentro de su card */
-.rc_card--chart .rc_chart_body,
-.rc_card--table .rc_table__wrap{
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-/* 7) La tabla scrollea dentro de su tarjeta (no en toda la página) */
-.rc_card--table .rc_table__wrap{
-  overflow: auto;
-  /* asegurate de NO tener max-height fijo acá */
-}
-
-/* 8) Sidebar sticky (opcional, queda bien con header relativo) */
-.rc_side{
-  position: sticky;
-  top: 1rem;      /* separadito del borde superior del área útil */
-  align-self: start;
-  height: 100%;
-}
-
-/* 9) Responsive (opcional, si ya lo tenías, dejalo) */
-@media (max-width: 900px){
-  .rc_shell{ grid-template-columns: 1fr; }
-  .rc_side{ position: static; order: -1; }
-  .rc_twocol{ grid-template-columns: 1fr; }
+  .rc_side.rc_side--photo{ height: auto; }
 }

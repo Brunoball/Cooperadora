@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faFilter, faChartPie, faTableList } from "@fortawesome/free-solid-svg-icons";
 import "./ResumenContable.css";
 
 const hoy = new Date();
@@ -73,7 +73,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
-        {/* Egresos (arranca donde termina ingresos) */}
+        {/* Egresos */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -115,7 +115,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
   );
 }
 
-/* ---------- LineChart (color dinámico por serie) ---------- */
+/* ---------- LineChart ---------- */
 function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
   const W = 700, H = 240, P = 24;
   const maxV = Math.max(...data.map((d) => d.value), 1);
@@ -149,7 +149,6 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
           </filter>
         </defs>
 
-        {/* grid */}
         <g className="axis">
           {[0.25, 0.5, 0.75, 1].map((p, i) => (
             <line
@@ -192,7 +191,6 @@ export default function ResumenContable() {
   const [serie, setSerie] = useState("ingresos"); // ingresos | egresos | saldo
   const [chartTab, setChartTab] = useState("anual"); // anual | mensual
 
-  /* Años disponibles (re-uso del endpoint de ingresos) */
   const loadAniosDisponibles = async (prefer = anioRes) => {
     try {
       const raw = await fetchJSON(
@@ -210,7 +208,6 @@ export default function ResumenContable() {
   const loadResumen = async () => {
     setLoadingRes(true);
     try {
-      // ✅ Nuevo endpoint separado para el resumen (suma pagos + ingresos manuales)
       const raw = await fetchJSON(
         `${BASE_URL}/api.php?action=contable_resumen&year=${anioRes}`
       );
@@ -257,37 +254,38 @@ export default function ResumenContable() {
     return meses12.map((m) => ({ label: m.nombre_mes, value: Number(m[key] || 0) }));
   }, [meses12, serie]);
 
-  // Colores por serie
   const serieColor =
-    serie === "ingresos" ? "#1D428A" : // azul
-    serie === "egresos"  ? "#B71C1C" : // rojo
-                           "#334155";  // gris para saldo
+    serie === "ingresos" ? "#1D428A" :
+    serie === "egresos"  ? "#B71C1C" :
+                           "#334155";
+
+  const detalleMesActual = `${MESES[hoy.getMonth()]} ${anioRes}`;
 
   return (
     <div className="rc_shell">
-      {/* SIDEBAR (filtros + totales) */}
-      <aside className="rc_side">
-        <div className="rc_brand">DESKBOARD</div>
-
-        <div className="rc_side_group">
-          <div className="rc_side_title">
-            <FontAwesomeIcon icon={faFilter} /> Filtros
+      {/* SIDEBAR (a ras, 100% height) */}
+      <aside className="rc_side rc_side--photo">
+        <div className="rc_side_header">
+          <div className="rc_side_header_l">
+            <span className="rc_side_badge">
+              <FontAwesomeIcon icon={faFilter} />
+            </span>
+            <span className="rc_side_title">Filtros</span>
           </div>
+          <div className="rc_side_sub">Detalle — {detalleMesActual}</div>
+        </div>
 
-          <label className="rc_slabel" htmlFor="anio">
-            Año
-          </label>
+        <div className="rc_field">
+          <label className="rc_field_label" htmlFor="anio">Año</label>
           <select
             id="anio"
-            className="rc_sselect"
+            className="rc_field_input"
             value={anioRes}
             onChange={(e) => setAnioRes(Number(e.target.value))}
           >
             {aniosCat.length ? (
               aniosCat.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
+                <option key={a} value={a}>{a}</option>
               ))
             ) : (
               <option value={anioRes}>{anioRes}</option>
@@ -295,33 +293,27 @@ export default function ResumenContable() {
           </select>
         </div>
 
-        {/* Totales en el panel lateral */}
-        <div className="rc_side_metrics">
-          <div className="rc_metric side">
-            <div className="rc_metric__icon ing">+</div>
-            <div>
-              <p className="rc_metric__label">Total Ingresos</p>
-              <p className="rc_metric__value">
-                ${totals.ingresos.toLocaleString("es-AR")}
-              </p>
+        {/* KPIs */}
+        <div className="rc_kpis">
+          <div className="rc_kpi">
+            <div className="rc_kpi_icon">$</div>
+            <div className="rc_kpi_txt">
+              <p className="rc_kpi_label">Total Ingresos</p>
+              <p className="rc_kpi_value">${totals.ingresos.toLocaleString("es-AR")}</p>
             </div>
           </div>
-          <div className="rc_metric side">
-            <div className="rc_metric__icon egr">–</div>
-            <div>
-              <p className="rc_metric__label">Total Egresos</p>
-              <p className="rc_metric__value">
-                ${totals.egresos.toLocaleString("es-AR")}
-              </p>
+          <div className="rc_kpi">
+            <div className="rc_kpi_icon">–</div>
+            <div className="rc_kpi_txt">
+              <p className="rc_kpi_label">Total Egresos</p>
+              <p className="rc_kpi_value">${totals.egresos.toLocaleString("es-AR")}</p>
             </div>
           </div>
-          <div className="rc_metric side">
-            <div className={`rc_metric__icon ${totals.saldo >= 0 ? "ok" : "warn"}`}>Σ</div>
-            <div>
-              <p className="rc_metric__label">Resultado</p>
-              <p className="rc_metric__value">
-                ${totals.saldo.toLocaleString("es-AR")}
-              </p>
+          <div className="rc_kpi">
+            <div className={`rc_kpi_icon ${totals.saldo >= 0 ? "ok" : "warn"}`}>Σ</div>
+            <div className="rc_kpi_txt">
+              <p className="rc_kpi_label">Resultado</p>
+              <p className="rc_kpi_value">${totals.saldo.toLocaleString("es-AR")}</p>
             </div>
           </div>
         </div>
@@ -333,25 +325,29 @@ export default function ResumenContable() {
           <h2 className="rc_title">Resumen Contable</h2>
         </header>
 
-        {/* Gráfico + Tabla lado a lado con misma altura */}
         <div className="rc_twocol">
-          {/* Card: Gráfico */}
+          {/* CHART CARD */}
           <section className="rc_card card rc_card--chart">
             <header className="rc_card__header">
+              <div className="rc_card__icon">
+                <FontAwesomeIcon icon={faChartPie} />
+              </div>
+              <h3 className="rc_card__title">Visualización</h3>
+
               <div className="rc_tabs_main">
                 <button
                   className={`rc_mtab ${chartTab === "anual" ? "active" : ""}`}
                   onClick={() => setChartTab("anual")}
                   type="button"
                 >
-                  Resumen  anual
+                   Anual
                 </button>
                 <button
                   className={`rc_mtab ${chartTab === "mensual" ? "active" : ""}`}
                   onClick={() => setChartTab("mensual")}
                   type="button"
                 >
-                  Resumen  mensual
+                   Mensual
                 </button>
               </div>
             </header>
@@ -365,13 +361,16 @@ export default function ResumenContable() {
             </div>
           </section>
 
-          {/* Card: Tabla */}
+          {/* TABLE CARD */}
           <section className="rc_card card rc_card--table">
             <header className="rc_card__header">
-              <h3>Resumen anual</h3>
+              <div className="rc_card__icon">
+                <FontAwesomeIcon icon={faTableList} />
+              </div>
+              <h3 className="rc_card__title">Resumen anual</h3>
             </header>
 
-            <div className="rc_table__wrap">
+            <div className="rc_table__wrap" role="region" aria-label="Tabla resumen anual">
               <div className="gt_table gt_cols-4" role="table" aria-label="Resumen por mes">
                 <div className="gt_header" role="row">
                   <div className="gt_cell h" role="columnheader">Mes</div>
