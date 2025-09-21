@@ -61,8 +61,9 @@
   --danger-200: #fecaca;
   --danger-300: #fca5a5;
   --danger-400: #f87171;
-  --danger-500: #ef4444;
-  --danger-600: #dc2626;
+  --danger-500: #ef4444;  /* rojo base */
+  --danger-600: #dc2626;  /* rojo hover / header */
+  --danger-700: #b91c1c;
 
   /* Neutros / Superficies */
   --gray-50:  #f8fafc;
@@ -88,6 +89,7 @@
 
   /* Gradientes */
   --gradient-primary: linear-gradient(135deg, var(--secondary-500), var(--secondary-700));
+  --gradient-danger: linear-gradient(135deg, var(--danger-500), var(--danger-600));
   --gradient-hero: linear-gradient(135deg, var(--secondary-500) 0%, var(--secondary-700) 50%, var(--secondary-900) 100%);
   --gradient-background: linear-gradient(135deg, var(--gray-100) 30%, var(--secondary-500) 70%);
   --gradient-accent: linear-gradient(90deg, var(--secondary-500), var(--secondary-700));
@@ -191,6 +193,11 @@
   background: linear-gradient(135deg, var(--success-500), var(--success-700));
 }
 
+/* Cabecera roja para el modal de registro (según pedido) */
+.danger-header {
+  background: var(--gradient-danger);
+}
+
 .modal-header-content {
   display: flex;
   align-items: center;
@@ -256,6 +263,7 @@
   background: linear-gradient(180deg, var(--gray-50), #fff 40%);
 }
 
+/* Panel de éxito a una sola columna */
 .success-panel {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -266,12 +274,18 @@
   padding: 1.25rem;
   box-shadow: var(--shadow-md);
 }
+.success-panel--full {
+  grid-template-columns: 1fr;
+}
 
 .success-left {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 1rem;
   align-items: flex-start;
+}
+.success-left--full {
+  grid-template-columns: auto 1fr; /* mantiene el check + textos */
 }
 
 .success-check {
@@ -348,14 +362,16 @@
   font-size: .8rem;
 }
 
-.success-right {
+/* Bloque que coloca "Imprimir / PDF" debajo del texto */
+.success-actions {
+  margin-top: 1rem;
   display: flex;
   flex-direction: column;
-  gap: .75rem;
   align-items: stretch;
-  justify-content: center;
+  gap: .75rem;
 }
 
+/* Selector segmentado */
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -401,11 +417,10 @@
   margin-bottom: 1.5rem;
   border-left: 4px solid var(--secondary-color);
 }
-.socio-info-header { display: flex; flex-direction: column; gap: 0.5rem; }
-.socio-nombre { font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin: 0; }
-.socio-fecha { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); }
-.fecha-label { font-weight: 500; }
-.fecha-valor { color: var(--primary-color); font-weight: 600; }
+
+/* Acento rojo solicitado */
+.socio-info-card--danger { border-left-color: var(--danger-600); }
+.valor-mes--danger strong { color: var(--danger-700); }
 
 /* =========================================================
    Condonar — Caja con switch y selector de año
@@ -724,7 +739,7 @@
 }
 
 /* =========================================================
-   Botones (con mayor especificidad para evitar overrides)
+   Botones
    ========================================================= */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -768,7 +783,7 @@
   border-color: var(--secondary-300);
 }
 
-/* PRIMARIO: siempre visible (ARREGLADO) */
+/* PRIMARIO (se mantiene para otros lugares) */
 .btn.btn-primary {
   background-color: var(--secondary-color) !important;
   color: var(--text-on-primary) !important;
@@ -780,13 +795,22 @@
   border-color: var(--secondary-hover) !important;
   box-shadow: var(--shadow-md);
 }
-.btn.btn-primary:active:not(:disabled) {
-  transform: translateY(1px);
+
+/* DANGER (rojo) — solicitado para botón inferior y éxito */
+.btn.btn-danger {
+  background: var(--danger-500) !important;
+  color: #fff !important;
+  border: 1px solid var(--danger-500) !important;
   box-shadow: var(--shadow-sm);
 }
-.btn.btn-primary:focus-visible {
-  outline: 3px solid rgba(37,99,235,.6);
-  outline-offset: 3px;
+.btn.btn-danger:hover:not(:disabled) {
+  background: var(--danger-600) !important;
+  border-color: var(--danger-600) !important;
+  box-shadow: var(--shadow-md);
+}
+.btn.btn-danger:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* SECUNDARIO */
@@ -816,14 +840,6 @@
   border-color: var(--warning-600) !important;
   box-shadow: var(--shadow-md);
 }
-.btn.btn-warning:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: var(--shadow-sm);
-}
-.btn.btn-warning:focus-visible {
-  outline: 3px solid rgba(245,158,11,.5);
-  outline-offset: 3px;
-}
 
 /* Spinner dentro de botón */
 .spinner-btn {
@@ -843,8 +859,8 @@
    Breakpoints
    ========================================================= */
 @media (max-width: 720px) {
-  .success-panel { grid-template-columns: 1fr; }
-  .success-right { align-items: stretch; }
+  .success-panel,
+  .success-panel--full { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {

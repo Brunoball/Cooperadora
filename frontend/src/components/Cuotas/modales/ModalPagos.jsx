@@ -359,24 +359,18 @@ const ModalPagos = ({ socio, onClose }) => {
 
   // === Acción post-éxito según modo seleccionado ===
   const handleComprobante = async () => {
-    // Ordenamos y definimos el primer período (para título/compatibilidad)
     const periodos = periodosOrdenados;
     const periodoCodigo = periodos[0] || 0;
 
-    // Objeto unificado para los 3 flujos (print interno, print externo, PDF)
     const alumnoParaImprimir = {
       ...socio,
-
-      // Campos clave para tus utils:
-      id_periodo: periodoCodigo,           // compat
-      periodos,                            // <-- lista completa de meses pagados
-      periodo_texto: periodoTextoFinal,    // <-- “ENE / FEB / MAR 2025”
+      id_periodo: periodoCodigo,
+      periodos,
+      periodo_texto: periodoTextoFinal,
       precio_unitario: precioUnitarioVigente,
-      importe_total: total,                // <-- monto final (multi-mes)
-      precio_total: total,                 // alias por si algún util lo usa
+      importe_total: total,
+      precio_total: total,
       anio: anioTrabajo,
-
-      // Nombre de categoría que queremos mostrar
       categoria_nombre: libreActivo ? 'LIBRE' : (nombreCategoria || ''),
     };
 
@@ -388,7 +382,7 @@ const ModalPagos = ({ socio, onClose }) => {
           periodoTexto: periodoTextoFinal,
           importeTotal: total,
           precioUnitario: precioUnitarioVigente,
-          periodos, // también paso explícito en opciones
+          periodos,
         });
       } catch (e) {
         console.error('Error al generar PDF:', e);
@@ -397,7 +391,6 @@ const ModalPagos = ({ socio, onClose }) => {
       return;
     }
 
-    // Imprimir (abre ventana y llama a tu util)
     const win = window.open('', '_blank');
     if (!win) return alert('Habilitá ventanas emergentes para imprimir el comprobante.');
 
@@ -446,10 +439,10 @@ const ModalPagos = ({ socio, onClose }) => {
               </button>
             </div>
 
-            {/* Cuerpo con tarjeta de éxito mejorada */}
+            {/* Cuerpo: tarjeta de texto a lo ancho */}
             <div className="modal-body success-body">
-              <div className="success-panel">
-                <div className="success-left">
+              <div className="success-panel success-panel--full">
+                <div className="success-left success-left--full">
                   <div className="success-check">
                     <span className="checkmark-giant" aria-hidden="true">✓</span>
                   </div>
@@ -474,38 +467,37 @@ const ModalPagos = ({ socio, onClose }) => {
                     )}
                   </div>
                 </div>
+              </div>
 
-                {/* Selector segmentado */}
-                <div className="success-right">
-                  <div className="segmented" role="tablist" aria-label="Modo de comprobante">
-                    <button
-                      role="tab"
-                      aria-selected={modoComprobante === 'imprimir'}
-                      className={`segmented-item ${modoComprobante === 'imprimir' ? 'active' : ''}`}
-                      onClick={() => setModoComprobante('imprimir')}
-                    >
-                      Imprimir
-                    </button>
-                    <button
-                      role="tab"
-                      aria-selected={modoComprobante === 'pdf'}
-                      className={`segmented-item ${modoComprobante === 'pdf' ? 'active' : ''}`}
-                      onClick={() => setModoComprobante('pdf')}
-                    >
-                      PDF
-                    </button>
-                  </div>
-
-                  <div className="hint">
-                    {modoComprobante === 'pdf'
-                      ? 'Descargá un PDF listo para enviar o guardar.'
-                      : 'Abrí la vista de impresión con tu diseño de recibo.'}
-                  </div>
+              {/* Botones Imprimir / PDF DEBAJO del texto */}
+              <div className="success-actions">
+                <div className="segmented" role="tablist" aria-label="Modo de comprobante">
+                  <button
+                    role="tab"
+                    aria-selected={modoComprobante === 'imprimir'}
+                    className={`segmented-item ${modoComprobante === 'imprimir' ? 'active' : ''}`}
+                    onClick={() => setModoComprobante('imprimir')}
+                  >
+                    Imprimir
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={modoComprobante === 'pdf'}
+                    className={`segmented-item ${modoComprobante === 'pdf' ? 'active' : ''}`}
+                    onClick={() => setModoComprobante('pdf')}
+                  >
+                    PDF
+                  </button>
+                </div>
+                <div className="hint">
+                  {modoComprobante === 'pdf'
+                    ? 'Descargá un PDF listo para enviar o guardar.'
+                    : 'Abrí la vista de impresión con tu diseño de recibo.'}
                 </div>
               </div>
             </div>
 
-            {/* Footer con CTA claro */}
+            {/* Footer con CTA en rojo */}
             <div className="modal-footer success-footer">
               <div className="footer-left">
                 <span className={`total-badge ${condonar ? 'total-badge-warning' : ''}`}>
@@ -516,7 +508,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 <button className="btn btn-secondary" onClick={() => onClose?.(true)} type="button">
                   Listo
                 </button>
-                <button className="btn btn-primary" onClick={handleComprobante} type="button">
+                <button className="btn btn-danger" onClick={handleComprobante} type="button">
                   {modoComprobante === 'pdf' ? 'Descargar PDF' : 'Abrir impresión'}
                 </button>
               </div>
@@ -542,7 +534,7 @@ const ModalPagos = ({ socio, onClose }) => {
       <div className="modal-pagos-overlay">
         <div className="modal-pagos-contenido">
           {/* Header */}
-          <div className="modal-header">
+          <div className="modal-header danger-header">
             <div className="modal-header-content">
               <div className="modal-icon-circle">
                 <FaCoins size={20} />
@@ -558,7 +550,7 @@ const ModalPagos = ({ socio, onClose }) => {
 
           {/* Body */}
           <div className="modal-body">
-            <div className="socio-info-card">
+            <div className="socio-info-card socio-info-card--danger">
               <div className="socio-info-header">
                 <h3 className="socio-nombre">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
                 {fechaIngreso && (
@@ -569,7 +561,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 )}
               </div>
               <div className="socio-info-extra">
-                <span className="valor-mes">
+                <span className="valor-mes valor-mes--danger">
                   <strong>Valor mensual</strong>{' '}
                   {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioUnitarioVigente)}
                 </span>
@@ -747,7 +739,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 Cancelar
               </button>
               <button
-                className={`btn ${condonar ? 'btn-warning' : 'btn-primary'}`}
+                className={`btn ${condonar ? 'btn-warning' : 'btn-danger'}`}
                 onClick={confirmarPago}
                 disabled={periodosOrdenados.length === 0 || cargando}
                 type="button"

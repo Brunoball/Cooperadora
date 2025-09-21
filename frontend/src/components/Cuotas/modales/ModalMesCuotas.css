@@ -1,6 +1,6 @@
 /* src/components/Cuotas/modales/ModalMesCuotas.css */
 
-/* ===== Reset para evitar “zoom/encimado” por cálculo de caja ===== */
+/* ===== Reset ===== */
 *,
 *::before,
 *::after {
@@ -8,25 +8,24 @@
 }
 
 :root {
-  /* Mismos colores que ModalPagos */
   --modmes_primary: #4F46E5;
   --modmes_primary-hover: #4338CA;
   --modmes_primary-light: #EEF2FF;
   --modmes_primary-light-hover: #E0E7FF;
-  
+
   --modmes_secondary: #6B7280;
   --modmes_secondary-hover: #4B5563;
-  
+
   --modmes_success: #10B981;
   --modmes_success-strong: #059669;
   --modmes_success-light: #D1FAE5;
   --modmes_success-tint: #ECFDF5;
-  
+
   --modmes_danger: #EF4444;
   --modmes_warning: #F59E0B;
   --modmes_warning-hover: #D97706;
   --modmes_warning-light: #FEF3C7;
-  
+
   --modmes_white: #FFFFFF;
   --modmes_gray-50: #F9FAFB;
   --modmes_gray-100: #F3F4F6;
@@ -38,17 +37,19 @@
   --modmes_gray-700: #374151;
   --modmes_gray-800: #1F2937;
   --modmes_gray-900: #111827;
-  
+
   --modmes_border-radius: 8px;
   --modmes_border-radius-lg: 12px;
-  
+
   --modmes_shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --modmes_shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --modmes_shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --modmes_shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --modmes_shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
-.modmes_section-header-actions{display: flex; gap: 6px;}
+
+.modmes_section-header-actions{display:flex; gap:6px; min-width:0; flex-wrap:wrap;}
+
 .modmes_overlay {
   position: fixed;
   inset: 0;
@@ -69,8 +70,8 @@
 
 .modmes_contenido {
   background-color: var(--modmes_white);
-  width: 100%;
-  max-width: 680px;
+  width: min(760px, 96vw);
+  max-width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -86,13 +87,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: .75rem;
   padding: 1rem;
   background: var(--modmes_primary);
   border-bottom: 1px solid rgba(255,255,255,.1);
   color: white;
+  min-width: 0;
 }
-.modmes_header-left { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
+.modmes_header-left { display: flex; align-items: center; gap: 0.75rem; flex: 1 1 auto; min-width: 0; }
 .modmes_icon-circle {
   width: 36px; height: 36px; border-radius: 50%;
   background-color: rgba(255,255,255,.2);
@@ -101,8 +103,14 @@
 }
 .modmes_header-texts { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
 .modmes_title {
-  margin: 0; font-size: 1.1rem; font-weight: 600; color: #fff;
-  letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: .2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .modmes_close-btn {
@@ -119,18 +127,20 @@
   background-color: var(--modmes_white);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-/* ESTRUCTURA PRINCIPAL CORREGIDA - TODOS EN UNA FILA */
+/* Header de sección */
 .modmes_section-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: .75rem;
   margin-bottom: 1rem;
   justify-content: space-between;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   width: 100%;
+  min-width: 0;
 }
 
 .modmes_section-title {
@@ -140,35 +150,25 @@
   text-transform: uppercase;
   letter-spacing: .05em;
   margin: 0;
-  white-space: nowrap;
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Contenedor principal para todos los controles en una sola fila */
-.modmes_header-controls {
+.modmes_section-center {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  flex: 1;
+  gap: .5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
 }
 
-/* Contenedor para los botones de modo (Imprimir/PDF) */
-.modmes_output-mode-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 32px;
-  flex-shrink: 0;
-}
-
+/* Botones de modo */
 .modmes_output-mode {
   display: flex;
   gap: 6px;
-  height: 100%;
   align-items: center;
-  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .modmes_mode-option {
@@ -185,36 +185,21 @@
   transition: all .2s ease;
   font-size: .75rem;
   line-height: 1;
-  height: 100%;
-  box-sizing: border-box;
-  white-space: nowrap;
-  flex-shrink: 0;
+  height: 32px;
+  min-width: 0;
 }
-
-.modmes_mode-option:hover {
-  background: var(--modmes_primary-light-hover);
-}
-
+.modmes_mode-option:hover { background: var(--modmes_primary-light-hover); }
 .modmes_mode-option.active {
   border-color: var(--modmes_primary);
   background: var(--modmes_primary-light);
   color: var(--modmes_primary);
   box-shadow: 0 0 0 3px rgba(79,70,229,.12);
 }
-
-.modmes_mode-option input {
-  display: none;
-}
-
+.modmes_mode-option input { display: none; }
 .modmes_mode-bullet {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
-  display: inline-block;
-  position: relative;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid currentColor; display: inline-block; position: relative;
 }
-
 .modmes_mode-option.active .modmes_mode-bullet {
   background: var(--modmes_primary);
   border-color: var(--modmes_primary);
@@ -226,13 +211,13 @@
   position:relative;
   display:flex;
   justify-content:flex-start;
-  flex: 0 0 auto;
   height: 32px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .modmes_year-button{
-  padding: .4rem .75rem;
+  padding: .4rem .6rem;
   font-size: .75rem;
   border-radius: var(--modmes_border-radius);
   background-color: var(--modmes_primary-light);
@@ -245,39 +230,12 @@
   font-weight: 500;
   cursor: pointer;
   line-height: 1;
-  min-width: auto;
+  min-width: 0;
   height: 100%;
-  box-sizing: border-box;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
-.modmes_year-button:hover:not(:disabled){
-  background-color: var(--modmes_primary-light-hover);
-}
-.modmes_year-button:disabled{
-  opacity:.6;
-  cursor:not-allowed;
-}
-.modmes_year-button svg{
-  width: 14px;
-  height: 14px;
-  display: inline-block;
-  vertical-align: -2px;
-}
-
-/* Botón Seleccionar Todos */
-.modmes_btn.modmes_btn-small.modmes_btn-terciario {
-  padding: .4rem .75rem;
-  font-size: .75rem;
-  min-width: auto;
-  height: 32px;
-  box-sizing: border-box;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+.modmes_year-button:hover:not(:disabled){ background-color: var(--modmes_primary-light-hover); }
+.modmes_year-button:disabled{ opacity:.6; cursor:not-allowed; }
+.modmes_year-button svg{ width: 14px; height: 14px; display: inline-block; vertical-align: -2px; }
 
 /* Popover */
 .modmes_year-popover{
@@ -307,9 +265,7 @@
   color: var(--modmes_gray-800);
   font-size: .8rem;
 }
-.modmes_year-item:hover{
-  background:var(--modmes_primary-light);
-}
+.modmes_year-item:hover{ background:var(--modmes_primary-light); }
 .modmes_year-item.active{
   background:var(--modmes_primary-light);
   border-color:var(--modmes_primary);
@@ -317,8 +273,7 @@
 }
 
 .modmes_periodos-section { margin-top: .5rem; }
-
-.modmes_selection-info { display: none; } /* eliminado el texto de seleccionados */
+.modmes_selection-info { display: none; }
 
 /* Grid */
 .modmes_periodos-grid-container { 
@@ -373,7 +328,6 @@
   font-size: .875rem;
   font-weight: 500;
   color: var(--modmes_gray-800);
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -419,7 +373,7 @@
 
 /* Botones base */
 .modmes_btn {
-  padding: .75rem 1.5rem;
+  padding: .75rem 1.2rem;
   border-radius: var(--modmes_border-radius);
   font-size: .875rem;
   font-weight: 500;
@@ -429,14 +383,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 130px;
+  min-width: 0;
 }
 .modmes_btn-small { 
-  padding: .4rem .75rem; 
+  padding: .4rem .6rem; 
   font-size: .75rem; 
-  min-width: auto;
+  min-width: 0;
   height: 32px;
-  box-sizing: border-box;
 }
 
 .modmes_btn-terciario { background-color: var(--modmes_primary-light); color: var(--modmes_primary); border: 1px solid var(--modmes_primary); }
@@ -496,16 +449,8 @@
 }
 
 @media (max-width: 768px) {
-  .modmes_section-header {
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-  
-  .modmes_header-controls {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  
+  .modmes_section-header { flex-wrap: wrap; gap: 0.5rem; }
+  .modmes_output-mode { flex-wrap: wrap; }
   .modmes_periodos-grid { 
     grid-template-columns: repeat(2, 1fr) !important; 
     gap: .5rem !important; 
@@ -514,31 +459,17 @@
   .modmes_body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
   .modmes_periodo-card { padding: .6rem; min-height: 48px; }
   .modmes_periodo-label { font-size: .8rem; }
-  .modmes_action-btn { min-width: auto; padding: 0.5rem 1rem; }
+  .modmes_action-btn { padding: 0.5rem 1rem; }
 }
 
 @media (max-width: 480px) {
-  .modmes_section-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-  
-  .modmes_section-title {
-    text-align: center;
-  }
-  
-  .modmes_header-controls {
-    justify-content: center;
-  }
-  
-  .modmes_output-mode-container,
+  .modmes_section-header { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+  .modmes_section-title { text-align: center; }
+  .modmes_output-mode,
   .modmes_year-picker,
   .modmes_btn.modmes_btn-small.modmes_btn-terciario {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
   }
-  
   .modmes_mode-option,
   .modmes_year-button {
     width: 100%;

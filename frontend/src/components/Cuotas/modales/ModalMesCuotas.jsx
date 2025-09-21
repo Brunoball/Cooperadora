@@ -1,5 +1,5 @@
 // src/components/Cuotas/modales/ModalMesCuotas.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faCalendarAlt, faPrint, faFilePdf } from "@fortawesome/free-solid-svg-icons";
 import { imprimirRecibos } from "../../../utils/imprimirRecibos";
@@ -41,8 +41,59 @@ const normalizar = (s = "") =>
   String(s).toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
 
 const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = undefined, onClose }) => {
-  const year = useMemo(() => Number(anio || new Date().getFullYear()), [anio]);
+  const nowYear = new Date().getFullYear();
 
+  // ===== AÑOS CON PAGOS (desde API) =====
+  const [aniosPago, setAniosPago] = useState([]); // [{id, nombre}]
+  const [loadingAnios, setLoadingAnios] = useState(true);
+  const [errorAnios, setErrorAnios] = useState(null);
+
+  // Año elegido para trabajar en el modal
+  const [anioTrabajo, setAnioTrabajo] = useState(Number(anio || nowYear));
+  const [showYearPicker, setShowYearPicker] = useState(false);
+
+  // Util: elegir año por defecto a partir de la lista
+  const pickDefaultYear = useCallback((lista, anioProp, currentYear) => {
+    const ids = (lista || []).map(a => String(a.id));
+    if (anioProp && ids.includes(String(anioProp))) return Number(anioProp);
+    if (ids.includes(String(currentYear))) return Number(currentYear);
+    if (lista && lista.length > 0) return Number(lista[0].id);
+    // Si no hay años en la lista, caer al año actual para no romper UI (botón mostrará ese valor)
+    return Number(currentYear);
+  }, []);
+
+  // Cargar años con pagos
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAniosPago = async () => {
+      setLoadingAnios(true);
+      setErrorAnios(null);
+      try {
+        const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`);
+        if (!res.ok) throw new Error(`listar_anios HTTP ${res.status}`);
+        const data = await res.json().catch(() => ({}));
+        const lista = (data?.anios && Array.isArray(data.anios)) ? data.anios : [];
+        if (cancelled) return;
+
+        setAniosPago(lista);
+        const def = pickDefaultYear(lista, anio, nowYear);
+        setAnioTrabajo(def);
+      } catch (e) {
+        if (cancelled) return;
+        console.error("ModalMesCuotas listar_anios error:", e);
+        setErrorAnios(e);
+        setAniosPago([]);
+        // A falta de lista, quedar con año actual o prop
+        setAnioTrabajo(Number(anio || nowYear));
+      } finally {
+        if (!cancelled) setLoadingAnios(false);
+      }
+    };
+    fetchAniosPago();
+    return () => { cancelled = true; };
+  }, [anio, nowYear, pickDefaultYear]);
+
+  // ===== MESES =====
   const listaMeses = useMemo(() => {
     const arr = Array.isArray(meses) && meses.length ? meses : FALLBACK_MESES;
     return arr.map((m) => ({ id: Number(m.id), nombre: String(m.nombre) }));
@@ -61,10 +112,10 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   const [precioMensual, setPrecioMensual] = useState(0);
   const [nombreCategoria, setNombreCategoria] = useState(""); // p.ej. "INTERNO" | "EXTERNO"
 
-  // --- ID alumno tolerante ---
+  // ID alumno tolerante
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
 
-  // ——— Inferir externo si no lo pasan por props ———
+  // Inferir externo si no lo pasan por props
   const esExternoInferido = useMemo(() => {
     const raw =
       nombreCategoria ||
@@ -77,7 +128,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
   const esExterno = esExternoProp !== undefined ? !!esExternoProp : esExternoInferido;
 
-  // --- Ordenados para cálculo / salida ---
+  // Ordenados para cálculo / salida
   const periodosOrdenados = useMemo(
     () => [...seleccionados].map(Number).sort((a, b) => a - b),
     [seleccionados]
@@ -88,10 +139,10 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     if (periodosOrdenados.length === 0) return "";
     const mapById = new Map(listaMeses.map((m) => [Number(m.id), m.nombre]));
     const nombres = periodosOrdenados.map((id) => (mapById.get(id) || String(id)).trim());
-    return `${nombres.join(" / ")} ${year}`;
-  }, [periodosOrdenados, listaMeses, year]);
+    return `${nombres.join(" / ")} ${anioTrabajo}`;
+  }, [periodosOrdenados, listaMeses, anioTrabajo]);
 
-  // TOTAL (igual que ModalPagos pero sin condonar/libre aquí)
+  // TOTAL
   const total = useMemo(() => {
     const unit = Number(precioMensual || 0);
     return periodosOrdenados.length * unit;
@@ -104,7 +155,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
       maximumFractionDigits: 0,
     }).format(monto || 0);
 
-  // ------- Cargar precio por categoría del alumno (igual que ModalPagos) -------
+  // Cargar precio por categoría del alumno
   useEffect(() => {
     const cargarMontoCategoria = async () => {
       try {
@@ -150,7 +201,10 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idAlumno]);
 
-  // ------- Interacciones -------
+  // Reset selección al cambiar de año
+  useEffect(() => { setSeleccionados([]); }, [anioTrabajo]);
+
+  // Interacciones
   const toggleMes = (id) => {
     const num = Number(id);
     setSeleccionados((prev) =>
@@ -158,24 +212,28 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     );
   };
 
-  const seleccionarTodos = () =>
-    setSeleccionados(listaMeses.map((m) => Number(m.id)));
-  const limpiar = () => setSeleccionados([]);
+  const allSelected =
+    listaMeses.length > 0 &&
+    seleccionados.length === listaMeses.length;
 
-  // ------- Salidas (idéntico “contrato” que ModalPagos) -------
+  const toggleSeleccionarTodos = () => {
+    if (allSelected) setSeleccionados([]);
+    else setSeleccionados(listaMeses.map((m) => Number(m.id)));
+  };
 
+  // Salidas
   const abrirImpresion = async () => {
     const periodoCodigo = periodosOrdenados[0] || 0;
 
     const alumnoParaImprimir = {
       ...socio,
-      id_periodo: periodoCodigo,         // compat
-      periodos: periodosOrdenados,       // lista completa
-      periodo_texto: periodoTextoFinal,  // “ENE / FEB / MAR 2025”
+      id_periodo: periodoCodigo,
+      periodos: periodosOrdenados,
+      periodo_texto: periodoTextoFinal,
       precio_unitario: Number(precioMensual || 0),
-      importe_total: total,              // monto final multi-mes
-      precio_total: total,               // alias
-      anio: year,
+      importe_total: total,
+      precio_total: total,
+      anio: anioTrabajo,
       categoria_nombre: nombreCategoria || "",
     };
 
@@ -185,7 +243,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
       return;
     }
 
-    const opciones = { anioPago: year };
+    const opciones = { anioPago: anioTrabajo };
     if (esExterno) {
       await imprimirRecibosExternos([alumnoParaImprimir], periodoCodigo, w, opciones);
     } else {
@@ -204,13 +262,13 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
       precio_unitario: Number(precioMensual || 0),
       importe_total: total,
       precio_total: total,
-      anio: year,
+      anio: anioTrabajo,
       categoria_nombre: nombreCategoria || "",
     };
 
     try {
       await generarComprobanteAlumnoPDF(alumnoParaImprimir, {
-        anio: year,
+        anio: anioTrabajo,
         periodoId: periodoCodigo,
         periodoTexto: periodoTextoFinal,
         importeTotal: total,
@@ -235,10 +293,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
         onClose?.();
       } else {
         const ok = await descargarPDF();
-        // Dejar visible el toast un instante antes de cerrar
-        if (ok) {
-          setTimeout(() => onClose?.(), 1000);
-        }
+        if (ok) setTimeout(() => onClose?.(), 900);
       }
     } finally {
       setCargando(false);
@@ -276,14 +331,11 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
               <FontAwesomeIcon icon={faCalendarAlt} />
             </div>
             <div className="modmes_header-texts">
-              <h2 className="modmes_title">Seleccionar mes(es) — {year}</h2>
-              <small style={{ color: "#64748b" }}>
-                {socio?.nombre || socio?.apellido_nombre || "Alumno"}
-              </small>
+              <h2 className="modmes_title">Seleccionar Períodos</h2>
             </div>
           </div>
           <button className="modmes_close-btn" onClick={() => onClose?.()} aria-label="Cerrar">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
@@ -291,27 +343,14 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
         {/* Body */}
         <div className="modmes_body">
-          {/* Info monto y total */}
-          <div className="modmes_info-row">
-            <span className="modmes_chip">
-              Valor mensual {nombreCategoria ? `(${nombreCategoria})` : ""}: <strong>{formatearARS(precioMensual)}</strong>
-            </span>
-            <span className="modmes_chip">
-              Meses: <strong>{periodosOrdenados.length}</strong>
-            </span>
-            <span className="modmes_chip">
-              Total: <strong>{formatearARS(total)}</strong>
-            </span>
-          </div>
-
           <div className="modmes_periodos-section">
             <div className="modmes_section-header">
-              <h4 className="modmes_section-title">MESES</h4>
+              <h4 className="modmes_section-title">PERÍODOS DISPONIBLES</h4>
 
               {/* Centro: Imprimir / PDF */}
               <div className="modmes_section-center">
-                <div className="modmes_output-mode">
-                  <label className={`modmes_mode-option ${modoSalida === 'imprimir' ? 'active' : ''}`}>
+                <div className="modmes_output-mode" role="tablist" aria-label="Modo de salida">
+                  <label className={`modmes_mode-option ${modoSalida === 'imprimir' ? 'active' : ''}`} role="tab" aria-selected={modoSalida === 'imprimir'}>
                     <input
                       type="radio"
                       name="modoSalida"
@@ -323,7 +362,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                     <span>Imprimir</span>
                   </label>
 
-                  <label className={`modmes_mode-option ${modoSalida === 'pdf' ? 'active' : ''}`}>
+                  <label className={`modmes_mode-option ${modoSalida === 'pdf' ? 'active' : ''}`} role="tab" aria-selected={modoSalida === 'pdf'}>
                     <input
                       type="radio"
                       name="modoSalida"
@@ -337,10 +376,62 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                 </div>
               </div>
 
-              {/* Acciones rápidas */}
-              <div className="modmes_section-right" style={{ display: 'flex', gap: 10 }}>
-                <button className="modmes_small_btn" onClick={seleccionarTodos} type="button">Todos</button>
-                <button className="modmes_small_btn" onClick={limpiar} type="button">Limpiar</button>
+              {/* Derecha: Selector de año (desde API) + botón Todos/Quitar */}
+              <div className="modmes_section-header-actions">
+                <div className="modmes_year-picker">
+                  <button
+                    type="button"
+                    className="modmes_year-button"
+                    onClick={() => setShowYearPicker((s) => !s)}
+                    title="Cambiar año"
+                    aria-haspopup="listbox"
+                    aria-expanded={showYearPicker}
+                    disabled={loadingAnios}
+                  >
+                    <FontAwesomeIcon icon={faCalendarAlt} />
+                    <span>
+                      {loadingAnios
+                        ? "Cargando..."
+                        : (aniosPago.length > 0 ? anioTrabajo : "—")}
+                    </span>
+                  </button>
+
+                  {showYearPicker && !loadingAnios && (
+                    <div className="modmes_year-popover" role="listbox" aria-label="Seleccionar año">
+                      {errorAnios ? (
+                        <div className="modmes_year-empty">Error al cargar años</div>
+                      ) : aniosPago.length === 0 ? (
+                        <div className="modmes_year-empty">Sin años con pagos</div>
+                      ) : (
+                        aniosPago.map((a) => {
+                          const val = String(a.id);
+                          const isActive = String(anioTrabajo) === val;
+                          return (
+                            <button
+                              key={val}
+                              className={`modmes_year-item ${isActive ? "active" : ""}`}
+                              onClick={() => { setAnioTrabajo(Number(val)); setShowYearPicker(false); }}
+                              role="option"
+                              aria-selected={isActive}
+                            >
+                              {a.nombre ?? a.id}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="modmes_btn modmes_btn-small modmes_btn-terciario"
+                  onClick={toggleSeleccionarTodos}
+                  disabled={listaMeses.length === 0}
+                  title={allSelected ? "Quitar selección" : "Seleccionar todos"}
+                >
+                  {allSelected ? "Quitar" : "Todos"}
+                </button>
               </div>
             </div>
 
@@ -370,25 +461,17 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                 })}
               </div>
             </div>
-
-            {periodoTextoFinal && (
-              <div className="modmes_periodo-texto">
-                <em>Período seleccionado: {periodoTextoFinal}</em>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="modmes_footer modmes_footer-sides">
           <div className="modmes_footer-left">
-            <span className="modmes_hint">
-              Seleccionados: <strong>{periodosOrdenados.length}</strong>
-            </span>
-            <span className="modmes_hint">
-              Total: <strong>{formatearARS(total)}</strong>
-            </span>
+            <div className="modmes_total-badge">
+              Total: {formatearARS(total)}
+            </div>
           </div>
+
           <div className="modmes_footer-right">
             <button
               type="button"
@@ -402,12 +485,14 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
             <button
               type="button"
-              className="modmes_btn modmes_btn-primary modmes_action-btn"
+              className={`modmes_btn ${modoSalida === 'imprimir' ? 'modmes_btn-primary' : 'modmes_btn-primary' } modmes_action-btn`}
               onClick={handleConfirmar}
-              disabled={periodosOrdenados.length === 0 || cargando || precioMensual <= 0}
+              disabled={periodosOrdenados.length === 0 || cargando || precioMensual <= 0 || loadingAnios || aniosPago.length === 0}
               title={
-                periodosOrdenados.length === 0
-                  ? "Elegí al menos un mes"
+                loadingAnios ? "Cargando años..."
+                : aniosPago.length === 0 ? "No hay años con pagos"
+                : periodosOrdenados.length === 0
+                  ? "Elegí al menos un período"
                   : (precioMensual <= 0 ? "No hay valor mensual definido" : "")
               }
             >
