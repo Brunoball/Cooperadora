@@ -40,7 +40,8 @@ export default function EgresoContable(){
   const [loadingEgr, setLoadingEgr] = useState(false);
   const [mediosPago, setMediosPago] = useState([]);
 
-  const [year, setYear] = useState(Y);
+  const [anio, setAnio] = useState(Y);
+  const [anios, setAnios] = useState([Y, Y - 1]); // fallback inicial como en IngresosContable
   const [month, setMonth] = useState(hoy.getMonth());
   const [fCat, setFCat] = useState("");
   const [fMedio, setFMedio] = useState("");
@@ -71,13 +72,15 @@ export default function EgresoContable(){
     return res.json();
   };
 
+  /* ==== Fechas (por año/mes seleccionados) ==== */
   const { fStart, fEnd } = useMemo(() => {
-    const first = new Date(year, month, 1);
-    const last = new Date(year, month + 1, 0);
+    const first = new Date(anio, month, 1);
+    const last = new Date(anio, month + 1, 0);
     const toISO = (d) => d.toISOString().slice(0,10);
     return { fStart: toISO(first), fEnd: toISO(last) };
-  }, [year, month]);
+  }, [anio, month]);
 
+  /* ==== Medios de pago ==== */
   const loadMediosPago = async () => {
     try {
       const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
@@ -88,6 +91,7 @@ export default function EgresoContable(){
     }
   };
 
+  /* ==== Egresos ==== */
   const loadEgresos = async () => {
     setLoadingEgr(true);
     try {
@@ -95,16 +99,63 @@ export default function EgresoContable(){
       if (fCat) params.set("categoria", fCat);
       if (fMedio) params.set("medio", fMedio);
       const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
-      setEgresos(raw?.datos || []);
+      const datos = raw?.datos || [];
+      setEgresos(datos);
+
+      // Fallback inteligente: si todavía no tenemos años del backend, derivarlos de lo que vino
+      if (!Array.isArray(anios) || !anios.length || anios.length <= 2) {
+        const yearsFromData = Array.from(
+          new Set(
+            datos
+              .map(e => (e?.fecha ? Number(String(e.fecha).slice(0,4)) : null))
+              .filter(v => Number.isFinite(v))
+          )
+        ).sort((a,b)=>b-a);
+        if (yearsFromData.length) {
+          setAnios(yearsFromData);
+          if (!yearsFromData.includes(anio)) {
+            setAnio(yearsFromData[0]); // ajustar al más reciente
+          }
+        }
+      }
     } catch {
       addToast("error","Error al cargar los egresos.");
       setEgresos([]);
     } finally { setLoadingEgr(false); }
   };
 
-  useEffect(()=>{ loadMediosPago(); },[]);
-  useEffect(()=>{ loadEgresos(); },[fStart,fEnd,fCat,fMedio]);
+  /* ==== Años disponibles (como IngresosContable) ==== */
+  const loadAniosDisponibles = async () => {
+    // 1) Intento endpoint dedicado
+    try {
+      const j1 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list_years`);
+      if (Array.isArray(j1?.anios_disponibles) && j1.anios_disponibles.length) {
+        const list = [...j1.anios_disponibles].sort((a,b)=>b-a);
+        setAnios(list);
+        if (!list.includes(anio)) setAnio(list[0]);
+        return;
+      }
+    } catch { /* sigue */ }
 
+    // 2) Intento con meta=1 en list
+    try {
+      const j2 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&meta=1`);
+      if (Array.isArray(j2?.anios_disponibles) && j2.anios_disponibles.length) {
+        const list = [...j2.anios_disponibles].sort((a,b)=>b-a);
+        setAnios(list);
+        if (!list.includes(anio)) setAnio(list[0]);
+        return;
+      }
+    } catch { /* sigue */ }
+
+    // 3) Si no hay soporte en backend: dejamos el fallback [Y, Y-1] hasta que loadEgresos derive
+  };
+
+  useEffect(()=>{ loadMediosPago(); },[]);
+  useEffect(()=>{ loadAniosDisponibles(); },[]); // obtener años al montar (igual que IngresosContable)
+  useEffect(()=>{ loadEgresos(); },[fStart,fEnd,fCat,fMedio]); // recarga al cambiar periodo/filtros
+
+  /* ==== Derivados ==== */
   const totalEgresos = useMemo(()=> egresos.reduce((a,b)=> a + Number(b.monto||0),0),[egresos]);
 
   const egresosFiltrados = useMemo(()=>{
@@ -129,6 +180,7 @@ export default function EgresoContable(){
     return Array.from(map.values()).sort((a,b)=> b.total - a.total);
   },[egresos]);
 
+  /* ==== Acciones fila ==== */
   const onCreateEgreso = ()=>{ setEditRow(null); setModalOpen(true); };
   const onEditEgreso = (row)=>{ setEditRow(row); setModalOpen(true); };
 
@@ -163,6 +215,7 @@ export default function EgresoContable(){
 
   const onSavedEgreso = ()=>{ setModalOpen(false); loadEgresos(); };
 
+  /* ==== Export ==== */
   const csvEscape = (v)=> `"${String(v ?? "").replace(/"/g,'""')}"`;
   const exportarCSV = ()=>{
     const rows = egresosFiltrados;
@@ -185,10 +238,6 @@ export default function EgresoContable(){
     addToast("exito","Archivo exportado.");
   };
 
-  const years = useMemo(()=>{
-    const arr=[]; for(let k=Y-2;k<=Y+1;k++) arr.push(k); return arr.reverse();
-  },[]);
-
   return (
     <div className="eg_layout">
       <div className="toast-stack">
@@ -202,93 +251,96 @@ export default function EgresoContable(){
         <aside className="eg_filters cardd">
           <div className="textcenterfiltros">
             <h2 className="eg_filters__title">
-            <FontAwesomeIcon icon={faFilter} />
-            Filtros
-          </h2>
-                      <h3>Detalle — {cap1(MESES[month])} {year}</h3>
+              <FontAwesomeIcon icon={faFilter} />
+              Filtros
+            </h2>
+            <h3>Detalle — {cap1(MESES[month])} {anio}</h3>
           </div>
           <div className="paddingcenter">
 
-          <div className="eg_row">
-            <div className="eg_field">
-              <label>Año</label>
-              <select value={year} onChange={e=>setYear(Number(e.target.value))}>
-                {years.map(y=> <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
+            <div className="eg_row">
+              <div className="eg_field">
+                <label>Año</label>
+                <select
+                  value={anio}
+                  onChange={e=>{
+                    const ny = Number(e.target.value);
+                    setAnio(ny);
+                    // si cambiás de año y no existe en anios (raro), lo corregimos luego de cargar
+                  }}
+                >
+                  {anios.map(a=> <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
 
-            <div className="eg_field">
-              <label>Mes</label>
-              <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
-                {MESES.map((m,i)=> <option key={m} value={i}>{cap1(m)}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="eg_stats">
-            <div className="eg_stat">
-              <div className="eg_stat__icon">$</div>
-              <div>
-                <p className="eg_stat__label">Total</p>
-                <p className="eg_stat__value">${totalEgresos.toLocaleString("es-AR")}</p>
+              <div className="eg_field">
+                <label>Mes</label>
+                <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
+                  {MESES.map((m,i)=> <option key={m} value={i}>{cap1(m)}</option>)}
+                </select>
               </div>
             </div>
-          </div>
 
-          <div className="eg_field" style={{ marginTop: 8 }}>
-            <label>Medio de pago</label>
-            <select value={fMedio} onChange={e=>setFMedio(e.target.value)}>
-              <option value="">(todos)</option>
-              {mediosPago.map(m=> <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
-            </select>
-          </div>
+            <div className="eg_stats">
+              <div className="eg_stat">
+                <div className="eg_stat__icon">$</div>
+                <div>
+                  <p className="eg_stat__label">Total</p>
+                  <p className="eg_stat__value">${totalEgresos.toLocaleString("es-AR")}</p>
+                </div>
+              </div>
+            </div>
 
-          <h3 className="eg_cats__header">
-            <FontAwesomeIcon icon={faChartPie} />
-            Categorías 
-          </h3>
+            <div className="eg_field" style={{ marginTop: 8 }}>
+              <label>Medio de pago</label>
+              <select value={fMedio} onChange={e=>setFMedio(e.target.value)}>
+                <option value="">(todos)</option>
+                {mediosPago.map(m=> <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+              </select>
+            </div>
 
-          <div className="eg_cats">
-            {catBreakdown.map(c=>{
-              const active = fCat && fCat === c.label;
-              return (
-                <button
-                  key={c.label}
-                  className={`eg_catcard ${active ? "active" : ""}`}
-                  onClick={()=> setFCat(active ? "" : c.label)}
-                  title={`${c.count} registro${s(c.count)}`}
-                >
-                  <div className="eg_catcard__left">
-                    <div className="eg_catcard__title">{(c.label || "").toUpperCase()}</div>
-                    <div className="eg_catcard__count">{c.count} registro{s(c.count)}</div>
-                  </div>
-                  <div className="eg_catcard__value">
-                    ${c.total.toLocaleString("es-AR")}
-                  </div>
-                </button>
-              );
-            })}
-            {!catBreakdown.length && <div className="eg_empty_side">Sin datos</div>}
-          </div>
+            <h3 className="eg_cats__header">
+              <FontAwesomeIcon icon={faChartPie} />
+              Categorías 
+            </h3>
 
-          {(fCat || fMedio) && (
-            <button className="eg_btn eg_btn--ghost" onClick={()=>{ setFCat(""); setFMedio(""); }}>
-              Limpiar filtros
-            </button>
-          )}
+            <div className="eg_cats">
+              {catBreakdown.map(c=>{
+                const active = fCat && fCat === c.label;
+                return (
+                  <button
+                    key={c.label}
+                    className={`eg_catcard ${active ? "active" : ""}`}
+                    onClick={()=> setFCat(active ? "" : c.label)}
+                    title={`${c.count} registro${s(c.count)}`}
+                  >
+                    <div className="eg_catcard__left">
+                      <div className="eg_catcard__title">{(c.label || "").toUpperCase()}</div>
+                      <div className="eg_catcard__count">{c.count} registro{s(c.count)}</div>
+                    </div>
+                    <div className="eg_catcard__value">
+                      ${c.total.toLocaleString("es-AR")}
+                    </div>
+                  </button>
+                );
+              })}
+              {!catBreakdown.length && <div className="eg_empty_side">Sin datos</div>}
+            </div>
+
+            {(fCat || fMedio) && (
+              <button className="eg_btn eg_btn--ghost" onClick={()=>{ setFCat(""); setFMedio(""); }}>
+                Limpiar filtros
+              </button>
+            )}
           </div>
         </aside>
 
         {/* Panel derecho (ocupa todo alto/ancho restante) */}
         <section className="eg_content cardd">
           <header className="eg_content__header">
-                              <button
-
-                    className={`seg-tabbb `}
-
-                  >
-                    Ingresos
-                  </button>
+            <button className={`seg-tabbb `}>
+              Ingresos
+            </button>
 
             <div className="eg_header_actions">
               <div className="eg_search eg_search--redpill">
