@@ -188,7 +188,7 @@ export default function ResumenContable() {
   const [anioRes, setAnioRes] = useState(Y);
   const [aniosCat, setAniosCat] = useState([]);
   const [loadingRes, setLoadingRes] = useState(false);
-  const [serie, setSerie] = useState("ingresos"); // ingresos | egresos | saldo
+  const [serie] = useState("ingresos"); // ingresos | egresos | saldo
   const [chartTab, setChartTab] = useState("anual"); // anual | mensual
 
   const loadAniosDisponibles = async (prefer = anioRes) => {
@@ -250,15 +250,11 @@ export default function ResumenContable() {
   );
 
   const lineData = useMemo(() => {
-    const key = serie;
+    const key = "ingresos"; // si luego habilitás el switch de serie, usá "serie"
     return meses12.map((m) => ({ label: m.nombre_mes, value: Number(m[key] || 0) }));
-  }, [meses12, serie]);
+  }, [meses12]);
 
-  const serieColor =
-    serie === "ingresos" ? "#1D428A" :
-    serie === "egresos"  ? "#B71C1C" :
-                           "#334155";
-
+  const serieColor = "#1D428A"; // mismo criterio que arriba
   const detalleMesActual = `${MESES[hoy.getMonth()]} ${anioRes}`;
 
   return (
@@ -272,7 +268,6 @@ export default function ResumenContable() {
             </span>
             <span className="rc_side_title">Filtros</span>
           </div>
-          <div className="rc_side_sub">Detalle — {detalleMesActual}</div>
         </div>
 
         <div className="rc_field">
@@ -340,14 +335,14 @@ export default function ResumenContable() {
                   onClick={() => setChartTab("anual")}
                   type="button"
                 >
-                   Anual
+                  Anual
                 </button>
                 <button
                   className={`rc_mtab ${chartTab === "mensual" ? "active" : ""}`}
                   onClick={() => setChartTab("mensual")}
                   type="button"
                 >
-                   Mensual
+                  Mensual
                 </button>
               </div>
             </header>
@@ -356,7 +351,7 @@ export default function ResumenContable() {
               {chartTab === "anual" ? (
                 <DonutChart ingresos={totals.ingresos} egresos={totals.egresos} />
               ) : (
-                <LineChart data={lineData} serieName={serie} color={serieColor} />
+                <LineChart data={lineData} serieName={"ingresos"} color={serieColor} />
               )}
             </div>
           </section>

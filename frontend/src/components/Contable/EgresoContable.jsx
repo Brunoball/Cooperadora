@@ -18,7 +18,7 @@ const cap1 = (s="") => s.charAt(0) + s.slice(1).toLowerCase();
 function s(n){ return n===1 ? "" : "s"; }
 
 /* ===========================================================
-   ConfirmModal – MISMA estética que el modal de "Cerrar sesión"
+   ConfirmModal – misma estética que el modal de "Cerrar sesión"
    (usa clases: logout-modal-*)
    =========================================================== */
 function ConfirmModal({
@@ -95,7 +95,7 @@ export default function EgresoContable(){
   const [mediosPago, setMediosPago] = useState([]);
 
   const [anio, setAnio] = useState(Y);
-  const [anios, setAnios] = useState([Y, Y - 1]); // fallback inicial como en IngresosContable
+  const [anios, setAnios] = useState([Y, Y - 1]); // fallback inicial
   const [month, setMonth] = useState(hoy.getMonth());
   const [fCat, setFCat] = useState("");
   const [fMedio, setFMedio] = useState("");
@@ -156,7 +156,7 @@ export default function EgresoContable(){
       const datos = raw?.datos || [];
       setEgresos(datos);
 
-      // Fallback inteligente: si todavía no tenemos años del backend, derivarlos de lo que vino
+      // Derivar años si backend todavía no los expone
       if (!Array.isArray(anios) || !anios.length || anios.length <= 2) {
         const yearsFromData = Array.from(
           new Set(
@@ -178,9 +178,9 @@ export default function EgresoContable(){
     } finally { setLoadingEgr(false); }
   };
 
-  /* ==== Años disponibles (como IngresosContable) ==== */
+  /* ==== Años disponibles ==== */
   const loadAniosDisponibles = async () => {
-    // 1) Intento endpoint dedicado
+    // 1) Endpoint dedicado
     try {
       const j1 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list_years`);
       if (Array.isArray(j1?.anios_disponibles) && j1.anios_disponibles.length) {
@@ -191,7 +191,7 @@ export default function EgresoContable(){
       }
     } catch { /* sigue */ }
 
-    // 2) Intento con meta=1 en list
+    // 2) meta=1 en list
     try {
       const j2 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&meta=1`);
       if (Array.isArray(j2?.anios_disponibles) && j2.anios_disponibles.length) {
@@ -202,12 +202,12 @@ export default function EgresoContable(){
       }
     } catch { /* sigue */ }
 
-    // 3) Si no hay soporte en backend: dejamos el fallback [Y, Y-1] hasta que loadEgresos derive
+    // 3) Si no hay soporte en backend: queda el fallback y se derivan desde loadEgresos
   };
 
   useEffect(()=>{ loadMediosPago(); },[]);
-  useEffect(()=>{ loadAniosDisponibles(); },[]); // obtener años al montar (igual que IngresosContable)
-  useEffect(()=>{ loadEgresos(); },[fStart,fEnd,fCat,fMedio]); // recarga al cambiar periodo/filtros
+  useEffect(()=>{ loadAniosDisponibles(); },[]);
+  useEffect(()=>{ loadEgresos(); },[fStart,fEnd,fCat,fMedio]);
 
   /* ==== Derivados ==== */
   const totalEgresos = useMemo(()=> egresos.reduce((a,b)=> a + Number(b.monto||0),0),[egresos]);
@@ -269,14 +269,8 @@ export default function EgresoContable(){
 
   const onSavedEgreso = ()=>{ setModalOpen(false); loadEgresos(); };
 
-<<<<<<< HEAD
-  /* ==== Export ==== */
-  const csvEscape = (v)=> `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const exportarCSV = ()=>{
-=======
   /* ===== Exportar Excel real (.xlsx) ===== */
   const exportarXLSX = () => {
->>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
     const rows = egresosFiltrados;
     if (!rows.length) {
       addToast("advertencia","No hay datos para exportar.");
@@ -297,7 +291,7 @@ export default function EgresoContable(){
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-    // Fuerza números en la col 'Monto'
+    // Forzar números en la col 'Monto'
     const startRow = 2;
     const endRow = aoa.length;
     for (let r = startRow; r <= endRow; r++) {
@@ -313,7 +307,7 @@ export default function EgresoContable(){
       if (ws[cellRef]) ws[cellRef].z = '#,##0';
     }
 
-    XLSX.utils.book_append_sheet(wb, ws, `Egresos_${cap1(MESES[month])}_${year}`);
+    XLSX.utils.book_append_sheet(wb, ws, `Egresos_${cap1(MESES[month])}_${anio}`);
 
     const d = new Date();
     const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.xlsx`;
@@ -382,40 +376,21 @@ export default function EgresoContable(){
               <FontAwesomeIcon icon={faFilter} />
               Filtros
             </h2>
-<<<<<<< HEAD
             <h3>Detalle — {cap1(MESES[month])} {anio}</h3>
-=======
-            <h3>Detalle — {cap1(MESES[month])} {year}</h3>
->>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
           </div>
 
           <div className="paddingcenter">
             <div className="eg_row">
               <div className="eg_field">
                 <label>Año</label>
-                <select value={year} onChange={e=>setYear(Number(e.target.value))}>
-                  {years.map(y=> <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-
-<<<<<<< HEAD
-            <div className="eg_row">
-              <div className="eg_field">
-                <label>Año</label>
                 <select
                   value={anio}
-                  onChange={e=>{
-                    const ny = Number(e.target.value);
-                    setAnio(ny);
-                    // si cambiás de año y no existe en anios (raro), lo corregimos luego de cargar
-                  }}
+                  onChange={e=> setAnio(Number(e.target.value))}
                 >
                   {anios.map(a=> <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
 
-=======
->>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
               <div className="eg_field">
                 <label>Mes</label>
                 <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
@@ -444,11 +419,7 @@ export default function EgresoContable(){
 
             <h3 className="eg_cats__header">
               <FontAwesomeIcon icon={faChartPie} />
-<<<<<<< HEAD
-              Categorías 
-=======
               Categorías
->>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
             </h3>
 
             <div className="eg_cats">
@@ -485,13 +456,7 @@ export default function EgresoContable(){
         {/* Panel derecho */}
         <section className="eg_content cardd">
           <header className="eg_content__header">
-<<<<<<< HEAD
-            <button className={`seg-tabbb `}>
-              Ingresos
-            </button>
-=======
             <button className="seg-tabbb">Ingresos</button>
->>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
 
             <div className="eg_header_actions">
               <div className="eg_search eg_search--redpill">

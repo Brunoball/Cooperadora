@@ -259,7 +259,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-tablewrap.is-loading .ing-row.data { opacity: .55; filter: grayscale(.1); }
 
 /* Cabecera sticky */
-.ing-row.h { position: sticky; top: 0; z-index: 2; background: #f7f7fb; color: #111827; border-bottom: 1px solid var(--border); font-weight: 900; font-size: var(--fs-th); display: grid; align-items: center; gap: 10px; grid-template-columns: 0.6fr 1.6fr 0.9fr 0.7fr 0.9fr; padding: 10px 12px; }
+.ing-row.h { position: sticky; top: 0; z-index: 2; background: #f7f7fb; color: #64748b; border-bottom: 1px solid var(--border); font-weight: 900; font-size: var(--fs-th); display: grid; align-items: center; gap: 10px; grid-template-columns: 0.6fr 1.6fr 0.9fr 0.7fr 0.9fr; padding: 10px 12px; }
 /* Filas */
 .ing-row { display: grid; align-items: center; gap: 10px; grid-template-columns: 0.6fr 1.6fr 0.9fr 0.7fr 0.9fr; border-bottom: 1px solid var(--border); padding: 10px 12px; font-size: var(--fs-td); }
 .ing-row:last-child { border-bottom: 0; }

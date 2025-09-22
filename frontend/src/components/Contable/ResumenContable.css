@@ -1,5 +1,7 @@
 /* ====== :root ROJO (sin degradados) — variables con prefijo reg- ====== */
 :root {
+  --global-header-h: 90.33px; /* ALTURA DE TU HEADER FIJO */
+
   --reg-primary: #B71C1C;
   --reg-primary-light: #E53935;
   --reg-primary-dark: #7F0000;
@@ -23,15 +25,15 @@
 
   --reg-border-radius: 12px;
   --reg-border-radius-lg: 16px;
-
   --reg-transition: all .25s ease;
+
   --reg-shadow-sm: 0 1px 2px rgba(0,0,0,.06);
   --reg-shadow-md: 0 6px 14px rgba(15,23,42,.08);
   --reg-shadow-lg: 0 14px 28px rgba(15,23,42,.10);
 }
 
 /* =============== Tokens del componente =============== */
-.rc_shell{
+.rc_shell {
   --bg: var(--reg-gray-100);
   --surface: #fff;
   --border: var(--reg-gray-200);
@@ -41,145 +43,188 @@
 }
 
 /* =========================== Layout base =========================== */
-.rc_shell{
-  display:grid;
+.rc_shell {
+  display: grid;
   grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr;
-  gap:1.25rem;
-  background:var(--bg);
-  height: 100vh;             /* ocupa toda la ventana */
+  gap: 1.25rem;
+  background: linear-gradient(135deg, #ffebee 30%, var(--td-primary) 70%);
+  /* ANTES: height: 100vh; -> AHORA: resta el header fijo */
+  height: calc(100vh - var(--global-header-h));
+  min-height: calc(100vh - var(--global-header-h));
+  /* Para que los hijos puedan scrollear */
+  min-width: 0;
 }
-.rc_shell *{ box-sizing:border-box; }
+
+.rc_shell * {
+  box-sizing: border-box;
+}
 
 /* ---------- SIDEBAR a ras, 100% height ---------- */
-.rc_side.rc_side--photo{
-  background:#fff;
-  color:var(--text);
-  /* sin isla flotante */
-  border:none;
-  border-radius:0;
-  box-shadow:none;
-  /* sin espaciamientos propios */
-  margin:0;
-  padding:0;
-  /* ocupa todo el alto */
-  height:100vh;
-
-  display:flex;
-  flex-direction:column;
-  gap:0;
-  overflow:hidden; /* para el header */
+.rc_side.rc_side--photo {
+  background: #fff;
+  color: var(--text);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+  /* ANTES: height:100vh; -> AHORA: lleno el contenedor */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden; /* para el header */
 }
 
 /* Franja roja superior de la sidebar */
-.rc_side_header{
+.rc_side_header {
   background: var(--reg-primary);
-  color:#fff;
-  padding:.9rem .95rem;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:.75rem;
+  color: #fff;
+  padding: .9rem .95rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
 }
-.rc_side_header_l{
-  display:flex; align-items:center; gap:.55rem;
+
+.rc_side_header_l {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
 }
-.rc_side_badge{
-  width:1.6rem; height:1.6rem;
-  display:grid; place-items:center;
-  border-radius:10px;
-  background:#ffffff22;
-  border:1px solid #ffffff55;
+
+.rc_side_badge {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #ffffff22;
+  border: 1px solid #ffffff55;
 }
-.rc_side_title{
-  font-weight:900;
-  letter-spacing:.01em;
+
+.rc_side_title {
+  font-weight: 900;
+  letter-spacing: .01em;
 }
-.rc_side_sub{
-  opacity:.95;
-  font-weight:600;
+
+.rc_side_sub {
+  opacity: .95;
+  font-weight: 600;
 }
 
 /* Contenido del panel */
-.rc_field{
-  padding:1rem .95rem 0.25rem;
+.rc_field {
+  padding: 1rem .95rem .25rem;
 }
-.rc_field_label{
-  display:block;
-  font-size:.9rem;
-  font-weight:800;
-  color:#334155;
-  margin:0 0 .4rem;
+
+.rc_field_label {
+  display: block;
+  font-size: .9rem;
+  font-weight: 800;
+  color: #334155;
+  margin: 0 0 .4rem;
 }
-.rc_field_input{
-  width:100%;
-  appearance:none;
-  background:#fff;
-  color:#0f172a;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:.7rem .85rem;
-  outline:none;
+
+.rc_field_input {
+  width: 100%;
+  appearance: none;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .7rem .85rem;
+  outline: none;
   transition: var(--reg-transition);
   box-shadow: var(--reg-shadow-sm);
 }
-.rc_field_input:focus{
+
+.rc_field_input:focus {
   border-color: var(--reg-primary-light);
-  box-shadow: 0 0 0 .15rem rgba(183,28,28,.12);
+  box-shadow: 0 0 0 .15rem rgba(183, 28, 28, .12);
 }
 
 /* Tarjetas KPI */
-.rc_kpis{
-  padding:.75rem .95rem 1rem;
-  display:grid;
-  gap:.75rem;
+.rc_kpis {
+  padding: .75rem .95rem 1rem;
+  display: grid;
+  gap: .75rem;
+  /* que puedan scrollear si la ventana es baja */
+  overflow: auto;
+  min-height: 0;
 }
-.rc_kpi{
-  display:grid;
+
+.rc_kpi {
+  display: grid;
   grid-template-columns: 3.2rem 1fr;
-  align-items:center;
-  gap:.75rem;
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:.8rem .85rem;
+  align-items: center;
+  gap: .75rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: .8rem .85rem;
   box-shadow: var(--reg-shadow-sm);
 }
-.rc_kpi_icon{
-  width:3.2rem; height:3.2rem;
-  border-radius:12px;
-  display:grid; place-items:center;
-  font-weight:900; color:#fff;
+
+.rc_kpi_icon {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: #fff;
   background: var(--reg-primary);
   box-shadow: inset 0 0 0 1px #ffffff66;
 }
 
-.rc_kpi_icon.warn{ background: var(--reg-danger); }
-.rc_kpi_txt .rc_kpi_label{
-  margin:0; font-size:.9rem; font-weight:800; color:#475569;
+.rc_kpi_icon.warn {
+  background: var(--reg-danger);
 }
-.rc_kpi_txt .rc_kpi_value{
-  margin:.15rem 0 0; font-size:1.2rem; font-weight:900; color:#0f172a;
+
+.rc_kpi_txt .rc_kpi_label {
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 800;
+  color: #475569;
+}
+
+.rc_kpi_txt .rc_kpi_value {
+  margin: .15rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #0f172a;
 }
 
 /* ---------- MAIN / tarjetas ---------- */
-.rc_main{
-  min-width:0;
-  padding: 1rem 0; /* respiro solo al main, sidebar queda a ras */
+.rc_main {
+  min-width: 0;
+  padding: 1rem 0;
+  /* que el main llene y permita scroll interno en sus hijos */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.rc_topbar{
-  display:none; 
-}
-.rc_title{ margin:0; font-size:1.15rem; }
 
-.card{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;
-  box-shadow:var(--reg-shadow-md);
+.rc_topbar {
+  display: none;
+}
+
+.rc_title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--reg-shadow-md);
 }
 
 /* Header rojo en todas las tarjetas */
-.rc_card__header{
+.rc_card__header {
   background: var(--reg-primary);
   color: #fff;
   border-bottom: 1px solid var(--reg-primary-dark);
@@ -188,7 +233,8 @@
   align-items: center;
   gap: .6rem;
 }
-.rc_card__icon{
+
+.rc_card__icon {
   width: 1.85rem;
   height: 1.85rem;
   display: grid;
@@ -198,80 +244,265 @@
   border: 1px solid #ffffff55;
   margin: .45rem 0;
 }
-.rc_card__title{
+
+.rc_card__title {
   margin: 0;
   font-weight: 900;
   letter-spacing: .01em;
 }
 
 /* Tabs sobre fondo rojo */
-.rc_tabs_main{
+.rc_tabs_main {
   margin-left: auto;
   background: #ffffff22;
   border: 1px solid #ffffff55;
-  border-radius:14px; padding:.35rem;
-  display:inline-flex; gap:.5rem;
+  border-radius: 14px;
+  padding: .35rem;
+  display: inline-flex;
+  gap: .5rem;
 }
-.rc_mtab{
-  border:0; background:transparent; font-weight:900; color:#fff;
-  padding:.5rem .9rem; border-radius:999px; cursor:pointer; transition:var(--reg-transition);
-}
-.rc_mtab:hover{ background:#ffffff33; color:#fff; }
-.rc_mtab.active{ color: var(--reg-primary); background:#fff; box-shadow:var(--reg-shadow-sm); }
 
-.rc_chart_body{ padding:.75rem; }
+.rc_mtab {
+  border: 0;
+  background: transparent;
+  font-weight: 900;
+  color: #fff;
+  padding: .5rem .9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: var(--reg-transition);
+}
+
+.rc_mtab:hover {
+  background: #ffffff33;
+  color: #fff;
+}
+
+.rc_mtab.active {
+  color: var(--reg-primary);
+  background: #fff;
+  box-shadow: var(--reg-shadow-sm);
+}
+
+.rc_chart_body {
+  padding: .75rem;
+  /* permite que el área del chart se adapte */
+  height: 100%;
+  min-height: 0;
+}
 
 /* Donut/linea */
-.rc_donut{ display:flex; gap:1rem; align-items:center; justify-content:center; padding:.75rem; }
-.rc_donut_total{ font-weight:900; font-size:1.125rem; fill:#0f172a; }
-.rc_donut_label{ font-size:.75rem; fill:#64748b; }
-.rc_legend{ display:grid; gap:.4rem; }
-.rc_legend_item{ display:flex; align-items:center; gap:.5rem; color:#334155; font-weight:700; }
-.rc_legend_item strong{ margin-left:.5rem; }
-.dot{ width:.75rem; height:.75rem; border-radius:999px; display:inline-block; }
-.dot.ing{ background: var(--reg-secondary); }
-.dot.egr{ background: var(--reg-accent); }
-.rc_line{ padding:.5rem; }
-.rc_line .axis line{ stroke: var(--reg-gray-200); stroke-width:1; }
-.rc_line_label{ font-size:.7rem; fill:#64748b; }
+.rc_donut {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: .75rem;
+}
+
+.rc_donut_total {
+  font-weight: 900;
+  font-size: 1.125rem;
+  fill: #0f172a;
+}
+
+.rc_donut_label {
+  font-size: .75rem;
+  fill: #64748b;
+}
+
+.rc_legend {
+  display: grid;
+  gap: .4rem;
+}
+
+.rc_legend_item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.rc_legend_item strong {
+  margin-left: .5rem;
+}
+
+.dot {
+  width: .75rem;
+  height: .75rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dot.ing {
+  background: var(--reg-secondary);
+}
+
+.dot.egr {
+  background: var(--reg-accent);
+}
+
+.rc_line {
+  padding: .5rem;
+}
+
+.rc_line .axis line {
+  stroke: var(--reg-gray-200);
+  stroke-width: 1;
+}
+
+.rc_line_label {
+  font-size: .7rem;
+  fill: #64748b;
+}
 
 /* Tabla */
-.rc_table__wrap{ width:100%; overflow:auto; background:#fff; }
-.gt_table{ --cols:auto; display:grid; gap:.6rem; }
-.gt_table.gt_cols-4{ --cols: 8rem 1fr 1fr 1fr; }
-.gt_header{ display:grid; grid-template-columns:var(--cols); }
-.gt_header .gt_cell.h{ font-size:.85rem; color:#64748b; font-weight:900; padding:0 .75rem .45rem; }
-.gt_row{
-  display:grid; grid-template-columns:var(--cols);
-  background:#fff; border:1px solid var(--border); border-radius:12px;
-  box-shadow:var(--reg-shadow-sm); align-items:center;
+.rc_table__wrap {
+  width: 100%;
+  overflow: auto;
+  background: #fff;
+  /* se expande y hace scroll interno */
+  flex: 1 1 auto;
+  min-height: 0;
 }
-.gt_cell{ padding:.9rem .75rem; }
-.gt_cell.right{ text-align:right; font-weight:800; }
-.gt_cell.pos{ color:#15803d; }
-.gt_cell.neg{ color:#b91c1c; }
-.gt_empty{
-  text-align:center; color:#64748b; padding:1rem .5rem;
-  border:1px dashed var(--border); border-radius:12px; background:#f8fafc;
+
+.gt_table {
+  --cols: auto;
+  display: grid;
+  gap: .6rem;
+}
+
+.gt_table.gt_cols-4 {
+  --cols: 8rem 1fr 1fr 1fr;
+}
+
+.gt_header {
+  display: grid;
+  grid-template-columns: var(--cols);
+}
+
+.gt_header .gt_cell.h {
+  font-size: .85rem;
+  color: #64748b;
+  font-weight: 900;
+  padding: 1rem .75rem .45rem;
+}
+
+.gt_row {
+  display: grid;
+  grid-template-columns: var(--cols);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--reg-shadow-sm);
+  align-items: center;
+}
+
+.gt_cell {
+  padding: .9rem .75rem;
+}
+
+.gt_cell.right {
+  text-align: right;
+  font-weight: 800;
+}
+
+.gt_cell.pos {
+  color: #15803d;
+}
+
+.gt_cell.neg {
+  color: #b91c1c;
+}
+
+.gt_empty {
+  text-align: center;
+  color: #64748b;
+  padding: 1rem .5rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 /* Dos columnas */
-.rc_twocol{
-  display:grid;
+.rc_twocol {
+  display: grid;
   grid-template-columns: 1fr 1fr;
-  gap:1rem;
-  align-items:stretch;
+  gap: 1rem;
+  align-items: stretch;
+  /* para que las tarjetas dentro puedan crecer */
+  flex: 1 1 auto;
+  min-height: 0;
 }
-.rc_twocol .rc_card{ height:100%; display:flex; flex-direction:column; }
+
+.rc_twocol .rc_card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* El alto máximo lo maneja el contenedor con scroll interno */
 .rc_card--chart .rc_chart_body,
-.rc_card--table .rc_table__wrap{ flex:1 1 auto; max-height:320px; }
+.rc_card--table .rc_table__wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* si querés limitar la altura visual, descomentá: max-height: 320px; */
+}
 
 /* Responsive */
-@media (max-width: 1100px){
-  .gt_table{ min-width:40rem; }
+@media (max-width: 1100px) {
+  .gt_table { min-width: 40rem; }
 }
+
+@media (max-width: 900px) {
+  /* En móvil: que el shell se adapte a la altura del contenido, pero
+     manteniendo la resta del header en pantallas altas */
+  .rc_shell {
+    grid-template-columns: 1fr;
+    height: calc(100vh - var(--global-header-h));
+    min-height: calc(100vh - var(--global-header-h));
+  }
+
+  .rc_twocol { grid-template-columns: 1fr; }
+
+  .rc_side.rc_side--photo { height: auto; /* sidebar arriba, contenido abajo */ }
+}
+
+
+/* --- (1) Centrar verticalmente los gráficos en la tarjeta --- */
+.rc_card--chart .rc_chart_body{
+  display:flex;              /* centro con flex */
+  align-items:center;        /* centrado vertical */
+  justify-content:center;    /* centrado horizontal */
+  padding:1rem;              /* respirito */
+}
+
+/* (opcional) aseguro una altura mínima cómoda para que el centrado se note */
+@media (min-width: 901px){
+  .rc_card--chart{
+    min-height: 420px;
+  }
+}
+
+/* --- (2) Que la columna de la TABLA sea más ancha que la del gráfico --- */
+/* La tabla es la segunda tarjeta dentro de .rc_twocol, así que agrandamos la 2da columna */
+.rc_twocol{
+  grid-template-columns: .9fr 1.1fr;   /* antes era 1fr 1fr */
+}
+
+/* En pantallas grandes, dale un pelín más aún a la tabla */
+@media (min-width: 1280px){
+  .rc_twocol{
+    grid-template-columns: .85fr 1.15fr;
+  }
+}
+
+/* (Opcional) que la tabla interna tenga un poco más de base mínima
+   para que se vea más “ancha” cuando haya poco contenido alrededor */
+
+/* Mantener comportamiento mobile tal cual */
 @media (max-width: 900px){
-  .rc_shell{ grid-template-columns: 1fr; height: auto; }
   .rc_twocol{ grid-template-columns: 1fr; }
-  .rc_side.rc_side--photo{ height: auto; }
 }

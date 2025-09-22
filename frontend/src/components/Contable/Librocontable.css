@@ -67,7 +67,7 @@
    Libro Contable - Full width/height (sin isla)
    =========================== */
 .lc_wrap {
-  background: var(--lc-bg);
+  background: linear-gradient(135deg, #ffebee 30%, var(--td-primary) 70%);
   min-height: 100dvh;
   width: 100%;
   margin: 0;
@@ -79,7 +79,6 @@
 /* Tarjeta base */
 .card {
   background: var(--lc-surface);
-  border: 1px solid var(--lc-border);
   border-radius: var(--lc-radius-lg);
   box-shadow: var(--lc-shadow);
 }
