@@ -3,32 +3,86 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faPlus, faTrash, faEdit, faEye, faFileExcel, faTableList,
+  faPlus, faTrash, faEdit, faEye, faFileExcel,
   faSearch, faFilter, faChartPie,
 } from "@fortawesome/free-solid-svg-icons";
 import ContableEgresoModal from "./modalcontable/ContableEgresoModal";
 import Toast from "../Global/Toast";
 import "./EgresoContable.css";
+import * as XLSX from "xlsx"; // ⬅️ Excel real (.xlsx)
 
 const hoy = new Date();
 const Y = hoy.getFullYear();
 const MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const cap1 = (s="") => s.charAt(0) + s.slice(1).toLowerCase();
+function s(n){ return n===1 ? "" : "s"; }
 
-/* ===== Confirmación simple ===== */
-function ConfirmModal({ open, title="Confirmar", message, onCancel, onConfirm, confirmText="Eliminar", cancelText="Cancelar" }) {
+/* ===========================================================
+   ConfirmModal – MISMA estética que el modal de "Cerrar sesión"
+   (usa clases: logout-modal-*)
+   =========================================================== */
+function ConfirmModal({
+  open,
+  title = "Eliminar egreso",
+  message = "¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer.",
+  onCancel,
+  onConfirm,
+  confirmText = "Eliminar",
+  cancelText = "Cancelar",
+}) {
+  const cancelBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    cancelBtnRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape") onCancel?.(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+
   if (!open) return null;
+
   return (
-    <div className="lc_modal_overlay" role="dialog" aria-modal="true" onClick={onCancel}>
-      <div className="lc_modal" onClick={(e)=>e.stopPropagation()}>
-        <div className="lc_modal_head">
-          <h3>{title}</h3>
-          <button className="lc_icon" onClick={onCancel} aria-label="Cerrar">×</button>
+    <div
+      className="logout-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="egdel-title"
+      aria-describedby="egdel-desc"
+      onMouseDown={onCancel} /* click fuera => cierra */
+    >
+      <div
+        className="logout-modal-container logout-modal--danger"
+        onMouseDown={(e) => e.stopPropagation()} /* evita cierre al click interno */
+      >
+        <div className="logout-modal__icon" aria-hidden="true">
+          <FontAwesomeIcon icon={faTrash} />
         </div>
-        <div className="lc_modal_body"><p style={{margin:0}}>{message}</p></div>
-        <div className="lc_modal_footer">
-          <button className="lc_btn" onClick={onCancel}>{cancelText}</button>
-          <button className="lc_btn danger" onClick={onConfirm}>{confirmText}</button>
+
+        <h3 id="egdel-title" className="logout-modal-title logout-modal-title--danger">
+          {title}
+        </h3>
+
+        <p id="egdel-desc" className="logout-modal-text">
+          {message}
+        </p>
+
+        <div className="logout-modal-buttons">
+          <button
+            type="button"
+            className="logout-btn logout-btn--ghost"
+            onClick={onCancel}
+            ref={cancelBtnRef}
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className="logout-btn logout-btn--solid-danger"
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </button>
         </div>
       </div>
     </div>
@@ -215,27 +269,101 @@ export default function EgresoContable(){
 
   const onSavedEgreso = ()=>{ setModalOpen(false); loadEgresos(); };
 
+<<<<<<< HEAD
   /* ==== Export ==== */
   const csvEscape = (v)=> `"${String(v ?? "").replace(/"/g,'""')}"`;
   const exportarCSV = ()=>{
+=======
+  /* ===== Exportar Excel real (.xlsx) ===== */
+  const exportarXLSX = () => {
+>>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
     const rows = egresosFiltrados;
-    if (!rows.length){ addToast("advertencia","No hay datos para exportar."); return; }
+    if (!rows.length) {
+      addToast("advertencia","No hay datos para exportar.");
+      return;
+    }
+
+    const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto (ARS)"];
+    const data = rows.map(e => ([
+      e.fecha || "",
+      e.categoria || "",
+      e.numero_factura || "",
+      e.descripcion || "",
+      e.medio_nombre || e.medio_pago || "",
+      Number(e.monto || 0)
+    ]));
+
+    const aoa = [headers, ...data];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Fuerza números en la col 'Monto'
+    const startRow = 2;
+    const endRow = aoa.length;
+    for (let r = startRow; r <= endRow; r++) {
+      const addr = XLSX.utils.encode_cell({ r: r-1, c: 5 });
+      if (ws[addr]) ws[addr].t = 'n';
+    }
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 40 }, { wch: 18 }, { wch: 14 },
+    ];
+    const rangeMontos = XLSX.utils.decode_range(`F2:F${endRow}`);
+    for (let R = rangeMontos.s.r; R <= rangeMontos.e.r; ++R) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: 5 });
+      if (ws[cellRef]) ws[cellRef].z = '#,##0';
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, `Egresos_${cap1(MESES[month])}_${year}`);
+
+    const d = new Date();
+    const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.xlsx`;
+    XLSX.writeFile(wb, name);
+    addToast("exito","Excel exportado.");
+  };
+
+  /* ===== (Opcional) Exportar CSV ===== */
+  const exportarCSV = () => {
+    const rows = egresosFiltrados;
+    if (!rows.length) {
+      addToast("advertencia","No hay datos para exportar.");
+      return;
+    }
     const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto"];
     const sep = ";";
-    const data = rows.map(e=>[
-      e.fecha||"", e.categoria||"", e.numero_factura||"", e.descripcion||"",
-      e.medio_nombre || e.medio_pago || "", Number(e.monto||0).toString().replace(".",","),
+    const csvEscape = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
+    const data = rows.map(e => [
+      e.fecha || "",
+      e.categoria || "",
+      e.numero_factura || "",
+      e.descripcion || "",
+      e.medio_nombre || e.medio_pago || "",
+      (Number(e.monto || 0)).toString().replace(".", ","),
     ]);
     const bom = "\uFEFF";
     const lines = [ headers.map(csvEscape).join(sep), ...data.map(r=> r.map(csvEscape).join(sep)) ];
-    const blob = new Blob([bom + lines.join("\r\n")], { type:"text/csv;charset=utf-8;" });
+    const csvStr = bom + lines.join("\r\n");
+    const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8" });
+
+    if (navigator.msSaveOrOpenBlob) {
+      const d = new Date();
+      const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.csv`;
+      navigator.msSaveOrOpenBlob(blob, name);
+      addToast("exito","Archivo exportado (CSV).");
+      return;
+    }
     const url = URL.createObjectURL(blob);
-    const d = new Date();
-    const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.csv`;
     const a = document.createElement("a");
-    a.href = url; a.download = name; document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    addToast("exito","Archivo exportado.");
+    const d = new Date();
+    a.href = url;
+    a.download = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.csv`;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1500);
+    addToast("exito","Archivo exportado (CSV).");
   };
 
   return (
@@ -254,10 +382,23 @@ export default function EgresoContable(){
               <FontAwesomeIcon icon={faFilter} />
               Filtros
             </h2>
+<<<<<<< HEAD
             <h3>Detalle — {cap1(MESES[month])} {anio}</h3>
+=======
+            <h3>Detalle — {cap1(MESES[month])} {year}</h3>
+>>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
           </div>
-          <div className="paddingcenter">
 
+          <div className="paddingcenter">
+            <div className="eg_row">
+              <div className="eg_field">
+                <label>Año</label>
+                <select value={year} onChange={e=>setYear(Number(e.target.value))}>
+                  {years.map(y=> <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+
+<<<<<<< HEAD
             <div className="eg_row">
               <div className="eg_field">
                 <label>Año</label>
@@ -273,6 +414,8 @@ export default function EgresoContable(){
                 </select>
               </div>
 
+=======
+>>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
               <div className="eg_field">
                 <label>Mes</label>
                 <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
@@ -301,7 +444,11 @@ export default function EgresoContable(){
 
             <h3 className="eg_cats__header">
               <FontAwesomeIcon icon={faChartPie} />
+<<<<<<< HEAD
               Categorías 
+=======
+              Categorías
+>>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
             </h3>
 
             <div className="eg_cats">
@@ -335,12 +482,16 @@ export default function EgresoContable(){
           </div>
         </aside>
 
-        {/* Panel derecho (ocupa todo alto/ancho restante) */}
+        {/* Panel derecho */}
         <section className="eg_content cardd">
           <header className="eg_content__header">
+<<<<<<< HEAD
             <button className={`seg-tabbb `}>
               Ingresos
             </button>
+=======
+            <button className="seg-tabbb">Ingresos</button>
+>>>>>>> fa91512 (WIP: cambios locales en EgresoContable.jsx)
 
             <div className="eg_header_actions">
               <div className="eg_search eg_search--redpill">
@@ -353,12 +504,17 @@ export default function EgresoContable(){
                 />
               </div>
 
-              <button className="eg_btn eg_btn--redpill" onClick={exportarCSV}>
+              <button type="button" className="eg_btn eg_btn--redpill" onClick={exportarXLSX}>
                 <FontAwesomeIcon icon={faFileExcel} />
                 Exportar Excel
               </button>
 
-              <button className="eg_btn eg_btn--whitepill" onClick={onCreateEgreso}>
+              {/* Si querés habilitar CSV, descomentá: */}
+              {/* <button type="button" className="eg_btn eg_btn--ghost" onClick={exportarCSV}>
+                Exportar CSV
+              </button> */}
+
+              <button type="button" className="eg_btn eg_btn--whitepill" onClick={onCreateEgreso}>
                 <FontAwesomeIcon icon={faPlus} />
                 Registrar egreso
               </button>
@@ -388,7 +544,7 @@ export default function EgresoContable(){
                 const hasFile = Boolean(normalizeUrl(e?.comprobante_url || e?.comprobante || e?.url));
                 return (
                   <div className="gt_rowd" role="row" key={e.id_egreso}>
-                    <div className="gt_cell" role="cell">{e.fecha}</div>
+                    <div className="gt_cell center" role="cell">{e.fecha}</div>
                     <div className="gt_cell center" role="cell"><span className="badge">{e.categoria || "-"}</span></div>
                     <div className="gt_cell center" role="cell">{e.numero_factura || "-"}</div>
                     <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
@@ -417,10 +573,23 @@ export default function EgresoContable(){
         </section>
       </div>
 
-      <ContableEgresoModal open={modalOpen} onClose={()=>setModalOpen(false)} onSaved={onSavedEgreso} editRow={editRow} notify={addToast} />
-      <ConfirmModal open={confirmOpen} title="Eliminar egreso" message="¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer." onCancel={cancelDelete} onConfirm={confirmDelete} confirmText="Eliminar" cancelText="Cancelar" />
+      <ContableEgresoModal
+        open={modalOpen}
+        onClose={()=>setModalOpen(false)}
+        onSaved={onSavedEgreso}
+        editRow={editRow}
+        notify={addToast}
+      />
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Eliminar egreso"
+        message="¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer."
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 }
-
-function s(n){ return n===1 ? "" : "s"; }
