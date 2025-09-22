@@ -54,7 +54,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: url('../../imagenes/img_fondo.png') center center / cover no-repeat fixed;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;

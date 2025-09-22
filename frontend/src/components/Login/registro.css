@@ -56,7 +56,7 @@
 /* ====== Tarjeta ====== */
 .reg_contenedor {
   width: 90%;
-  max-width: 500px;
+  max-width: 620px;
   padding: 28px 20px;
   background: #ffffff; /* tarjeta blanca */
   border-radius: var(--reg-border-radius-xl);
@@ -133,7 +133,6 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 400px;
   margin: 0 auto;
 }
 

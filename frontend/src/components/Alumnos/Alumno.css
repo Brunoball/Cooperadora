@@ -947,7 +947,7 @@ input:-webkit-autofill { background-color: transparent !important; }
    Botón FAMILIAS (desktop)
    ============================ */
 .alu-alumno-button.alu-btn-familias {
-  background: #6a1b9a; /* Violeta sólido */
+  background: #1e293b; /* Violeta sólido */
   color: var(--text-on-primary);
   border: none;
   box-shadow: var(--reg-shadow-sm);
@@ -961,7 +961,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-alumno-button.alu-btn-familias:hover {
   transform: translateY(-2px);
   box-shadow: var(--reg-shadow-md);
-  background: #4a148c; /* Violeta más oscuro en hover */
+  background: #1e293b; /* Violeta más oscuro en hover */
 }
 
 /* Enfoque accesible */

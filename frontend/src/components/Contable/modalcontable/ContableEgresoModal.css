@@ -297,9 +297,8 @@
 }
 
 /* ===== Footer sticky ===== */
-.mm_footer{
-  position: sticky; bottom: 0; background: #fff;
-  display:flex; justify-content:flex-end; gap:10px; padding: 12px 0 0;
+.mm_footer{ background: #fff;
+  display:flex; justify-content:flex-end; gap:10px; padding: 12px;
 }
 
 /* ===== Viewer minimal ===== */

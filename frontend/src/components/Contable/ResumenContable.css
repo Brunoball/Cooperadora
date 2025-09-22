@@ -47,16 +47,12 @@
   display: grid;
   grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr;
   background: linear-gradient(135deg, #ffebee 30%, var(--td-primary) 70%);
-  /* ANTES: height: 100vh; -> AHORA: resta el header fijo */
   height: calc(100vh - var(--global-header-h));
   min-height: calc(100vh - var(--global-header-h));
-  /* Para que los hijos puedan scrollear */
   min-width: 0;
 }
 
-.rc_shell * {
-  box-sizing: border-box;
-}
+.rc_shell * { box-sizing: border-box; }
 
 /* ---------- SIDEBAR a ras, 100% height ---------- */
 .rc_side.rc_side--photo {
@@ -67,13 +63,12 @@
   box-shadow: none;
   margin: 0;
   padding: 0;
-  /* ANTES: height:100vh; -> AHORA: lleno el contenedor */
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow: hidden; /* para el header */
+  overflow: hidden;
 }
 
 /* Franja roja superior de la sidebar */
@@ -98,7 +93,6 @@
   height: 1.6rem;
   display: grid;
   place-items: center;
-
 }
 
 .rc_side_title {
@@ -136,7 +130,6 @@
   transition: var(--reg-transition);
   box-shadow: var(--reg-shadow-sm);
 }
-
 .rc_field_input:focus {
   border-color: var(--reg-primary-light);
   box-shadow: 0 0 0 .15rem rgba(183, 28, 28, .12);
@@ -147,7 +140,6 @@
   padding: .75rem .95rem 1rem;
   display: grid;
   gap: .75rem;
-  /* que puedan scrollear si la ventana es baja */
   overflow: auto;
   min-height: 0;
 }
@@ -175,10 +167,7 @@
   background: var(--reg-primary);
   box-shadow: inset 0 0 0 1px #ffffff66;
 }
-
-.rc_kpi_icon.warn {
-  background: var(--reg-danger);
-}
+.rc_kpi_icon.warn { background: var(--reg-danger); }
 
 .rc_kpi_txt .rc_kpi_label {
   margin: 0;
@@ -186,7 +175,6 @@
   font-weight: 800;
   color: #475569;
 }
-
 .rc_kpi_txt .rc_kpi_value {
   margin: .15rem 0 0;
   font-size: 1.2rem;
@@ -198,16 +186,13 @@
 .rc_main {
   min-width: 0;
   padding: 1rem 0;
-  /* que el main llene y permita scroll interno en sus hijos */
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.rc_topbar {
-  display: none;
-}
+.rc_topbar { display: none; }
 
 .rc_title {
   margin: 0;
@@ -258,7 +243,6 @@
   display: inline-flex;
   gap: .5rem;
 }
-
 .rc_mtab {
   border: 0;
   background: transparent;
@@ -269,12 +253,7 @@
   cursor: pointer;
   transition: var(--reg-transition);
 }
-
-.rc_mtab:hover {
-  background: #ffffff33;
-  color: #fff;
-}
-
+.rc_mtab:hover { background: #ffffff33; color: #fff; }
 .rc_mtab.active {
   color: var(--reg-primary);
   background: #fff;
@@ -283,7 +262,6 @@
 
 .rc_chart_body {
   padding: .75rem;
-  /* permite que el área del chart se adapte */
   height: 100%;
   min-height: 0;
 }
@@ -302,7 +280,6 @@
   font-size: 1.125rem;
   fill: #0f172a;
 }
-
 .rc_donut_label {
   font-size: .75rem;
   fill: #64748b;
@@ -312,7 +289,6 @@
   display: grid;
   gap: .4rem;
 }
-
 .rc_legend_item {
   display: flex;
   align-items: center;
@@ -320,46 +296,21 @@
   color: #334155;
   font-weight: 700;
 }
+.rc_legend_item strong { margin-left: .5rem; }
 
-.rc_legend_item strong {
-  margin-left: .5rem;
-}
+.dot { width: .75rem; height: .75rem; border-radius: 999px; display: inline-block; }
+.dot.ing { background: var(--reg-secondary); }
+.dot.egr { background: var(--reg-accent); }
 
-.dot {
-  width: .75rem;
-  height: .75rem;
-  border-radius: 999px;
-  display: inline-block;
-}
-
-.dot.ing {
-  background: var(--reg-secondary);
-}
-
-.dot.egr {
-  background: var(--reg-accent);
-}
-
-.rc_line {
-  padding: .5rem;
-}
-
-.rc_line .axis line {
-  stroke: var(--reg-gray-200);
-  stroke-width: 1;
-}
-
-.rc_line_label {
-  font-size: .7rem;
-  fill: #64748b;
-}
+.rc_line { padding: .5rem; }
+.rc_line .axis line { stroke: var(--reg-gray-200); stroke-width: 1; }
+.rc_line_label { font-size: .7rem; fill: #64748b; }
 
 /* Tabla */
 .rc_table__wrap {
   width: 100%;
   overflow: auto;
   background: #fff;
-  /* se expande y hace scroll interno */
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -369,16 +320,9 @@
   display: grid;
   gap: .6rem;
 }
+.gt_table.gt_cols-4 { --cols: 8rem 1fr 1fr 1fr; }
 
-.gt_table.gt_cols-4 {
-  --cols: 8rem 1fr 1fr 1fr;
-}
-
-.gt_header {
-  display: grid;
-  grid-template-columns: var(--cols);
-}
-
+.gt_header { display: grid; grid-template-columns: var(--cols); }
 .gt_header .gt_cell.h {
   font-size: .85rem;
   color: #64748b;
@@ -396,22 +340,10 @@
   align-items: center;
 }
 
-.gt_cell {
-  padding: .9rem .75rem;
-}
-
-.gt_cell.right {
-  text-align: right;
-  font-weight: 800;
-}
-
-.gt_cell.pos {
-  color: #15803d;
-}
-
-.gt_cell.neg {
-  color: #b91c1c;
-}
+.gt_cell { padding: .9rem .75rem; }
+.gt_cell.right { text-align: right; font-weight: 800; }
+.gt_cell.pos { color: #15803d; }
+.gt_cell.neg { color: #b91c1c; }
 
 .gt_empty {
   text-align: center;
@@ -429,11 +361,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   align-items: stretch;
-  /* para que las tarjetas dentro puedan crecer */
   flex: 1 1 auto;
   min-height: 0;
 }
-
 .rc_twocol .rc_card {
   height: 100%;
   display: flex;
@@ -441,66 +371,98 @@
   min-height: 0;
 }
 
-/* El alto máximo lo maneja el contenedor con scroll interno */
+/* Alto/scroll interno */
 .rc_card--chart .rc_chart_body,
 .rc_card--table .rc_table__wrap {
   flex: 1 1 auto;
   min-height: 0;
-  /* si querés limitar la altura visual, descomentá: max-height: 320px; */
 }
 
 /* Responsive */
 @media (max-width: 1100px) {
   .gt_table { min-width: 40rem; }
 }
-
 @media (max-width: 900px) {
-  /* En móvil: que el shell se adapte a la altura del contenido, pero
-     manteniendo la resta del header en pantallas altas */
   .rc_shell {
     grid-template-columns: 1fr;
     height: calc(100vh - var(--global-header-h));
     min-height: calc(100vh - var(--global-header-h));
   }
-
   .rc_twocol { grid-template-columns: 1fr; }
-
-  .rc_side.rc_side--photo { height: auto; /* sidebar arriba, contenido abajo */ }
+  .rc_side.rc_side--photo { height: auto; }
 }
-
 
 /* --- (1) Centrar verticalmente los gráficos en la tarjeta --- */
 .rc_card--chart .rc_chart_body{
-  display:flex;              /* centro con flex */
-  align-items:center;        /* centrado vertical */
-  justify-content:center;    /* centrado horizontal */
-  padding:1rem;              /* respirito */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:1rem;
 }
 
-/* (opcional) aseguro una altura mínima cómoda para que el centrado se note */
+/* Altura mínima cómoda para desktop */
 @media (min-width: 901px){
-  .rc_card--chart{
-    min-height: 420px;
-  }
+  .rc_card--chart{ min-height: 420px; }
 }
 
 /* --- (2) Que la columna de la TABLA sea más ancha que la del gráfico --- */
-/* La tabla es la segunda tarjeta dentro de .rc_twocol, así que agrandamos la 2da columna */
-.rc_twocol{
-  grid-template-columns: .9fr 1.1fr;   /* antes era 1fr 1fr */
-}
-
-/* En pantallas grandes, dale un pelín más aún a la tabla */
+.rc_twocol { grid-template-columns: .9fr 1.1fr; }
 @media (min-width: 1280px){
-  .rc_twocol{
-    grid-template-columns: .85fr 1.15fr;
-  }
+  .rc_twocol{ grid-template-columns: .85fr 1.15fr; }
 }
-
-/* (Opcional) que la tabla interna tenga un poco más de base mínima
-   para que se vea más “ancha” cuando haya poco contenido alrededor */
-
-/* Mantener comportamiento mobile tal cual */
 @media (max-width: 900px){
   .rc_twocol{ grid-template-columns: 1fr; }
+}
+
+/* =======================
+   ANIMACIONES (tabla + charts)
+   ======================= */
+
+/* Cascada de filas en la tabla */
+@keyframes rcFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.gt_row.anim {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: rcFadeUp .45s ease-out forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* Donut: “pop” de arcos */
+@keyframes rcPop {
+  from { transform: scale(0.98); }
+  to   { transform: scale(1); }
+}
+.rc_donut_arc {
+  transform-origin: 50% 50%;
+  animation: rcPop 300ms ease-out both;
+}
+
+/* Línea: dibujado y área */
+@keyframes rcDash { to { stroke-dashoffset: 0; } }
+@keyframes rcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.rc_line_path_draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: rcDash 900ms ease-out forwards;
+}
+.rc_line_area_in {
+  opacity: 0;
+  animation: rcFadeIn 500ms ease-out 150ms forwards;
+}
+
+/* Puntos con stagger */
+@keyframes rcPointIn {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.rc_line_point_in {
+  opacity: 0;
+  transform: scale(0.6);
+  transform-origin: center;
+  animation: rcPointIn 300ms ease-out forwards;
+  animation-delay: var(--delay, 0ms);
 }

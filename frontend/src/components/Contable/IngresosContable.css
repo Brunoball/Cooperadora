@@ -40,6 +40,9 @@
   --kpi-card-border:var(--border);
   --kpi-icon-bg: var(--reg-primary);
   --kpi-icon-fg:#fff;
+
+  /* lista lateral */
+  --cat-amount: var(--primary);
 }
 
 /* Reset + tipo */
@@ -70,11 +73,9 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-side { position: relative; background: #ffffff; color: var(--text); overflow: hidden; box-shadow: 0 10px 30px rgba(2,6,23,.08); height: 100%; min-height: 0; display: flex; flex-direction: column; }
 .ing-side__inner { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow: auto; min-height: 0; }
 
-/* fila de título + detalle inline */
 .ing-side__row--top{ display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .ing-detail-inline small{ color: rgba(255,255,255,.92); }
 
-/* “Filtros” como pastilla (se vuelve texto plano dentro de franja roja) */
 .ing-sectiontitle{ display: inline-flex; align-items: center; gap: 8px; font-weight: 900; color: #fff; background: var(--reg-primary); padding: 8px 10px; border-radius: 10px; letter-spacing: .2px; box-shadow: var(--shadow-soft); }
 .ing-sectiontitle svg { color: #fff; }
 
@@ -84,15 +85,11 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-field select:focus, .ing-field input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.22); }
 .ing-fieldrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-/* KPI CARDS (debajo de Año/Mes) */
-.ing-kpi-cards{
-  display: flex;
- flex-direction: column;
- gap: 8px;
-}
+/* KPI CARDS */
+.ing-kpi-cards{ display: flex; flex-direction: column; gap: 8px; }
 .kpi-card{
   display: grid;
-  width: 60%;
+  width: 100%;
   grid-template-columns: 56px 1fr;
   align-items: center;
   background: var(--kpi-card-bg);
@@ -104,29 +101,17 @@ small { font-size: var(--fs-small); color: var(--muted); }
   flex: 1 1 0;
 }
 .kpi-card__icon{
-  width: 36px; height: 36px;
+  width: 40px; height: 40px;
   border-radius: 14px;
   background: var(--kpi-icon-bg);
   color: var(--kpi-icon-fg);
   display: grid; place-items: center;
-  font-weight: 700;
-  font-size: 1rem;
+  font-weight: 700; font-size: 1rem;
 }
-.kpi-card__label{
-  font-size: .8rem;
-  font-weight: 800;
-  color: var(--muted);
-  letter-spacing: .25px;
-}
-.kpi-card__value{
-  font-size: .95rem;
-  font-weight: 800;
-  color: var(--text);
-  line-height: 1.1;
-}
+.kpi-card__label{ font-size: .8rem; font-weight: 800; color: var(--muted); letter-spacing: .25px; }
+.kpi-card__value{ font-size: .95rem; font-weight: 800; color: var(--text); line-height: 1.1; }
 
 /* ===== Lista lateral de categorías */
-:root { --cat-amount: var(--primary); }
 .ing-catlist { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
 .ing-catitem { background: #fafafa; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; box-shadow: inset 0 0 0 1px rgba(2,6,23,.02); transition: transform .16s ease, border-color .16s ease, background .16s ease; }
 .ing-catitem:hover { transform: translateY(-1px); border-color: #dfe3ea; background: #fefefe; }
@@ -180,7 +165,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
   padding: 8px 10px;
   min-width: 220px;
 }
-.seg-search svg{ opacity: .85;  color: white;}
+.seg-search svg{ opacity: .85;  color: white; }
 .seg-search input{
   border: 0;
   background: transparent;
@@ -225,25 +210,24 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .card{ padding: 0; overflow: hidden; }
 .ing-stack__head{ display: none; }
 
-/* Para que el contenido pueda crecer al 100% de alto */
 .ing-stack { display:flex; flex-direction:column; height: 100%; min-height:0; }
 .ing-stack__body{ padding: 8px; background: var(--surface); display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
 .ing-stack .ing-page{ border: 0; box-shadow: none; background: transparent; padding: 0; border-left: 1px solid var(--agr-gray-100); }
 
-/* ===== Página / Tabla (OCUPA 100% ALTURA) */
+/* ===== Página / Tabla (100% ALTURA) */
 .ing-page{
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;            /* permite que los hijos hagan scroll */
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* Contenedor con scroll ocupando todo el alto disponible */
+/* Contenedor con scroll */
 .ing-tablewrap{
   width: 100%;
-  height: 100%;             /* <- ocupa 100% del alto disponible */
-  overflow: auto;           /* scroll vertical/horizontal según sea necesario */
+  height: 100%;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #fff;
@@ -297,7 +281,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-tablewrap::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 8px; }
 .ing-tablewrap::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; border: 2px solid #f3f4f6; }
 
-/* ===== Modal crear ingreso */
+/* ===== Modales base (por si los usás acá) */
 .ing-modal-overlay{ position: fixed; inset:0; background: rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
 .ing-modal{ width: min(640px, 100%); background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow: 0 20px 40px rgba(2,6,23,.25); overflow:hidden; }
 .ing-modal__head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); }
@@ -308,7 +292,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .field input, .field select{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; }
 @media (max-width:560px){ .grid2{ grid-template-columns:1fr; } }
 
-/* ===== Responsive */
+/* ===== Responsive layout general */
 @media (max-width: 1024px){
   .ing-layout { grid-template-columns: 1fr; }
   .ing-side { position: fixed; left: 16px; top: 16px; width: min(90vw, 340px); z-index: 40; transform: translateX(-120%); transition: transform .24s ease; }
@@ -333,19 +317,16 @@ small { font-size: var(--fs-small); color: var(--muted); }
   .seg-search input{ width: 120px; font-size: .88rem; }
 }
 
-/* === Degradado ROJO -> ROJO MÁS INTENSO (sin negro) === */
-
+/* === Degradado rojo (simplificado) === */
 @supports (background: color-mix(in oklch, red, white)){
   :root{
     --brand-red-base: var(--reg-primary, var(--danger, #dc2626));
     --brand-red-strong: color-mix(in oklch, var(--brand-red-base) 70%, red 30%);
   }
   .gradient--brand-red{
-    background:  var(--reg-primary) ;
+    background: var(--reg-primary);
   }
 }
-
-/* Ajustes UI sobre fondo rojo */
 .gradient--brand-red .seg-tab{ color:#fff; }
 .gradient--brand-red .seg-tab:hover{ background: rgba(255,255,255,.12); }
 .gradient--brand-red .seg-tab.active{ background: rgba(255,255,255,.18); color:#fff; }
@@ -368,7 +349,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
 }
 .gradient--brand-red .btn.solid:hover{ color:#991b1b; }
 
-/* Franja roja del sidebar ocupando ancho completo */
+/* Franja roja del sidebar */
 .ing-side__row--top.gradient--brand-red{
   margin: -16px -16px 0px;
   padding: 17.4px 16px;
@@ -382,15 +363,14 @@ small { font-size: var(--fs-small); color: var(--muted); }
   box-shadow: none;
 }
 .ing-side__row--top.gradient--brand-red .ing-sectiontitle svg{ color:#fff; }
-/* ===== Modal refinado ===== */
+
+/* ===== Modal refinado extra ===== */
 .ing-modal--elev{
   border-radius: 18px;
   border: 1px solid var(--border);
   box-shadow: 0 24px 60px rgba(2,6,23,.28), 0 2px 10px rgba(2,6,23,.08);
   overflow: hidden;
 }
-
-/* Head con badge e ícono */
 .ing-modal__head.gradient--brand-red{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding: 14px 16px;
@@ -404,104 +384,172 @@ small { font-size: var(--fs-small); color: var(--muted); }
   display:grid; place-items:center; background: rgba(255,255,255,.16);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
 }
-.ghost-btn--light{
-  color:#fff; border-color: rgba(255,255,255,.28);
-}
+.ghost-btn--light{ color:#fff; border-color: rgba(255,255,255,.28); }
 .ghost-btn--light:hover{ background: rgba(255,255,255,.16); }
 .ghost-btn--light:focus-visible{ box-shadow: 0 0 0 3px rgba(255,255,255,.32); }
-
-/* Body con campos iconificados */
 .field{ margin-bottom: 6px; }
-.field--icon .control{
-  position: relative;
-  display: grid;
-  align-items: center;
-}
+.field--icon .control{ position: relative; display: grid; align-items: center; }
 .field--icon .control .i{
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
   width: 22px; height: 22px; display:grid; place-items:center;
-  color: #6b7280;
-  pointer-events:none;
+  color: #6b7280; pointer-events:none;
 }
 .field--icon input,
-.field--icon select{
-  padding-left: 38px !important;
-  height: 40px;
-}
-.field input, .field select{
-  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
-}
+.field--icon select{ padding-left: 38px !important; height: 40px; }
+.field input, .field select{ transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease; }
 .field input:focus, .field select:focus{
-  outline: none;
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96,165,250,.22);
+  outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96,165,250,.22);
 }
-
-/* Footer pegado con separación sutil */
-.ing-modal__foot{
-  border-top: 1px solid var(--border);
-  margin-top: 2px;
-  padding-top: 10px;
-}
-
-/* Micro-detalles accesibles en hover/focus */
-.ing-modal .btn.solid[disabled]{
-  opacity: .8; cursor: not-allowed; box-shadow:none;
-}
-
-/* Ajustes responsive del modal */
+.ing-modal__foot{ border-top: 1px solid var(--border); margin-top: 2px; padding-top: 10px; }
+.ing-modal .btn.solid[disabled]{ opacity: .8; cursor: not-allowed; box-shadow:none; }
 @media (max-width:560px){
   .ing-modal__head{ padding: 12px; }
   .ing-modal__body{ padding: 12px; }
   .ing-modal__foot{ padding-top: 8px; }
 }
 
-/* ===== Date input: ocultar ícono nativo y hacer todo el campo clickeable ===== */
+/* ===== Date input tweaks ===== */
 .field--date .control--clickable { cursor: pointer; }
 .field--date input[type="date"] {
-  /* quitar apariencias nativas que agregan íconos */
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: none;
+  -webkit-appearance: none; appearance: none; background-image: none;
 }
 .field--date input[type="date"]::-webkit-clear-button { display: none; }
 .field--date input[type="date"]::-webkit-inner-spin-button { display: none; }
 .field--date input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0 !important;
-  display: none !important;
-  pointer-events: none !important;
+  opacity: 0 !important; display: none !important; pointer-events: none !important;
 }
 .lc_panel {border-radius: 0 !important;}
-/* ===== Invertir colores en hover para botones marcados con .btn-invert ===== */
 
-/* Caso general (fondo claro): ghost pasa a fondo = color del texto, texto = blanco */
+/* ===== Invertir colores en hover para .btn-invert ===== */
 .btn.btn-invert.ghost:hover{
-  background: currentColor;
-  color: #fff;
-  border-color: currentColor;
+  background: currentColor; color: #fff; border-color: currentColor;
 }
-
-/* Caso general: solid pasa a fondo blanco y texto al color principal */
 .btn.btn-invert.solid:hover{
-  background: #fff;
-  color: var(--primary);
-  border-color: var(--primary);
+  background: #fff; color: var(--primary); border-color: var(--primary);
   box-shadow: 0 8px 18px rgba(37,99,235,.12);
 }
-
-/* Dentro de barras con fondo rojo (gradient--brand-red): 
-   - el ghost invierte a fondo blanco y texto rojo
-   - el solid invierte a fondo rojo y texto blanco
-*/
 .gradient--brand-red .btn.btn-invert.ghost:hover{
-  background: #fff;
-  color: var(--reg-primary);
-  border-color: #fff;
+  background: #fff; color: var(--reg-primary); border-color: #fff;
+}
+.gradient--brand-red .btn.btn-invert.solid:hover{
+  background: var(--reg-primary); color: #fff; border-color: var(--reg-primary);
+  box-shadow: 0 8px 18px rgba(184,28,28,.22);
 }
 
-.gradient--brand-red .btn.btn-invert.solid:hover{
-  background: var(--reg-primary);
-  color: #fff;
-  border-color: var(--reg-primary);
-  box-shadow: 0 8px 18px rgba(184,28,28,.22);
+/* ====== Grilla para "manuales" (SIN columna N°) ====== */
+/* Cabecera y filas de la vista MANUALES */
+.is-manuales .ing-row.h,
+.is-manuales .ing-row {
+  /* Fecha | Denominación | Descripción | Importe | Medio | Acciones */
+  grid-template-columns: 0.8fr 1.4fr 1.2fr 0.9fr 0.9fr 0.7fr;
+}
+
+/* Centrado de Importe y Medio SOLO en "manuales" */
+.is-manuales .c-importe,
+.is-manuales .c-medio {
+  text-align: center;
+}
+
+/* (Opcional) números tabulares también en Importe */
+.is-manuales .c-importe .num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Responsive para manuales */
+@media (max-width: 720px){
+  .is-manuales .ing-row.h,
+  .is-manuales .ing-row{
+    grid-template-columns: 0.9fr 1.3fr 1fr 0.9fr 0.8fr 0.7fr;
+  }
+}
+
+/* ===== Utilidades varias ===== */
+.center { text-align: center; }
+
+/* ===== Loader / vacío ===== */
+.ing-empty { padding: 14px; text-align: center; color: var(--muted); }
+.ing-empty.big { padding: 24px; }
+
+/* ===== Divider ===== */
+.ing-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+/* ===== Estética de modal de confirmación (reusa clases) ===== */
+.logout-modal-overlay{ position:fixed; inset:0; background: rgba(15,23,42,.5); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
+.logout-modal-container{ width:min(420px, 96vw); background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 30px 60px rgba(2,6,23,.38), 0 2px 8px rgba(2,6,23,.08); padding:16px; display:flex; flex-direction:column; gap:10px; }
+.logout-modal--danger{ border-color:#fecaca; }
+.logout-modal-title{ margin:0; font-weight:900; color:#111827; }
+.logout-modal-title--danger{ color:#991b1b; }
+.logout-modal-text{ margin:0; color:#374151; }
+.logout-modal-buttons{ display:flex; gap:8px; justify-content:flex-end; }
+.logout-btn{ padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; border:1px solid var(--border); }
+.logout-btn--ghost{ background:#fff; }
+.logout-btn--solid-danger{ background:#b91c1c; color:#fff; border-color:#b91c1c; }
+.logout-btn--solid-danger:hover{ filter:brightness(.95); }
+/* === Botones de acciones redondos (como la imagen) === */
+:root{
+  --act-size: 42px;
+  --act-shadow: 0 6px 16px rgba(2,6,23,.10);
+  --act-shadow-hover: 0 10px 22px rgba(2,6,23,.14);
+  /* Paleta por acción */
+  --act-view-bg: #eef2ff;   /* indigo-100 */
+  --act-view-fg: #4f46e5;   /* indigo-600 */
+  --act-edit-bg: #e0f2fe;   /* sky-100 */
+  --act-edit-fg: #0284c7;   /* sky-600 */
+  --act-del-bg:  #fee2e2;   /* red-100 */
+  --act-del-fg:  #b91c1c;   /* red-700 */
+}
+
+.c-actions{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.act-btn{
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--act-shadow);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease, filter .18s ease;
+}
+
+
+/* Variantes por acción */
+.act-btn.is-edit{  background: #ecfeff;  color: #0369a1;  border-color: #cffafe; }
+.act-btn.is-del{   background: #fee2e2;   color: #991b1b;   border-color: #fecaca; }
+
+/* Hovers (más vivos) */
+.act-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--act-shadow-hover);
+}
+
+.act-btn.is-edit:hover{  background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
+.act-btn.is-del:hover{  background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
+
+/* Focus accesible */
+.act-btn:focus-visible{
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(96,165,250,.28),
+    var(--act-shadow-hover);
+}
+
+/* Estado activo (click) */
+.act-btn:active{
+  transform: translateY(0);
+  filter: saturate(1.05);
+}
+
+/* Modo compact en mobile */
+@media (max-width: 720px){
+  :root{ --act-size: 38px; }
+  .c-actions{ gap: 8px; }
+  .act-btn svg{ width: 17px; height: 17px; }
 }

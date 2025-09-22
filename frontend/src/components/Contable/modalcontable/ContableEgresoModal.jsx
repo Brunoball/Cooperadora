@@ -35,6 +35,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
 
   const fileInputRef = useRef(null);
   const dropRef = useRef(null);
+  const dateInputRef = useRef(null); // ⬅️ ref del input date
 
   const fetchJSON = async (url, options) => {
     const sep = url.includes("?") ? "&" : "?";
@@ -78,7 +79,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     if (editRow) {
       setFecha(editRow.fecha || "");
       setCategoria(String(editRow.categoria || "").toUpperCase());
-      setNumeroFactura(String(editRow.numero_factura || "").toUpperCase()); // ⇦ MAYÚSCULAS
+      setNumeroFactura(String(editRow.numero_factura || "").toUpperCase());
       setDescripcion(String(editRow.descripcion || "").toUpperCase());
 
       if (editRow.id_medio_pago) {
@@ -177,7 +178,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     const cur = {
       fecha,
       categoria: norm(categoria || "SIN CATEGORÍA"),
-      numero_factura: norm(numeroFactura || ""), // ⇦ comparar en MAYÚSCULAS
+      numero_factura: norm(numeroFactura || ""),
       descripcion: norm(descripcion),
       id_medio_pago: Number(medioId || 0),
       monto: Number(monto || 0),
@@ -186,7 +187,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     const orig = {
       fecha: editRow.fecha || "",
       categoria: norm(editRow.categoria || "SIN CATEGORÍA"),
-      numero_factura: norm(editRow.numero_factura || ""), // ⇦ comparar en MAYÚSCULAS
+      numero_factura: norm(editRow.numero_factura || ""),
       descripcion: norm(editRow.descripcion || ""),
       id_medio_pago: origIdMedio,
       monto: Number(editRow.monto || 0),
@@ -229,7 +230,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       const payload = {
         fecha,
         categoria: (categoria || "SIN CATEGORÍA").toUpperCase(),
-        numero_factura: (numeroFactura || "").toUpperCase() || null, // ⇦ guardar en MAYÚSCULAS
+        numero_factura: (numeroFactura || "").toUpperCase() || null,
         descripcion: String(descripcion || "").toUpperCase(),
         id_medio_pago: Number(idMedio || 0),
         monto: Number(monto || 0),
@@ -268,12 +269,54 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
         <form onSubmit={onSubmit} className="mm_body">
           {/* Row 1 */}
           <div className="mm_row">
-            <div className="mm_field has-icon">
+            {/* Campo de fecha: abre el picker al presionar en cualquier parte */}
+            <div
+              className="mm_field has-icon"
+              onMouseDown={(e) => {
+                if (e.target !== dateInputRef.current) {
+                  e.preventDefault(); // que no consuma el foco
+                  const el = dateInputRef.current;
+                  if (!el) return;
+                  try {
+                    el.focus();
+                    if (typeof el.showPicker === "function") {
+                      el.showPicker(); // ✅ dentro del gesto (mousedown)
+                    } else {
+                      el.click();      // 🔁 fallback
+                    }
+                  } catch {
+                    try { el.click(); } catch {}
+                  }
+                }
+              }}
+              onKeyDown={(e) => {
+                // Accesibilidad: Enter/Espacio abren el picker
+                if ((e.key === "Enter" || e.key === " ") && e.currentTarget === document.activeElement) {
+                  e.preventDefault();
+                  const el = dateInputRef.current;
+                  if (!el) return;
+                  try {
+                    el.focus();
+                    el.showPicker?.();
+                  } catch {
+                    try { el.click?.(); } catch {}
+                  }
+                }
+              }}
+              tabIndex={0}
+              role="group"
+              aria-label="Campo de fecha"
+            >
               <input
+                ref={dateInputRef}
                 className="date-no-native"
                 type="date"
                 value={fecha}
                 onChange={(e)=>setFecha(e.target.value)}
+                onClick={(e)=> {
+                  // Click directo sobre el input (gesto válido)
+                  try { e.currentTarget.showPicker?.(); } catch { e.currentTarget.click?.(); }
+                }}
                 required
               />
               <label>Fecha</label>
@@ -329,7 +372,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
             <div className="mm_field has-icon">
               <input
                 value={numeroFactura}
-                onChange={(e)=>setNumeroFactura((e.target.value || "").toUpperCase())} // ⇦ escribir en MAYÚSCULAS
+                onChange={(e)=>setNumeroFactura((e.target.value || "").toUpperCase())}
                 placeholder=" "
                 maxLength={50}
               />
@@ -439,15 +482,15 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
           </div>
 
           {/* Footer */}
-          <div className="mm_footer">
+
+        </form>
+                  <div className="mm_footer">
             <button type="button" className="mm_btn ghost" onClick={onClose}>Cancelar</button>
             <button type="submit" className="mm_btn primary" disabled={saving || uploading}>
               <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : "Guardar"}
             </button>
           </div>
-        </form>
       </div>
-
       {/* Visor / Lightbox */}
       {viewerOpen && (
         <div className="viewer_overlay" onClick={()=>setViewerOpen(false)} role="dialog" aria-modal="true">

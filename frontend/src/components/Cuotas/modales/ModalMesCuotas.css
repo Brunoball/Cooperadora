@@ -1,55 +1,55 @@
-/* src/components/Cuotas/modales/ModalMesCuotas.css */
+/* ==============================
+   ModalMesCuotas.css — Tema ROJO
+   ============================== */
+
+/* 🎯 Root con variables REG (ROJO sin degradados) */
+:root {
+  /* 🎨 PALETA ROJA */
+  --reg-primary: #B71C1C;          /* Rojo principal */
+  --reg-primary-light: #E53935;    /* Rojo claro para focus/hover */
+  --reg-primary-dark: #7F0000;     /* Rojo profundo para hover */
+
+  --reg-secondary: #1D428A;        /* Azul secundario opcional */
+  --reg-accent: #C62828;
+
+  --reg-success: #10B981;
+  --reg-warning: #F59E0B;
+  --reg-danger: #D32F2F;
+
+  --reg-light: #F8FAFC;
+  --reg-dark: #0F172A;
+
+  --reg-gray-100: #F1F5F9;
+  --reg-gray-200: #E2E8F0;
+  --reg-gray-300: #CBD5E1;
+  --reg-gray-400: #94A3B8;
+  --reg-gray-500: #64748B;
+  --reg-gray-600: #475569;
+  --reg-gray-700: #334155;
+  --reg-gray-800: #1E293B;
+  --reg-gray-900: #0F172A;
+
+  --reg-border-radius: 12px;
+  --reg-border-radius-lg: 16px;
+  --reg-border-radius-xl: 20px;
+
+  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --reg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --reg-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
 
 /* ===== Reset ===== */
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
-}
+*::after { box-sizing: border-box; }
 
-:root {
-  --modmes_primary: #4F46E5;
-  --modmes_primary-hover: #4338CA;
-  --modmes_primary-light: #EEF2FF;
-  --modmes_primary-light-hover: #E0E7FF;
-
-  --modmes_secondary: #6B7280;
-  --modmes_secondary-hover: #4B5563;
-
-  --modmes_success: #10B981;
-  --modmes_success-strong: #059669;
-  --modmes_success-light: #D1FAE5;
-  --modmes_success-tint: #ECFDF5;
-
-  --modmes_danger: #EF4444;
-  --modmes_warning: #F59E0B;
-  --modmes_warning-hover: #D97706;
-  --modmes_warning-light: #FEF3C7;
-
-  --modmes_white: #FFFFFF;
-  --modmes_gray-50: #F9FAFB;
-  --modmes_gray-100: #F3F4F6;
-  --modmes_gray-200: #E5E7EB;
-  --modmes_gray-300: #D1D5DB;
-  --modmes_gray-400: #9CA3AF;
-  --modmes_gray-500: #6B7280;
-  --modmes_gray-600: #4B5563;
-  --modmes_gray-700: #374151;
-  --modmes_gray-800: #1F2937;
-  --modmes_gray-900: #111827;
-
-  --modmes_border-radius: 8px;
-  --modmes_border-radius-lg: 12px;
-
-  --modmes_shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --modmes_shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --modmes_shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --modmes_shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --modmes_shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
+/* Utilitario: contenedor acciones del header */
 .modmes_section-header-actions{display:flex; gap:6px; min-width:0; flex-wrap:wrap;}
 
+/* ===== Overlay ===== */
 .modmes_overlay {
   position: fixed;
   inset: 0;
@@ -68,16 +68,17 @@
   to { opacity: 1; backdrop-filter: blur(8px); }
 }
 
+/* ===== Contenido ===== */
 .modmes_contenido {
-  background-color: var(--modmes_white);
+  background-color: #FFFFFF; /* mantiene blanco puro para tarjetas */
   width: min(760px, 96vw);
   max-width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: var(--modmes_border-radius-lg);
-  box-shadow: var(--modmes_shadow-xl);
+  border-radius: var(--reg-border-radius-lg);
+  box-shadow: var(--reg-shadow-xl);
   margin: auto;
   position: relative;
 }
@@ -89,7 +90,7 @@
   align-items: center;
   gap: .75rem;
   padding: 1rem;
-  background: var(--modmes_primary);
+  background: var(--reg-primary);
   border-bottom: 1px solid rgba(255,255,255,.1);
   color: white;
   min-width: 0;
@@ -99,7 +100,7 @@
   width: 36px; height: 36px; border-radius: 50%;
   background-color: rgba(255,255,255,.2);
   display: flex; align-items: center; justify-content: center;
-  color: var(--modmes_white); flex-shrink: 0;
+  color: #fff; flex-shrink: 0;
 }
 .modmes_header-texts { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
 .modmes_title {
@@ -112,10 +113,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .modmes_close-btn {
-  background: none; border: none; padding: .25rem; cursor: pointer; color: var(--modmes_white);
-  transition: all .2s; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: .25rem; cursor: pointer; color: #fff;
+  transition: var(--reg-transition); display: flex; align-items: center; justify-content: center;
   border-radius: 6px; width: 32px; height: 32px; flex-shrink: 0;
 }
 .modmes_close-btn:hover { background-color: rgba(255,255,255,.1); }
@@ -124,7 +124,7 @@
 /* ===== Body ===== */
 .modmes_body {
   padding: 1rem 1rem 0.75rem;
-  background-color: var(--modmes_white);
+  background-color: #FFFFFF;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   flex: 1 1 auto;
@@ -142,11 +142,10 @@
   width: 100%;
   min-width: 0;
 }
-
 .modmes_section-title {
   font-size: .875rem;
   font-weight: 600;
-  color: var(--modmes_gray-700);
+  color: var(--reg-gray-700);
   text-transform: uppercase;
   letter-spacing: .05em;
   margin: 0;
@@ -154,6 +153,7 @@
   text-overflow: ellipsis;
 }
 
+/* Centro: selector de modo */
 .modmes_section-center {
   display: flex;
   align-items: center;
@@ -162,38 +162,32 @@
   min-width: 0;
   justify-content: center;
 }
-
-/* Botones de modo */
 .modmes_output-mode {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
 }
-
 .modmes_mode-option {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: .35rem .6rem;
-  border: 1px solid var(--modmes_gray-200);
+  border: 1px solid var(--reg-gray-200);
   border-radius: 8px;
   cursor: pointer;
-  background: var(--modmes_primary-light);
-  color: var(--modmes_primary);
-  transition: all .2s ease;
+  background: var(--reg-gray-100);
+  color: var(--reg-primary);
+  transition: var(--reg-transition);
   font-size: .75rem;
   line-height: 1;
   height: 32px;
   min-width: 0;
 }
-.modmes_mode-option:hover { background: var(--modmes_primary-light-hover); }
+.modmes_mode-option:hover { background: var(--reg-gray-200); }
 .modmes_mode-option.active {
-  border-color: var(--modmes_primary);
-  background: var(--modmes_primary-light);
-  color: var(--modmes_primary);
-  box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+  border-color: var(--reg-primary);
+  background: var(--reg-gray-100);
+  color: var(--reg-primary);
+  box-shadow: 0 0 0 3px rgba(183,28,28,.12);
 }
 .modmes_mode-option input { display: none; }
 .modmes_mode-bullet {
@@ -201,12 +195,12 @@
   border: 2px solid currentColor; display: inline-block; position: relative;
 }
 .modmes_mode-option.active .modmes_mode-bullet {
-  background: var(--modmes_primary);
-  border-color: var(--modmes_primary);
-  box-shadow: inset 0 0 0 2px var(--modmes_white);
+  background: var(--reg-primary);
+  border-color: var(--reg-primary);
+  box-shadow: inset 0 0 0 2px #fff;
 }
 
-/* Year picker */
+/* Derecha: Year picker */
 .modmes_year-picker{
   position:relative;
   display:flex;
@@ -215,14 +209,13 @@
   flex: 0 1 auto;
   min-width: 0;
 }
-
 .modmes_year-button{
   padding: .4rem .6rem;
   font-size: .75rem;
-  border-radius: var(--modmes_border-radius);
-  background-color: var(--modmes_primary-light);
-  color: var(--modmes_primary);
-  border: 1px solid var(--modmes_primary);
+  border-radius: var(--reg-border-radius);
+  background-color: var(--reg-gray-100);
+  color: var(--reg-primary);
+  border: 1px solid var(--reg-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -232,50 +225,50 @@
   line-height: 1;
   min-width: 0;
   height: 100%;
+  transition: var(--reg-transition);
 }
-.modmes_year-button:hover:not(:disabled){ background-color: var(--modmes_primary-light-hover); }
+.modmes_year-button:hover:not(:disabled){ background-color: var(--reg-gray-200); }
 .modmes_year-button:disabled{ opacity:.6; cursor:not-allowed; }
 .modmes_year-button svg{ width: 14px; height: 14px; display: inline-block; vertical-align: -2px; }
 
-/* Popover */
 .modmes_year-popover{
   position:absolute;
   top:110%;
   left:0;
   z-index:10;
   background:#fff;
-  border:1px solid var(--modmes_gray-200);
+  border:1px solid var(--reg-gray-200);
   border-radius:10px;
-  box-shadow:var(--modmes_shadow-lg);
+  box-shadow:var(--reg-shadow-lg);
   padding:.4rem;
   min-width:140px;
   display:grid;
   grid-template-columns:1fr;
   gap:.25rem;
 }
-
 .modmes_year-item{
   background:#fff;
-  border:1px solid var(--modmes_gray-200);
+  border:1px solid var(--reg-gray-200);
   border-radius:8px;
   padding:.35rem .5rem;
   text-align:center;
   cursor:pointer;
   font-weight:500;
-  color: var(--modmes_gray-800);
+  color: var(--reg-gray-800);
   font-size: .8rem;
+  transition: var(--reg-transition);
 }
-.modmes_year-item:hover{ background:var(--modmes_primary-light); }
+.modmes_year-item:hover{ background:var(--reg-gray-100); }
 .modmes_year-item.active{
-  background:var(--modmes_primary-light);
-  border-color:var(--modmes_primary);
-  color:var(--modmes_primary);
+  background:var(--reg-gray-100);
+  border-color:var(--reg-primary);
+  color:var(--reg-primary);
 }
 
+/* ===== Periodos ===== */
 .modmes_periodos-section { margin-top: .5rem; }
 .modmes_selection-info { display: none; }
 
-/* Grid */
 .modmes_periodos-grid-container { 
   min-height: auto; 
   margin-bottom: 0; 
@@ -283,7 +276,6 @@
   max-height: calc(60px * 3 + 0.75rem * 2);
   overflow-y: auto;
 }
-
 .modmes_periodos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -291,32 +283,31 @@
   align-content: flex-start;
   margin-bottom: 0;
 }
-
 .modmes_periodo-card {
   display: flex;
   align-items: center;
   padding: 0.75rem;
-  border-radius: var(--modmes_border-radius);
-  background-color: var(--modmes_white);
-  border: 1px solid var(--modmes_gray-200);
+  border-radius: var(--reg-border-radius);
+  background-color: #FFFFFF;
+  border: 1px solid var(--reg-gray-200);
   cursor: pointer;
-  transition: all .2s;
+  transition: var(--reg-transition);
   position: relative;
   overflow: hidden;
   min-height: 54px;
 }
-.modmes_periodo-card:hover { border-color: var(--modmes_primary); box-shadow: var(--modmes_shadow-sm); }
-.modmes_periodo-card.modmes_seleccionado { background-color: var(--modmes_primary-light); border-color: var(--modmes_primary); }
+.modmes_periodo-card:hover { border-color: var(--reg-primary); box-shadow: var(--reg-shadow-sm); }
+.modmes_periodo-card.modmes_seleccionado { background-color: var(--reg-gray-100); border-color: var(--reg-primary); }
 
 .modmes_periodo-checkbox { position: relative; margin-right: .5rem; z-index: 1; }
 .modmes_periodo-checkbox input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
 .modmes_checkmark {
   position: relative; height: 1.05rem; width: 1.05rem;
-  background-color: var(--modmes_white); border: 1px solid var(--modmes_gray-300);
-  border-radius: 4px; transition: all .2s;
+  background-color: #FFFFFF; border: 1px solid var(--reg-gray-300);
+  border-radius: 4px; transition: var(--reg-transition);
 }
-.modmes_periodo-card:hover .modmes_checkmark { border-color: var(--modmes_primary); }
-.modmes_periodo-checkbox input:checked ~ .modmes_checkmark { background-color: var(--modmes_primary); border-color: var(--modmes_primary); }
+.modmes_periodo-card:hover .modmes_checkmark { border-color: var(--reg-primary); }
+.modmes_periodo-checkbox input:checked ~ .modmes_checkmark { background-color: var(--reg-primary); border-color: var(--reg-primary); }
 .modmes_checkmark:after {
   content: ""; position: absolute; display: none; left: 6px; top: 2px;
   width: 4px; height: 8px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
@@ -327,7 +318,7 @@
   flex-grow: 1;
   font-size: .875rem;
   font-weight: 500;
-  color: var(--modmes_gray-800);
+  color: var(--reg-gray-800);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -338,8 +329,8 @@
 /* ===== Footer ===== */
 .modmes_footer {
   padding: 1rem;
-  background-color: var(--modmes_white);
-  border-top: 1px solid var(--modmes_gray-200);
+  background-color: #FFFFFF;
+  border-top: 1px solid var(--reg-gray-200);
 }
 .modmes_footer-sides { display: flex; flex-direction: column; gap: 0.75rem; }
 .modmes_footer-left { 
@@ -365,20 +356,20 @@
   border-radius: 9999px;
   font-weight: 600;
   font-size: .95rem;
-  background: #2563EB;
+  background: var(--reg-primary); /* contraste sobre rojo del header */
   color: #fff;
-  box-shadow: var(--modmes_shadow-sm);
+  box-shadow: var(--reg-shadow-sm);
   user-select: none;
 }
 
-/* Botones base */
+/* ===== Botones ===== */
 .modmes_btn {
   padding: .75rem 1.2rem;
-  border-radius: var(--modmes_border-radius);
+  border-radius: var(--reg-border-radius);
   font-size: .875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all .2s;
+  transition: var(--reg-transition);
   border: 1px solid transparent;
   display: inline-flex;
   align-items: center;
@@ -391,42 +382,41 @@
   min-width: 0;
   height: 32px;
 }
-
-.modmes_btn-terciario { background-color: var(--modmes_primary-light); color: var(--modmes_primary); border: 1px solid var(--modmes_primary); }
-.modmes_btn-terciario:hover:not(:disabled) { background-color: var(--modmes_primary-light-hover); }
+.modmes_btn-terciario { 
+  background-color: var(--reg-gray-100); 
+  color: var(--reg-primary); 
+  border: 1px solid var(--reg-primary); 
+}
+.modmes_btn-terciario:hover:not(:disabled) { background-color: var(--reg-gray-200); }
 
 .modmes_btn-primary { 
-  background-color: var(--modmes_primary) !important; 
+  background-color: var(--reg-primary) !important; 
   color: #fff !important; 
-  border-color: var(--modmes_primary) !important; 
-  box-shadow: var(--modmes_shadow-sm); 
+  border-color: var(--reg-primary) !important; 
+  box-shadow: var(--reg-shadow-sm); 
 }
 .modmes_btn-primary:hover:not(:disabled) { 
-  background-color: var(--modmes_primary-hover) !important; 
-  box-shadow: var(--modmes_shadow); 
+  background-color: var(--reg-primary-dark) !important; 
+  box-shadow: var(--reg-shadow-md); 
 }
 .modmes_btn-primary:disabled { 
-  background-color: var(--modmes_gray-300) !important; 
+  background-color: var(--reg-gray-300) !important; 
   color: #fff !important; 
   cursor: not-allowed; 
   box-shadow: none; 
 }
 
 .modmes_btn-secondary { 
-  background-color: var(--modmes_white); 
-  color: var(--modmes_gray-700); 
-  border-color: var(--modmes_gray-300); 
+  background-color: #FFFFFF; 
+  color: var(--reg-gray-700); 
+  border-color: var(--reg-gray-300); 
 }
 .modmes_btn-secondary:hover:not(:disabled) { 
-  background-color: var(--modmes_gray-50); 
-  border-color: var(--modmes_gray-400); 
+  background-color: var(--reg-gray-100); 
+  border-color: var(--reg-gray-400); 
 }
 
-.modmes_action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+.modmes_action-btn { display: inline-flex; align-items: center; gap: 0.5rem; }
 
 /* ===== Responsivo ===== */
 @media (min-width: 400px) {
@@ -447,7 +437,6 @@
   .modmes_title     { font-size: 1.25rem; }
   .modmes_body      { padding: 1.5rem 1.5rem 0.75rem; }
 }
-
 @media (max-width: 768px) {
   .modmes_section-header { flex-wrap: wrap; gap: 0.5rem; }
   .modmes_output-mode { flex-wrap: wrap; }
@@ -461,7 +450,6 @@
   .modmes_periodo-label { font-size: .8rem; }
   .modmes_action-btn { padding: 0.5rem 1rem; }
 }
-
 @media (max-width: 480px) {
   .modmes_section-header { flex-direction: column; align-items: stretch; gap: 0.5rem; }
   .modmes_section-title { text-align: center; }

@@ -17,10 +17,36 @@ const fetchJSON = async (url, options) => {
   return res.json();
 };
 
+/* ---------- Hook: animación numérica (0 → target) ---------- */
+function useAnimatedNumber(target, { duration = 800, deps = [] } = {}) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const from = 0;
+    const delta = target - from;
+    const ease = (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t); // easeInOutQuad
+
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / duration);
+      setVal(from + delta * ease(t));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    setVal(from);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return val;
+}
+
 /* ---------- DonutChart (Ingresos = AZUL / Egresos = ROJO) ---------- */
 function DonutChart({ ingresos = 0, egresos = 0 }) {
   const total = Math.max(ingresos + egresos, 1);
-  const pIng = ingresos / total;
+  const targetPIng = ingresos / total;
+
+  // porcentaje animado
+  const pIng = useAnimatedNumber(targetPIng, { duration: 900, deps: [ingresos, egresos] });
 
   const size = 180;
   const stroke = 18;
@@ -29,6 +55,9 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
 
   const arcIng = `${c * pIng} ${c * (1 - pIng)}`;
   const arcEgr = `${c * (1 - pIng)} ${c * pIng}`;
+
+  // número central animado
+  const animIngresos = useAnimatedNumber(ingresos, { duration: 900, deps: [ingresos] });
 
   return (
     <div className="rc_donut">
@@ -53,52 +82,29 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
         </defs>
 
         {/* Fondo */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="#eef2ff"
-          strokeWidth={stroke}
-          fill="none"
-        />
+        <circle cx={size/2} cy={size/2} r={r} stroke="#eef2ff" strokeWidth={stroke} fill="none" />
         {/* Ingresos */}
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="url(#gradIng)"
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={arcIng}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          cx={size/2} cy={size/2} r={r}
+          stroke="url(#gradIng)" strokeWidth={stroke} fill="none"
+          strokeDasharray={arcIng} strokeLinecap="round"
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          className="rc_donut_arc rc_donut_arc--ing"
         />
         {/* Egresos */}
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="url(#gradEgr)"
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={arcEgr}
-          strokeLinecap="round"
-          transform={`rotate(${(ingresos / Math.max(ingresos + egresos, 1)) * 360 - 90} ${size / 2} ${size / 2})`}
+          cx={size/2} cy={size/2} r={r}
+          stroke="url(#gradEgr)" strokeWidth={stroke} fill="none"
+          strokeDasharray={arcEgr} strokeLinecap="round"
+          transform={`rotate(${pIng * 360 - 90} ${size/2} ${size/2})`}
+          className="rc_donut_arc rc_donut_arc--egr"
         />
 
         {/* Centro */}
-        <text
-          x="50%"
-          y="50%"
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="rc_donut_total"
-        >
-          ${ingresos.toLocaleString("es-AR")}
+        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="rc_donut_total">
+          ${Math.round(animIngresos).toLocaleString("es-AR")}
         </text>
-        <text x="50%" y="62%" textAnchor="middle" className="rc_donut_label">
-          Ingresos
-        </text>
+        <text x="50%" y="62%" textAnchor="middle" className="rc_donut_label">Ingresos</text>
       </svg>
 
       <div className="rc_legend">
@@ -115,7 +121,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
   );
 }
 
-/* ---------- LineChart ---------- */
+/* ---------- LineChart (con animaciones) ---------- */
 function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
   const W = 700, H = 240, P = 24;
   const maxV = Math.max(...data.map((d) => d.value), 1);
@@ -161,11 +167,33 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
           ))}
         </g>
 
-        <path d={area} fill="url(#gradLine)" />
-        <path d={path} stroke={color} strokeWidth="2.5" fill="none" filter="url(#soft)" />
+        {/* área con fade-in */}
+        <path d={area} fill="url(#gradLine)" className="rc_line_area_in" />
+
+        {/* trazo que se dibuja */}
+        <path
+          d={path}
+          stroke={color}
+          strokeWidth="2.5"
+          fill="none"
+          filter="url(#soft)"
+          className="rc_line_path_draw"
+          pathLength="1"
+        />
+
+        {/* puntos con stagger */}
         {points.map((p, i) => (
-          <circle key={i} cx={p[0]} cy={p[1]} r="3.6" fill={color} />
+          <circle
+            key={i}
+            cx={p[0]}
+            cy={p[1]}
+            r="3.6"
+            fill={color}
+            className="rc_line_point_in"
+            style={{ "--delay": `${i * 60}ms` }}
+          />
         ))}
+
         {data.map((d, i) => (
           <text
             key={i}
@@ -250,16 +278,19 @@ export default function ResumenContable() {
   );
 
   const lineData = useMemo(() => {
-    const key = "ingresos"; // si luego habilitás el switch de serie, usá "serie"
+    const key = "ingresos";
     return meses12.map((m) => ({ label: m.nombre_mes, value: Number(m[key] || 0) }));
   }, [meses12]);
 
-  const serieColor = "#1D428A"; // mismo criterio que arriba
-  const detalleMesActual = `${MESES[hoy.getMonth()]} ${anioRes}`;
+  const serieColor = "#1D428A";
+
+  // keys para reanimar al cambiar año/pestaña/datos
+  const chartKey = `${chartTab}-${anioRes}-${totals.ingresos}-${totals.egresos}`;
+  const tableKey = `${anioRes}-${resumen.length}`;
 
   return (
     <div className="rc_shell">
-      {/* SIDEBAR (a ras, 100% height) */}
+      {/* SIDEBAR */}
       <aside className="rc_side rc_side--photo">
         <div className="rc_side_header">
           <div className="rc_side_header_l">
@@ -347,7 +378,7 @@ export default function ResumenContable() {
               </div>
             </header>
 
-            <div className="rc_chart_body">
+            <div className="rc_chart_body" key={chartKey}>
               {chartTab === "anual" ? (
                 <DonutChart ingresos={totals.ingresos} egresos={totals.egresos} />
               ) : (
@@ -366,7 +397,7 @@ export default function ResumenContable() {
             </header>
 
             <div className="rc_table__wrap" role="region" aria-label="Tabla resumen anual">
-              <div className="gt_table gt_cols-4" role="table" aria-label="Resumen por mes">
+              <div className="gt_table gt_cols-4" role="table" aria-label="Resumen por mes" key={tableKey}>
                 <div className="gt_header" role="row">
                   <div className="gt_cell h" role="columnheader">Mes</div>
                   <div className="gt_cell h right" role="columnheader">Ingresos</div>
@@ -375,7 +406,12 @@ export default function ResumenContable() {
                 </div>
 
                 {meses12.map((r, idx) => (
-                  <div className="gt_row" role="row" key={idx}>
+                  <div
+                    className="gt_row anim"
+                    role="row"
+                    key={idx}
+                    style={{ "--delay": `${idx * 55}ms` }}
+                  >
                     <div className="gt_cell" role="cell">{r.nombre_mes}</div>
                     <div className="gt_cell right" role="cell">
                       ${Number(r.ingresos || 0).toLocaleString("es-AR")}
