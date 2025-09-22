@@ -1,6 +1,6 @@
 /* ====== :root ROJO (sin degradados) — variables con prefijo reg- ====== */
 :root {
-  --global-header-h: 90.33px; /* ALTURA DE TU HEADER FIJO */
+  --global-header-h: 86px; /* ALTURA DE TU HEADER FIJO */
 
   --reg-primary: #B71C1C;
   --reg-primary-light: #E53935;
@@ -46,7 +46,6 @@
 .rc_shell {
   display: grid;
   grid-template-columns: clamp(15rem, 22vw, 18rem) 1fr;
-  gap: 1.25rem;
   background: linear-gradient(135deg, #ffebee 30%, var(--td-primary) 70%);
   /* ANTES: height: 100vh; -> AHORA: resta el header fijo */
   height: calc(100vh - var(--global-header-h));
@@ -99,9 +98,7 @@
   height: 1.6rem;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: #ffffff22;
-  border: 1px solid #ffffff55;
+
 }
 
 .rc_side_title {
@@ -428,6 +425,7 @@
 /* Dos columnas */
 .rc_twocol {
   display: grid;
+  padding: 0 1rem;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   align-items: stretch;

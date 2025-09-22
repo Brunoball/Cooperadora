@@ -86,23 +86,37 @@
   to{ transform: translateY(0); opacity: 1;}
 }
 
-/* ===== Header minimal ===== */
+/* ===== Header rojo con texto blanco ===== */
 .mm_head{
   display:flex; align-items:center; justify-content:space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--mm-border);
-  background: #fff;
+  border-bottom: 1px solid color-mix(in srgb, var(--mm-primary) 80%, #000 0%);
+  background: var(--mm-primary);
 }
 .mm_title{
-  margin:0; font-size: 1rem; font-weight: 700; letter-spacing:.2px;
+  margin:0; font-size: 1rem; font-weight: 800; letter-spacing:.2px;
+  color: #fff;                  /* texto blanco */
+  display: inline-flex; align-items: center; gap: 10px;
 }
-.mm_icon{
-  appearance:none; border:0; background:transparent; color:var(--mm-muted);
+.mm_title_icon{
+  font-size: 1.05rem;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.05));
+  color: #fff;                  /* ícono blanco */
+}
+/* Ícono de cerrar en header rojo */
+.mm_head .mm_icon{
+  appearance:none; border:0; background:transparent; color:#fff;
   width:34px; height:34px; border-radius:10px; display:grid; place-items:center; cursor:pointer;
-  transition: background .15s ease, color .15s ease, transform .08s ease;
+  transition: background .15s ease, color .15s ease, transform .08s ease, box-shadow .15s ease;
 }
-.mm_icon:hover{ background: var(--mm-surface); color:var(--mm-text); transform: translateY(-1px); }
-.mm_icon:focus-visible{ outline: 2px solid color-mix(in srgb, var(--mm-primary) 40%, transparent); outline-offset: 2px; }
+.mm_head .mm_icon:hover{
+  background: color-mix(in srgb, #fff 12%, transparent);
+  transform: translateY(-1px);
+}
+.mm_head .mm_icon:focus-visible{
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #fff 40%, transparent);
+}
 
 /* ===== Body con scroll interno ===== */
 .mm_body{
@@ -141,7 +155,9 @@
 }
 .mm_field select{
   appearance:none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--reg-gray-400) 50%), linear-gradient(135deg, var(--reg-gray-400) 50%, transparent 50%);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--reg-gray-400) 50%),
+    linear-gradient(135deg, var(--reg-gray-400) 50%, transparent 50%);
   background-position: calc(100% - 16px) calc(1em + 2px), calc(100% - 12px) calc(1em + 2px);
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
@@ -193,18 +209,15 @@
 
 /* Ícono grande y content centrado */
 .dz_header{
-  display: grid;               /* centrado total */
+  display: grid;
   place-items: center;
   gap: 12px;
   text-align: center;
 }
-
-/* Icono base */
+/* Icono base y versión grande */
 .dz_icon{ color: var(--mm-primary); font-size: 1.2rem; }
-
-/* Icono GRANDE (usado en JSX con dz_icon--lg) */
 .dz_icon--lg{
-  font-size: 48px;               /* tamaño del ícono */
+  font-size: 48px;
   width: 84px;
   height: 84px;
   display: grid;
@@ -214,8 +227,7 @@
   border: 1px solid var(--mm-border);
   box-shadow: var(--mm-shadow-md);
 }
-
-/* Si no quisieras el contenedor, podrías forzar tamaño solo al ícono: */
+/* fallback si no querés contenedor */
 .dz_header .dz_icon{ font-size: 48px; }
 
 .dz_text{ color: var(--mm-muted); line-height: 1.3; }
@@ -230,8 +242,17 @@
   background: var(--mm-surface); font-weight:700; color: var(--mm-primary-600);
 }
 .dz_actions{ display:flex; gap:8px; }
-
 .dz_hint{ margin-top: 8px; font-size:.85rem; color: var(--mm-muted); }
+
+/* Nombre del archivo (si viene URL backend) */
+.dz_file{
+  margin-top: 4px;
+  font-size: .9rem;
+  color: var(--mm-muted);
+  font-weight: 700;
+  text-align: center;
+  word-break: break-all;
+}
 
 /* ===== Botones ===== */
 .mm_btn{
@@ -240,17 +261,44 @@
   display:inline-flex; align-items:center; gap:8px;
   transition: background .15s ease, color .15s ease, border-color .15s ease, transform .08s ease, box-shadow .15s ease;
 }
-.mm_btn:hover{ background:#f9fafb; transform: translateY(-1px); }
+.mm_btn:hover{ transform: translateY(-1px); }
 .mm_btn:focus-visible{ outline:0; box-shadow:0 0 0 4px color-mix(in srgb, var(--mm-primary) 20%, transparent); }
-.mm_btn.primary{ background: var(--mm-primary); color:#fff; border-color: transparent; }
-.mm_btn.primary:hover{ background: var(--mm-primary-600); }
-.mm_btn.danger{ background:#fee2e2; color:#991b1b; border-color:#fecaca; }
-.mm_btn.danger:hover{ background:#ffe4e6; }
-.mm_btn.ghost{ background:#fff; color:var(--mm-text); border-color: var(--mm-border); }
+
+/* Guardar (primary): normal rojo con texto blanco; hover INVERTIDO */
+.mm_btn.primary{
+  background: var(--mm-primary);
+  color:#fff;
+  border-color: transparent;
+}
+.mm_btn.primary:hover{
+  background: #fff;                 /* invierte */
+  color: var(--mm-primary);         /* invierte */
+  border-color: var(--mm-primary);
+}
+
+/* Cancelar (ghost): normal blanco con texto default; hover INVERTIDO (rojo/blanco) */
+.mm_btn.ghost{
+  background:#fff;
+  color: var(--mm-text);
+  border-color: var(--mm-border);
+}
+.mm_btn.ghost:hover{
+  background: var(--mm-primary);    /* invierte */
+  color:#fff;                       /* invierte */
+  border-color: transparent;
+}
+
+/* Danger por si lo usás en Quitar */
+.mm_btn.danger{
+  background:#fee2e2; color:#991b1b; border-color:#fecaca;
+}
+.mm_btn.danger:hover{
+  background:#991b1b; color:#fff; border-color: #991b1b;
+}
 
 /* ===== Footer sticky ===== */
 .mm_footer{
-  position: sticky; bottom: 0; background: linear-gradient(#fff, #fff);
+  position: sticky; bottom: 0; background: #fff;
   display:flex; justify-content:flex-end; gap:10px; padding: 12px 0 0;
 }
 
@@ -277,3 +325,70 @@
 
 /* ===== Accesibilidad ===== */
 .mm_btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+/* ===== ICONOS EN CAMPOS ===== */
+.mm_field.has-icon input,
+.mm_field.has-icon select {
+  padding-left: 40px;             /* espacio para el icono */
+}
+
+/* El icono adentro del campo */
+.mm_iconField{
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  translate: 0 -50%;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--mm-muted);
+  pointer-events: none;
+}
+
+/* Cuando hay focus, pintar icono acorde */
+.mm_field input:focus ~ .mm_iconField,
+.mm_field select:focus ~ .mm_iconField {
+  color: var(--mm-primary);
+}
+
+/* Asegura que el label no tape el icono cuando flota */
+.mm_field.has-icon label{
+  padding-left: 22px;
+}
+
+/* Select con icono + label siempre flotado necesita un poquito más de padding superior */
+.mm_field.always-float.has-icon select{
+  padding-top: 18px;
+}
+
+
+.date-no-native::-webkit-calendar-picker-indicator{
+  opacity: 0 !important;
+  display: none !important;
+}
+.date-no-native::-webkit-inner-spin-button,
+.date-no-native::-webkit-clear-button{
+  display: none;
+}
+
+/* Firefox: oculta el icono (sin romper el picker con Alt+↓) */
+@-moz-document url-prefix() {
+  .date-no-native {
+    background-image: none !important;
+  }
+}
+
+/* Edge (Chromium) queda cubierto por el -webkit- */
+
+/* ===== (OPCIONAL) Cursor de mano sobre select e inputs para consistencia ===== */
+.mm_field input,
+.mm_field select{
+  cursor: text;
+}
+.mm_field select{
+  cursor: pointer;
+}
+
+/* ===== (ya tenías) — asegúrate que el resto de tu CSS siga igual ===== */
+
+/* ...(mantener TODO tu CSS previo tal como lo pegaste)... */

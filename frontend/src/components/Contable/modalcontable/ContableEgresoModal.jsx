@@ -1,11 +1,12 @@
-// src/components/Contable/modalcontable/ContableEgresoModal.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import BASE_URL from "../../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTimes, faSave, faUpload, faTrash, faEye,
-  faPlus, faMinus, faCompress
+  faPlus, faMinus, faCompress, faFileInvoiceDollar,
+  faCalendar, faCreditCard, faTags, faHashtag,
+  faDollarSign, faPen
 } from "@fortawesome/free-solid-svg-icons";
 import "./ContableEgresoModal.css";
 
@@ -242,7 +243,6 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
   };
 
   if (!open) return null;
-
   const isPDF = (localPreview || comp)?.toLowerCase?.().endsWith(".pdf");
 
   return createPortal(
@@ -250,7 +250,10 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       <div className="mm_modal" onClick={(e) => e.stopPropagation()}>
 
         <header className="mm_head">
-          <h3 className="mm_title">{editRow ? "Editar egreso" : "Nuevo egreso"}</h3>
+          <h3 className="mm_title">
+            <FontAwesomeIcon className="mm_title_icon" icon={faFileInvoiceDollar} />
+            {editRow ? "Editar egreso" : "Nuevo egreso"}
+          </h3>
           <button className="mm_icon" onClick={onClose} aria-label="Cerrar">
             <FontAwesomeIcon icon={faTimes} />
           </button>
@@ -259,13 +262,20 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
         <form onSubmit={onSubmit} className="mm_body">
           {/* Row 1 */}
           <div className="mm_row">
-            <div className="mm_field">
-              <input type="date" value={fecha} onChange={(e)=>setFecha(e.target.value)} required />
+            <div className="mm_field has-icon">
+              <input
+                className="date-no-native"
+                type="date"
+                value={fecha}
+                onChange={(e)=>setFecha(e.target.value)}
+                required
+              />
               <label>Fecha</label>
+              <span className="mm_iconField"><FontAwesomeIcon icon={faCalendar} /></span>
             </div>
 
             {/* Medio con floating label SIEMPRE activo */}
-            <div className="mm_field always-float">
+            <div className="mm_field always-float has-icon">
               <select
                 value={medioEsOtro ? VALOR_OTRO : medioId}
                 onChange={(e)=>onChangeMedio(e.target.value)}
@@ -279,12 +289,13 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                 <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
               </select>
               <label>Medio</label>
+              <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
             </div>
           </div>
 
           {medioEsOtro && (
             <div className="mm_row">
-              <div className="mm_field grow">
+              <div className="mm_field grow has-icon">
                 <input
                   value={medioNuevo}
                   onChange={(e)=>setMedioNuevo(e.target.value.toUpperCase())}
@@ -292,22 +303,24 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                   required
                 />
                 <label>Nuevo medio de pago</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
               </div>
             </div>
           )}
 
           {/* Row 2 */}
           <div className="mm_row">
-            <div className="mm_field grow">
+            <div className="mm_field grow has-icon">
               <input
                 value={categoria}
                 onChange={(e)=>setCategoria(e.target.value.toUpperCase())}
                 placeholder=" "
               />
               <label>Categoría</label>
+              <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
             </div>
 
-            <div className="mm_field">
+            <div className="mm_field has-icon">
               <input
                 value={numeroFactura}
                 onChange={(e)=>setNumeroFactura(e.target.value)}
@@ -315,23 +328,34 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                 maxLength={50}
               />
               <label>N° factura</label>
+              <span className="mm_iconField"><FontAwesomeIcon icon={faHashtag} /></span>
             </div>
 
-            <div className="mm_field">
-              <input type="number" min="0" step="1" value={monto} onChange={(e)=>setMonto(e.target.value)} placeholder=" " required />
+            <div className="mm_field has-icon">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={monto}
+                onChange={(e)=>setMonto(e.target.value)}
+                placeholder=" "
+                required
+              />
               <label>Monto</label>
+              <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
             </div>
           </div>
 
           {/* Row 3 */}
           <div className="mm_row">
-            <div className="mm_field grow">
+            <div className="mm_field grow has-icon">
               <input
                 value={descripcion}
                 onChange={(e)=>setDescripcion(e.target.value.toUpperCase())}
                 placeholder=" "
               />
               <label>Descripción</label>
+              <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
             </div>
           </div>
 
@@ -363,8 +387,46 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
                 </button>
               </div>
 
+              <p className="dz_hint">
+                JPG, PNG, GIF, WEBP o PDF. Máx 10 MB.
+                {uploading && <b> Subiendo…</b>}
+              </p>
 
-              <p className="dz_hint">JPG, PNG, GIF, WEBP o PDF. Máx 10 MB. {uploading && <b> Subiendo…</b>}</p>
+              {(comp || localPreview) && (
+                <div className="dz_preview">
+                  {comp && (
+                    <div className="dz_file">
+                      {(() => {
+                        try {
+                          const u = new URL(comp);
+                          return decodeURIComponent(u.pathname.split("/").pop() || "archivo");
+                        } catch {
+                          return comp.split("/").pop() || "archivo";
+                        }
+                      })()}
+                    </div>
+                  )}
+
+                  {!isPDF ? (
+                    <img
+                      src={localPreview || comp}
+                      alt="Vista previa del comprobante"
+                      className="dz_thumb"
+                    />
+                  ) : (
+                    <div className="dz_pdf">PDF listo para ver</div>
+                  )}
+
+                  <div className="dz_actions">
+                    <button type="button" className="mm_btn" onClick={openComprobante}>
+                      <FontAwesomeIcon icon={faEye} /> Ver
+                    </button>
+                    <button type="button" className="mm_btn danger" onClick={clearComprobante}>
+                      <FontAwesomeIcon icon={faTrash} /> Quitar
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <input ref={fileInputRef} type="file" accept="image/*,application/pdf" hidden onChange={handleFileInput} />
             </div>

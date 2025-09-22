@@ -394,7 +394,7 @@ export default function EgresoContable(){
               <div className="eg_field">
                 <label>Mes</label>
                 <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
-                  {MESES.map((m,i)=> <option key={m} value={i}>{cap1(m)}</option>)}
+                  + {MESES.map((m,i)=> <option key={m} value={i}>{m}</option>)}
                 </select>
               </div>
             </div>
@@ -456,7 +456,7 @@ export default function EgresoContable(){
         {/* Panel derecho */}
         <section className="eg_content cardd">
           <header className="eg_content__header">
-            <button className="seg-tabbb">Ingresos</button>
+            <button className="seg-tabbb">Egresos</button>
 
             <div className="eg_header_actions">
               <div className="eg_search eg_search--redpill">
