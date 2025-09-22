@@ -213,6 +213,14 @@ try {
             require_once __DIR__ . '/../modules/contable/agregar_ingresos.php';
             exit;
 
+        case 'editar_ingresos':
+            require_once __DIR__ . '/../modules/contable/editar_ingresos.php';
+            exit;
+
+        case 'eliminar_ingresos':
+            require_once __DIR__ . '/../modules/contable/eliminar_ingresos.php';
+            exit;
+
         /* ===========================
            TIPOS DE DOCUMENTOS
         ============================ */

@@ -14,8 +14,11 @@ import {
   faDollarSign,
   faFloppyDisk,
   faFileExcel,
+  faPen,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
+import Toast from "../Global/Toast";
 import "./IngresosContable.css";
 
 /* === Utilidades === */
@@ -44,7 +47,6 @@ function toCSV(rows, headers) {
   };
   const head = headers.map(esc).join(",");
   const body = rows.map((r) => headers.map((h) => esc(r[h])).join(",")).join("\n");
-  // BOM para que Excel abra UTF-8 con acentos correctamente
   return `\uFEFF${head}\n${body}`;
 }
 
@@ -57,14 +59,12 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000); // revocar luego para no interrumpir descarga
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   if (!rows || !rows.length) return;
 
-  // Intentar XLSX
   try {
-    // Asegurate de tener: npm i xlsx
     const maybe = await import("xlsx");
     const XLSX = maybe.default || maybe;
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -75,7 +75,7 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
     safeDownload(blob, `${workbookName}.xlsx`);
     return;
   } catch (e) {
-    // Fallback a CSV si no está xlsx o falla el import
+    // fallback CSV
   }
 
   const headers = Object.keys(rows[0] || {});
@@ -84,31 +84,203 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
   safeDownload(blob, `${workbookName}.csv`);
 }
 
-/* ========= Modal de Ingreso ========= */
-function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
+/* ===========================================================
+   ConfirmModal – mismo patrón visual que en Egresos
+   (clases "logout-modal-*")
+   =========================================================== */
+function ConfirmModal({
+  open,
+  title = "Eliminar ingreso",
+  message = "¿Seguro que querés eliminar este ingreso? Esta acción no se puede deshacer.",
+  onCancel,
+  onConfirm,
+  confirmText = "Eliminar",
+  cancelText = "Cancelar",
+}) {
+  const cancelBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    cancelBtnRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape") onCancel?.(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="logout-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ingdel-title"
+      aria-describedby="ingdel-desc"
+      onMouseDown={onCancel}
+    >
+      <div
+        className="logout-modal-container logout-modal--danger"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="logout-modal__icon" aria-hidden="true">
+          <FontAwesomeIcon icon={faTrash} />
+        </div>
+
+        <h3 id="ingdel-title" className="logout-modal-title logout-modal-title--danger">
+          {title}
+        </h3>
+
+        <p id="ingdel-desc" className="logout-modal-text">
+          {message}
+        </p>
+
+        <div className="logout-modal-buttons">
+          <button
+            type="button"
+            className="logout-btn logout-btn--ghost"
+            onClick={onCancel}
+            ref={cancelBtnRef}
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className="logout-btn logout-btn--solid-danger"
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========= Modal de Ingreso (crear/editar) ========= */
+function ModalIngreso({ open, onClose, onSaved, defaultDate, medios, editRow, notify }) {
+  const U = (v = "") => String(v).toUpperCase();
+
+  const VALOR_OTRO = "__OTRO__";
+
   const [saving, setSaving] = useState(false);
+  const [localMedios, setLocalMedios] = useState(
+    Array.isArray(medios) ? medios.map(m => ({ id: String(m.id), nombre: String(m.nombre || "") })) : []
+  );
+
   const [form, setForm] = useState({
-    fecha: defaultDate || new Date().toISOString().slice(0,10),
-    denominacion: "",
-    descripcion: "",
-    importe: "",
-    id_medio_pago: medios?.[0]?.id || "",
+    fecha: (editRow?.fecha) || defaultDate || new Date().toISOString().slice(0,10),
+    denominacion: U(editRow?.denominacion || ""),
+    descripcion: U(editRow?.descripcion || ""),
+    importe: String(editRow?.importe ?? ""),
+    id_medio_pago: editRow?.id_medio_pago
+      ? String(editRow.id_medio_pago)
+      : (localMedios?.[0]?.id || ""),
   });
+
+  const [medioEsOtro, setMedioEsOtro] = useState(false);
+  const [medioNuevo, setMedioNuevo] = useState("");
 
   const dateRef = useRef(null);
 
+  // helpers fetch
+  const fetchJSON = async (url, options) => {
+    const sep = url.includes("?") ? "&" : "?";
+    const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.mensaje || `HTTP ${res.status}`);
+    return data;
+  };
+
+  const loadMediosPago = async () => {
+    try {
+      const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
+      const arr = (data?.listas?.medios_pago ?? []).map((m) => ({
+        id: String(m.id),
+        nombre: String(m.nombre || ""),
+      }));
+      setLocalMedios(arr);
+      return arr;
+    } catch {
+      notify?.("error", "No se pudieron recargar los medios de pago.");
+      return localMedios;
+    }
+  };
+
+  const crearMedioPago = async (nombre) => {
+    const nombreOK = U(String(nombre || "").trim());
+    if (!nombreOK) throw new Error("INGRESÁ EL NUEVO MEDIO DE PAGO.");
+    if (nombreOK.length > 100) throw new Error("EL MEDIO DE PAGO NO PUEDE SUPERAR 100 CARACTERES.");
+
+    const r = await fetchJSON(`${BASE_URL}/api.php?action=medio_pago_crear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nombreOK }),
+    });
+    if (!r?.exito || !r.id) throw new Error(r?.mensaje || "No se pudo crear el medio.");
+    return { id: String(r.id), nombre: r.nombre || nombreOK };
+  };
+
+  // sync con props.medios
   useEffect(() => {
-    setForm((f) => ({
-      ...f,
-      fecha: defaultDate || new Date().toISOString().slice(0,10),
-      id_medio_pago: medios?.[0]?.id || "",
+    const arr = Array.isArray(medios)
+      ? medios.map(m => ({ id: String(m.id), nombre: String(m.nombre || "") }))
+      : [];
+    setLocalMedios(arr);
+    setForm(s => ({
+      ...s,
+      id_medio_pago: editRow?.id_medio_pago ? String(editRow.id_medio_pago) : (arr[0]?.id || "")
     }));
-  }, [defaultDate, medios]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [medios]);
+
+  // cuando abre o cambia editRow
+  useEffect(() => {
+    if (!editRow) {
+      setForm({
+        fecha: defaultDate || new Date().toISOString().slice(0,10),
+        denominacion: "",
+        descripcion: "",
+        importe: "",
+        id_medio_pago: localMedios?.[0]?.id || "",
+      });
+      setMedioEsOtro(false);
+      setMedioNuevo("");
+      return;
+    }
+    setForm({
+      fecha: editRow.fecha || defaultDate || new Date().toISOString().slice(0,10),
+      denominacion: U(editRow.denominacion || ""),
+      descripcion: U(editRow.descripcion || ""),
+      importe: String(editRow.importe ?? ""),
+      id_medio_pago: editRow.id_medio_pago ? String(editRow.id_medio_pago) : (localMedios?.[0]?.id || ""),
+    });
+    setMedioEsOtro(false);
+    setMedioNuevo("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRow, defaultDate, open]);
 
   const onChange = (k) => (e) => {
     let v = e.target.value;
     if (k === "importe") v = v.replace(/[^\d.,]/g, "");
+    else v = U(v);
     setForm((s) => ({ ...s, [k]: v }));
+  };
+
+  const onBlurUpper = (k) => (e) => {
+    if (k === "importe") return;
+    setForm((s) => ({ ...s, [k]: U(e.target.value) }));
+  };
+
+  const onChangeMedio = (val) => {
+    if (val === VALOR_OTRO) {
+      setMedioEsOtro(true);
+      setMedioNuevo("");
+      setForm((s) => ({ ...s, id_medio_pago: "" }));
+    } else {
+      setMedioEsOtro(false);
+      setMedioNuevo("");
+      setForm((s) => ({ ...s, id_medio_pago: String(val) }));
+    }
   };
 
   const submit = async (e) => {
@@ -116,36 +288,71 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
     if (saving) return;
 
     const importeNumber = Number(String(form.importe).replace(/\./g, "").replace(",", "."));
-    if (!form.denominacion.trim()) return alert("Ingresá una denominación.");
-    if (!form.fecha) return alert("Seleccioná la fecha.");
-    if (!importeNumber || importeNumber <= 0) return alert("Ingresá un importe válido.");
-    if (!form.id_medio_pago) return alert("Seleccioná un medio de pago.");
+    if (!form.denominacion.trim()) { notify?.("advertencia","Ingresá una denominación."); return; }
+    if (!form.fecha) { notify?.("advertencia","Seleccioná la fecha."); return; }
+    if (!importeNumber || importeNumber <= 0) { notify?.("advertencia","Ingresá un importe válido."); return; }
 
     try {
       setSaving(true);
-      const res = await fetch(`${BASE_URL}/api.php?action=ingresos_create`, {
+
+      // crear medio si se eligió OTRO
+      let medioIdFinal = form.id_medio_pago;
+      if (medioEsOtro) {
+        if (!String(medioNuevo || "").trim()) {
+          notify?.("advertencia","Escribí el nuevo medio de pago.");
+          setSaving(false);
+          return;
+        }
+        const nuevo = await crearMedioPago(medioNuevo);
+        notify?.("exito", `Medio de pago agregado: ${U(nuevo.nombre)}`);
+        const arr = await loadMediosPago();
+        medioIdFinal = String(nuevo.id);
+        if (!arr.find(m => String(m.id) === String(nuevo.id))) {
+          setLocalMedios(prev => [...prev, { id: medioIdFinal, nombre: nuevo.nombre }]);
+        }
+      } else {
+        if (!String(medioIdFinal || "").trim()) { notify?.("advertencia","Seleccioná un medio de pago."); setSaving(false); return; }
+      }
+
+      const payloadBase = {
+        fecha: form.fecha,
+        denominacion: U(form.denominacion.trim()),
+        descripcion: U(form.descripcion.trim()),
+        importe: importeNumber,
+        id_medio_pago: Number(medioIdFinal),
+      };
+
+      const isEdit = !!editRow?.id_ingreso;
+      const url = isEdit
+        ? `${BASE_URL}/api.php?action=editar_ingresos`
+        : `${BASE_URL}/api.php?action=ingresos_create`;
+
+      const body = isEdit
+        ? JSON.stringify({ ...payloadBase, id_ingreso: Number(editRow.id_ingreso) })
+        : JSON.stringify(payloadBase);
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fecha: form.fecha,
-          denominacion: form.denominacion.trim(),
-          descripcion: form.descripcion.trim(),
-          importe: importeNumber,
-          id_medio_pago: Number(form.id_medio_pago),
-        }),
+        body,
       });
+
       const data = await res.json();
       if (!res.ok || !data?.exito) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
+
+      notify?.("exito", isEdit ? "Ingreso actualizado correctamente." : "Ingreso creado correctamente.");
       onSaved?.();
       onClose?.();
     } catch (err) {
-      alert(`No se pudo guardar: ${err.message}`);
+      notify?.("error", `No se pudo guardar: ${err.message}`);
     } finally {
       setSaving(false);
     }
   };
 
   if (!open) return null;
+  const isEdit = !!editRow?.id_ingreso;
+
   return (
     <div className="ing-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ingModalTitle">
       <div className="ing-modal ing-modal--elev">
@@ -153,9 +360,9 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
         <div className="ing-modal__head gradient--brand-red">
           <div className="ing-modal__title">
             <div className="ing-modal__badge">
-              <FontAwesomeIcon icon={faPlus} />
+              <FontAwesomeIcon icon={isEdit ? faPen : faPlus} />
             </div>
-            <h3 id="ingModalTitle">Registrar ingreso</h3>
+            <h3 id="ingModalTitle">{isEdit ? "Editar ingreso" : "Registrar ingreso"}</h3>
           </div>
           <button className="ghost-btn ghost-btn--light" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
@@ -163,7 +370,7 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
         {/* BODY */}
         <form className="ing-modal__body" onSubmit={submit}>
           <div className="grid2">
-            {/* Fecha: click en TODO el control abre el calendario */}
+            {/* Fecha */}
             <div className="field field--icon field--date">
               <label>Fecha</label>
               <div
@@ -175,8 +382,7 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
                   if (typeof el.showPicker === "function") {
                     try { el.showPicker(); return; } catch {}
                   }
-                  el.focus();
-                  el.click();
+                  el.focus(); el.click();
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -186,8 +392,7 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
                     if (typeof el.showPicker === "function") {
                       try { el.showPicker(); return; } catch {}
                     }
-                    el.focus();
-                    el.click();
+                    el.focus(); el.click();
                   }
                 }}
                 role="button"
@@ -202,31 +407,63 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
                   type="date"
                   value={form.fecha}
                   onChange={onChange("fecha")}
-                  onMouseDown={(e) => {
-                    if (dateRef.current?.showPicker) {
-                      e.preventDefault(); // deja que el wrapper haga el gesto
-                    }
-                  }}
+                  onMouseDown={(e) => { if (dateRef.current?.showPicker) e.preventDefault(); }}
                 />
               </div>
             </div>
 
+            {/* Medio de pago con OTRO */}
             <div className="field field--icon">
               <label>Medio de pago</label>
               <div className="control">
                 <span className="i">
                   <FontAwesomeIcon icon={faCreditCard} />
                 </span>
-                <select value={form.id_medio_pago} onChange={onChange("id_medio_pago")}>
-                  {Array.isArray(medios) && medios.length ? (
-                    medios.map(mp => <option key={mp.id} value={mp.id}>{mp.nombre}</option>)
+                <select
+                  value={medioEsOtro ? VALOR_OTRO : form.id_medio_pago}
+                  onChange={(e) => onChangeMedio(e.target.value)}
+                  style={{ textTransform: "uppercase" }}
+                  required={!medioEsOtro}
+                  aria-invalid={!medioEsOtro && !String(form.id_medio_pago || "").trim() ? true : undefined}
+                >
+                  {Array.isArray(localMedios) && localMedios.length ? (
+                    <>
+                      <option value="">SELECCIONE…</option>
+                      {localMedios.map(mp => (
+                        <option key={mp.id} value={mp.id}>
+                          {String(mp.nombre || "").toUpperCase()}
+                        </option>
+                      ))}
+                      <option value="__OTRO__">OTRO (AGREGAR…)</option>
+                    </>
                   ) : (
-                    <option value="">(sin medios)</option>
+                    <>
+                      <option value="">(SIN MEDIOS)</option>
+                      <option value="__OTRO__">OTRO (AGREGAR…)</option>
+                    </>
                   )}
                 </select>
               </div>
             </div>
           </div>
+
+          {medioEsOtro && (
+            <div className="field field--icon">
+              <label>Nuevo medio de pago</label>
+              <div className="control">
+                <span className="i">
+                  <FontAwesomeIcon icon={faCreditCard} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Ej: TRANSFERENCIA BNA"
+                  value={medioNuevo}
+                  onChange={(e) => setMedioNuevo(U(e.target.value))}
+                  required
+                />
+              </div>
+            </div>
+          )}
 
           <div className="field field--icon">
             <label>Denominación</label>
@@ -239,6 +476,9 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
                 placeholder="Ej: GAMBOGGI ALEXANDER"
                 value={form.denominacion}
                 onChange={onChange("denominacion")}
+                onBlur={onBlurUpper("denominacion")}
+                autoCapitalize="characters"
+                style={{ textTransform: "uppercase" }}
               />
             </div>
           </div>
@@ -254,6 +494,9 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
                 placeholder="Ej: INTERNADO, ALQ. CARTEL"
                 value={form.descripcion}
                 onChange={onChange("descripcion")}
+                onBlur={onBlurUpper("descripcion")}
+                autoCapitalize="characters"
+                style={{ textTransform: "uppercase" }}
               />
             </div>
           </div>
@@ -278,7 +521,7 @@ function ModalIngreso({ open, onClose, onSaved, defaultDate, medios }) {
             <button type="button" className="ghost-btn" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn sm solid" disabled={saving}>
               <FontAwesomeIcon icon={faFloppyDisk} />
-              <span>{saving ? "Guardando…" : "Guardar ingreso"}</span>
+              <span>{saving ? "Guardando…" : (isEdit ? "Guardar cambios" : "Guardar ingreso")}</span>
             </button>
           </div>
         </form>
@@ -305,6 +548,20 @@ export default function IngresosContable() {
   const [cascading, setCascading] = useState(false);
   const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
   const [openModal, setOpenModal] = useState(false);
+  const [editRow, setEditRow] = useState(null);
+
+  // Toasts
+  const [toasts, setToasts] = useState([]);
+  const toastSeq = useRef(0);
+  const addToast = (tipo, mensaje, duracion = 3000) => {
+    const id = `${Date.now()}_${toastSeq.current++}`;
+    setToasts((prev) => [...prev, { id, tipo, mensaje, duracion }]);
+  };
+  const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  // Confirmación delete
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [toDelete, setToDelete] = useState(null);
 
   /* ====== CARGA API ====== */
   const loadPagosAlumnos = useCallback(async () => {
@@ -363,6 +620,8 @@ export default function IngresosContable() {
       const list = Array.isArray(data?.items) ? data.items : [];
       const rows = list.map((r) => ({
         id: `I|${r.id_ingreso}`,
+        id_ingreso: Number(r.id_ingreso),
+        id_medio_pago: Number(r.id_medio_pago || 0),
         fecha: r.fecha,
         denominacion: r.denominacion,
         descripcion: r.descripcion || "",
@@ -438,7 +697,7 @@ export default function IngresosContable() {
     const isAlu = innerTab === "alumnos";
     const base = isAlu ? filasFiltradasAlu : filasFiltradasIng;
     if (!base.length) {
-      alert("No hay datos para exportar.");
+      addToast("advertencia", "No hay datos para exportar.");
       return;
     }
     let rows;
@@ -461,15 +720,47 @@ export default function IngresosContable() {
     }
     const wbName = `Ingresos_${MESES[mes - 1]}_${anio}_${isAlu ? "Alumnos" : "Ingresos"}`;
     await exportToExcelLike({ workbookName: wbName, sheetName: "Datos", rows });
+    addToast("exito", "Exportación iniciada.");
+  };
+
+  /* ===== Acciones ===== */
+  const openCreate = () => { setEditRow(null); setOpenModal(true); };
+  const onEdit = (row) => { setEditRow(row); setOpenModal(true); };
+
+  const askDelete = (row) => { setToDelete(row); setConfirmOpen(true); };
+  const cancelDelete = () => { setConfirmOpen(false); setToDelete(null); };
+  const confirmDelete = async () => {
+    if (!toDelete?.id_ingreso) return;
+    try {
+      const res = await fetch(`${BASE_URL}/api.php?action=eliminar_ingresos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_ingreso: Number(toDelete.id_ingreso) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.exito) throw new Error(data?.mensaje || `HTTP ${res.status}`);
+      addToast("exito", "Ingreso eliminado correctamente.");
+      await loadIngresos();
+    } catch (e) {
+      addToast("error", `No se pudo eliminar: ${e.message}`);
+    } finally {
+      cancelDelete();
+    }
   };
 
   return (
     <div className="ing-wrap">
+      {/* Toasts */}
+      <div className="toast-stack">
+        {toasts.map((t) => (
+          <Toast key={t.id} tipo={t.tipo} mensaje={t.mensaje} duracion={t.duracion} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
+
       <div className="ing-layout">
         {/* Sidebar */}
         <aside className={sideClass} aria-label="Barra lateral">
           <div className="ing-side__inner">
-            {/* Fila título + Detalle al lado */}
             <div className="ing-side__row ing-side__row--top gradient--brand-red">
               <div className="ing-sectiontitle">
                 <FontAwesomeIcon icon={faFilter} />
@@ -498,7 +789,7 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            {/* Tarjetas KPI */}
+            {/* KPIs */}
             <div className="ing-kpi-cards">
               <div className="kpi-card">
                 <div className="kpi-card__icon" aria-hidden>$</div>
@@ -542,17 +833,15 @@ export default function IngresosContable() {
           </div>
         </aside>
 
-        {/* ======== CONTENIDO: HEAD + TOOLBAR + TABLA ======== */}
+        {/* ======== CONTENIDO ======== */}
         <main className="ing-main">
           <section className="ing-stack cards">
-            {/* HEAD */}
             <div className="ing-head ing-stack__head">
               <button className="ghost-btn show-on-mobile" onClick={() => setSideOpen(true)}>
                 <FontAwesomeIcon icon={faBars} /><span>Filtros</span>
               </button>
             </div>
 
-            {/* BODY: toolbar + tabla */}
             <div className="ing-page ing-stack__body">
               {/* Tabs + acciones */}
               <div className="seg-tabs gradient--brand-red" role="tablist" aria-label="Vista de tabla">
@@ -587,7 +876,6 @@ export default function IngresosContable() {
                     />
                   </div>
 
-                  {/* Botón Exportar Excel con inversión de colores en hover */}
                   <button
                     className="btn sm ghost btn-invert"
                     onClick={onExport}
@@ -597,10 +885,9 @@ export default function IngresosContable() {
                     <span>Exportar Excel</span>
                   </button>
 
-                  {/* Botón Registrar ingreso con inversión de colores en hover */}
                   <button
                     className="btn sm solid btn-invert"
-                    onClick={() => setOpenModal(true)}
+                    onClick={openCreate}
                     title="Registrar ingreso"
                   >
                     <FontAwesomeIcon icon={faPlus} />
@@ -646,6 +933,7 @@ export default function IngresosContable() {
                     <div className="c-concepto">Descripción</div>
                     <div className="c-monto t-right">Importe</div>
                     <div className="c-medio">Medio</div>
+                    <div className="c-actions center">Acciones</div>
                   </div>
                   {filasFiltradasIng.map((f, idx) => (
                     <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
@@ -660,6 +948,14 @@ export default function IngresosContable() {
                       <div className="c-concepto">{f.descripcion}</div>
                       <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
                       <div className="c-medio">{f.medio}</div>
+                      <div className="c-actions center">
+                        <button className="icon-btn" title="Editar" onClick={() => onEdit(f)}>
+                          <FontAwesomeIcon icon={faPen} />
+                        </button>
+                        <button className="icon-btn danger" title="Eliminar" onClick={() => askDelete(f)}>
+                          <FontAwesomeIcon icon={faTrash} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {!filasFiltradasIng.length && !cargandoIngresos && <div className="ing-empty big">Sin ingresos</div>}
@@ -674,10 +970,22 @@ export default function IngresosContable() {
 
       <ModalIngreso
         open={openModal}
-        onClose={() => setOpenModal(false)}
+        onClose={() => { setOpenModal(false); setEditRow(null); }}
         onSaved={() => loadIngresos()}
         defaultDate={new Date(anio, mes - 1, Math.min(28, new Date().getDate())).toISOString().slice(0,10)}
         medios={mediosPago}
+        editRow={editRow}
+        notify={addToast}
+      />
+
+      <ConfirmModal
+        open={confirmOpen}
+        title="Eliminar ingreso"
+        message="¿Seguro que querés eliminar este ingreso? Esta acción no se puede deshacer."
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
       />
     </div>
   );

@@ -78,7 +78,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     if (editRow) {
       setFecha(editRow.fecha || "");
       setCategoria(String(editRow.categoria || "").toUpperCase());
-      setNumeroFactura(String(editRow.numero_factura || ""));
+      setNumeroFactura(String(editRow.numero_factura || "").toUpperCase()); // ⇦ MAYÚSCULAS
       setDescripcion(String(editRow.descripcion || "").toUpperCase());
 
       if (editRow.id_medio_pago) {
@@ -175,15 +175,21 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
     }
     const norm = (s) => String(s || "").toUpperCase();
     const cur = {
-      fecha, categoria: norm(categoria || "SIN CATEGORÍA"),
-      numero_factura: String(numeroFactura || ""), descripcion: norm(descripcion),
-      id_medio_pago: Number(medioId || 0), monto: Number(monto || 0),
+      fecha,
+      categoria: norm(categoria || "SIN CATEGORÍA"),
+      numero_factura: norm(numeroFactura || ""), // ⇦ comparar en MAYÚSCULAS
+      descripcion: norm(descripcion),
+      id_medio_pago: Number(medioId || 0),
+      monto: Number(monto || 0),
       comprobante_url: comp || null,
     };
     const orig = {
-      fecha: editRow.fecha || "", categoria: norm(editRow.categoria || "SIN CATEGORÍA"),
-      numero_factura: String(editRow.numero_factura || ""), descripcion: norm(editRow.descripcion || ""),
-      id_medio_pago: origIdMedio, monto: Number(editRow.monto || 0),
+      fecha: editRow.fecha || "",
+      categoria: norm(editRow.categoria || "SIN CATEGORÍA"),
+      numero_factura: norm(editRow.numero_factura || ""), // ⇦ comparar en MAYÚSCULAS
+      descripcion: norm(editRow.descripcion || ""),
+      id_medio_pago: origIdMedio,
+      monto: Number(editRow.monto || 0),
       comprobante_url: editRow.comprobante_url || null,
     };
     return (
@@ -223,7 +229,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
       const payload = {
         fecha,
         categoria: (categoria || "SIN CATEGORÍA").toUpperCase(),
-        numero_factura: numeroFactura || null,
+        numero_factura: (numeroFactura || "").toUpperCase() || null, // ⇦ guardar en MAYÚSCULAS
         descripcion: String(descripcion || "").toUpperCase(),
         id_medio_pago: Number(idMedio || 0),
         monto: Number(monto || 0),
@@ -323,7 +329,7 @@ export default function ContableEgresoModal({ open, onClose, onSaved, editRow, n
             <div className="mm_field has-icon">
               <input
                 value={numeroFactura}
-                onChange={(e)=>setNumeroFactura(e.target.value)}
+                onChange={(e)=>setNumeroFactura((e.target.value || "").toUpperCase())} // ⇦ escribir en MAYÚSCULAS
                 placeholder=" "
                 maxLength={50}
               />

@@ -109,7 +109,7 @@ const Principal = () => {
     { icon: faLayerGroup,       text: "Categorías",            ruta: "/categorias" },
     { icon: faUserPlus,         text: "Registro de Usuarios",  ruta: "/registro" },
     // ⬇️ Nuevo acceso en lugar de “Gestión Contable”
-    { icon: faMoneyCheckDollar, text: "Libro Contable",        ruta: "/contable/libro" },
+    { icon: faMoneyCheckDollar, text: "Contable",        ruta: "/contable/libro" },
   ];
 
   // 🔒 Si NO es admin, solo ve "Alumnos"
