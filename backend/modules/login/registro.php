@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once(__DIR__ . '/../../config/db.php');
 
 // OJO: nombre totalmente calificado (schema.table)
-define('USUARIOS_TABLA', 'cooperadora.usuarios');
+define('USUARIOS_TABLA', 'usuarios');
 
 try {
     $raw = file_get_contents("php://input");

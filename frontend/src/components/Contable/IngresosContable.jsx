@@ -8,10 +8,8 @@ import {
   faBars,
   faPlus,
   faFileExcel,
-  faPen,
   faTrash,
-  faEye,
-  faEdit,        // 👈 agregado para "ver"
+  faEdit,
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import Toast from "../Global/Toast";
@@ -34,7 +32,7 @@ const fmtMonto = (n) =>
     maximumFractionDigits: 0,
   }).format(Number(n || 0));
 
-/* ===== helpers export (versión robusta) ===== */
+/* ===== helpers export ===== */
 function toCSV(rows, headers) {
   const esc = (v) => {
     const s = String(v ?? "");
@@ -82,8 +80,7 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
 }
 
 /* ===========================================================
-   ConfirmModal – mismo patrón visual que en Egresos
-   (clases "logout-modal-*")
+   ConfirmModal (reutiliza estilo de tu logout/confirm)
    =========================================================== */
 function ConfirmModal({
   open,
@@ -230,16 +227,23 @@ export default function IngresosContable() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const list = Array.isArray(data?.items) ? data.items : [];
-      const rows = list.map((r) => ({
-        id: `I|${r.id_ingreso}`,
-        id_ingreso: Number(r.id_ingreso),
-        id_medio_pago: Number(r.id_medio_pago || 0),
-        fecha: r.fecha,
-        denominacion: r.denominacion,
-        descripcion: r.descripcion || "",
-        importe: Number(r.importe || 0),
-        medio: r.medio_pago || "",
-      }));
+      const rows = list.map((r) => {
+        // La categoría en UI debe mostrar lo que hoy guarda DB en "denominacion" (compatibilidad),
+        // o bien "categoria" si el backend ya lo envía.
+        const categoriaText = r.categoria || r.denominacion || "-";
+        return {
+          id: `I|${r.id_ingreso}`,
+          id_ingreso: Number(r.id_ingreso),
+          id_medio_pago: Number(r.id_medio_pago || 0),
+          fecha: r.fecha,
+          categoria: categoriaText,              // <- lo que se muestra
+          descripcion: r.descripcion || "",
+          importe: Number(r.importe || 0),
+          medio: r.medio_pago || "",
+          // para compatibilidad con el modal de edición:
+          denominacion: categoriaText,
+        };
+      });
       setFilasIngresos(rows);
     } catch (e) {
       console.error("Error al cargar tabla ingresos:", e);
@@ -269,7 +273,7 @@ export default function IngresosContable() {
   const filasFiltradasIng = useMemo(() => {
     const q = query.trim().toLowerCase();
     return !q ? filasIngresos : filasIngresos.filter((f) =>
-      (f.denominacion || "").toLowerCase().includes(q) ||
+      (f.categoria || "").toLowerCase().includes(q) ||
       (f.descripcion || "").toLowerCase().includes(q) ||
       (f.fecha || "").toLowerCase().includes(q) ||
       (String(f.importe) || "").toLowerCase().includes(q) ||
@@ -323,10 +327,8 @@ export default function IngresosContable() {
       }));
     } else {
       rows = base.map((r) => ({
-        // Si querés quitar también el ID del export, borrá la línea siguiente:
-        "N°": r.id_ingreso,
         Fecha: r.fecha,
-        Denominación: r.denominacion,
+        Categoría: r.categoria,          // <- sin “Denominación”
         Descripción: r.descripcion,
         Importe: r.importe,
         Medio: r.medio,
@@ -340,11 +342,6 @@ export default function IngresosContable() {
   /* ===== Acciones ===== */
   const onClickCreate = () => setOpenCreate(true);
   const onEdit = (row) => { setEditRow(row); setOpenEdit(true); };
-
-  const onView = (row) => {
-    // Dejalo como vista previa simple con toast o adaptalo a tu flujo
-    addToast("info", `Vista previa: ${row?.denominacion ?? "—"}`);
-  };
 
   const askDelete = (row) => { setToDelete(row); setConfirmOpen(true); };
   const cancelDelete = () => { setConfirmOpen(false); setToDelete(null); };
@@ -544,7 +541,7 @@ export default function IngresosContable() {
                   {!filasFiltradasAlu.length && !cargando && <div className="ing-empty big">Sin pagos</div>}
                 </div>
               ) : (
-                /* ===== TABLA: MANUALES (SIN columna N°) ===== */
+                /* ===== TABLA: MANUALES (SIN columna Denominación) ===== */
                 <div
                   className={`ing-tablewrap is-manuales ${cargandoIngresos ? "is-loading" : ""}`}
                   role="table"
@@ -557,9 +554,8 @@ export default function IngresosContable() {
                   )}
 
                   <div className="ing-row h" role="row">
-                    {/* N° eliminado */}
                     <div className="c-fecha">Fecha</div>
-                    <div className="c-alumno">Denominación</div>
+                    <div className="c-cat">Categoría</div>
                     <div className="c-concepto">Descripción</div>
                     <div className="c-importe">Importe</div>
                     <div className="c-medio">Medio</div>
@@ -568,20 +564,12 @@ export default function IngresosContable() {
 
                   {filasFiltradasIng.map((f, idx) => (
                     <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
-                      {/* N° eliminado */}
                       <div className="c-fecha">{f.fecha}</div>
-                      <div className="c-alumno">
-                        <div className="ing-alumno">
-                          <div className="ing-alumno__text">
-                            <div className="strong name-small">{f.denominacion}</div>
-                          </div>
-                        </div>
-                      </div>
+                      <div className="c-cat"><span className="pill">{f.categoria || "-"}</span></div>
                       <div className="c-concepto">{f.descripcion}</div>
                       <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-actions center">
-
                         <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
                           <FontAwesomeIcon icon={faEdit} />
                         </button>
@@ -601,7 +589,7 @@ export default function IngresosContable() {
 
       {sideOpen && <button className="ing-layout__overlay" onClick={() => setSideOpen(false)} aria-label="Cerrar panel" />}
 
-      {/* === Modales (gestionados internamente en su propio archivo) === */}
+      {/* === Modales === */}
       <IngresoCrearModal
         open={openCreate}
         defaultDate={new Date(anio, mes - 1, Math.min(28, new Date().getDate())).toISOString().slice(0,10)}

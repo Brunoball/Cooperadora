@@ -221,6 +221,14 @@ try {
             require_once __DIR__ . '/../modules/contable/eliminar_ingresos.php';
             exit;
 
+        case 'agregar_categoria':            // nuevo: alta rápida de categoría de egreso
+            require_once __DIR__ . '/../modules/contable/agregar_categoria.php';
+            exit;
+
+        case 'agregar_descripcion':          // nuevo: alta rápida de descripción de egreso
+            require_once __DIR__ . '/../modules/contable/agregar_descripcion.php';
+            exit;
+
         /* ===========================
            TIPOS DE DOCUMENTOS
         ============================ */

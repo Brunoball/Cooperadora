@@ -49,11 +49,11 @@ function ConfirmModal({
       aria-modal="true"
       aria-labelledby="egdel-title"
       aria-describedby="egdel-desc"
-      onMouseDown={onCancel} /* click fuera => cierra */
+      onMouseDown={onCancel}
     >
       <div
         className="logout-modal-container logout-modal--danger"
-        onMouseDown={(e) => e.stopPropagation()} /* evita cierre al click interno */
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="logout-modal__icon" aria-hidden="true">
           <FontAwesomeIcon icon={faTrash} />
@@ -95,7 +95,7 @@ export default function EgresoContable(){
   const [mediosPago, setMediosPago] = useState([]);
 
   const [anio, setAnio] = useState(Y);
-  const [anios, setAnios] = useState([Y, Y - 1]); // fallback inicial
+  const [anios, setAnios] = useState([Y, Y - 1]);
   const [month, setMonth] = useState(hoy.getMonth());
   const [fCat, setFCat] = useState("");
   const [fMedio, setFMedio] = useState("");
@@ -126,7 +126,6 @@ export default function EgresoContable(){
     return res.json();
   };
 
-  /* ==== Fechas (por año/mes seleccionados) ==== */
   const { fStart, fEnd } = useMemo(() => {
     const first = new Date(anio, month, 1);
     const last = new Date(anio, month + 1, 0);
@@ -134,7 +133,6 @@ export default function EgresoContable(){
     return { fStart: toISO(first), fEnd: toISO(last) };
   }, [anio, month]);
 
-  /* ==== Medios de pago ==== */
   const loadMediosPago = async () => {
     try {
       const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
@@ -145,7 +143,6 @@ export default function EgresoContable(){
     }
   };
 
-  /* ==== Egresos ==== */
   const loadEgresos = async () => {
     setLoadingEgr(true);
     try {
@@ -156,7 +153,6 @@ export default function EgresoContable(){
       const datos = raw?.datos || [];
       setEgresos(datos);
 
-      // Derivar años si backend todavía no los expone
       if (!Array.isArray(anios) || !anios.length || anios.length <= 2) {
         const yearsFromData = Array.from(
           new Set(
@@ -168,7 +164,7 @@ export default function EgresoContable(){
         if (yearsFromData.length) {
           setAnios(yearsFromData);
           if (!yearsFromData.includes(anio)) {
-            setAnio(yearsFromData[0]); // ajustar al más reciente
+            setAnio(yearsFromData[0]);
           }
         }
       }
@@ -178,9 +174,7 @@ export default function EgresoContable(){
     } finally { setLoadingEgr(false); }
   };
 
-  /* ==== Años disponibles ==== */
   const loadAniosDisponibles = async () => {
-    // 1) Endpoint dedicado
     try {
       const j1 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list_years`);
       if (Array.isArray(j1?.anios_disponibles) && j1.anios_disponibles.length) {
@@ -189,9 +183,8 @@ export default function EgresoContable(){
         if (!list.includes(anio)) setAnio(list[0]);
         return;
       }
-    } catch { /* sigue */ }
+    } catch {}
 
-    // 2) meta=1 en list
     try {
       const j2 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&meta=1`);
       if (Array.isArray(j2?.anios_disponibles) && j2.anios_disponibles.length) {
@@ -200,16 +193,13 @@ export default function EgresoContable(){
         if (!list.includes(anio)) setAnio(list[0]);
         return;
       }
-    } catch { /* sigue */ }
-
-    // 3) Si no hay soporte en backend: queda el fallback y se derivan desde loadEgresos
+    } catch {}
   };
 
   useEffect(()=>{ loadMediosPago(); },[]);
   useEffect(()=>{ loadAniosDisponibles(); },[]);
   useEffect(()=>{ loadEgresos(); },[fStart,fEnd,fCat,fMedio]);
 
-  /* ==== Derivados ==== */
   const totalEgresos = useMemo(()=> egresos.reduce((a,b)=> a + Number(b.monto||0),0),[egresos]);
 
   const egresosFiltrados = useMemo(()=>{
@@ -234,7 +224,6 @@ export default function EgresoContable(){
     return Array.from(map.values()).sort((a,b)=> b.total - a.total);
   },[egresos]);
 
-  /* ==== Acciones fila ==== */
   const onCreateEgreso = ()=>{ setEditRow(null); setModalOpen(true); };
   const onEditEgreso = (row)=>{ setEditRow(row); setModalOpen(true); };
 
@@ -269,7 +258,6 @@ export default function EgresoContable(){
 
   const onSavedEgreso = ()=>{ setModalOpen(false); loadEgresos(); };
 
-  /* ===== Exportar Excel real (.xlsx) ===== */
   const exportarXLSX = () => {
     const rows = egresosFiltrados;
     if (!rows.length) {
@@ -291,7 +279,6 @@ export default function EgresoContable(){
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-    // Forzar números en la col 'Monto'
     const startRow = 2;
     const endRow = aoa.length;
     for (let r = startRow; r <= endRow; r++) {
@@ -315,7 +302,6 @@ export default function EgresoContable(){
     addToast("exito","Excel exportado.");
   };
 
-  /* ===== (Opcional) Exportar CSV ===== */
   const exportarCSV = () => {
     const rows = egresosFiltrados;
     if (!rows.length) {
@@ -470,11 +456,6 @@ export default function EgresoContable(){
                 Exportar Excel
               </button>
 
-              {/* Si querés habilitar CSV, descomentá: */}
-              {/* <button type="button" className="eg_btn eg_btn--ghost" onClick={exportarCSV}>
-                Exportar CSV
-              </button> */}
-
               <button type="button" className="eg_btn eg_btn--whitepill" onClick={onCreateEgreso}>
                 <FontAwesomeIcon icon={faPlus} />
                 Registrar egreso
@@ -539,7 +520,7 @@ export default function EgresoContable(){
         onClose={()=>setModalOpen(false)}
         onSaved={onSavedEgreso}
         editRow={editRow}
-        notify={addToast}
+        notify={addToast}   
       />
 
       <ConfirmModal

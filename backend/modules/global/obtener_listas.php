@@ -14,13 +14,16 @@ try {
     $pdo->exec("SET NAMES utf8mb4");
 
     $listas = [
-        'anios'             => [],
-        'categorias'        => [],   // ahora vendrá de categoria_monto
-        'divisiones'        => [],
-        'meses'             => [],
-        'sexos'             => [],
-        'tipos_documentos'  => [],
-        'medios_pago'       => [],
+        'anios'                => [],
+        'categorias'           => [],   // sigue viniendo de categoria_monto
+        'divisiones'           => [],
+        'meses'                => [],
+        'sexos'                => [],
+        'tipos_documentos'     => [],
+        'medios_pago'          => [],
+        // NUEVO:
+        'egreso_categorias'    => [],   // (tabla: egreso_categoria)
+        'egreso_descripciones' => [],   // (tabla: egreso_descripcion)
     ];
 
     /* ----------- AÑOS ----------- */
@@ -106,6 +109,30 @@ try {
         $listas['medios_pago'][] = [
             'id'     => (int) $row['id'],
             'nombre' => (string) $row['nombre'],
+        ];
+    }
+
+    /* ===== NUEVAS LISTAS MAESTRAS PARA EGRESOS ===== */
+
+    // Categorías de egreso (sin campo 'activo')
+    $sql = "SELECT id_egreso_categoria AS id, nombre_categoria AS nombre
+            FROM egreso_categoria
+            ORDER BY nombre_categoria";
+    foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
+        $listas['egreso_categorias'][] = [
+            'id'     => (int)$row['id'],
+            'nombre' => (string)$row['nombre'],
+        ];
+    }
+
+    // Descripciones de egreso (sin campo 'activo')
+    $sql = "SELECT id_egreso_descripcion AS id, texto
+            FROM egreso_descripcion
+            ORDER BY texto";
+    foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
+        $listas['egreso_descripciones'][] = [
+            'id'    => (int)$row['id'],
+            'texto' => (string)$row['texto'],
         ];
     }
 
