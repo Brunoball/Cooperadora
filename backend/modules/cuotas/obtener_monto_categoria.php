@@ -31,6 +31,27 @@ try {
     $idCategoria = isset($alumno['id_categoria']) ? (int)$alumno['id_categoria'] : null;
     $idCatMonto  = isset($alumno['id_cat_monto']) ? (int)$alumno['id_cat_monto'] : null;
 
+    $payload = [
+        'exito'            => true,
+        'id_categoria'     => $idCategoria,
+        'categoria_nombre' => '',
+        'monto_mensual'    => 0,
+        'monto_anual'      => 0,
+        'monto_matricula'  => 0,
+        'fuente'           => null,
+    ];
+
+    // ---- MATRÍCULA (id 14) ----
+    $stmtMat = $pdo->prepare("SELECT monto FROM cooperadora.meses WHERE id_mes = 14 LIMIT 1");
+    $stmtMat->execute();
+    $rowMat = $stmtMat->fetch(PDO::FETCH_ASSOC);
+    if ($rowMat) {
+        $payload['monto_matricula'] = (int)$rowMat['monto'];
+    } else {
+        // si no existe, inicializamos con 15000 por defecto (opcional)
+        $payload['monto_matricula'] = 15000;
+    }
+
     // 2) Prioridad: categoria_monto (registro específico asignado al alumno)
     if ($idCatMonto) {
         $stmt = $pdo->prepare("
@@ -47,15 +68,12 @@ try {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            echo json_encode([
-                'exito'            => true,
-                // id_categoria proviene de alumnos (categoria_monto no lo tiene)
-                'id_categoria'     => $idCategoria,
-                'categoria_nombre' => (string)($row['categoria_nombre'] ?? ''),
-                'monto_mensual'    => (int)($row['monto_mensual'] ?? 0),
-                'monto_anual'      => (int)($row['monto_anual'] ?? 0),
-                'fuente'           => 'categoria_monto'
-            ]);
+            $payload['categoria_nombre'] = (string)($row['categoria_nombre'] ?? '');
+            $payload['monto_mensual']    = (int)($row['monto_mensual'] ?? 0);
+            $payload['monto_anual']      = (int)($row['monto_anual'] ?? 0);
+            $payload['fuente']           = 'categoria_monto';
+
+            echo json_encode($payload);
             exit;
         }
         // Si no encontró en categoria_monto, continúa al fallback por categoria
@@ -76,22 +94,20 @@ try {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            echo json_encode([
-                'exito'            => true,
-                'id_categoria'     => (int)$row['id_categoria'],
-                'categoria_nombre' => (string)($row['categoria_nombre'] ?? ''),
-                'monto_mensual'    => (int)($row['monto_mensual'] ?? 0),
-                'fuente'           => 'categoria'
-            ]);
+            $payload['id_categoria']     = (int)$row['id_categoria'];
+            $payload['categoria_nombre'] = (string)($row['categoria_nombre'] ?? '');
+            $payload['monto_mensual']    = (int)($row['monto_mensual'] ?? 0);
+            $payload['fuente']           = 'categoria';
+
+            echo json_encode($payload);
             exit;
         }
     }
 
-    // 4) Último fallback: no hay datos
-    echo json_encode([
-        'exito'   => false,
-        'mensaje' => 'No se encontró monto/categoría para el alumno.'
-    ]);
+    // 4) Último fallback
+    $payload['exito']   = false;
+    $payload['mensaje'] = 'No se encontró monto/categoría para el alumno.';
+    echo json_encode($payload);
 } catch (Throwable $e) {
     echo json_encode(['exito' => false, 'mensaje' => 'Error: ' . $e->getMessage()]);
 }

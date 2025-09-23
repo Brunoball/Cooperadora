@@ -118,7 +118,6 @@ try {
             require_once __DIR__ . '/../modules/alumnos/familias/alumnos_sin_familia.php';
             exit;
 
-        /* 🔁 Alias compat: socios_sin_familia -> alumnos_sin_familia */
         case 'socios_sin_familia':
             require_once __DIR__ . '/../modules/alumnos/familias/alumnos_sin_familia.php';
             exit;
@@ -131,7 +130,6 @@ try {
             require_once __DIR__ . '/../modules/alumnos/familias/familia_quitar_miembro.php';
             exit;
 
-        /* Compat: POST familia_guardar decide INSERT/UPDATE */
         case 'familia_guardar':
             require_once __DIR__ . '/../modules/alumnos/familias/familia_guardar.php';
             exit;
@@ -164,15 +162,20 @@ try {
 
         /* ✅ NUEVO: ficha para impresión de comprobante */
         case 'obtener_socio_comprobante':
+        case 'socio_comprobante':
             require_once __DIR__ . '/../modules/cuotas/obtener_socio_comprobante.php';
             exit;
 
-        case 'socio_comprobante': // alias opcional
-            require_once __DIR__ . '/../modules/cuotas/obtener_socio_comprobante.php';
-            exit;
-
-        case 'obtener_monto_categoria': // alias opcional
+        /* ✅ MONTOS por categoría del alumno (incluye monto_matricula) */
+        case 'obtener_monto_categoria':
             require_once __DIR__ . '/../modules/cuotas/obtener_monto_categoria.php';
+            exit;
+
+        /* ✅ MATRÍCULA (único endpoint GET/POST) */
+        case 'matricula':                     // GET -> obtener; POST -> actualizar
+        case 'obtener_monto_matricula':       // alias GET
+        case 'actualizar_monto_matricula':    // alias POST
+            require_once __DIR__ . '/../modules/cuotas/matricula.php';
             exit;
 
         /* ===========================
@@ -201,15 +204,13 @@ try {
             require_once __DIR__ . '/../modules/contable/medio_pago_crear.php';
             exit;
 
-        /* ✅ NUEVO: resumen (ingresos pagos + ingresos manuales − egresos) */
         case 'contable_resumen':
             require_once __DIR__ . '/../modules/contable/resumen.php';
             exit;
 
-        /* ✅ INGRESOS (tabla ingresos, para lista/alta manual) */
-        case 'ingresos_list':   // GET ?year=YYYY&month=MM
-        case 'ingresos_create': // POST JSON body
-        case 'ingresos':        // alias GET/POST
+        case 'ingresos_list':
+        case 'ingresos_create':
+        case 'ingresos':
             require_once __DIR__ . '/../modules/contable/agregar_ingresos.php';
             exit;
 
@@ -221,11 +222,11 @@ try {
             require_once __DIR__ . '/../modules/contable/eliminar_ingresos.php';
             exit;
 
-        case 'agregar_categoria':            // nuevo: alta rápida de categoría de egreso
+        case 'agregar_categoria':
             require_once __DIR__ . '/../modules/contable/agregar_categoria.php';
             exit;
 
-        case 'agregar_descripcion':          // nuevo: alta rápida de descripción de egreso
+        case 'agregar_descripcion':
             require_once __DIR__ . '/../modules/contable/agregar_descripcion.php';
             exit;
 

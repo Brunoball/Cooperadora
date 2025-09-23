@@ -25,23 +25,32 @@ try {
     $condonar     = !empty($payload['condonar']);
     $anioInput    = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
 
-    // Compat: antes mandabas "monto_libre"; ahora además llega "monto_unitario".
+    // Compatibilidad: monto_libre / monto_unitario
     $montoLibre   = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
     $montoUI      = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
+
+    // NUEVO: montos por período (incluye 13 y 14)
+    $montosPorPeriodo = [];
+    if (isset($payload['montos_por_periodo']) && is_array($payload['montos_por_periodo'])) {
+        foreach ($payload['montos_por_periodo'] as $k => $v) {
+            $kk = (int)$k;
+            $vv = (int)$v;
+            $montosPorPeriodo[$kk] = $vv;
+        }
+    }
 
     if ($idAlumno <= 0) {
         echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido']);
         exit;
     }
     if (empty($periodos)) {
-        echo json_encode(['exito' => false, 'mensaje' => 'No se enviaron meses a registrar']);
+        echo json_encode(['exito' => false, 'mensaje' => 'No se enviaron períodos a registrar']);
         exit;
     }
     if ($anioInput < 2000 || $anioInput > 2100) {
         $anioInput = (int)date('Y');
     }
 
-    // Estado
     $estadoRegistrar = $condonar ? 'condonado' : 'pagado';
 
     // FECHA DE PAGO: mismo día/mes de hoy, año = $anioInput (seleccionado)
@@ -70,13 +79,17 @@ try {
         $yaPorMes[(int)$row['id_mes']] = (string)$row['estado'];
     }
 
-    // 🔹 SIEMPRE guardamos monto_pago
-    //   - condonado => 0
-    //   - si viene monto_unitario => usarlo
-    //   - si no vino, usar monto_libre (>0) como fallback
-    //   - último fallback: 0 (para no romper)
-    $resolverMonto = function(bool $condonar, ?int $montoUI, int $montoLibre) : int {
+    // Resolver monto:
+    // - condonado => 0
+    // - si existe monto específico en montos_por_periodo[id] => usarlo
+    // - si no existe, usar monto_unitario (>0)
+    // - si no, usar monto_libre (>0)
+    // - si no, 0
+    $resolverMonto = function(bool $condonar, ?int $montoUI, int $montoLibre, array $montos, int $periodo) : int {
         if ($condonar) return 0;
+        if (isset($montos[$periodo]) && is_int($montos[$periodo]) && $montos[$periodo] >= 0) {
+            return (int)$montos[$periodo];
+        }
         if (is_int($montoUI) && $montoUI > 0) return $montoUI;
         if ($montoLibre > 0) return $montoLibre;
         return 0;
@@ -90,9 +103,14 @@ try {
     $insertados = 0;
     $yaRegistrados = [];
 
+    // Períodos válidos: 1..12 (meses), 13 (Contado Anual), 14 (Matrícula)
+    $validos = array_fill(1, 14, true);
+
     foreach ($periodos as $mesId) {
         $mes = (int)$mesId;
-        if ($mes < 1 || $mes > 12) {
+
+        if (!isset($validos[$mes])) {
+            // Ignorar cualquier id_mes que no sea 1..14
             continue;
         }
 
@@ -104,11 +122,11 @@ try {
             continue;
         }
 
-        $montoPago = $resolverMonto($condonar, $montoUI, $montoLibre);
+        $montoPago = $resolverMonto($condonar, $montoUI, $montoLibre, $montosPorPeriodo, $mes);
 
         $stIns->execute([
             ':id_alumno'  => $idAlumno,
-            ':id_mes'     => $mes,
+            ':id_mes'     => $mes,               // <-- aquí entran 13 (anual) y 14 (matrícula) también
             ':fecha_pago' => $fechaPagoStr,
             ':estado'     => $estadoRegistrar,
             ':monto_pago' => $montoPago,
@@ -133,7 +151,7 @@ try {
     }
 
 } catch (Throwable $e) {
-    if ($pdo instanceof PDO && $pdo->inTransaction()) {
+    if (isset($pdo) && ($pdo instanceof PDO) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
     http_response_code(200);
