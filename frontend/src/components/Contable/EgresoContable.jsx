@@ -445,11 +445,7 @@ export default function EgresoContable(){
               {!catBreakdown.length && <div className="eg_empty_side">Sin datos</div>}
             </div>
 
-            {(fCat || fMedio) && (
-              <button className="eg_btn eg_btn--ghost" onClick={()=>{ setFCat(""); setFMedio(""); }}>
-                Limpiar filtros
-              </button>
-            )}
+
           </div>
         </aside>
 

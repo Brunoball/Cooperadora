@@ -7,15 +7,11 @@ import {
   faChartPie,
   faBars,
   faPlus,
-  faCalendarDays,
-  faCreditCard,
-  faUser,
-  faFileLines,
-  faDollarSign,
-  faFloppyDisk,
   faFileExcel,
   faPen,
   faTrash,
+  faEye,
+  faEdit,        // 👈 agregado para "ver"
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import Toast from "../Global/Toast";
@@ -75,8 +71,8 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
     const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     safeDownload(blob, `${workbookName}.xlsx`);
     return;
-  } catch (e) {
-    // fallback CSV
+  } catch {
+    /* fallback CSV */
   }
 
   const headers = Object.keys(rows[0] || {});
@@ -327,6 +323,8 @@ export default function IngresosContable() {
       }));
     } else {
       rows = base.map((r) => ({
+        // Si querés quitar también el ID del export, borrá la línea siguiente:
+        "N°": r.id_ingreso,
         Fecha: r.fecha,
         Denominación: r.denominacion,
         Descripción: r.descripcion,
@@ -342,6 +340,11 @@ export default function IngresosContable() {
   /* ===== Acciones ===== */
   const onClickCreate = () => setOpenCreate(true);
   const onEdit = (row) => { setEditRow(row); setOpenEdit(true); };
+
+  const onView = (row) => {
+    // Dejalo como vista previa simple con toast o adaptalo a tu flujo
+    addToast("info", `Vista previa: ${row?.denominacion ?? "—"}`);
+  };
 
   const askDelete = (row) => { setToDelete(row); setConfirmOpen(true); };
   const cancelDelete = () => { setConfirmOpen(false); setToDelete(null); };
@@ -512,7 +515,7 @@ export default function IngresosContable() {
                 </div>
               </div>
 
-              {/* Tablas */}
+              {/* ===== TABLA: ALUMNOS ===== */}
               {innerTab === "alumnos" ? (
                 <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
                   {cargando && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
@@ -541,18 +544,31 @@ export default function IngresosContable() {
                   {!filasFiltradasAlu.length && !cargando && <div className="ing-empty big">Sin pagos</div>}
                 </div>
               ) : (
-                <div className={`ing-tablewrap ${cargandoIngresos ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (tabla ingresos)">
-                  {cargandoIngresos && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
+                /* ===== TABLA: MANUALES (SIN columna N°) ===== */
+                <div
+                  className={`ing-tablewrap is-manuales ${cargandoIngresos ? "is-loading" : ""}`}
+                  role="table"
+                  aria-label="Listado de ingresos (tabla ingresos)"
+                >
+                  {cargandoIngresos && (
+                    <div className="ing-tableloader" role="status" aria-live="polite">
+                      <div className="ing-spinner" /><span>Cargando…</span>
+                    </div>
+                  )}
+
                   <div className="ing-row h" role="row">
+                    {/* N° eliminado */}
                     <div className="c-fecha">Fecha</div>
                     <div className="c-alumno">Denominación</div>
                     <div className="c-concepto">Descripción</div>
-                    <div className="c-monto t-right">Importe</div>
+                    <div className="c-importe">Importe</div>
                     <div className="c-medio">Medio</div>
                     <div className="c-actions center">Acciones</div>
                   </div>
+
                   {filasFiltradasIng.map((f, idx) => (
                     <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                      {/* N° eliminado */}
                       <div className="c-fecha">{f.fecha}</div>
                       <div className="c-alumno">
                         <div className="ing-alumno">
@@ -562,13 +578,14 @@ export default function IngresosContable() {
                         </div>
                       </div>
                       <div className="c-concepto">{f.descripcion}</div>
-                      <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
+                      <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-actions center">
-                        <button className="icon-btn" title="Editar" onClick={() => onEdit(f)}>
-                          <FontAwesomeIcon icon={faPen} />
+
+                        <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
+                          <FontAwesomeIcon icon={faEdit} />
                         </button>
-                        <button className="icon-btn danger" title="Eliminar" onClick={() => askDelete(f)}>
+                        <button className="act-btn is-del" title="Eliminar" onClick={() => askDelete(f)}>
                           <FontAwesomeIcon icon={faTrash} />
                         </button>
                       </div>

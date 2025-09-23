@@ -520,9 +520,11 @@ small { font-size: var(--fs-small); color: var(--muted); }
 }
 
 
+
 /* Variantes por acción */
-.act-btn.is-edit{  background: #ecfeff;  color: #0369a1;  border-color: #cffafe; }
-.act-btn.is-del{   background: #fee2e2;   color: #991b1b;   border-color: #fecaca; }
+
+.act-btn.is-edit{  background:#ecfeff; border-color:#cffafe; color:#0369a1; }
+.act-btn.is-del{   background:#fee2e2; border-color:#fecaca; color:#991b1b; }
 
 /* Hovers (más vivos) */
 .act-btn:hover{
@@ -530,7 +532,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
   box-shadow: var(--act-shadow-hover);
 }
 
-.act-btn.is-edit:hover{  background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
+.act-btn.is-edit:hover{ background:#cffafe; border-color:#a5f3fc; color:#0c4a6e;}
 .act-btn.is-del:hover{  background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
 
 /* Focus accesible */
