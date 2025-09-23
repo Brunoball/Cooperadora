@@ -6,7 +6,7 @@ import {
   faDollarSign, faFloppyDisk, faPen, faPlus, faTags
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../../config/config";
-import "../IngresosContable.css";
+import "../modalcontable/IngresoModal.css";
 
 /** Utils */
 const U = (v = "") => String(v).toUpperCase();
@@ -27,9 +27,9 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
   const [saving, setSaving] = useState(false);
 
   /** Listas */
-  const [medios, setMedios] = useState([]);                       // [{id, nombre}]
-  const [listaCategorias, setListaCategorias] = useState([]);      // [{id, nombre}]
-  const [listaDescripciones, setListaDescripciones] = useState([]);// [{id, texto}]
+  const [medios, setMedios] = useState([]);                        // [{id, nombre}]
+  const [listaCategorias, setListaCategorias] = useState([]);       // [{id, nombre}]
+  const [listaDescripciones, setListaDescripciones] = useState([]); // [{id, texto}]
 
   /** Selects + OTRO */
   const [medioEsOtro, setMedioEsOtro] = useState(false);
@@ -329,24 +329,42 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
             </div>
           )}
 
-          {/* Descripción (select + OTRO) */}
-          <div className="field field--icon">
-            <label>Descripción</label>
-            <div className="control">
-              <span className="i"><FontAwesomeIcon icon={faFileLines} /></span>
-              <select
-                value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
-                onChange={(e) => onChangeDescripcion(e.target.value)}
-              >
-                <option value="">(SIN DESCRIPCIÓN)</option>
-                {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{U(d.texto)}</option>))}
-                <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
-              </select>
+          {/* Descripción + Importe en la misma fila */}
+          <div className="grid2">
+            {/* Descripción (select + OTRO) */}
+            <div className="field field--icon">
+              <label>Descripción</label>
+              <div className="control">
+                <span className="i"><FontAwesomeIcon icon={faFileLines} /></span>
+                <select
+                  value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
+                  onChange={(e) => onChangeDescripcion(e.target.value)}
+                >
+                  <option value="">(SIN DESCRIPCIÓN)</option>
+                  {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{U(d.texto)}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Importe */}
+            <div className="field field--icon">
+              <label>Importe (ARS)</label>
+              <div className="control">
+                <span className="i"><FontAwesomeIcon icon={faDollarSign} /></span>
+                <input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={form.importe}
+                  onChange={onChange("importe")}
+                />
+              </div>
             </div>
           </div>
 
+          {/* Campo "Nueva descripción" ocupa todo el ancho si aparece */}
           {descripcionEsOtra && (
-            <div className="field field--icon">
+            <div className="field field--icon span-2">
               <label>Nueva descripción</label>
               <div className="control">
                 <span className="i"><FontAwesomeIcon icon={faFileLines} /></span>
@@ -354,15 +372,6 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
               </div>
             </div>
           )}
-
-          {/* Importe */}
-          <div className="field field--icon">
-            <label>Importe (ARS)</label>
-            <div className="control">
-              <span className="i"><FontAwesomeIcon icon={faDollarSign} /></span>
-              <input inputMode="decimal" placeholder="0" value={form.importe} onChange={onChange("importe")} />
-            </div>
-          </div>
 
           {/* FOOT */}
           <div className="ing-modal__foot">
@@ -611,7 +620,7 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
             <div className="ing-modal__badge"><FontAwesomeIcon icon={faPen} /></div>
             <h3 id="ingEditarTitle">Editar ingreso</h3>
           </div>
-        <button className="ghost-btn ghost-btn--light" onClick={onClose} aria-label="Cerrar">✕</button>
+          <button className="ghost-btn ghost-btn--light" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
         <form className="ing-modal__body" onSubmit={submit}>
@@ -704,40 +713,53 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
             </div>
           )}
 
-          {/* Descripción */}
-          <div className="field field--icon">
-            <label>Descripción</label>
-            <div className="control">
-              <span className="i"><FontAwesomeIcon icon={faFileLines} /></span>
-              <select
-                value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
-                onChange={(e)=>onChangeDescripcion(e.target.value)}
-              >
-                <option value="">(SIN DESCRIPCIÓN)</option>
-                {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{U(d.texto)}</option>))}
-                <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
-              </select>
+          {/* Descripción + Importe en la misma fila */}
+          <div className="grid2">
+            {/* Descripción */}
+            <div className="field field--icon">
+              <label>Descripción</label>
+              <div className="control">
+                <span className="i"><FontAwesomeIcon icon={faFileLines} /></span>
+                <select
+                  value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
+                  onChange={(e)=>onChangeDescripcion(e.target.value)}
+                >
+                  <option value="">(SIN DESCRIPCIÓN)</option>
+                  {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{U(d.texto)}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Importe */}
+            <div className="field field--icon">
+              <label>Importe (ARS)</label>
+              <div className="control">
+                <span className="i"><FontAwesomeIcon icon={faDollarSign} /></span>
+                <input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={form.importe}
+                  onChange={onChange("importe")}
+                />
+              </div>
             </div>
           </div>
 
           {descripcionEsOtra && (
-            <div className="field field--icon">
+            <div className="field field--icon span-2">
               <label>Nueva descripción</label>
               <div className="control">
                 <span className="i"><FontAwesomeIcon icon={faFileLines} /></span>
-                <input type="text" value={descripcionNueva} onChange={(e)=>setDescripcionNueva(U(e.target.value))} required />
+                <input
+                  type="text"
+                  value={descripcionNueva}
+                  onChange={(e)=>setDescripcionNueva(U(e.target.value))}
+                  required
+                />
               </div>
             </div>
           )}
-
-          {/* Importe */}
-          <div className="field field--icon">
-            <label>Importe (ARS)</label>
-            <div className="control">
-              <span className="i"><FontAwesomeIcon icon={faDollarSign} /></span>
-              <input inputMode="decimal" placeholder="0" value={form.importe} onChange={onChange("importe")} />
-            </div>
-          </div>
 
           <div className="ing-modal__foot">
             <button type="button" className="ghost-btn" onClick={onClose}>Cancelar</button>

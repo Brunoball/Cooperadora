@@ -1,6 +1,9 @@
+/* src/components/Contable/EgresoContable.css */
+
 /* ===========================
    EgresosContable.css (completo)
    Ajustado para restar header fijo: --global-header-h
+   + Efecto CASCADA en filas (igual que Ingresos)
    =========================== */
 
 /* Variable global para altura del header fijo */
@@ -110,7 +113,7 @@
 
 .eg_content__header h3{ margin:0; font-size:.9rem; color:#fff; font-weight:300; }
 
-/* ===== Acciones del header – “pills” como la foto ===== */
+/* ===== Acciones del header – “pills” ===== */
 .eg_header_actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 
 /* 🔎 Buscador pill rojo */
@@ -118,9 +121,7 @@
   display:flex; align-items:center; gap:8px;
   padding:10px 14px; border-radius:12px;
   background:rgba(255,255,255,.12);
-
   border:1px solid rgba(255,255,255,.28);
-
   color:#fff;
 }
 .eg_search.eg_search--redpill svg{ color:#fff; opacity:.95; }
@@ -151,17 +152,12 @@
   border-radius:10px; padding:10px 16px; font-weight:800;
   display:inline-flex; align-items:center; gap:8px;
   transition: all .3s;
-
 }
 .eg_btn.eg_btn--whitepill:hover{
   background-color: var(--primary);
   color: white;
   border-color:transparent ;
 }
-
-/* (Opcional) si querés ocultar estilos viejos dentro del header */
-.eg_content__header .eg_btn:not(.eg_btn--redpill):not(.eg_btn--whitepill){ display:none; }
-.eg_content__header .eg_search:not(.eg_search--redpill){ display:none; }
 
 /* Wrapper tabla */
 .ec_table__wrap{
@@ -188,6 +184,8 @@
   grid-template-columns: repeat(7, 1fr);
   background:#fff; border:1px solid var(--border); border-radius:12px;
   box-shadow:var(--shadow-soft); align-items:center;
+  /* estado base para animación */
+  will-change: opacity, transform;
 }
 
 .gt_cell{ padding:14px 0; min-width:0; ;}
@@ -230,6 +228,19 @@
 @keyframes spin{ to{ transform:rotate(360deg); } }
 .gt_table[aria-busy="true"]{ opacity:.55; filter:saturate(.9); pointer-events:none; }
 
+/* ======= EFECTO CASCADA (igual que Ingresos) ======= */
+@keyframes eg-cascade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.gt_rowd.casc{
+  animation: eg-cascade-in .35s ease both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+@media (prefers-reduced-motion: reduce){
+  .gt_rowd.casc{ animation: none !important; }
+}
+
 /* ======= Modales confirm ======= */
 .lc_modal_overlay{ position:fixed; inset:0; background:rgba(15,23,42,.45); display:grid; place-items:center; z-index:40; }
 .lc_modal{ background:#fff; border:1px solid var(--border); border-radius:16px; width:min(520px,92vw); box-shadow:0 24px 48px rgba(2,6,23,.24); }
@@ -268,12 +279,12 @@
   .eg_search.eg_search--redpill input{ width:100%; }
 }
 
-/* ===== Header rojo de Categorías (como la imagen) ===== */
+/* ===== Header rojo de Categorías ===== */
 .eg_cats__header{
   display:flex; align-items:center; gap:10px;
   margin:10px 0 10px;
   padding:14px 16px;
-  background: var(--reg-primary);           /* tu rojo principal */
+  background: var(--reg-primary);
   color:#fff;
   border-radius:14px;
   font-weight:900;
@@ -282,7 +293,7 @@
 }
 .eg_cats__header svg{ opacity:.95; }
 
-/* ===== Tarjetas de categorías (blancas, monto azul) ===== */
+/* ===== Tarjetas de categorías ===== */
 .eg_cats{ display:flex; flex-direction:column; gap:14px; }
 
 .eg_catcard{
@@ -302,7 +313,7 @@
 }
 
 .eg_catcard.active{
-  border-color: #fecaca;                 /* borde rojito cuando está activa */
+  border-color: #fecaca;
   box-shadow: 0 0 0 4px rgba(248,113,113,.12) inset;
 }
 
@@ -314,18 +325,18 @@
   line-height:1.1;
 }
 .eg_catcard__count{
-  font-size:.95rem;       /* como en la imagen se ve grandecito */
-  color:#6b7280;          /* gris medio */
+  font-size:.95rem;
+  color:#6b7280;
 }
 
 .eg_catcard__value{
   font-weight:900;
   font-size:1.2rem;
-  color:#2563eb;          /* azul (parecido al de la captura) */
+  color:#2563eb;
   white-space:nowrap;
 }
 
-/* Base (ya la tenías, dejo mejoras sutiles) */
+/* Acciones */
 .row_actions{ display:flex; gap:8px; justify-content:center; }
 .icon_btn{
   width:34px; height:34px; border-radius:999px; display:grid; place-items:center;
@@ -337,25 +348,17 @@
   transform:translateY(-1px);
   box-shadow:0 8px 20px rgba(2,6,23,.08);
 }
-
-/* Variantes por tipo */
-.icon_btn.view{    background:#eef2ff; border-color:#e0e7ff; color:#3730a3; }  /* indigo suave */
-.icon_btn.edit{    background:#ecfeff; border-color:#cffafe; color:#0369a1; }  /* cyan */
+.icon_btn.view{    background:#eef2ff; border-color:#e0e7ff; color:#3730a3; }
+.icon_btn.edit{    background:#ecfeff; border-color:#cffafe; color:#0369a1; }
 .icon_btn.danger{  background:#fee2e2; border-color:#fecaca; color:#991b1b; }
-
-/* Hovers más marcados por variante */
 .icon_btn.view:hover{   background:#e0e7ff; border-color:#c7d2fe; color:#312e81; }
 .icon_btn.edit:hover{   background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
 .icon_btn.danger:hover{ background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
-
-/* Accesibilidad: foco visible */
 .icon_btn:focus-visible{
   outline:0;
-  box-shadow:0 0 0 3px rgba(59,130,246,.35);  /* aro azul suave */
+  box-shadow:0 0 0 3px rgba(59,130,246,.35);
   transform:none;
 }
-
-/* Disabled consistente */
 .icon_btn:disabled{
   opacity:.45; cursor:not-allowed; transform:none; box-shadow:none;
 }
@@ -370,28 +373,28 @@ html, body, #root { height:100%; }
   --shadow:none; --shadow-soft:none;
   --r-xl:0; --r-lg:0; --r-md:0;
   background:#fff;
-  min-height: calc(100vh - var(--global-header-h)); /* RESTA HEADER */
+  min-height: calc(100vh - var(--global-header-h));
 }
 .eg_body{
   display:grid;
   grid-template-columns: 320px 1fr;
-  gap:0;                 /* sin separación entre paneles */
-  height: calc(100vh - var(--global-header-h));   /* RESTA HEADER */
+  gap:0;
+  height: calc(100vh - var(--global-header-h));
 }
 
-/* “card” sin borde ni sombra ni radios */
+/* “card” sin bordes */
 .cardd{ background:transparent; border:0; border-radius:0; box-shadow:none; }
 
-/* Sidebar como panel sólido con separador derecho */
+/* Sidebar como panel sólido */
 .eg_filters{  border-right:1px solid var(--border); }
 .eg_filters__title{ border-radius:0; }
 
-/* Contenido: columna flexible que scrollea */
+/* Contenido: columna flexible */
 .eg_content{
   display:flex; flex-direction:column; min-height:100%; padding:0;
 }
 
-/* Header rojo de contenido: full width, plano */
+/* Header rojo de contenido: full width */
 .eg_content__header{
   margin:0;
   border-radius:0;
@@ -402,7 +405,7 @@ html, body, #root { height:100%; }
 /* El wrapper de la tabla ocupa todo y permite scroll interno */
 .ec_table__wrap{ position:relative; flex:1 1 auto; overflow:auto;  }
 
-/* Tabla plana sin “tarjetas” */
+/* Tabla plana sin “tarjetas” en modo full */
 .gt_table{ gap:0; }
 .gt_headerd{
   grid-template-columns: repeat(7, 1fr);
@@ -415,14 +418,14 @@ html, body, #root { height:100%; }
   grid-template-columns: repeat(7, 1fr);
   background:transparent;
   border:0;
-  border-bottom:1px solid var(--border); /* separador de filas */
+  border-bottom:1px solid var(--border);
   border-radius:0;
   box-shadow:none;
 }
 .gt_cell{ padding:12px 12px; min-width:0; }
 .gt_cell.center{ text-align:center; }
 
-/* Centrar categorías, N° factura, medio, monto (por si alguna clase se pierde) */
+/* Centrar algunas columnas */
 .gt_headerd > .gt_cell:nth-child(2),
 .gt_headerd > .gt_cell:nth-child(3),
 .gt_headerd > .gt_cell:nth-child(5),
@@ -440,7 +443,7 @@ html, body, #root { height:100%; }
   color:#64748b;
 }
 
-/* Loader tapa el área pero sin sombras redondeadas */
+/* Loader */
 .ec_table_loader{ border-radius:0; background:rgba(255,255,255,.65); }
 
 /* ===== Header rojo Categorías ===== */
@@ -449,7 +452,7 @@ html, body, #root { height:100%; }
   background: var(--reg-primary); color:#fff; font-weight:900; display:flex; gap:10px; align-items:center;
 }
 
-/* Tarjetas de categorías más planas (sin sombra fuerte) */
+/* Tarjetas más planas */
 .eg_cats{ display:flex; flex-direction:column; gap:10px; }
 .eg_catcard{
   background:#fff; border:1px solid var(--border); border-radius:10px;
@@ -457,32 +460,47 @@ html, body, #root { height:100%; }
 }
 .eg_catcard:hover{ background:#f9fafb; }
 
-/* Acciones con variantes y hover (ya venían) */
-.row_actions{ display:flex; gap:8px; justify-content:center; }
-.icon_btn{
-  width:34px; height:34px; border-radius:999px; display:grid; place-items:center;
-  background:#f1f4fb; border:1px solid var(--border); color:#334155;
-  transition:transform .12s ease, background .16s ease, color .16s ease, box-shadow .16s ease, border-color .16s ease;
+/* ===== Estado ACTIVO de Categoría ===== */
+.eg_catcard.active{
+  background: linear-gradient(135deg, var(--reg-primary), #a31212);
+  border-color: #a31212;
+  box-shadow: 0 0 0 4px rgba(248,113,113,.16) inset, 0 8px 20px rgba(185,28,28,.18);
+  color: #fff;
+  transform: translateY(-1px);
 }
-.icon_btn:hover{ background:#fff; transform:translateY(-1px); box-shadow:0 8px 20px rgba(2,6,23,.08); }
-.icon_btn.view{   background:#eef2ff; border-color:#e0e7ff; color:#3730a3; }
-.icon_btn.edit{   background:#ecfeff; border-color:#cffafe; color:#0369a1; }
-.icon_btn.danger{ background:#fee2e2; border-color:#fecaca; color:#991b1b; }
-.icon_btn.view:hover{   background:#e0e7ff; border-color:#c7d2fe; color:#312e81; }
-.icon_btn.edit:hover{   background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
-.icon_btn.danger:hover{ background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
-.icon_btn:focus-visible{ outline:0; box-shadow:0 0 0 3px rgba(59,130,246,.35); transform:none; }
-.icon_btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+.eg_catcard.active .eg_catcard__title{ color:#fff; }
+.eg_catcard.active .eg_catcard__count{ color: rgba(255,255,255,.85); font-weight: 700; }
+.eg_catcard.active .eg_catcard__value{ color:#fff; text-shadow: 0 1px 0 rgba(0,0,0,.15); }
+.eg_catcard.active:hover{
+  filter: brightness(1.02);
+  box-shadow: 0 0 0 4px rgba(248,113,113,.2) inset, 0 10px 24px rgba(185,28,28,.22);
+}
 
-/* Responsive sin “islas” */
+/* Foco visible (teclado) */
+.eg_catcard:focus-visible{ outline:0; box-shadow: 0 0 0 3px rgba(59,130,246,.35); }
+.eg_catcard.active:focus-visible{
+  box-shadow: 0 0 0 3px rgba(255,255,255,.55), 0 0 0 6px rgba(185,28,28,.6);
+}
+
+/* Resp. sin “islas” */
 @media (max-width:1200px){
-  .eg_body{ grid-template-columns: 1fr; height:auto; min-height: calc(100vh - var(--global-header-h)); } /* RESTA HEADER */
+  .eg_body{ grid-template-columns: 1fr; height:auto; min-height: calc(100vh - var(--global-header-h)); }
   .eg_filters{ border-right:0; border-bottom:1px solid var(--border); }
 }
-.paddingcenter{padding: 16px;}
-.seg-tabbb{ background-color: rgba(255,255,255,.18);; color: white; padding: .5rem; border: none; border-radius: 10px; font-weight: 800;
-    font-size: .92rem;}
-.textcenterfiltros{display: flex; gap: 0; justify-content: space-between; padding: 17px 16px; color:white; background-color: var(--reg-primary)}
 
+.paddingcenter{padding: 16px;}
+.seg-tabbb{ background-color: rgba(255,255,255,.18); color: white; padding: .5rem; border: none; border-radius: 10px; font-weight: 800; font-size: .92rem;}
+.textcenterfiltros{display: flex; gap: 0; justify-content: space-between; padding: 17px 16px; color:white; background-color: var(--reg-primary)}
 .textcenterfiltros h3{ font-size: .9rem; font-weight: 400;}
 .eg_btn svg{ width: 16px; height: 16px;}
+/* Chip del filtro activo (reutilizado de Ingresos) */
+.ing-filterchip{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; background:#fff7f7; border:1px solid #fecaca; color:#7f1d1d;
+  padding:8px 10px; border-radius:10px; font-size:.9rem; margin:8px 0;
+}
+.ing-filterchip__clear{
+  appearance:none; border:0; background:#b91c1c; color:#fff; font-weight:800;
+  padding:6px 10px; border-radius:8px; cursor:pointer;
+}
+.ing-filterchip__clear:hover{ filter:brightness(.96); }

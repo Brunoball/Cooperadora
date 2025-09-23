@@ -315,3 +315,119 @@
   .famdel-modal-text{ font-size:.88rem; }
   .famdel-btn{ padding:.5rem .8rem; font-size:.85rem; min-width:96px; }
 }
+/* ===========================
+   Responsive compact cards
+   =========================== */
+@media (max-width: 720px){
+  /* 1) Modal a una columna (ya lo tenías para 980px; esto ajusta tamaños) */
+  .modalmi-modal{
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+  .modalmi-body{
+    grid-template-columns: 1fr;
+    padding: 0 12px;
+    gap: 12px;
+  }
+  .modalmi-subbar{
+    min-height: 40px;
+  }
+  .modalmi-subbar-spacer{
+    display: none !important;
+  }
+  .modalmi-search--compact{
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* 2) Tarjetas COMPACTAS: sólo Nombre + DNI */
+  /* Miembros actuales */
+  .modalmi-card{
+    padding: 10px 12px;
+  }
+
+  .modalmi-remove{
+    display: none !important; /* oculta botón de quitar en móvil */
+  }
+  .modalmi-info{
+    gap: 4px;
+  }
+  .modalmi-name{
+    font-size: .95rem;
+    font-weight: 800;
+  }
+  /* Quedate SOLO con el primer .modalmi-dni (que es el DNI) y ocultá el resto (localidad, etc.) */
+  .modalmi-meta .modalmi-dni:nth-of-type(n+2){
+    display: none !important;
+  }
+
+  /* Candidatos (checkbox se mantiene) */
+  .modalmi-selectable{
+    grid-template-columns: 30px 1fr; /* checkbox + texto */
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .modalmi-checkslot{
+    margin-left: 0;
+    width: 26px; height: 26px;
+  }
+
+  /* 3) Grid con más aire y scroll cómodo */
+  .modalmi-grid[data-fixed]{
+    padding: 10px;
+    gap: 10px;
+  }
+
+  /* 4) Footer fijo arriba del borde inferior para dedo */
+  .modalmi-foot{
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 10px 12px;
+    border-top: 1px solid var(--modalmi-gray-200);
+    z-index: 1;
+  }
+  .modalmi-btn{
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 14px;
+  }
+}
+
+/* Afinado extra para pantallas muy pequeñas */
+@media (max-width: 380px){
+  .modalmi-title{
+    font-size: .95rem;
+  }
+  .modalmi-name{
+    font-size: .92rem;
+  }
+  .modalmi-meta{
+    font-size: .82rem;
+  }
+}
+
+/* ===== Mantener el buscador arriba (sticky) ===== */
+
+/* 1) El scroll va en la columna, no en la grid */
+.modalmi-col{
+  overflow: auto;         /* ahora la columna scrollea */
+  min-height: 0;          /* evita overflow del grid */
+}
+
+/* 2) La grid ya no tiene scroll propio */
+.modalmi-grid[data-fixed]{
+  overflow: auto;       /* dejá que crezca y la columna scrollee */
+  max-height: 200px;
+}
+
+/* 3) La subbar (título + buscador) se queda pegada arriba */
+
+
+/* 4) En mobile seguimos igual: una sola columna, sticky también */
+@media (max-width: 980px){
+  .modalmi-body{ overflow: hidden; } /* el scroll es de cada columna */
+}

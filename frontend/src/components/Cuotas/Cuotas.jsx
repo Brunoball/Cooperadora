@@ -879,13 +879,7 @@ const Cuotas = () => {
           >
             <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
           </button>
-          <button
-            className="gcuotas-mbar-btn mbar-barcode"
-            onClick={() => setMostrarModalCodigoBarras(true)}
-            disabled={loading || !mesSeleccionado}
-          >
-            <FontAwesomeIcon icon={faBarcode} /><span>Barras</span>
-          </button>
+
           <button
             className="gcuotas-mbar-btn mbar-imprimir"
             onClick={handleImprimirTodos}

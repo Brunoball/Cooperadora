@@ -167,6 +167,9 @@ export default function IngresosContable() {
   const [cascading, setCascading] = useState(false);
   const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
 
+  // NUEVO: filtro por categoría (igual a egresos)
+  const [catFiltro, setCatFiltro] = useState("");
+
   // Modales
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -259,27 +262,36 @@ export default function IngresosContable() {
 
   useEffect(() => { loadAll(); }, [anio, mes, loadAll]);
 
-  /* Derivados */
+  /* Reset filtro categoría al cambiar contexto */
+  useEffect(() => { setCatFiltro(""); }, [innerTab, anio, mes]);
+
+  /* Derivados: búsqueda + filtro categoría */
   const filasFiltradasAlu = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return !q ? filas : filas.filter((f) =>
-      (f.alumno || "").toLowerCase().includes(q) ||
-      (f.categoria || "").toLowerCase().includes(q) ||
-      (f.fecha || "").toLowerCase().includes(q) ||
-      (f.mesPagado || "").toLowerCase().includes(q)
-    );
-  }, [filas, query]);
+    const base = !q
+      ? filas
+      : filas.filter((f) =>
+          (f.alumno || "").toLowerCase().includes(q) ||
+          (f.categoria || "").toLowerCase().includes(q) ||
+          (f.fecha || "").toLowerCase().includes(q) ||
+          (f.mesPagado || "").toLowerCase().includes(q)
+        );
+    return catFiltro ? base.filter((f) => (f.categoria || "-") === catFiltro) : base;
+  }, [filas, query, catFiltro]);
 
   const filasFiltradasIng = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return !q ? filasIngresos : filasIngresos.filter((f) =>
-      (f.categoria || "").toLowerCase().includes(q) ||
-      (f.descripcion || "").toLowerCase().includes(q) ||
-      (f.fecha || "").toLowerCase().includes(q) ||
-      (String(f.importe) || "").toLowerCase().includes(q) ||
-      (f.medio || "").toLowerCase().includes(q)
-    );
-  }, [filasIngresos, query]);
+    const base = !q
+      ? filasIngresos
+      : filasIngresos.filter((f) =>
+          (f.categoria || "").toLowerCase().includes(q) ||
+          (f.descripcion || "").toLowerCase().includes(q) ||
+          (f.fecha || "").toLowerCase().includes(q) ||
+          (String(f.importe) || "").toLowerCase().includes(q) ||
+          (f.medio || "").toLowerCase().includes(q)
+        );
+    return catFiltro ? base.filter((f) => (f.categoria || "-") === catFiltro) : base;
+  }, [filasIngresos, query, catFiltro]);
 
   const resumen = useMemo(() => {
     const base = innerTab === "alumnos" ? filasFiltradasAlu : filasFiltradasIng;
@@ -287,11 +299,12 @@ export default function IngresosContable() {
     return { total, cantidad: base.length };
   }, [filasFiltradasAlu, filasFiltradasIng, innerTab]);
 
+  // AGRUPA POR CATEGORÍA (para ambas pestañas) — usado en el sidebar clickeable
   const categoriasMes = useMemo(() => {
-    const map = new Map();
     const base = innerTab === "alumnos" ? filas : filasIngresos;
+    const map = new Map();
     base.forEach((f) => {
-      const key = innerTab === "alumnos" ? (f.categoria || "-") : (f.medio || "-");
+      const key = (f.categoria || "-").toString();
       const prev = map.get(key) || { nombre: key, cantidad: 0, monto: 0 };
       prev.cantidad += 1;
       prev.monto += Number((f.monto ?? f.importe) || 0);
@@ -304,7 +317,7 @@ export default function IngresosContable() {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
-  }, [anio, mes, query, innerTab]);
+  }, [anio, mes, query, innerTab, catFiltro]);
 
   const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
 
@@ -426,24 +439,48 @@ export default function IngresosContable() {
 
             <div className="ing-divider" />
 
+            {/* Lista de categorías clickeable */}
             <div className="ing-sectiontitle">
               <FontAwesomeIcon icon={faChartPie} />
-              <span>{innerTab === "alumnos" ? "Categorías (alumnos)" : "Medios de pago (ingresos)"}</span>
+              <span>{innerTab === "alumnos" ? "Categorías (alumnos)" : "Categorías (ingresos)"}</span>
             </div>
+
+            {/* Chip de filtro activo */}
+            {catFiltro && (
+              <div className="ing-filterchip">
+                <span>Filtro: <strong>{catFiltro}</strong></span>
+                <button className="ing-filterchip__clear" onClick={() => setCatFiltro("")} title="Quitar filtro">
+                  Quitar
+                </button>
+              </div>
+            )}
 
             {categoriasMes.length === 0 ? (
               <div className="ing-empty">Sin datos</div>
             ) : (
               <ul className="ing-catlist" role="list">
-                {categoriasMes.map((c, i) => (
-                  <li className="ing-catitem" key={i}>
-                    <div className="ing-catline">
-                      <span className="ing-catname">{(c.nombre || "-").toString().toUpperCase()}</span>
-                      <span className="ing-catamount num">{fmtMonto(c.monto)}</span>
-                    </div>
-                    <div className="ing-catmeta">{c.cantidad} {c.cantidad === 1 ? "registro" : "registros"}</div>
-                  </li>
-                ))}
+                {categoriasMes.map((c, i) => {
+                  const active = c.nombre === catFiltro;
+                  return (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        className={`ing-catitem-btn ${active ? "active" : ""}`}
+                        onClick={() => setCatFiltro(active ? "" : c.nombre)}
+                        title={`${c.cantidad} ${c.cantidad === 1 ? "registro" : "registros"}`}
+                        aria-pressed={active}
+                      >
+                        <div className="ing-catline">
+                          <span className="ing-catname">{(c.nombre || "-").toString().toUpperCase()}</span>
+                          <span className="ing-catamount num">{fmtMonto(c.monto)}</span>
+                        </div>
+                        <div className="ing-catmeta">
+                          {c.cantidad} {c.cantidad === 1 ? "registro" : "registros"}
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

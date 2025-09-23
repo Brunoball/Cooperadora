@@ -1,3 +1,4 @@
+// src/components/Alumnos/modales/ModalMiembros.jsx
 import React, {
   useEffect,
   useMemo,
@@ -310,8 +311,7 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
   }, []);
 
   const agregarSeleccionados = useCallback(async () => {
-    if (!isAdmin) return;
-    if (sel.size === 0) return;
+    if (!sel.size) return;
     const ids = Array.from(sel);
     const setIds = new Set(ids);
     const toAdd = candidatosAll.filter(c => setIds.has(c.id_alumno));
@@ -347,13 +347,12 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     } catch {
       notify?.('Error al agregar miembros', 'error');
     }
-  }, [isAdmin, sel, candidatosAll, familia, notify, onDeltaCounts]);
+  }, [sel, candidatosAll, familia, notify, onDeltaCounts]);
 
   const abrirModalQuitar = useCallback((miembro) => {
-    if (!isAdmin) return;
     setDelTarget(miembro);
     setDelOpen(true);
-  }, [isAdmin]);
+  }, []);
 
   const cerrarModalQuitar = useCallback(() => {
     if (delWorking) return;
@@ -362,7 +361,7 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
   }, [delWorking]);
 
   const confirmarQuitar = useCallback(async () => {
-    if (!isAdmin || !delTarget) return;
+    if (!delTarget) return;
     setDelWorking(true);
     const id_alumno = delTarget.id_alumno;
     const eraActivo = Number(delTarget?.activo) === 1;
@@ -400,7 +399,7 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     } finally {
       setDelWorking(false);
     }
-  }, [isAdmin, delTarget, familia, notify, onDeltaCounts]);
+  }, [delTarget, familia, notify, onDeltaCounts]);
 
   // buscador (lupa/clear + ESC)
   const handleSearchIcon = useCallback(() => {
@@ -410,7 +409,7 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     }
     startTransition(() => setQ(''));
     searchInputRef.current?.focus();
-  }, [q]);
+  }, [q, startTransition]);
 
   const onSearchKeyDown = useCallback((e) => {
     if (e.key === 'Escape' && q) {
@@ -440,11 +439,10 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
         </div>
 
         <div className="modalmi-body">
-          {/* Columna izquierda: miembros actuales (usamos misma subbar para alinear con la derecha) */}
+          {/* Columna izquierda: miembros actuales */}
           <div className="modalmi-col">
             <div className="modalmi-subbar">
               <h4 className="modalmi-subtitle">Miembros actuales</h4>
-              {/* placeholder para mantener misma altura que la subbar derecha */}
               <div className="modalmi-subbar-spacer" aria-hidden />
             </div>
 
@@ -471,7 +469,7 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
                     onRemoveClick={abrirModalQuitar}
                     cascadeIndex={idx}
                     playCascade={playCascade}
-                    isAdmin={isAdmin}
+                    isAdmin={true}
                   />
                 ))
               )}
@@ -540,19 +538,16 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer: solo botón Agregar */}
         <div className="modalmi-foot">
-          {isAdmin && (
-            <button
-              className="modalmi-btn modalmi-solid"
-              onClick={agregarSeleccionados}
-              disabled={sel.size === 0}
-              title="Agregar seleccionados"
-            >
-              <FaPlus /> Agregar seleccionados ({sel.size})
-            </button>
-          )}
-          <button className="modalmi-btn modalmi-ghost" onClick={onClose}>Cerrar</button>
+          <button
+            className="modalmi-btn modalmi-solid"
+            onClick={agregarSeleccionados}
+            disabled={sel.size === 0}
+            title="Agregar seleccionados"
+          >
+            <FaPlus /> Agregar seleccionados ({sel.size})
+          </button>
         </div>
       </div>
 

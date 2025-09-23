@@ -473,3 +473,124 @@
 }
 .famdel-check-mini .modalmi-checkslot{ width: 28px; height: 28px; }
 .famdel-check-mini-text{ font-weight: 600; color: var(--reg-gray-800); line-height: 1.25; }
+
+/* ====== RESPONSIVE EXTRAS ====== */
+
+/* Tablets medianas: escondé Observaciones y compactá columnas */
+@media (max-width: 900px){
+  .hide-sm{ display:none !important; }
+  .t-head,
+  .t-row{
+    grid-template-columns: 1.6fr 1fr 0.9fr 1fr; /* nombre | fecha | miembros | ops */
+  }
+}
+
+/* Tablets chicas / phablets */
+@media (max-width: 720px){
+  /* Sacamos el header de tabla y pasamos a layout tipo tarjeta */
+  .t-head{ display:none; }
+
+  .ntg-table{
+    padding: 10px;
+    max-height: unset;   /* evitá recorte en móviles, usa scroll natural */
+    overflow: visible;
+    border: none;
+  }
+
+  .t-body{ gap: 10px; }
+
+  .t-row{
+    display: grid;
+    grid-template-columns: 1fr auto;           /* nombre | ops */
+    grid-template-areas:
+      "name ops"
+      "date date"
+      "members members"
+      "obs obs";
+    gap: 8px 10px;
+    border: 1px solid var(--reg-gray-200);
+    box-shadow: var(--reg-shadow-sm);
+    padding: 12px;
+  }
+
+  /* Mapeo a áreas sin tocar JSX (por posición) */
+  .t-row > div:nth-child(1){ grid-area: name; }     /* .cell-name */
+  .t-row > div:nth-child(2){ grid-area: obs; }      /* .cell-obs (venía oculta en >=900px) */
+  .t-row > div:nth-child(3){ grid-area: date; }     /* Fecha (center) */
+  .t-row > div:nth-child(4){ grid-area: members; }  /* Miembros (center) */
+  .t-row > div:nth-child(5){ grid-area: ops; justify-self:end; }  /* .cell-ops */
+
+  /* Fichas: título más grande y avatar un toque más chico */
+  .cell-name .name{ font-weight: 800; font-size: 1rem; }
+  .avatar{ width: 30px; height: 30px; font-size: .95rem; }
+
+  /* Rótulos para que se entienda cada dato en tarjeta */
+  .t-row > div:nth-child(3)::before,
+  .t-row > div:nth-child(4)::before,
+  .t-row > div:nth-child(2)::before{
+    display: block;
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--reg-gray-500);
+    margin-bottom: 4px;
+    letter-spacing: .2px;
+    content: "";
+  }
+  .t-row > div:nth-child(3)::before{ content: "Fecha alta"; }
+  .t-row > div:nth-child(4)::before{ content: "Miembros"; }
+  .t-row > div:nth-child(2)::before{ content: "Observaciones"; }
+
+  /* Observaciones en móvil: multiline, tono más claro */
+  .cell-obs{ color: var(--reg-gray-700); font-size: .92rem; }
+
+  /* Botones de acción: mejor target táctil */
+  .icon-btn{ padding: 8px 10px; }
+  .icon-btn svg{ width: 18px; height: 18px; }
+}
+
+/* Mobile angosto */
+@media (max-width: 560px){
+  /* Topbar más compacto: título y volver; buscador ya se oculta en tu CSS */
+  .ntg-topbar{
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .ntg-title{ font-size: 1rem; width:auto; }
+  .centrar-intput{ width:auto; }
+
+  /* Acciones: botones en 2 líneas si hace falta */
+  .actions{ gap: 6px; }
+  .btn{ padding: 8px 10px; font-size: .9rem; }
+  .btn.small{ font-size: .88rem; padding: 7px 9px; }
+
+  /* Tarjetas más “respirables” */
+  .t-row{ border-radius: 12px; }
+}
+
+/* Mobile muy chico */
+@media (max-width: 420px){
+  .btn.btn-add, .btn.btn-export{
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .card-tabs{ flex-direction: column; align-items: stretch; gap: 10px; }
+  .tabs{ order: 1; }
+  .actions{ order: 2; display: grid; grid-template-columns: 1fr; }
+
+  /* En tarjetas: alineá mejor header (name | ops) */
+  .t-row{
+    grid-template-columns: 1fr auto;
+  }
+  .icon-btn{ padding: 8px; }
+}
+
+/* Accesibilidad: reduce animaciones si el usuario lo pide */
+@media (prefers-reduced-motion: reduce){
+  .ntg-back,
+  .btn,
+  .icon-btn,
+  .famdel-btn{
+    transition: none !important;
+  }
+}
