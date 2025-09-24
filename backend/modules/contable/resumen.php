@@ -1,14 +1,15 @@
 <?php
 /**
- * /api.php?action=contable_resumen
- * GET: ?year=YYYY
- * Devuelve por mes: ingresos (pagos + ingresos manuales), egresos y saldo.
+ * /api.php?action=contable_resumen&year=YYYY
+ * Suma ingresos de alumnos (pagos) + ingresos manuales, resta egresos.
+ * Devuelve 12 filas (enero..diciembre) con ingresos, egresos y saldo.
  */
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
 try {
+  // ===== Conexión =====
   if (!isset($pdo)) {
     require_once __DIR__ . '/../../config/db.php';
   }
@@ -19,54 +20,83 @@ try {
   $pdo->exec("SET NAMES utf8mb4");
 
   $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+  if ($year < 2000 || $year > 2100) $year = (int)date('Y');
 
-  /* 1) Ingresos desde PAGOS (usa el módulo existente contable/ingresos.php) */
-  $GET_bak = $_GET;
-  $_GET = ['action' => 'contable_ingresos', 'year' => $year];
-  ob_start();
-  require __DIR__ . '/ingresos.php';
-  $ingRaw = ob_get_clean();
-  $_GET = $GET_bak;
+  /* ==========================================================
+     1) PAGOS (alumnos)  -> SUM(monto_pago) cuando estado='pagado'
+     ========================================================== */
+  $stPagos = $pdo->prepare("
+    SELECT
+      YEAR(fecha_pago)   AS y,
+      MONTH(fecha_pago)  AS m,
+      SUM(CASE WHEN estado = 'pagado' THEN COALESCE(monto_pago,0) ELSE 0 END) AS total
+    FROM pagos
+    WHERE YEAR(fecha_pago) = :y
+    GROUP BY y, m
+    ORDER BY y, m
+  ");
+  $stPagos->execute([':y' => $year]);
 
-  $ingresosMes = [];
-  $ing = json_decode($ingRaw, true);
-  if (is_array($ing) && !empty($ing['resumen'])) {
-    foreach ($ing['resumen'] as $r) {
-      $key = sprintf('%04d-%02d', (int)$r['anio'], (int)$r['mes']);
-      $ingresosMes[$key] = (float)$r['ingresos']; // sólo pagos
+  $ingresosPagosMes = [];
+  while ($r = $stPagos->fetch(PDO::FETCH_ASSOC)) {
+    $y = (int)$r['y']; $m = (int)$r['m'];
+    if ($y === $year && $m >= 1 && $m <= 12) {
+      $key = sprintf('%04d-%02d', $y, $m);
+      $ingresosPagosMes[$key] = (float)$r['total'];
     }
   }
 
-  /* 2) Ingresos MANUALES (tabla ingresos) */
-  $stMan = $pdo->prepare("
-    SELECT YEAR(fecha) AS y, MONTH(fecha) AS m, SUM(importe) AS total
+  /* ==========================================================
+     2) INGRESOS MANUALES (tabla ingresos) -> SUM(importe)
+     ========================================================== */
+  $stIngMan = $pdo->prepare("
+    SELECT
+      YEAR(fecha)   AS y,
+      MONTH(fecha)  AS m,
+      SUM(COALESCE(importe,0)) AS total
     FROM ingresos
     WHERE YEAR(fecha) = :y
     GROUP BY y, m
     ORDER BY y, m
   ");
-  $stMan->execute([':y' => $year]);
-  while ($r = $stMan->fetch(PDO::FETCH_ASSOC)) {
-    $key = sprintf('%04d-%02d', (int)$r['y'], (int)$r['m']);
-    $ingresosMes[$key] = ($ingresosMes[$key] ?? 0) + (float)$r['total']; // pagos + manuales
+  $stIngMan->execute([':y' => $year]);
+
+  $ingresosManualesMes = [];
+  while ($r = $stIngMan->fetch(PDO::FETCH_ASSOC)) {
+    $y = (int)$r['y']; $m = (int)$r['m'];
+    if ($y === $year && $m >= 1 && $m <= 12) {
+      $key = sprintf('%04d-%02d', $y, $m);
+      $ingresosManualesMes[$key] = (float)$r['total'];
+    }
   }
 
-  /* 3) Egresos */
-  $stE = $pdo->prepare("
-    SELECT YEAR(fecha) AS y, MONTH(fecha) AS m, SUM(monto) AS total
+  /* ==========================================================
+     3) EGRESOS (tabla egresos) -> SUM(importe)
+     ========================================================== */
+  $stEgr = $pdo->prepare("
+    SELECT
+      YEAR(fecha)   AS y,
+      MONTH(fecha)  AS m,
+      SUM(COALESCE(importe,0)) AS total
     FROM egresos
     WHERE YEAR(fecha) = :y
     GROUP BY y, m
     ORDER BY y, m
   ");
-  $stE->execute([':y' => $year]);
+  $stEgr->execute([':y' => $year]);
+
   $egresosMes = [];
-  while ($r = $stE->fetch(PDO::FETCH_ASSOC)) {
-    $key = sprintf('%04d-%02d', (int)$r['y'], (int)$r['m']);
-    $egresosMes[$key] = (float)$r['total'];
+  while ($r = $stEgr->fetch(PDO::FETCH_ASSOC)) {
+    $y = (int)$r['y']; $m = (int)$r['m'];
+    if ($y === $year && $m >= 1 && $m <= 12) {
+      $key = sprintf('%04d-%02d', $y, $m);
+      $egresosMes[$key] = (float)$r['total'];
+    }
   }
 
-  /* 4) Salida normalizada a 12 meses */
+  /* ==========================================================
+     4) Normalizar a 12 meses y combinar
+     ========================================================== */
   $MESES = [
     1=>'ENERO',2=>'FEBRERO',3=>'MARZO',4=>'ABRIL',5=>'MAYO',6=>'JUNIO',
     7=>'JULIO',8=>'AGOSTO',9=>'SEPTIEMBRE',10=>'OCTUBRE',11=>'NOVIEMBRE',12=>'DICIEMBRE'
@@ -74,21 +104,35 @@ try {
 
   $out = [];
   for ($m = 1; $m <= 12; $m++) {
-    $key   = sprintf('%04d-%02d', $year, $m);
-    $ingV  = (float)($ingresosMes[$key] ?? 0);
-    $egrV  = (float)($egresosMes[$key] ?? 0);
+    $key       = sprintf('%04d-%02d', $year, $m);
+    $ingPagos  = (float)($ingresosPagosMes[$key]    ?? 0);
+    $ingMan    = (float)($ingresosManualesMes[$key] ?? 0);
+    $ingTotal  = $ingPagos + $ingMan;
+    $egrTotal  = (float)($egresosMes[$key] ?? 0);
+
     $out[] = [
-      'anio'        => $year,
-      'mes'         => $m,
-      'nombre_mes'  => $MESES[$m],
-      'ingresos'    => $ingV,
-      'egresos'     => $egrV,
-      'saldo'       => $ingV - $egrV,
+      'anio'            => $year,
+      'mes'             => $m,
+      'nombre_mes'      => $MESES[$m],
+      'ingresos'        => $ingTotal,          // 👈 Pagos + Manuales
+      'egresos'         => $egrTotal,
+      'saldo'           => $ingTotal - $egrTotal,
+      // breakdown opcional (útil para debug / auditoría)
+      'ingresos_pagos'  => $ingPagos,
+      'ingresos_manual' => $ingMan,
     ];
   }
 
-  echo json_encode(['exito' => true, 'year' => $year, 'resumen' => $out], JSON_UNESCAPED_UNICODE);
+  echo json_encode([
+    'exito'   => true,
+    'year'    => $year,
+    'resumen' => $out,
+  ], JSON_UNESCAPED_UNICODE);
+
 } catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(['exito' => false, 'mensaje' => 'Error: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+  http_response_code(200);
+  echo json_encode([
+    'exito'   => false,
+    'mensaje' => 'Error: ' . $e->getMessage(),
+  ], JSON_UNESCAPED_UNICODE);
 }

@@ -1,5 +1,5 @@
 <?php
-// backend/modules/contable/agregar_categoria.php
+// backend/modules/contable/agregar_proveedor.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
@@ -19,45 +19,42 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
 
-    // Admite JSON o form-url-encoded
-    $raw = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($raw)) {
-        $raw = $_POST;
-    }
-
+    $raw = json_decode(file_get_contents('php://input'), true) ?? [];
     $nombre = strtoupper(trim((string)($raw['nombre'] ?? '')));
-    // Normalizar espacios múltiples
-    $nombre = preg_replace('/\s+/', ' ', $nombre ?? '');
+
     if ($nombre === '') {
-        throw new RuntimeException('INGRESÁ LA NUEVA CATEGORÍA.');
+        throw new RuntimeException('INGRESÁ EL NOMBRE DEL PROVEEDOR.');
     }
     if (mb_strlen($nombre) > 120) {
-        throw new RuntimeException('LA CATEGORÍA NO PUEDE SUPERAR 120 CARACTERES.');
+        throw new RuntimeException('EL PROVEEDOR NO PUEDE SUPERAR 120 CARACTERES.');
     }
 
-    // Inserta si no existe; si ya existe, hace no-op para mantener la UNIQUE.
-    // IMPORTANTE: sólo referenciamos la TABLA, no el esquema.
-    $sql = "INSERT INTO contable_categoria (nombre_categoria)
+    // Asegurar UNIQUE por nombre (si ya existe será no-op)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS contable_proveedor (
+            id_cont_proveedor INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            nombre_proveedor  VARCHAR(120) NOT NULL,
+            fecha_creacion    DATE NOT NULL DEFAULT (CURRENT_DATE),
+            UNIQUE KEY uq_contable_proveedor_nombre (nombre_proveedor)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    $sql = "INSERT INTO contable_proveedor (nombre_proveedor)
             VALUES (:n)
-            ON DUPLICATE KEY UPDATE nombre_categoria = VALUES(nombre_categoria)";
+            ON DUPLICATE KEY UPDATE nombre_proveedor = VALUES(nombre_proveedor)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':n' => $nombre]);
 
-    // Si insertó, devuelve el nuevo id; si no, buscamos el existente.
+    // Si ya existía, lastInsertId() = '0'; buscar su id
     $id = (int)$pdo->lastInsertId();
     if ($id === 0) {
-        $q = $pdo->prepare(
-            "SELECT id_cont_categoria
-             FROM contable_categoria
-             WHERE nombre_categoria = :n
-             LIMIT 1"
-        );
+        $q = $pdo->prepare("SELECT id_cont_proveedor FROM contable_proveedor WHERE nombre_proveedor = :n LIMIT 1");
         $q->execute([':n' => $nombre]);
         $id = (int)($q->fetchColumn() ?: 0);
     }
 
     if ($id <= 0) {
-        throw new RuntimeException('No se pudo obtener el ID de la categoría.');
+        throw new RuntimeException('No se pudo obtener el ID del proveedor.');
     }
 
     echo json_encode([
@@ -67,8 +64,7 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
-    // mantenemos 200 para manejo uniforme en frontend
-    http_response_code(200);
+    http_response_code(200); // mantener 200 para manejo uniforme en frontend
     echo json_encode([
         'exito'   => false,
         'mensaje' => $e->getMessage(),

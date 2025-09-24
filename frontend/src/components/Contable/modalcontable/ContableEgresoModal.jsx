@@ -9,42 +9,55 @@ import {
   faCalendar, faCreditCard, faTags, faHashtag,
   faDollarSign, faPen
 } from "@fortawesome/free-solid-svg-icons";
+import Toast from "../../Global/Toast";
 import "./ContableEgresoModal.css";
 
 const VALOR_OTRO = "__OTRO__";
+const MAX_IMPORTE_SOSPECHOSO = 50_000_000;
+
+// Helpers de saneo
+const toUpper = (v = "") => String(v).toUpperCase();
+// Solo letras (mantiene acentos/ñ) + espacios
+const onlyLetters = (v = "") => toUpper(v).replace(/[^\p{L}\s]/gu, "");
+// Solo dígitos
+const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
 
 export default function ContableEgresoModal({
   open,
   onClose,
   onSaved,
   editRow,
-  /** ⬇️ nuevo: función para toasts */
-  notify,
+  notify, // opcional: notify(tipo, mensaje, durMs)
 }) {
   const [fecha, setFecha] = useState("");
 
-  /** ====== CATEGORÍA (lista + OTRO) ====== */
-  const [listaCategorias, setListaCategorias] = useState([]); // [{id, nombre}]
-  const [categoriaId, setCategoriaId] = useState("");         // id seleccionado
-  const [categoriaEsOtra, setCategoriaEsOtra] = useState(false);
-  const [categoriaNueva, setCategoriaNueva] = useState("");   // texto si es OTRO
+  // === Listas ===
+  const [listaCategorias, setListaCategorias] = useState([]);
+  const [listaDescripciones, setListaDescripciones] = useState([]);
+  const [listaProveedores, setListaProveedores] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
 
-  /** ====== DESCRIPCIÓN (lista + OTRO) ====== */
-  const [listaDescripciones, setListaDescripciones] = useState([]); // [{id, texto}]
+  // === Selecciones ===
+  const [categoriaId, setCategoriaId] = useState("");
+  const [categoriaEsOtra, setCategoriaEsOtra] = useState(false);
+  const [categoriaNueva, setCategoriaNueva] = useState("");
+
   const [descripcionId, setDescripcionId] = useState("");
   const [descripcionEsOtra, setDescripcionEsOtra] = useState(false);
   const [descripcionNueva, setDescripcionNueva] = useState("");
 
-  /** ====== MEDIO DE PAGO ====== */
-  const [mediosPago, setMediosPago] = useState([]); // [{id, nombre}]
+  const [proveedorId, setProveedorId] = useState("");
+  const [proveedorEsOtro, setProveedorEsOtro] = useState(false);
+  const [proveedorNuevo, setProveedorNuevo] = useState("");
+
   const [medioId, setMedioId] = useState("");
   const [medioEsOtro, setMedioEsOtro] = useState(false);
   const [medioNuevo, setMedioNuevo] = useState("");
 
-  /** ====== OTROS CAMPOS ====== */
-  const [numeroFactura, setNumeroFactura] = useState("");
-  const [monto, setMonto] = useState("");
-  const [comp, setComp] = useState("");
+  // === Otros ===
+  const [comprobante, setComprobante] = useState("");
+  const [importe, setImporte] = useState("");
+  const [compURL, setCompURL] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -57,128 +70,207 @@ export default function ContableEgresoModal({
   const dropRef = useRef(null);
   const dateInputRef = useRef(null);
 
-  /** helper: evita crashear si no pasan notify */
-  const safeNotify = (tipo, mensaje, duracion = 3000) => {
-    try { typeof notify === "function" && notify(tipo, mensaje, duracion); }
-    catch {}
+  // ====== HOST LOCAL DE TOASTS ======
+  const [toasts, setToasts] = useState([]);
+  // Mapa de dedupe: tipo|mensaje -> timestamp
+  const recentToastMapRef = useRef(new Map());
+
+  // Limpiar toasts al cerrar/abrir el modal para que no “vuelvan a aparecer”
+  useEffect(() => {
+    if (!open) {
+      setToasts([]);
+      recentToastMapRef.current.clear();
+    } else {
+      // al abrir, también limpiamos por seguridad
+      setToasts([]);
+      recentToastMapRef.current.clear();
+    }
+  }, [open]);
+
+  const pushToast = (tipo, mensaje, dur = 3000) => {
+    const key = `${tipo}|${mensaje}`;
+    const now = Date.now();
+    const last = recentToastMapRef.current.get(key);
+    // si se intentó mostrar el mismo toast en los últimos 4s, lo ignoramos
+    if (last && now - last < 4000) return;
+    recentToastMapRef.current.set(key, now);
+
+    const id = `${now}-${Math.random().toString(36).slice(2)}`;
+    setToasts(t => [...t, { id, tipo, mensaje, dur }]);
+
+    // liberar la clave cuando expira el toast (dur + un colchón)
+    setTimeout(() => {
+      recentToastMapRef.current.delete(key);
+    }, Math.max(0, dur + 500));
   };
 
+  const closeToast = (id) => setToasts(t => t.filter(x => x.id !== id));
+
+  const safeNotify = (tipo, mensaje, dur = 3000) => {
+    // Lanza toast local SIEMPRE (visible arriba del modal)
+    pushToast(tipo, mensaje, dur);
+    // Además, si el padre tiene notify, también lo usa
+    try { typeof notify === "function" && notify(tipo, mensaje, dur); } catch {}
+  };
+
+  // ===== infra fetch =====
   const fetchJSON = async (url, options) => {
     const sep = url.includes("?") ? "&" : "?";
     const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.mensaje || `HTTP ${res.status}`);
+    if (!res.ok || data?.exito === false) {
+      const msg = data?.mensaje || `Error del servidor (HTTP ${res.status}).`;
+      throw new Error(msg);
+    }
     return data;
   };
 
-  /** =======================
-   *  Cargar listas (API)
-   *  ======================= */
+  // ===== Cargar listas =====
   const loadListas = async () => {
     try {
       const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
-      const mp = (data?.listas?.medios_pago ?? []).map(m => ({ id: Number(m.id), nombre: String(m.nombre || "") }));
+
+      const mp = (data?.listas?.medios_pago ?? []).map(m => ({
+        id: Number(m.id),
+        nombre: String(m.nombre || m.medio_pago || "")
+      }));
       setMediosPago(mp);
 
-      const cats = (data?.listas?.egreso_categorias ?? []).map(c => ({ id: Number(c.id), nombre: String(c.nombre || "") }));
+      const cats = (data?.listas?.egreso_categorias ?? data?.listas?.contable_categorias ?? []).map(c => ({
+        id: Number(c.id),
+        nombre: String(c.nombre || c.nombre_categoria || "")
+      }));
       setListaCategorias(cats);
 
-      const descs = (data?.listas?.egreso_descripciones ?? []).map(d => ({ id: Number(d.id), texto: String(d.texto || "") }));
+      const descs = (data?.listas?.egreso_descripciones ?? data?.listas?.contable_descripciones ?? []).map(d => ({
+        id: Number(d.id),
+        texto: String(d.texto || d.nombre || d.nombre_descripcion || "")
+      }));
       setListaDescripciones(descs);
-    } catch (e) {
-      console.error("Error cargando listas:", e);
-      setMediosPago([]); setListaCategorias([]); setListaDescripciones([]);
+
+      const provs = (data?.listas?.contable_proveedores ?? data?.listas?.proveedores ?? data?.listas?.egreso_proveedores ?? []).map(p => ({
+        id: Number(p.id),
+        nombre: String(p.nombre || p.nombre_proveedor || "")
+      }));
+      setListaProveedores(provs);
+    } catch {
+      setMediosPago([]); setListaCategorias([]); setListaDescripciones([]); setListaProveedores([]);
+      safeNotify("error", "No se pudieron cargar las listas. Reintentá más tarde.");
     }
   };
 
-  /** =======================
-   *  Crear ítems al vuelo
-   *  ======================= */
+  // ===== Crear al vuelo =====
   const crearMedioPago = async (nombre) => {
-    const nombreOK = String(nombre || "").trim().toUpperCase();
-    if (!nombreOK) throw new Error("INGRESÁ EL NUEVO MEDIO DE PAGO.");
-    if (nombreOK.length > 100) throw new Error("EL MEDIO DE PAGO NO PUEDE SUPERAR 100 CARACTERES.");
-    return fetchJSON(`${BASE_URL}/api.php?action=medio_pago_crear`, {
+    const nombreOK = onlyLetters(nombre).trim();
+    if (!nombreOK) throw new Error("Ingresá el nuevo medio de pago (solo letras).");
+    if (nombreOK.length > 100) throw new Error("El medio de pago no puede superar los 100 caracteres.");
+    const r = await fetchJSON(`${BASE_URL}/api.php?action=medio_pago_crear`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre: nombreOK }),
     });
+    return r;
   };
 
   const crearEgresoCategoria = async (nombre) => {
-    const nombreOK = String(nombre || "").trim().toUpperCase();
-    if (!nombreOK) throw new Error("INGRESÁ LA NUEVA CATEGORÍA.");
-    if (nombreOK.length > 100) throw new Error("LA CATEGORÍA NO PUEDE SUPERAR 100 CARACTERES.");
-    // usar los endpoints nuevos del backend
-    return fetchJSON(`${BASE_URL}/api.php?action=agregar_categoria`, {
+    const nombreOK = onlyLetters(nombre).trim();
+    if (!nombreOK) throw new Error("Ingresá la nueva categoría (solo letras).");
+    if (nombreOK.length > 100) throw new Error("La categoría no puede superar los 100 caracteres.");
+    const r = await fetchJSON(`${BASE_URL}/api.php?action=agregar_categoria`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre: nombreOK }),
     });
+    return r;
   };
 
   const crearEgresoDescripcion = async (texto) => {
-    const textoOK = String(texto || "").trim().toUpperCase();
-    if (!textoOK) throw new Error("INGRESÁ LA NUEVA DESCRIPCIÓN.");
-    if (textoOK.length > 150) throw new Error("LA DESCRIPCIÓN NO PUEDE SUPERAR 150 CARACTERES.");
-    // usar los endpoints nuevos del backend
-    return fetchJSON(`${BASE_URL}/api.php?action=agregar_descripcion`, {
+    const textoOK = onlyLetters(texto).trim();
+    if (!textoOK) throw new Error("Ingresá la nueva descripción (solo letras).");
+    if (textoOK.length > 150) throw new Error("La descripción no puede superar los 150 caracteres.");
+    const r = await fetchJSON(`${BASE_URL}/api.php?action=agregar_descripcion`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ texto: textoOK }),
     });
+    return r;
   };
 
-  /** =======================
-   *  Efectos de apertura
-   *  ======================= */
+  const crearProveedor = async (nombre) => {
+    const nombreOK = onlyLetters(nombre).trim();
+    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor (solo letras).");
+    if (nombreOK.length > 120) throw new Error("El proveedor no puede superar los 120 caracteres.");
+    const r = await fetchJSON(`${BASE_URL}/api.php?action=agregar_proveedor`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nombreOK }),
+    });
+    return r;
+  };
+
   useEffect(() => { if (open) loadListas(); }, [open]);
 
+  const findIdByName = (list, nameKey, value) => {
+    const needle = toUpper(value).trim();
+    if (!needle) return null;
+    const item = list.find(x => toUpper(x[nameKey]).trim() === needle);
+    return item ? String(item.id) : null;
+  };
+
+  // Prefill
   useEffect(() => {
     if (!open) return;
 
     if (editRow) {
-      // Fecha
       setFecha(editRow.fecha || "");
 
-      // MEDIO DE PAGO
       if (editRow.id_medio_pago) {
         setMedioId(String(editRow.id_medio_pago));
-        setMedioEsOtro(false);
-        setMedioNuevo("");
-      } else if (editRow.medio_pago) {
-        const buscado = String(editRow.medio_pago).trim().toUpperCase();
-        const found = mediosPago.find(m => String(m.nombre).trim().toUpperCase() === buscado);
-        if (found) { setMedioId(String(found.id)); setMedioEsOtro(false); setMedioNuevo(""); }
-        else { setMedioId(""); setMedioEsOtro(true); setMedioNuevo(buscado); }
+        setMedioEsOtro(false); setMedioNuevo("");
       } else {
-        setMedioId(""); setMedioEsOtro(false); setMedioNuevo("");
+        const medioNombre = editRow.medio_pago || editRow.medio_nombre || "";
+        const id = findIdByName(mediosPago, "nombre", medioNombre);
+        if (id) { setMedioId(id); setMedioEsOtro(false); setMedioNuevo(""); }
+        else if (medioNombre) { setMedioId(""); setMedioEsOtro(true); setMedioNuevo(toUpper(medioNombre)); }
+        else { setMedioId(""); setMedioEsOtro(false); setMedioNuevo(""); }
       }
 
-      // CATEGORÍA (texto en base, intentar matchear con lista)
-      const catTxt = String(editRow.categoria || "").trim().toUpperCase();
-      if (catTxt) {
-        const f = listaCategorias.find(c => String(c.nombre).trim().toUpperCase() === catTxt);
-        if (f) { setCategoriaId(String(f.id)); setCategoriaEsOtra(false); setCategoriaNueva(""); }
-        else { setCategoriaId(""); setCategoriaEsOtra(true); setCategoriaNueva(catTxt); }
+      if (editRow.id_cont_categoria) {
+        setCategoriaId(String(editRow.id_cont_categoria));
+        setCategoriaEsOtra(false); setCategoriaNueva("");
       } else {
-        setCategoriaId(""); setCategoriaEsOtra(false); setCategoriaNueva("");
+        const catNombre = editRow.categoria || editRow.nombre_categoria || "";
+        const id = findIdByName(listaCategorias, "nombre", catNombre);
+        if (id) { setCategoriaId(id); setCategoriaEsOtra(false); setCategoriaNueva(""); }
+        else if (catNombre) { setCategoriaId(""); setCategoriaEsOtra(true); setCategoriaNueva(toUpper(catNombre)); }
+        else { setCategoriaId(""); setCategoriaEsOtra(false); setCategoriaNueva(""); }
       }
 
-      // DESCRIPCIÓN (texto en base, intentar matchear con lista)
-      const descTxt = String(editRow.descripcion || "").trim().toUpperCase();
-      if (descTxt) {
-        const f = listaDescripciones.find(d => String(d.texto).trim().toUpperCase() === descTxt);
-        if (f) { setDescripcionId(String(f.id)); setDescripcionEsOtra(false); setDescripcionNueva(""); }
-        else { setDescripcionId(""); setDescripcionEsOtra(true); setDescripcionNueva(descTxt); }
+      if (editRow.id_cont_descripcion) {
+        setDescripcionId(String(editRow.id_cont_descripcion));
+        setDescripcionEsOtra(false); setDescripcionNueva("");
       } else {
-        setDescripcionId(""); setDescripcionEsOtra(false); setDescripcionNueva("");
+        const descNombre = editRow.descripcion || editRow.nombre_descripcion || "";
+        const id = findIdByName(listaDescripciones, "texto", descNombre);
+        if (id) { setDescripcionId(id); setDescripcionEsOtra(false); setDescripcionNueva(""); }
+        else if (descNombre) { setDescripcionId(""); setDescripcionEsOtra(true); setDescripcionNueva(toUpper(descNombre)); }
+        else { setDescripcionId(""); setDescripcionEsOtra(false); setDescripcionNueva(""); }
       }
 
-      // Otros campos
-      setNumeroFactura(String(editRow.numero_factura || "").toUpperCase());
-      setMonto(String(editRow.monto || ""));
-      setComp(editRow.comprobante_url || "");
+      if (editRow.id_cont_proveedor) {
+        setProveedorId(String(editRow.id_cont_proveedor));
+        setProveedorEsOtro(false); setProveedorNuevo("");
+      } else {
+        const provNombre = editRow.proveedor || editRow.nombre_proveedor || "";
+        const id = findIdByName(listaProveedores, "nombre", provNombre);
+        if (id) { setProveedorId(id); setProveedorEsOtro(false); setProveedorNuevo(""); }
+        else if (provNombre) { setProveedorId(""); setProveedorEsOtro(true); setProveedorNuevo(toUpper(provNombre)); }
+        else { setProveedorId(""); setProveedorEsOtro(false); setProveedorNuevo(""); }
+      }
+
+      setComprobante(toUpper(String(editRow.comprobante ?? editRow.numero_factura ?? "")));
+      setImporte(String(editRow.importe ?? editRow.monto ?? "").replace(/\D/g, ""));
+      setCompURL(editRow.comprobante_url || "");
       setLocalPreview("");
       setViewerOpen(false);
       setZoom(1);
@@ -189,24 +281,29 @@ export default function ContableEgresoModal({
       setMedioId(""); setMedioEsOtro(false); setMedioNuevo("");
       setCategoriaId(""); setCategoriaEsOtra(false); setCategoriaNueva("");
       setDescripcionId(""); setDescripcionEsOtra(false); setDescripcionNueva("");
+      setProveedorId(""); setProveedorEsOtro(false); setProveedorNuevo("");
 
-      setNumeroFactura("");
-      setMonto("");
-      setComp("");
+      setComprobante("");
+      setImporte("");
+      setCompURL("");
       setLocalPreview("");
       setViewerOpen(false);
       setZoom(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editRow, mediosPago, listaCategorias, listaDescripciones]);
+  }, [open, editRow, mediosPago, listaCategorias, listaDescripciones, listaProveedores]);
 
-  /** =======================
-   *  Upload comprobante
-   *  ======================= */
+  // ===== Upload comprobante =====
   const uploadFile = async (file) => {
     const valid = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
-    if (!valid.includes(file.type)) return;
-    if (file.size > 10 * 1024 * 1024) return;
+    if (!valid.includes(file.type)) {
+      safeNotify("error", "Formato no soportado. Usá JPG, PNG, GIF, WEBP o PDF.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      safeNotify("error", "El archivo supera los 10 MB permitidos.");
+      return;
+    }
 
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -222,16 +319,19 @@ export default function ContableEgresoModal({
       form.append("file", file);
       const url = `${BASE_URL}/api.php?action=contable_egresos_upload`;
       const res = await fetch(url, { method: "POST", body: form });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok || !data.ok) throw new Error(data?.mensaje || "Error al subir el archivo");
+      if (!res.ok || data?.exito === false || data?.ok === false) {
+        throw new Error(data?.mensaje || "No se pudo subir el archivo.");
+      }
 
       const finalUrl = data.absolute_url ? data.absolute_url : `${BASE_URL}/${data.relative_url}`;
-      setComp(finalUrl);
+      setCompURL(finalUrl);
+      safeNotify("exito", "Archivo subido correctamente.");
     } catch (err) {
-      console.error(err);
       setLocalPreview("");
-      setComp("");
+      setCompURL("");
+      safeNotify("error", err.message || "Ocurrió un problema al subir el archivo.");
     } finally {
       setUploading(false);
     }
@@ -243,493 +343,496 @@ export default function ContableEgresoModal({
   };
 
   const clearComprobante = () => {
-    setComp(""); setLocalPreview("");
+    setCompURL(""); setLocalPreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
     setViewerOpen(false); setZoom(1);
+    safeNotify("advertencia", "Se quitó el comprobante adjunto.");
   };
 
-  /** =======================
-   *  Handlers selects
-   *  ======================= */
+  // ===== Handlers selects =====
   const onChangeMedio = (val) => {
     if (val === VALOR_OTRO) { setMedioEsOtro(true); setMedioId(""); }
     else { setMedioEsOtro(false); setMedioId(val); setMedioNuevo(""); }
   };
-
   const onChangeCategoria = (val) => {
     if (val === VALOR_OTRO) { setCategoriaEsOtra(true); setCategoriaId(""); }
     else { setCategoriaEsOtra(false); setCategoriaId(val); setCategoriaNueva(""); }
   };
-
   const onChangeDescripcion = (val) => {
     if (val === VALOR_OTRO) { setDescripcionEsOtra(true); setDescripcionId(""); }
     else { setDescripcionEsOtra(false); setDescripcionId(val); setDescripcionNueva(""); }
   };
-
-  /** =======================
-   *  Comparar cambios
-   *  ======================= */
-  const isSinCambios = () => {
-    if (!editRow) return false;
-
-    // Medio original (id si lo tenemos, si no, matchear por nombre)
-    let origIdMedio = 0;
-    if (editRow.id_medio_pago) {
-      origIdMedio = Number(editRow.id_medio_pago);
-    } else if (editRow.medio_pago) {
-      const f = mediosPago.find(m => String(m.nombre).trim().toUpperCase() === String(editRow.medio_pago).trim().toUpperCase());
-      origIdMedio = f ? Number(f.id) : 0;
-    }
-
-    const norm = (s) => String(s || "").toUpperCase();
-
-    // Resolver textos actuales de categoría y descripción según selección
-    const categoriaTextoActual =
-      categoriaEsOtra ? norm(categoriaNueva) :
-      (listaCategorias.find(c => String(c.id) === String(categoriaId))?.nombre || "");
-
-    const descripcionTextoActual =
-      descripcionEsOtra ? norm(descripcionNueva) :
-      (listaDescripciones.find(d => String(d.id) === String(descripcionId))?.texto || "");
-
-    const cur = {
-      fecha,
-      categoria: norm(categoriaTextoActual || "SIN CATEGORÍA"),
-      numero_factura: norm(numeroFactura || ""),
-      descripcion: norm(descripcionTextoActual || ""),
-      id_medio_pago: Number(medioId || 0),
-      monto: Number(monto || 0),
-      comprobante_url: comp || null,
-    };
-
-    const orig = {
-      fecha: editRow.fecha || "",
-      categoria: norm(editRow.categoria || "SIN CATEGORÍA"),
-      numero_factura: norm(editRow.numero_factura || ""),
-      descripcion: norm(editRow.descripcion || ""),
-      id_medio_pago: origIdMedio,
-      monto: Number(editRow.monto || 0),
-      comprobante_url: editRow.comprobante_url || null,
-    };
-
-    return (
-      cur.fecha === orig.fecha &&
-      cur.categoria === orig.categoria &&
-      cur.numero_factura === orig.numero_factura &&
-      cur.descripcion === orig.descripcion &&
-      cur.id_medio_pago === orig.id_medio_pago &&
-      cur.monto === orig.monto &&
-      cur.comprobante_url === orig.comprobante_url
-    );
+  const onChangeProveedor = (val) => {
+    if (val === VALOR_OTRO) { setProveedorEsOtro(true); setProveedorId(""); }
+    else { setProveedorEsOtro(false); setProveedorId(val); setProveedorNuevo(""); }
   };
 
-  /** =======================
-   *  Submit
-   *  ======================= */
+  // ===== Submit =====
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (uploading) return;
+    if (uploading) {
+      safeNotify("advertencia", "Esperá a que termine la subida del archivo para guardar.");
+      return;
+    }
 
-    // Validaciones mínimas (silenciosas, sin toast)
-    if (!medioEsOtro && !String(medioId || "").trim()) return;
-    if (medioEsOtro && !String(medioNuevo || "").trim()) return;
-    if (numeroFactura && numeroFactura.length > 50) return;
-    if (categoriaEsOtra && !String(categoriaNueva || "").trim()) return;
-    if (descripcionEsOtra && !String(descripcionNueva || "").trim()) return;
+    if (!fecha) { safeNotify("advertencia", "Seleccioná la fecha del egreso."); return; }
+
+    if (!medioEsOtro && !String(medioId || "").trim()) {
+      safeNotify("advertencia", "Seleccioná un medio de pago.");
+      return;
+    }
+    if (medioEsOtro && !onlyLetters(medioNuevo).trim()) {
+      safeNotify("advertencia", "Ingresá el nuevo medio de pago (solo letras).");
+      return;
+    }
+
+    if (proveedorEsOtro && !onlyLetters(proveedorNuevo).trim()) {
+      safeNotify("advertencia", "Ingresá el nombre del proveedor (solo letras).");
+      return;
+    }
+
+    if (comprobante && comprobante.length > 50) {
+      safeNotify("advertencia", "El número de comprobante no puede superar 50 caracteres.");
+      return;
+    }
+
+    const importeNum = Number(onlyDigits(importe) || 0);
+    if (!Number.isFinite(importeNum) || importeNum <= 0) {
+      safeNotify("advertencia", "Ingresá un importe válido (solo números, mayor a cero).");
+      return;
+    }
+    if (importeNum > MAX_IMPORTE_SOSPECHOSO) {
+      safeNotify("advertencia", `El importe ingresado (${new Intl.NumberFormat('es-AR').format(importeNum)}) parece inusualmente alto. Verificalo antes de guardar.`);
+      return;
+    }
 
     try {
       setSaving(true);
-      if (editRow && isSinCambios()) {
-        onSaved?.();
-        return;
-      }
 
-      /** --- Medio de pago: crear si es OTRO --- */
+      // 1) medio de pago -> id
       let idMedio = medioId;
       if (medioEsOtro) {
         const r = await crearMedioPago(medioNuevo);
-        if (!r?.exito || !r.id) throw new Error(r?.mensaje || "No se pudo crear el medio.");
         await loadListas();
         idMedio = String(r.id);
         setMedioId(idMedio);
         setMedioEsOtro(false);
         setMedioNuevo("");
+        safeNotify("exito", "Medio de pago agregado.");
       }
 
-      /** --- Categoría: resolver texto y crear si es OTRO --- */
-      let categoriaTexto = "";
+      // 2) categoría -> id
+      let idCat = categoriaId || null;
       if (categoriaEsOtra) {
         const r = await crearEgresoCategoria(categoriaNueva);
-        if (!r?.exito || !r.id) throw new Error(r?.mensaje || "No se pudo crear la categoría.");
         await loadListas();
-        categoriaTexto = String(r.nombre || categoriaNueva).toUpperCase();
-        // fijar selección a la creada
-        const nueva = (await (async () => {
-          const c = (await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`))?.listas?.egreso_categorias ?? [];
-          return c.find(x => String(x.nombre).trim().toUpperCase() === categoriaTexto);
-        })());
-        if (nueva) { setCategoriaId(String(nueva.id)); setCategoriaEsOtra(false); setCategoriaNueva(""); }
-      } else {
-        categoriaTexto = String(
-          listaCategorias.find(c => String(c.id) === String(categoriaId))?.nombre || ""
-        ).toUpperCase();
+        idCat = String(r.id);
+        setCategoriaId(idCat);
+        setCategoriaEsOtra(false);
+        setCategoriaNueva("");
+        safeNotify("exito", "Categoría agregada.");
       }
-      if (!categoriaTexto) categoriaTexto = "SIN CATEGORÍA";
 
-      /** --- Descripción: resolver texto y crear si es OTRO --- */
-      let descripcionTexto = "";
+      // 3) descripción -> id
+      let idDesc = descripcionId || null;
       if (descripcionEsOtra) {
         const r = await crearEgresoDescripcion(descripcionNueva);
-        if (!r?.exito || !r.id) throw new Error(r?.mensaje || "No se pudo crear la descripción.");
         await loadListas();
-        descripcionTexto = String(r.texto || descripcionNueva).toUpperCase();
-        // fijar selección a la creada
-        const nueva = (await (async () => {
-          const d = (await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`))?.listas?.egreso_descripciones ?? [];
-          return d.find(x => String(x.texto).trim().toUpperCase() === descripcionTexto);
-        })());
-        if (nueva) { setDescripcionId(String(nueva.id)); setDescripcionEsOtra(false); setDescripcionNueva(""); }
-      } else {
-        descripcionTexto = String(
-          listaDescripciones.find(d => String(d.id) === String(descripcionId))?.texto || ""
-        ).toUpperCase();
+        idDesc = String(r.id);
+        setDescripcionId(idDesc);
+        setDescripcionEsOtra(false);
+        setDescripcionNueva("");
+        safeNotify("exito", "Descripción agregada.");
       }
 
-      /** --- Armar payload (texto para cat/desc; id para medio) --- */
+      // 4) proveedor -> id
+      let idProv = proveedorId || null;
+      if (proveedorEsOtro) {
+        const r = await crearProveedor(proveedorNuevo);
+        await loadListas();
+        idProv = String(r.id);
+        setProveedorId(idProv);
+        setProveedorEsOtro(false);
+        setProveedorNuevo("");
+        safeNotify("exito", "Proveedor agregado.");
+      }
+
+      // 5) payload
       const payload = {
         fecha,
-        categoria: categoriaTexto,
-        numero_factura: (String(numeroFactura || "").toUpperCase()) || null,
-        descripcion: descripcionTexto,
+        id_cont_categoria: idCat ? Number(idCat) : null,
+        id_cont_proveedor: idProv ? Number(idProv) : null,
+        comprobante: (toUpper(comprobante) || null),
+        id_cont_descripcion: idDesc ? Number(idDesc) : null,
         id_medio_pago: Number(idMedio || 0),
-        monto: Number(monto || 0),
-        comprobante_url: comp || null,
+        importe: importeNum,
+        comprobante_url: compURL || null,
       };
 
       let url = `${BASE_URL}/api.php?action=contable_egresos&op=create`;
-      if (editRow) { url = `${BASE_URL}/api.php?action=contable_egresos&op=update`; payload.id_egreso = editRow.id_egreso; }
-
-      await fetchJSON(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-
-      /** ⬇️ toasts de éxito según acción */
-      if (editRow) {
-        safeNotify("exito", "Egreso actualizado correctamente.");
-      } else {
-        safeNotify("exito", "Egreso agregado correctamente.");
+      if (editRow && editRow.id_egreso) {
+        url = `${BASE_URL}/api.php?action=contable_egresos&op=update`;
+        payload.id_egreso = editRow.id_egreso;
       }
 
+      await fetchJSON(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      safeNotify("exito", editRow ? "Egreso actualizado correctamente." : "Egreso agregado correctamente.");
       onSaved?.();
-    } catch (e2) {
-      console.error(e2);
-    } finally { setSaving(false); }
+    } catch (err) {
+      safeNotify("error", err.message || "No se pudo guardar el egreso.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!open) return null;
-  const isPDF = (localPreview || comp)?.toLowerCase?.().endsWith(".pdf");
+  const isPDF = (localPreview || compURL)?.toLowerCase?.().endsWith(".pdf");
 
   return createPortal(
-    <div className="mm_overlay" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="mm_modal" onClick={(e) => e.stopPropagation()}>
-
-        <header className="mm_head">
-          <h3 className="mm_title">
-            <FontAwesomeIcon className="mm_title_icon" icon={faFileInvoiceDollar} />
-            {editRow ? "Editar egreso" : "Nuevo egreso"}
-          </h3>
-          <button className="mm_icon" onClick={onClose} aria-label="Cerrar">
-            <FontAwesomeIcon icon={faTimes} />
-          </button>
-        </header>
-
-        {/* El footer queda dentro del <form> para usar onSubmit */}
-        <form onSubmit={onSubmit} className="mm_body">
-
-          {/* Row 1 */}
-          <div className="mm_row">
-            {/* Fecha */}
-            <div
-              className="mm_field has-icon"
-              onMouseDown={(e) => {
-                if (e.target !== dateInputRef.current) {
-                  e.preventDefault();
-                  const el = dateInputRef.current;
-                  if (!el) return;
-                  try {
-                    el.focus();
-                    if (typeof el.showPicker === "function") el.showPicker();
-                    else el.click();
-                  } catch { try { el.click(); } catch {} }
-                }
-              }}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === " ") && e.currentTarget === document.activeElement) {
-                  e.preventDefault();
-                  const el = dateInputRef.current;
-                  if (!el) return;
-                  try { el.focus(); el.showPicker?.(); } catch { try { el.click?.(); } catch {} }
-                }
-              }}
-              tabIndex={0}
-              role="group"
-              aria-label="Campo de fecha"
-            >
-              <input
-                ref={dateInputRef}
-                className="date-no-native"
-                type="date"
-                value={fecha}
-                onChange={(e)=>setFecha(e.target.value)}
-                onClick={(e)=>{ try { e.currentTarget.showPicker?.(); } catch { e.currentTarget.click?.(); } }}
-                required
-              />
-              <label>Fecha</label>
-              <span className="mm_iconField"><FontAwesomeIcon icon={faCalendar} /></span>
-            </div>
-
-            {/* Medio */}
-            <div className="mm_field always-float has-icon">
-              <select
-                value={medioEsOtro ? VALOR_OTRO : medioId}
-                onChange={(e)=>onChangeMedio(e.target.value)}
-                required={!medioEsOtro}
-                aria-invalid={!medioEsOtro && !String(medioId || "").trim() ? true : undefined}
-              >
-                <option value="">SELECCIONE…</option>
-                {mediosPago.map((m)=>(<option key={m.id} value={m.id}>{m.nombre}</option>))}
-                <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
-              </select>
-              <label>Medio</label>
-              <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
-            </div>
+    <>
+      {/* === Toast host fijo, por encima del modal === */}
+      <div
+        style={{
+          position: "fixed",
+          top: 16,
+          right: 16,
+          zIndex: 999999,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          pointerEvents: "none",
+        }}
+      >
+        {toasts.map(t => (
+          <div key={t.id} style={{ pointerEvents: "auto" }}>
+            <Toast
+              tipo={t.tipo}
+              mensaje={t.mensaje}
+              duracion={t.dur}
+              onClose={() => closeToast(t.id)}
+            />
           </div>
+        ))}
+      </div>
 
-          {medioEsOtro && (
+      {/* === Modal === */}
+      <div className="mm_overlay" role="dialog" aria-modal="true" onClick={onClose}>
+        <div className="mm_modal" onClick={(e) => e.stopPropagation()}>
+
+          <header className="mm_head">
+            <h3 className="mm_title">
+              <FontAwesomeIcon className="mm_title_icon" icon={faFileInvoiceDollar} />
+              {editRow ? "Editar egreso" : "Nuevo egreso"}
+            </h3>
+            <button className="mm_icon" onClick={onClose} aria-label="Cerrar">
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+          </header>
+
+          <form onSubmit={onSubmit} className="mm_body">
+            {/* Row 1 */}
             <div className="mm_row">
-              <div className="mm_field grow has-icon">
+              {/* Fecha */}
+              <div
+                className="mm_field has-icon"
+                onMouseDown={(e) => {
+                  if (e.target !== dateInputRef.current) {
+                    e.preventDefault();
+                    const el = dateInputRef.current;
+                    if (!el) return;
+                    try { el.focus(); el.showPicker?.(); } catch { try { el.click(); } catch {} }
+                  }
+                }}
+                tabIndex={0}
+                role="group"
+                aria-label="Campo de fecha"
+              >
                 <input
-                  value={medioNuevo}
-                  onChange={(e)=>setMedioNuevo(e.target.value.toUpperCase())}
-                  placeholder=" "
+                  ref={dateInputRef}
+                  className="date-no-native"
+                  type="date"
+                  value={fecha}
+                  onChange={(e)=>setFecha(e.target.value)}
                   required
                 />
-                <label>Nuevo medio de pago</label>
+                <label>Fecha</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faCalendar} /></span>
+              </div>
+
+              {/* Medio */}
+              <div className="mm_field always-float has-icon">
+                <select
+                  value={medioEsOtro ? VALOR_OTRO : medioId}
+                  onChange={(e)=>onChangeMedio(e.target.value)}
+                  required={!medioEsOtro}
+                >
+                  <option value="">SELECCIONE…</option>
+                  {mediosPago.map((m)=>(<option key={m.id} value={m.id}>{m.nombre}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+                <label>Medio</label>
                 <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
               </div>
             </div>
-          )}
 
-          {/* Row 2 */}
-          <div className="mm_row">
-            {/* Categoría (select + OTRO) */}
-            <div className="mm_field always-float has-icon">
-              <select
-                value={categoriaEsOtra ? VALOR_OTRO : categoriaId}
-                onChange={(e)=>onChangeCategoria(e.target.value)}
-              >
-                <option value="">(sin categoría)</option>
-                {listaCategorias.map(c => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
-                <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
-              </select>
-              <label>Categoría</label>
-              <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
-            </div>
+            {medioEsOtro && (
+              <div className="mm_row">
+                <div className="mm_field grow has-icon">
+                  <input
+                    value={medioNuevo}
+                    onChange={(e)=>setMedioNuevo(onlyLetters(e.target.value))}
+                    placeholder=" "
+                    required
+                  />
+                  <label>Nuevo medio de pago</label>
+                  <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
+                </div>
+              </div>
+            )}
 
-            {/* N° factura */}
-            <div className="mm_field has-icon">
-              <input
-                value={numeroFactura}
-                onChange={(e)=>setNumeroFactura((e.target.value || "").toUpperCase())}
-                placeholder=" "
-                maxLength={50}
-              />
-              <label>N° factura</label>
-              <span className="mm_iconField"><FontAwesomeIcon icon={faHashtag} /></span>
-            </div>
-
-            {/* Monto */}
-            <div className="mm_field has-icon">
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={monto}
-                onChange={(e)=>setMonto(e.target.value)}
-                placeholder=" "
-                required
-              />
-              <label>Monto</label>
-              <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
-            </div>
-          </div>
-
-          {categoriaEsOtra && (
+            {/* Row 2 */}
             <div className="mm_row">
-              <div className="mm_field grow has-icon">
+              <div className="mm_field always-float has-icon">
+                <select
+                  value={categoriaEsOtra ? VALOR_OTRO : categoriaId}
+                  onChange={(e)=>onChangeCategoria(e.target.value)}
+                >
+                  <option value="">(sin categoría)</option>
+                  {listaCategorias.map(c => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+                <label>Categoría</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+              </div>
+
+              <div className="mm_field has-icon">
                 <input
-                  value={categoriaNueva}
-                  onChange={(e)=>setCategoriaNueva(e.target.value.toUpperCase())}
+                  value={comprobante}
+                  onChange={(e)=>setComprobante(toUpper(e.target.value))}
+                  placeholder=" "
+                  maxLength={50}
+                />
+                <label>Comprobante</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faHashtag} /></span>
+              </div>
+
+              <div className="mm_field has-icon">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  value={importe}
+                  onChange={(e)=>setImporte(onlyDigits(e.target.value))}
                   placeholder=" "
                   required
                 />
-                <label>Nueva categoría</label>
+                <label>Importe</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
+              </div>
+            </div>
+
+            {categoriaEsOtra && (
+              <div className="mm_row">
+                <div className="mm_field grow has-icon">
+                  <input
+                    value={categoriaNueva}
+                    onChange={(e)=>setCategoriaNueva(onlyLetters(e.target.value))}
+                    placeholder=" "
+                    required
+                  />
+                  <label>Nueva categoría</label>
+                  <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+                </div>
+              </div>
+            )}
+
+            {/* Row 3 - Proveedor */}
+            <div className="mm_row">
+              <div className="mm_field always-float has-icon">
+                <select
+                  value={proveedorEsOtro ? VALOR_OTRO : proveedorId}
+                  onChange={(e)=>onChangeProveedor(e.target.value)}
+                >
+                  <option value="">(sin proveedor)</option>
+                  {listaProveedores.map(p => (<option key={p.id} value={p.id}>{p.nombre}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+                <label>Proveedor</label>
                 <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
               </div>
             </div>
-          )}
 
-          {/* Row 3 */}
-          <div className="mm_row">
-            {/* Descripción (select + OTRO) */}
-            <div className="mm_field always-float has-icon">
-              <select
-                value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
-                onChange={(e)=>onChangeDescripcion(e.target.value)}
-              >
-                <option value="">(sin descripción)</option>
-                {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{d.texto}</option>))}
-                <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
-              </select>
-              <label>Descripción</label>
-              <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
-            </div>
-          </div>
+            {proveedorEsOtro && (
+              <div className="mm_row">
+                <div className="mm_field grow has-icon">
+                  <input
+                    value={proveedorNuevo}
+                    onChange={(e)=>setProveedorNuevo(onlyLetters(e.target.value))}
+                    placeholder=" "
+                    required
+                  />
+                  <label>Nuevo proveedor</label>
+                  <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+                </div>
+              </div>
+            )}
 
-          {descripcionEsOtra && (
+            {/* Row 4 - Descripción */}
             <div className="mm_row">
-              <div className="mm_field grow has-icon">
-                <input
-                  value={descripcionNueva}
-                  onChange={(e)=>setDescripcionNueva(e.target.value.toUpperCase())}
-                  placeholder=" "
-                  required
-                />
-                <label>Nueva descripción</label>
+              <div className="mm_field always-float has-icon">
+                <select
+                  value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
+                  onChange={(e)=>onChangeDescripcion(e.target.value)}
+                >
+                  <option value="">(sin descripción)</option>
+                  {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{d.texto}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+                <label>Descripción</label>
                 <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
               </div>
             </div>
-          )}
 
-          {/* Dropzone */}
-          <div className="dz_wrap">
-            <div
-              ref={dropRef}
-              className="dz_area mm_surface"
-              onClick={()=>fileInputRef.current?.click()}
-              onDragOver={(e)=>{ e.preventDefault(); dropRef.current?.classList.add("dz_over"); }}
-              onDragLeave={()=>dropRef.current?.classList.remove("dz_over")}
-              onDrop={(e)=>{ e.preventDefault(); dropRef.current?.classList.remove("dz_over"); const f = e.dataTransfer.files?.[0]; if (f) uploadFile(f); }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e)=>{ if (e.key === "Enter") fileInputRef.current?.click(); }}
-            >
-              <div className="dz_header">
-                <div className="dz_icon dz_icon--lg"><FontAwesomeIcon icon={faUpload} /></div>
-                <div className="dz_text">Arrastrá y soltá la imagen/PDF acá <span>o</span></div>
-                <button
-                  type="button"
-                  className="mm_btn"
-                  onClick={(e)=>{ e.stopPropagation(); fileInputRef.current?.click(); }}
-                  disabled={uploading}
-                >
-                  Elegir archivo
-                </button>
-              </div>
-
-              <p className="dz_hint">
-                JPG, PNG, GIF, WEBP o PDF. Máx 10 MB.
-                {uploading && <b> Subiendo…</b>}
-              </p>
-
-              {(comp || localPreview) && (
-                <div className="dz_preview">
-                  {comp && (
-                    <div className="dz_file">
-                      {(() => {
-                        try {
-                          const u = new URL(comp);
-                          return decodeURIComponent(u.pathname.split("/").pop() || "archivo");
-                        } catch {
-                          return comp.split("/").pop() || "archivo";
-                        }
-                      })()}
-                    </div>
-                  )}
-
-                  {!((localPreview || comp)?.toLowerCase?.().endsWith(".pdf")) ? (
-                    <img
-                      src={localPreview || comp}
-                      alt="Vista previa del comprobante"
-                      className="dz_thumb"
-                    />
-                  ) : (
-                    <div className="dz_pdf">PDF listo para ver</div>
-                  )}
-
-                  <div className="dz_actions">
-                    <button type="button" className="mm_btn" onClick={()=>{ if (comp || localPreview) { setViewerOpen(true); setZoom(1); } }}>
-                      <FontAwesomeIcon icon={faEye} /> Ver
-                    </button>
-                    <button type="button" className="mm_btn danger" onClick={clearComprobante}>
-                      <FontAwesomeIcon icon={faTrash} /> Quitar
-                    </button>
-                  </div>
+            {descripcionEsOtra && (
+              <div className="mm_row">
+                <div className="mm_field grow has-icon">
+                  <input
+                    value={descripcionNueva}
+                    onChange={(e)=>setDescripcionNueva(onlyLetters(e.target.value))}
+                    placeholder=" "
+                    required
+                  />
+                  <label>Nueva descripción</label>
+                  <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
                 </div>
-              )}
+              </div>
+            )}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                hidden
-                onChange={handleFileInput}
-              />
-            </div>
-          </div>
-
-          {/* Footer dentro del form */}
-          <div className="mm_footer">
-            <button type="button" className="mm_btn ghost" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="mm_btn primary" disabled={saving || uploading}>
-              <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : "Guardar"}
-            </button>
-          </div>
-        </form>
-
-        {/* Visor / Lightbox */}
-        {viewerOpen && (
-          <div className="viewer_overlay" onClick={()=>setViewerOpen(false)} role="dialog" aria-modal="true">
-            <div className="viewer" onClick={(e)=>e.stopPropagation()}>
-              <div className="viewer_toolbar">
-                {!isPDF && (
-                  <>
-                    <button className="mm_icon" onClick={()=>setZoom(z=>Math.max(0.2, Number((z-0.2).toFixed(2))))} title="Alejar"><FontAwesomeIcon icon={faMinus} /></button>
-                    <span className="zoom_label">{Math.round(zoom*100)}%</span>
-                    <button className="mm_icon" onClick={()=>setZoom(z=>Math.min(5, Number((z+0.2).toFixed(2))))} title="Acercar"><FontAwesomeIcon icon={faPlus} /></button>
-                    <button className="mm_icon" onClick={()=>setZoom(1)} title="Restaurar 100%"><FontAwesomeIcon icon={faCompress} /></button>
-                  </>
-                )}
-                {isPDF && (comp || localPreview) && (
+            {/* Dropzone */}
+            <div className="dz_wrap">
+              <div
+                ref={dropRef}
+                className="dz_area mm_surface"
+                onClick={()=>fileInputRef.current?.click()}
+                onDragOver={(e)=>{ e.preventDefault(); dropRef.current?.classList.add("dz_over"); }}
+                onDragLeave={()=>dropRef.current?.classList.remove("dz_over")}
+                onDrop={(e)=>{ e.preventDefault(); dropRef.current?.classList.remove("dz_over"); const f = e.dataTransfer.files?.[0]; if (f) uploadFile(f); }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e)=>{ if (e.key === "Enter") fileInputRef.current?.click(); }}
+              >
+                <div className="dz_header">
+                  <div className="dz_icon dz_icon--lg"><FontAwesomeIcon icon={faUpload} /></div>
+                  <div className="dz_text">Arrastrá y soltá la imagen/PDF acá <span>o</span></div>
                   <button
-                    className="mm_btn ghost"
-                    onClick={()=>{ try{ window.open(comp || localPreview, "_blank","noopener,noreferrer"); } catch{ window.location.href = comp || localPreview; } }}
+                    type="button"
+                    className="mm_btn"
+                    onClick={(e)=>{ e.stopPropagation(); fileInputRef.current?.click(); }}
+                    disabled={uploading}
                   >
-                    Abrir en pestaña
+                    Elegir archivo
                   </button>
+                </div>
+
+                <p className="dz_hint">
+                  JPG, PNG, GIF, WEBP o PDF. Máx 10 MB.
+                  {uploading && <b> Subiendo…</b>}
+                </p>
+
+                {(compURL || localPreview) && (
+                  <div className="dz_preview">
+                    {compURL && (
+                      <div className="dz_file">
+                        {(() => {
+                          try {
+                            const u = new URL(compURL);
+                            return decodeURIComponent(u.pathname.split("/").pop() || "archivo");
+                          } catch {
+                            return compURL.split("/").pop() || "archivo";
+                          }
+                        })()}
+                      </div>
+                    )}
+
+                    {!((localPreview || compURL)?.toLowerCase?.().endsWith(".pdf")) ? (
+                      <img
+                        src={localPreview || compURL}
+                        alt="Vista previa del comprobante"
+                        className="dz_thumb"
+                      />
+                    ) : (
+                      <div className="dz_pdf">PDF listo para ver</div>
+                    )}
+
+                    <div className="dz_actions">
+                      <button type="button" className="mm_btn" onClick={()=>{ if (compURL || localPreview) { setViewerOpen(true); setZoom(1); } }}>
+                        <FontAwesomeIcon icon={faEye} /> Ver
+                      </button>
+                      <button type="button" className="mm_btn danger" onClick={clearComprobante}>
+                        <FontAwesomeIcon icon={faTrash} /> Quitar
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <button className="mm_icon" onClick={()=>setViewerOpen(false)} title="Cerrar"><FontAwesomeIcon icon={faTimes} /></button>
-              </div>
-              <div className="viewer_body">
-                {!isPDF ? (
-                  <img src={localPreview || comp} alt="Comprobante" className="viewer_img" style={{ transform:`scale(${zoom})` }} />
-                ) : (
-                  <iframe title="PDF comprobante" className="viewer_pdf" src={comp || localPreview} />
-                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  hidden
+                  onChange={handleFileInput}
+                />
               </div>
             </div>
-          </div>
-        )}
+
+            <div className="mm_footer">
+              <button type="button" className="mm_btn ghost" onClick={onClose}>Cancelar</button>
+              <button type="submit" className="mm_btn primary" disabled={saving || uploading}>
+                <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </form>
+
+          {viewerOpen && (
+            <div className="viewer_overlay" onClick={()=>setViewerOpen(false)} role="dialog" aria-modal="true">
+              <div className="viewer" onClick={(e)=>e.stopPropagation()}>
+                <div className="viewer_toolbar">
+                  {!isPDF && (
+                    <>
+                      <button className="mm_icon" onClick={()=>setZoom(z=>Math.max(0.2, Number((z-0.2).toFixed(2))))}><FontAwesomeIcon icon={faMinus} /></button>
+                      <span className="zoom_label">{Math.round(zoom*100)}%</span>
+                      <button className="mm_icon" onClick={()=>setZoom(z=>Math.min(5, Number((z+0.2).toFixed(2))))}><FontAwesomeIcon icon={faPlus} /></button>
+                      <button className="mm_icon" onClick={()=>setZoom(1)}><FontAwesomeIcon icon={faCompress} /></button>
+                    </>
+                  )}
+                  {isPDF && (compURL || localPreview) && (
+                    <button
+                      className="mm_btn ghost"
+                      onClick={()=>{ try{ window.open(compURL || localPreview, "_blank","noopener,noreferrer"); } catch{ window.location.href = compURL || localPreview; } }}
+                    >
+                      Abrir en pestaña
+                    </button>
+                  )}
+                  <button className="mm_icon" onClick={()=>setViewerOpen(false)}><FontAwesomeIcon icon={faTimes} /></button>
+                </div>
+                <div className="viewer_body">
+                  {!isPDF ? (
+                    <img src={localPreview || compURL} alt="Comprobante" className="viewer_img" style={{ transform:`scale(${zoom})` }} />
+                  ) : (
+                    <iframe title="PDF comprobante" className="viewer_pdf" src={compURL || localPreview} />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>,
+    </>,
     document.body
   );
 }

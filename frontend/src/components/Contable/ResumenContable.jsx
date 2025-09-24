@@ -1,5 +1,6 @@
 // src/components/Contable/ResumenContable.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilter, faChartPie, faTableList } from "@fortawesome/free-solid-svg-icons";
@@ -10,9 +11,21 @@ const Y = hoy.getFullYear();
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
 /* ---------- Helpers ---------- */
-const fetchJSON = async (url, options) => {
+// Importante: NO mandamos headers personalizados para no disparar preflight CORS.
+// Usamos querystring ?ts=... y cache: 'no-store' (no dispara preflight).
+const fetchJSON = async (url, options = {}) => {
   const sep = url.includes("?") ? "&" : "?";
-  const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
+  const finalUrl = `${url}${sep}ts=${Date.now()}`;
+
+  const ac = new AbortController();
+  const res = await fetch(finalUrl, {
+    method: "GET",
+    cache: "no-store",
+    redirect: "follow",
+    signal: ac.signal,
+    // credentials: "same-origin"  // si tu backend requiere cookies en otro dominio, ajustá CORS en el server
+    ...options,
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 };
@@ -212,6 +225,7 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
 
 /* ---------- Página ---------- */
 export default function ResumenContable() {
+  const location = useLocation(); // detecta ingreso/retorno a la ruta
   const [resumen, setResumen] = useState([]);
   const [anioRes, setAnioRes] = useState(Y);
   const [aniosCat, setAniosCat] = useState([]);
@@ -248,12 +262,39 @@ export default function ResumenContable() {
     }
   };
 
+  // Montaje inicial
   useEffect(() => {
     loadAniosDisponibles(Y);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Cambio de año
   useEffect(() => {
     loadResumen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anioRes]);
+
+  // Cada vez que ENTRÁS/volvés a esta ruta (location.key cambia)
+  useEffect(() => {
+    loadAniosDisponibles(anioRes);
+    loadResumen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+
+  // Al volver el foco a la pestaña/ventana (por ejemplo, regresar desde "Ingresos" o "Egresos")
+  useEffect(() => {
+    const refetch = () => loadResumen();
+    const onVisibility = () => { if (!document.hidden) loadResumen(); };
+
+    window.addEventListener("focus", refetch);
+    window.addEventListener("pageshow", refetch); // cuando vuelve desde el historial/BFCache
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.removeEventListener("focus", refetch);
+      window.removeEventListener("pageshow", refetch);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anioRes]);
 
@@ -284,7 +325,6 @@ export default function ResumenContable() {
 
   const serieColor = "#1D428A";
 
-  // keys para reanimar al cambiar año/pestaña/datos
   const chartKey = `${chartTab}-${anioRes}-${totals.ingresos}-${totals.egresos}`;
   const tableKey = `${anioRes}-${resumen.length}`;
 

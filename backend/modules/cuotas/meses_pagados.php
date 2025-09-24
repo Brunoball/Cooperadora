@@ -20,23 +20,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Validación básica
 $id_alumno = isset($_GET['id_alumno']) ? (int)$_GET['id_alumno'] : 0;
 $anio      = isset($_GET['anio']) ? (int)$_GET['anio'] : (int)date('Y');
-
 if ($anio < 2000 || $anio > 2100) $anio = (int)date('Y');
 
 if ($id_alumno <= 0) {
-    echo json_encode(['exito' => false, 'mensaje' => 'id_alumno inválido']);
+    echo json_encode(['exito' => false, 'mensaje' => 'id_alumno inválido'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 try {
-    // Usar PDO si está disponible
+    // === PDO ===
     if (isset($pdo) && $pdo instanceof PDO) {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Traemos id_mes y estado del año solicitado
+        // Sólo tabla 'pagos' (sin prefijo de base)
         $sql = "
             SELECT p.id_mes, p.estado
-              FROM cooperadora.pagos p
+              FROM pagos p
              WHERE p.id_alumno = :id_alumno
                AND YEAR(p.fecha_pago) = :anio
         ";
@@ -61,24 +60,24 @@ try {
             }
         }
 
-        // Si querés mandar fecha de ingreso, buscala aquí (opcional)
+        // (Opcional) fecha de ingreso del alumno — sólo tabla 'alumnos'
         $ingreso = null;
         // try {
-        //     $st2 = $pdo->prepare("SELECT fecha_ingreso FROM cooperadora.alumnos WHERE id = :id LIMIT 1");
+        //     $st2 = $pdo->prepare("SELECT fecha_ingreso FROM alumnos WHERE id = :id LIMIT 1");
         //     $st2->execute([':id' => $id_alumno]);
         //     $ingreso = $st2->fetchColumn() ?: null;
         // } catch (Throwable $e) {}
 
         echo json_encode([
             'exito'          => true,
-            'meses_pagados'  => array_values(array_unique($ids)), // compatibilidad con frontend viejo
-            'detalles'       => $detalles,                        // NUEVO: devuelve estado por mes
+            'meses_pagados'  => array_values(array_unique($ids)), // compat con frontend viejo
+            'detalles'       => $detalles,                        // estado por mes
             'ingreso'        => $ingreso
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    // Fallback a mysqli (si tu proyecto lo usa)
+    // === mysqli (fallback) ===
     if (isset($conn) && $conn instanceof mysqli) {
         $sql = "SELECT id_mes, estado FROM pagos WHERE id_alumno = ? AND YEAR(fecha_pago) = ?";
         $stmt = $conn->prepare($sql);
@@ -110,7 +109,7 @@ try {
         exit;
     }
 
-    echo json_encode(['exito' => false, 'mensaje' => 'Conexión a BD no disponible']);
+    echo json_encode(['exito' => false, 'mensaje' => 'Conexión a BD no disponible'], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
-    echo json_encode(['exito' => false, 'mensaje' => 'Error interno', 'detalle' => $e->getMessage()]);
+    echo json_encode(['exito' => false, 'mensaje' => 'Error interno', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

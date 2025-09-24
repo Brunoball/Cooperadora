@@ -19,29 +19,39 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
 
-    $raw = json_decode(file_get_contents('php://input'), true) ?? [];
+    // Acepta JSON o form-data. Conservamos la clave 'texto' del frontend.
+    $raw = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($raw)) {
+        $raw = $_POST;
+    }
+
     $texto = strtoupper(trim((string)($raw['texto'] ?? '')));
+    $texto = preg_replace('/\s+/', ' ', $texto ?? '');
 
     if ($texto === '') {
         throw new RuntimeException('INGRESÁ LA NUEVA DESCRIPCIÓN.');
     }
-    if (mb_strlen($texto) > 150) {
-        throw new RuntimeException('LA DESCRIPCIÓN NO PUEDE SUPERAR 150 CARACTERES.');
+    if (mb_strlen($texto) > 160) { // la tabla está en VARCHAR(160)
+        throw new RuntimeException('LA DESCRIPCIÓN NO PUEDE SUPERAR 160 CARACTERES.');
     }
 
-    // Inserta o no-op si ya existe por UNIQUE
-    $sql = "INSERT INTO `egreso_descripcion` (`texto`) VALUES (:t)
-            ON DUPLICATE KEY UPDATE `texto` = VALUES(`texto`)";
+    // Insert en la nueva tabla contable_descripcion (sin schema)
+    // UNIQUE esperado sobre nombre_descripcion
+    $sql = "INSERT INTO contable_descripcion (nombre_descripcion)
+            VALUES (:t)
+            ON DUPLICATE KEY UPDATE nombre_descripcion = VALUES(nombre_descripcion)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':t' => $texto]);
 
-    // Si ya existía, lastInsertId = 0; buscamos el id
+    // Si ya existía, lastInsertId será 0: buscamos el id existente
     $id = (int)$pdo->lastInsertId();
     if ($id === 0) {
-        $q = $pdo->prepare("SELECT `id_egreso_descripcion` AS id
-                            FROM `egreso_descripcion`
-                            WHERE `texto` = :t
-                            LIMIT 1");
+        $q = $pdo->prepare(
+            "SELECT id_cont_descripcion
+             FROM contable_descripcion
+             WHERE nombre_descripcion = :t
+             LIMIT 1"
+        );
         $q->execute([':t' => $texto]);
         $id = (int)($q->fetchColumn() ?: 0);
     }
@@ -53,11 +63,12 @@ try {
     echo json_encode([
         'exito' => true,
         'id'    => $id,
-        'texto' => $texto,
+        'texto' => $texto, // mantenemos el mismo nombre de campo que espera el frontend
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
-    http_response_code(200); // mantener 200 para manejo uniforme en frontend
+    // mantenemos 200 para manejo uniforme en frontend
+    http_response_code(200);
     echo json_encode([
         'exito'   => false,
         'mensaje' => $e->getMessage(),

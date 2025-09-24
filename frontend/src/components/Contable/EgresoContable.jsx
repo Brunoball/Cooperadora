@@ -57,6 +57,21 @@ const fetchJSON = async (url, options) => {
 const arraysIguales = (a=[], b=[]) =>
   a.length === b.length && a.every((v,i)=> v === b[i]);
 
+/** Normaliza un row de backend (nombres nuevos) a los usados en el front */
+const normalizeEgreso = (r = {}) => ({
+  id_egreso: r.id_egreso,
+  fecha: r.fecha || "",
+  // nombres nuevos -> alias “viejos” que usa el front
+  categoria: r.nombre_categoria || "SIN CATEGORÍA",
+  descripcion: r.nombre_descripcion || "",
+  medio_pago: r.medio_pago || "",       // mantenemos la key ‘medio_pago’
+  medio_nombre: r.medio_pago || "",     // …y ‘medio_nombre’ por compatibilidad
+  proveedor: r.nombre_proveedor || "",  // visible
+  numero_factura: r.comprobante || "",  // en tu schema actual es “comprobante”
+  monto: Number(r.importe || 0),        // importe -> monto
+  comprobante_url: r.comprobante_url || "",
+});
+
 export default function EgresoContable(){
   // Tabla (filtrada)
   const [egresos, setEgresos] = useState([]);
@@ -87,13 +102,13 @@ export default function EgresoContable(){
   };
   const removeToast = (id)=> setToasts(prev=>prev.filter(t=>t.id!==id));
 
-  // ===== Cascada (igual que Ingresos) =====
+  // ===== Cascada
   const [cascading, setCascading] = useState(false);
   useEffect(() => {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
-  }, [anio, month, fCat, fMedio, q]); // solo cuando cambia algo "de usuario"
+  }, [anio, month, fCat, fMedio, q]);
 
   const { fStart, fEnd } = useMemo(() => {
     const first = new Date(anio, month, 1);
@@ -117,13 +132,14 @@ export default function EgresoContable(){
     try {
       const params = new URLSearchParams({ start:fStart, end:fEnd });
       const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
-      setEgresosMes(raw?.datos || []);
+      const datos = (raw?.datos || []).map(normalizeEgreso);
+      setEgresosMes(datos);
     } catch {
       setEgresosMes([]);
     }
   }, [fStart, fEnd]);
 
-  // === TABLA (fechas + filtros)  ⛔️ ¡sin anios/anio en deps!
+  // === TABLA (fechas + filtros)
   const loadEgresos = useCallback(async () => {
     setLoadingEgr(true);
     try {
@@ -131,10 +147,10 @@ export default function EgresoContable(){
       if (fCat) params.set("categoria", fCat);
       if (fMedio) params.set("medio", fMedio);
       const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
-      const datos = raw?.datos || [];
+      const datos = (raw?.datos || []).map(normalizeEgreso);
       setEgresos(datos);
 
-      // Ajuste de años disponible SOLO si realmente cambia
+      // años disponibles (derivados)
       const yearsFromData = Array.from(
         new Set(
           datos
@@ -146,7 +162,7 @@ export default function EgresoContable(){
       if (yearsFromData.length && !arraysIguales(yearsFromData, anios)) {
         setAnios(yearsFromData);
         if (!yearsFromData.includes(anio)) {
-          setAnio(yearsFromData[0]); // evita quedar en año inexistente
+          setAnio(yearsFromData[0]);
         }
       }
     } catch {
@@ -154,7 +170,7 @@ export default function EgresoContable(){
       setEgresos([]);
     } finally { setLoadingEgr(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fStart, fEnd, fCat, fMedio]); // 👈 sacamos anio/anios para evitar re-renders en bucle
+  }, [fStart, fEnd, fCat, fMedio]);
 
   const loadAniosDisponibles = useCallback(async () => {
     try {
@@ -188,8 +204,10 @@ export default function EgresoContable(){
     const needle = q.trim().toLowerCase();
     if (!needle) return egresos;
     return egresos.filter(e=>{
-      const src = [e.descripcion, e.categoria, e.numero_factura, e.medio_nombre || e.medio_pago, e.fecha]
-        .join(" ").toLowerCase();
+      const src = [
+        e.descripcion, e.categoria, e.numero_factura, e.medio_nombre || e.medio_pago,
+        e.proveedor, e.fecha
+      ].join(" ").toLowerCase();
       return src.includes(needle);
     });
   },[egresos,q]);
@@ -246,40 +264,55 @@ export default function EgresoContable(){
     loadEgresosMes();
   };
 
+  /* ========= Exportar (EXCEL: todas las columnas visibles menos Categoría) ========= */
   const exportarXLSX = () => {
     const rows = egresosFiltrados;
     if (!rows.length) { addToast("advertencia","No hay datos para exportar."); return; }
-    const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto (ARS)"];
+
+    // Orden visible sin “Categoría”
+    const headers = ["Fecha","N° Factura","Descripción","Proveedor","Medio","Monto (ARS)"];
     const data = rows.map(e => ([
-      e.fecha || "", e.categoria || "", e.numero_factura || "",
-      e.descripcion || "", e.medio_nombre || e.medio_pago || "",
+      e.fecha || "",
+      e.numero_factura || "",
+      e.descripcion || "",
+      e.proveedor || "",
+      e.medio_nombre || e.medio_pago || "",
       Number(e.monto || 0)
     ]));
+
     const aoa = [headers, ...data];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Columna de Monto ahora es la #6 => índice 5
     const startRow = 2, endRow = aoa.length;
     for (let r = startRow; r <= endRow; r++) {
       const addr = XLSX.utils.encode_cell({ r: r-1, c: 5 });
       if (ws[addr]) ws[addr].t = 'n';
     }
-    ws["!cols"] = [{ wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 40 }, { wch: 18 }, { wch: 14 }];
+
+    ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 22 }, { wch: 18 }, { wch: 14 }];
+
     XLSX.utils.book_append_sheet(wb, ws, `Egresos_${cap1(MESES[month])}_${anio}`);
     const d = new Date();
     const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.xlsx`;
     XLSX.writeFile(wb, name);
-    addToast("exito","Excel exportado.");
+    addToast("exito","Exportado exitosamente.");
   };
 
+  /* ========= CSV (coherente con Excel) ========= */
   const exportarCSV = () => {
     const rows = egresosFiltrados;
     if (!rows.length) { addToast("advertencia","No hay datos para exportar."); return; }
-    const headers = ["Fecha","Categoría","N° Factura","Descripción","Medio","Monto"];
+    const headers = ["Fecha","N° Factura","Descripción","Proveedor","Medio","Monto"];
     const sep = ";";
     const csvEscape = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
     const data = rows.map(e => [
-      e.fecha || "", e.categoria || "", e.numero_factura || "",
-      e.descripcion || "", e.medio_nombre || e.medio_pago || "",
+      e.fecha || "",
+      e.numero_factura || "",
+      e.descripcion || "",
+      e.proveedor || "",
+      e.medio_nombre || e.medio_pago || "",
       (Number(e.monto || 0)).toString().replace(".", ","),
     ]);
     const bom = "\uFEFF";
@@ -295,7 +328,7 @@ export default function EgresoContable(){
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
-    addToast("exito","Archivo exportado (CSV).");
+    addToast("exito","Exportado exitosamente (CSV).");
   };
 
   return (
@@ -349,7 +382,6 @@ export default function EgresoContable(){
               </select>
             </div>
 
-            {/* Chip para Medio de pago (opcional; se muestra si hay filtro) */}
             {fMedio && (
               <div className="ing-filterchip" style={{ marginTop: 8 }}>
                 <span>Medio: <strong>{fMedio}</strong></span>
@@ -366,7 +398,6 @@ export default function EgresoContable(){
 
             <h3 className="eg_cats__header"><FontAwesomeIcon icon={faChartPie}/> Categorías</h3>
 
-            {/* Chip de filtro activo (Categoría) */}
             {fCat && (
               <div className="ing-filterchip">
                 <span>Filtro: <strong>{fCat}</strong></span>
@@ -421,6 +452,12 @@ export default function EgresoContable(){
                 <FontAwesomeIcon icon={faFileExcel} /> Exportar Excel
               </button>
 
+              {/* Si querés un botón CSV, descomentá:
+              <button type="button" className="eg_btn eg_btn--whitepill" onClick={exportarCSV}>
+                <FontAwesomeIcon icon={faFileExcel} /> Exportar CSV
+              </button>
+              */}
+
               <button type="button" className="eg_btn eg_btn--whitepill" onClick={onCreateEgreso}>
                 <FontAwesomeIcon icon={faPlus} /> Registrar egreso
               </button>
@@ -435,12 +472,14 @@ export default function EgresoContable(){
               </div>
             )}
 
-            <div className="gt_table gt_cols-7" role="table" aria-label="Listado de egresos" aria-busy={loadingEgr ? "true" : "false"}>
+            {/* 8 columnas (incluye Proveedor) */}
+            <div className="gt_table gt_cols-8" role="table" aria-label="Listado de egresos" aria-busy={loadingEgr ? "true" : "false"}>
               <div className="gt_headerd" role="row">
                 <div className="gt_cell h center" role="columnheader">Fecha</div>
                 <div className="gt_cell h center" role="columnheader">Categoría</div>
                 <div className="gt_cell h center" role="columnheader">N° Factura</div>
                 <div className="gt_cell h" role="columnheader">Descripción</div>
+                <div className="gt_cell h" role="columnheader">Proveedor</div>
                 <div className="gt_cell h center" role="columnheader">Medio</div>
                 <div className="gt_cell h center" role="columnheader">Monto</div>
                 <div className="gt_cell h center" role="columnheader">Acciones</div>
@@ -459,6 +498,7 @@ export default function EgresoContable(){
                     <div className="gt_cell center" role="cell"><span className="badge">{e.categoria || "-"}</span></div>
                     <div className="gt_cell center" role="cell">{e.numero_factura || "-"}</div>
                     <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
+                    <div className="gt_cell truncate" role="cell" title={e.proveedor || "-"}>{e.proveedor || "-"}</div>
                     <div className="gt_cell center" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
                     <div className="gt_cell center" role="cell">${Number(e.monto || 0).toLocaleString("es-AR")}</div>
                     <div className="gt_cell" role="cell">

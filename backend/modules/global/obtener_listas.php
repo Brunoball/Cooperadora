@@ -14,16 +14,24 @@ try {
     $pdo->exec("SET NAMES utf8mb4");
 
     $listas = [
-        'anios'                => [],
-        'categorias'           => [],   // sigue viniendo de categoria_monto
-        'divisiones'           => [],
-        'meses'                => [],
-        'sexos'                => [],
-        'tipos_documentos'     => [],
-        'medios_pago'          => [],
-        // NUEVO:
-        'egreso_categorias'    => [],   // (tabla: egreso_categoria)
-        'egreso_descripciones' => [],   // (tabla: egreso_descripcion)
+        'anios'                    => [],
+        'categorias'               => [],   // sigue viniendo de categoria_monto
+        'divisiones'               => [],
+        'meses'                    => [],
+        'sexos'                    => [],
+        'tipos_documentos'         => [],
+        'medios_pago'              => [],
+
+        // NUEVAS LISTAS CONTABLES
+        'contable_categorias'      => [],
+        'contable_descripciones'   => [],
+        'contable_proveedores'     => [],
+
+        // Alias de compatibilidad con código previo
+        'egreso_categorias'        => [],
+        'egreso_descripciones'     => [],
+        'proveedores'              => [],
+        'egreso_proveedores'       => [],
     ];
 
     /* ----------- AÑOS ----------- */
@@ -112,29 +120,50 @@ try {
         ];
     }
 
-    /* ===== NUEVAS LISTAS MAESTRAS PARA EGRESOS ===== */
+    /* ===== LISTAS CONTABLES (nuevos nombres de tablas/columnas) ===== */
 
-    // Categorías de egreso (sin campo 'activo')
-    $sql = "SELECT id_egreso_categoria AS id, nombre_categoria AS nombre
-            FROM egreso_categoria
+    // Categorías contables
+    $sql = "SELECT id_cont_categoria AS id, nombre_categoria AS nombre
+            FROM contable_categoria
             ORDER BY nombre_categoria";
+    $contCategorias = [];
     foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
-        $listas['egreso_categorias'][] = [
+        $contCategorias[] = [
             'id'     => (int)$row['id'],
             'nombre' => (string)$row['nombre'],
         ];
     }
+    $listas['contable_categorias'] = $contCategorias;
+    $listas['egreso_categorias']   = $contCategorias; // alias compat.
 
-    // Descripciones de egreso (sin campo 'activo')
-    $sql = "SELECT id_egreso_descripcion AS id, texto
-            FROM egreso_descripcion
-            ORDER BY texto";
+    // Descripciones contables
+    $sql = "SELECT id_cont_descripcion AS id, nombre_descripcion AS nombre
+            FROM contable_descripcion
+            ORDER BY nombre_descripcion";
+    $contDescripciones = [];
     foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
-        $listas['egreso_descripciones'][] = [
-            'id'    => (int)$row['id'],
-            'texto' => (string)$row['texto'],
+        $contDescripciones[] = [
+            'id'     => (int)$row['id'],
+            'nombre' => (string)$row['nombre'],
         ];
     }
+    $listas['contable_descripciones'] = $contDescripciones;
+    $listas['egreso_descripciones']   = $contDescripciones; // alias compat.
+
+    // Proveedores contables
+    $sql = "SELECT id_cont_proveedor AS id, nombre_proveedor AS nombre
+            FROM contable_proveedor
+            ORDER BY nombre_proveedor";
+    $contProveedores = [];
+    foreach ($pdo->query($sql, PDO::FETCH_ASSOC) as $row) {
+        $contProveedores[] = [
+            'id'     => (int)$row['id'],
+            'nombre' => (string)$row['nombre'],
+        ];
+    }
+    $listas['contable_proveedores'] = $contProveedores;
+    $listas['proveedores']          = $contProveedores; // alias compat.
+    $listas['egreso_proveedores']   = $contProveedores; // alias compat.
 
     echo json_encode([
         'exito'  => true,

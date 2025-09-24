@@ -230,6 +230,11 @@ try {
             require_once __DIR__ . '/../modules/contable/agregar_descripcion.php';
             exit;
 
+        case 'agregar_proveedor':
+            require_once __DIR__ . '/../modules/contable/agregar_proveedor.php';
+            exit;
+
+
         /* ===========================
            TIPOS DE DOCUMENTOS
         ============================ */

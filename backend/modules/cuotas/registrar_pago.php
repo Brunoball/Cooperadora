@@ -20,14 +20,14 @@ try {
 
     $payload = json_decode(file_get_contents('php://input'), true) ?: [];
 
-    $idAlumno     = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
-    $periodos     = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
-    $condonar     = !empty($payload['condonar']);
-    $anioInput    = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
+    $idAlumno  = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
+    $periodos  = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
+    $condonar  = !empty($payload['condonar']);
+    $anioInput = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
 
-    // Compatibilidad: monto_libre / monto_unitario
-    $montoLibre   = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
-    $montoUI      = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
+    // Compat: monto_libre / monto_unitario
+    $montoLibre = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
+    $montoUI    = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
 
     // NUEVO: montos por período (incluye 13 y 14)
     $montosPorPeriodo = [];
@@ -40,11 +40,11 @@ try {
     }
 
     if ($idAlumno <= 0) {
-        echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido']);
+        echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido'], JSON_UNESCAPED_UNICODE);
         exit;
     }
     if (empty($periodos)) {
-        echo json_encode(['exito' => false, 'mensaje' => 'No se enviaron períodos a registrar']);
+        echo json_encode(['exito' => false, 'mensaje' => 'No se enviaron períodos a registrar'], JSON_UNESCAPED_UNICODE);
         exit;
     }
     if ($anioInput < 2000 || $anioInput > 2100) {
@@ -55,16 +55,16 @@ try {
 
     // FECHA DE PAGO: mismo día/mes de hoy, año = $anioInput (seleccionado)
     $hoy = new DateTime();
-    $diaActual   = (int)$hoy->format('d');
-    $mesActual   = (int)$hoy->format('m');
-    $fechaPagoStr = sprintf('%04d-%02d-%02d', $anioInput, $mesActual, $diaActual);
+    $diaActual     = (int)$hoy->format('d');
+    $mesActual     = (int)$hoy->format('m');
+    $fechaPagoStr  = sprintf('%04d-%02d-%02d', $anioInput, $mesActual, $diaActual);
 
     $pdo->beginTransaction();
 
-    // Evitar duplicados del mismo alumno/año
+    // Evitar duplicados del mismo alumno/año — SOLO tabla 'pagos'
     $stExist = $pdo->prepare("
         SELECT id_mes, estado
-          FROM cooperadora.pagos
+          FROM pagos
          WHERE id_alumno = :id_alumno
            AND YEAR(fecha_pago) = :anio
     ");
@@ -85,7 +85,7 @@ try {
     // - si no existe, usar monto_unitario (>0)
     // - si no, usar monto_libre (>0)
     // - si no, 0
-    $resolverMonto = function(bool $condonar, ?int $montoUI, int $montoLibre, array $montos, int $periodo) : int {
+    $resolverMonto = function (bool $condonar, ?int $montoUI, int $montoLibre, array $montos, int $periodo): int {
         if ($condonar) return 0;
         if (isset($montos[$periodo]) && is_int($montos[$periodo]) && $montos[$periodo] >= 0) {
             return (int)$montos[$periodo];
@@ -95,12 +95,13 @@ try {
         return 0;
     };
 
+    // Inserción — SOLO tabla 'pagos'
     $stIns = $pdo->prepare("
-        INSERT INTO cooperadora.pagos (id_alumno, id_mes, fecha_pago, estado, monto_pago)
+        INSERT INTO pagos (id_alumno, id_mes, fecha_pago, estado, monto_pago)
         VALUES (:id_alumno, :id_mes, :fecha_pago, :estado, :monto_pago)
     ");
 
-    $insertados = 0;
+    $insertados    = 0;
     $yaRegistrados = [];
 
     // Períodos válidos: 1..12 (meses), 13 (Contado Anual), 14 (Matrícula)
@@ -126,7 +127,7 @@ try {
 
         $stIns->execute([
             ':id_alumno'  => $idAlumno,
-            ':id_mes'     => $mes,               // <-- aquí entran 13 (anual) y 14 (matrícula) también
+            ':id_mes'     => $mes,               // incluye 13 (anual) y 14 (matrícula)
             ':fecha_pago' => $fechaPagoStr,
             ':estado'     => $estadoRegistrar,
             ':monto_pago' => $montoPago,
@@ -149,7 +150,6 @@ try {
             'ya_registrados' => $yaRegistrados,
         ], JSON_UNESCAPED_UNICODE);
     }
-
 } catch (Throwable $e) {
     if (isset($pdo) && ($pdo instanceof PDO) && $pdo->inTransaction()) {
         $pdo->rollBack();

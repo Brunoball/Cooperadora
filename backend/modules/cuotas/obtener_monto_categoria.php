@@ -6,14 +6,30 @@ require_once __DIR__ . '/../../config/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+// CORS básico (opcional). Quitá si no lo necesitás.
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 try {
-    $idAlumno = isset($_GET['id_alumno']) ? (int)$_GET['id_alumno'] : 0;
-    if ($idAlumno <= 0) {
-        echo json_encode(['exito' => false, 'mensaje' => 'Parámetro id_alumno inválido.']);
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        http_response_code(405);
+        echo json_encode(['exito' => false, 'mensaje' => 'Método no permitido. Usá GET.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    // 1) Traer datos mínimos del alumno
+    $idAlumno = isset($_GET['id_alumno']) ? (int)$_GET['id_alumno'] : 0;
+    if ($idAlumno <= 0) {
+        http_response_code(400);
+        echo json_encode(['exito' => false, 'mensaje' => 'Parámetro id_alumno inválido.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 1) Traer datos mínimos del alumno (SOLO tabla 'alumnos')
     $stmt = $pdo->prepare("
         SELECT a.id_alumno, a.id_categoria, a.id_cat_monto
         FROM alumnos a
@@ -24,7 +40,8 @@ try {
     $alumno = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$alumno) {
-        echo json_encode(['exito' => false, 'mensaje' => 'Alumno no encontrado.']);
+        http_response_code(404);
+        echo json_encode(['exito' => false, 'mensaje' => 'Alumno no encontrado.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -41,19 +58,19 @@ try {
         'fuente'           => null,
     ];
 
-    // ---- MATRÍCULA (id 14) ----
-    $stmtMat = $pdo->prepare("SELECT monto FROM cooperadora.meses WHERE id_mes = 14 LIMIT 1");
+    // ---- MATRÍCULA (id 14) desde SOLO tabla 'meses' ----
+    $stmtMat = $pdo->prepare("SELECT monto FROM meses WHERE id_mes = 14 LIMIT 1");
     $stmtMat->execute();
     $rowMat = $stmtMat->fetch(PDO::FETCH_ASSOC);
-    if ($rowMat) {
+    if ($rowMat && isset($rowMat['monto'])) {
         $payload['monto_matricula'] = (int)$rowMat['monto'];
     } else {
-        // si no existe, inicializamos con 15000 por defecto (opcional)
+        // Valor por defecto opcional
         $payload['monto_matricula'] = 15000;
     }
 
     // 2) Prioridad: categoria_monto (registro específico asignado al alumno)
-    if ($idCatMonto) {
+    if (!empty($idCatMonto)) {
         $stmt = $pdo->prepare("
             SELECT
                 cm.id_cat_monto,
@@ -73,14 +90,14 @@ try {
             $payload['monto_anual']      = (int)($row['monto_anual'] ?? 0);
             $payload['fuente']           = 'categoria_monto';
 
-            echo json_encode($payload);
+            echo json_encode($payload, JSON_UNESCAPED_UNICODE);
             exit;
         }
         // Si no encontró en categoria_monto, continúa al fallback por categoria
     }
 
     // 3) Fallback: tabla categoria (singular) usando id_categoria del alumno
-    if ($idCategoria) {
+    if (!empty($idCategoria)) {
         $stmt = $pdo->prepare("
             SELECT
                 c.id_categoria,
@@ -99,15 +116,16 @@ try {
             $payload['monto_mensual']    = (int)($row['monto_mensual'] ?? 0);
             $payload['fuente']           = 'categoria';
 
-            echo json_encode($payload);
+            echo json_encode($payload, JSON_UNESCAPED_UNICODE);
             exit;
         }
     }
 
-    // 4) Último fallback
+    // 4) Último fallback si no hay montos
     $payload['exito']   = false;
     $payload['mensaje'] = 'No se encontró monto/categoría para el alumno.';
-    echo json_encode($payload);
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
-    echo json_encode(['exito' => false, 'mensaje' => 'Error: ' . $e->getMessage()]);
+    http_response_code(500);
+    echo json_encode(['exito' => false, 'mensaje' => 'Error: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

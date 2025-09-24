@@ -230,21 +230,26 @@ export default function IngresosContable() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const list = Array.isArray(data?.items) ? data.items : [];
+
       const rows = list.map((r) => {
-        // La categoría en UI debe mostrar lo que hoy guarda DB en "denominacion" (compatibilidad),
-        // o bien "categoria" si el backend ya lo envía.
         const categoriaText = r.categoria || r.denominacion || "-";
+        const medioText = r.medio || r.medio_pago || "";
+        const proveedorText = r.proveedor || r.nombre_proveedor || "";
+        const imputacionText = r.imputacion || r.descripcion || r.descripcion_texto || "";
+
         return {
           id: `I|${r.id_ingreso}`,
           id_ingreso: Number(r.id_ingreso),
           id_medio_pago: Number(r.id_medio_pago || 0),
           fecha: r.fecha,
-          categoria: categoriaText,              // <- lo que se muestra
-          descripcion: r.descripcion || "",
+          categoria: categoriaText,       // visible
+          imputacion: imputacionText,     // visible (antes "descripcion")
+          proveedor: proveedorText,       // NUEVO visible
           importe: Number(r.importe || 0),
-          medio: r.medio_pago || "",
-          // para compatibilidad con el modal de edición:
+          medio: medioText,               // visible
+          // compat edición:
           denominacion: categoriaText,
+          descripcion: imputacionText,    // mantengo por compat. en filtros previos
         };
       });
       setFilasIngresos(rows);
@@ -285,7 +290,8 @@ export default function IngresosContable() {
       ? filasIngresos
       : filasIngresos.filter((f) =>
           (f.categoria || "").toLowerCase().includes(q) ||
-          (f.descripcion || "").toLowerCase().includes(q) ||
+          (f.imputacion || f.descripcion || "").toLowerCase().includes(q) ||
+          (f.proveedor || "").toLowerCase().includes(q) ||
           (f.fecha || "").toLowerCase().includes(q) ||
           (String(f.importe) || "").toLowerCase().includes(q) ||
           (f.medio || "").toLowerCase().includes(q)
@@ -339,17 +345,18 @@ export default function IngresosContable() {
         "Mes pagado": r.mesPagado,
       }));
     } else {
+      // Exportar TODO lo visible MENOS la columna Categoría
       rows = base.map((r) => ({
         Fecha: r.fecha,
-        Categoría: r.categoria,          // <- sin “Denominación”
-        Descripción: r.descripcion,
+        Proveedor: r.proveedor || "",
+        "Imputación": r.imputacion || r.descripcion || "",
         Importe: r.importe,
         Medio: r.medio,
       }));
     }
     const wbName = `Ingresos_${MESES[mes - 1]}_${anio}_${isAlu ? "Alumnos" : "Ingresos"}`;
     await exportToExcelLike({ workbookName: wbName, sheetName: "Datos", rows });
-    addToast("exito", "Exportación iniciada.");
+    addToast("exito", "Exportado exitosamente.");
   };
 
   /* ===== Acciones ===== */
@@ -578,7 +585,7 @@ export default function IngresosContable() {
                   {!filasFiltradasAlu.length && !cargando && <div className="ing-empty big">Sin pagos</div>}
                 </div>
               ) : (
-                /* ===== TABLA: MANUALES (SIN columna Denominación) ===== */
+                /* ===== TABLA: MANUALES (toda la info del modal) ===== */
                 <div
                   className={`ing-tablewrap is-manuales ${cargandoIngresos ? "is-loading" : ""}`}
                   role="table"
@@ -592,20 +599,22 @@ export default function IngresosContable() {
 
                   <div className="ing-row h" role="row">
                     <div className="c-fecha">Fecha</div>
-                    <div className="c-cat">Categoría</div>
-                    <div className="c-concepto">Descripción</div>
-                    <div className="c-importe">Importe</div>
                     <div className="c-medio">Medio</div>
+                    <div className="c-proveedor">Proveedor</div>
+                    <div className="c-cat">Categoría</div>
+                    <div className="c-imputacion">Imputación</div>
+                    <div className="c-importe">Importe</div>
                     <div className="c-actions center">Acciones</div>
                   </div>
 
                   {filasFiltradasIng.map((f, idx) => (
                     <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
                       <div className="c-fecha">{f.fecha}</div>
-                      <div className="c-cat"><span className="pill">{f.categoria || "-"}</span></div>
-                      <div className="c-concepto">{f.descripcion}</div>
-                      <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
                       <div className="c-medio">{f.medio}</div>
+                      <div className="c-proveedor">{f.proveedor || "-"}</div>
+                      <div className="c-cat"><span className="pill">{f.categoria || "-"}</span></div>
+                      <div className="c-imputacion">{f.imputacion || f.descripcion || "-"}</div>
+                      <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
                       <div className="c-actions center">
                         <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
                           <FontAwesomeIcon icon={faEdit} />
