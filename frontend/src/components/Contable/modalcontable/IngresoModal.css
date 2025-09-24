@@ -179,3 +179,52 @@
   }
 }
 .ing-modal .span-2 { grid-column: 1 / -1; }
+/* === Limitar altura del modal y habilitar scroll interno === */
+.ing-modal{
+  width: min(640px, 100%);
+  max-height: 80vh;          /* ⬅️ límite al 80% del viewport */
+  display: flex;             /* para separar head/body/foot en columna */
+  flex-direction: column;
+  overflow: hidden;          /* mantiene los bordes redondeados */
+  background: #fff;
+}
+
+/* El body es el que scrollea */
+.ing-modal__body{
+  overflow: auto;            /* ⬅️ scroll vertical cuando haga falta */
+  -webkit-overflow-scrolling: touch; /* mejor inercia en móvil */
+  flex: 1;                   /* ocupa el espacio disponible */
+  padding: 14px;             /* mantené tu padding original */
+}
+
+/* Header y footer “pegados” mientras scrolleás el cuerpo */
+.ing-modal__head{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: inherit;       /* mantiene el fondo (o el gradiente) */
+}
+
+.ing-modal__head.gradient--brand-red{
+  position: sticky;          /* si usás la variante con franja roja */
+  top: 0;
+  z-index: 2;
+}
+
+.ing-modal__foot{
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #fff;          /* evita ver contenido por detrás */
+}
+
+/* (Opcional) si querés un borde superior sutil en el foot cuando aparece */
+.ing-modal__foot{
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* Grid responsivo, sin cambios */
+@media (max-width:560px){
+  .ing-modal__body{ padding: 12px; }
+  .ing-modal .grid2{ grid-template-columns: 1fr; }
+}
