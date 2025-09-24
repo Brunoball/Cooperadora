@@ -378,7 +378,10 @@
     padding: 10px;
     gap: 10px;
   }
-
+.modalmi-grid[data-fixed]{
+  overflow: auto;       /* dejá que crezca y la columna scrollee */
+  max-height: 200px;
+}
   /* 4) Footer fijo arriba del borde inferior para dedo */
   .modalmi-foot{
     position: sticky;
@@ -421,7 +424,7 @@
 /* 2) La grid ya no tiene scroll propio */
 .modalmi-grid[data-fixed]{
   overflow: auto;       /* dejá que crezca y la columna scrollee */
-  max-height: 200px;
+  max-height: none;
 }
 
 /* 3) La subbar (título + buscador) se queda pegada arriba */
