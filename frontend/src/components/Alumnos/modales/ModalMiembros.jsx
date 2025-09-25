@@ -284,13 +284,21 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
     }
   }, [notify]);
 
+  /* ====== NUEVO: set de IDs de miembros para excluirlos de la lista derecha ====== */
+  const miembroIds = useMemo(() => new Set(miembros.map(m => m.id_alumno)), [miembros]);
+
   const candidatosFiltrados = useMemo(() => {
     const t = (qDeferred || '').trim().toLowerCase();
-    if (!t) return candidatosAll;
-    return candidatosAll.filter(c =>
+
+    // 1) Siempre excluir a los que ya están como miembros (robusto contra backend).
+    let base = candidatosAll.filter(c => !miembroIds.has(c.id_alumno));
+
+    // 2) Aplicar filtro por texto si hay búsqueda.
+    if (!t) return base;
+    return base.filter(c =>
       (c.searchKey || `${c.nombre} ${c.dni}`.toLowerCase()).includes(t)
     );
-  }, [candidatosAll, qDeferred]);
+  }, [candidatosAll, qDeferred, miembroIds]);
 
   useEffect(() => { setVisibleCount(BATCH); }, [qDeferred]);
   const visibles = useMemo(() => candidatosFiltrados.slice(0, visibleCount), [candidatosFiltrados, visibleCount]);
@@ -337,6 +345,8 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
           activo: c.activo
         })),
       ]);
+
+      // Por prolijidad seguimos sacándolos de la fuente de candidatos.
       setCandidatosAll(prev => prev.filter(c => !setIds.has(c.id_alumno)));
       setSel(new Set());
 
@@ -376,6 +386,8 @@ export default function ModalMiembros({ open, onClose, familia, notify, onDeltaC
       if (!j?.exito) { notify?.(j?.mensaje || 'No se pudo quitar', 'error'); return; }
 
       setMiembros(prev => prev.filter(x => x.id_alumno !== id_alumno));
+
+      // Volver a ofrecerlo como candidato.
       setCandidatosAll(prev =>
         prev.some(x => x.id_alumno === delTarget.id_alumno)
           ? prev

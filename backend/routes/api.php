@@ -178,6 +178,11 @@ try {
             require_once __DIR__ . '/../modules/cuotas/matricula.php';
             exit;
 
+        
+        case 'obtener_info_familia':
+            require_once __DIR__ . '/../modules/cuotas/obtener_info_familia.php';
+            exit;
+
         /* ===========================
            CONTABLE (LEGADO)
         ============================ */
