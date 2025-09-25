@@ -29,15 +29,68 @@ const construirListaAnios = (nowYear) => {
 
 const capitalizar = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : '');
 
+// Cambiá este flag a true para mostrar siempre el CONTADO ANUAL
+const FORZAR_VENTANA_ANUAL = true;
+
 const dentroVentanaAnual = (hoy = new Date()) => {
+  if (FORZAR_VENTANA_ANUAL) return true;
+
   // 15-Dic (y) a 01-Abr (y+1)
   const y = hoy.getFullYear();
   const inicio = new Date(y, 11, 15);
   const fin = new Date(y + 1, 3, 1);
   if (hoy >= inicio && hoy < fin) return true;
+
   const finEsteAnio = new Date(y, 3, 1);
   const inicioAnterior = new Date(y - 1, 11, 15);
   return hoy >= inicioAnterior && hoy < finEsteAnio;
+};
+
+/* ============================================================
+   DESCUENTOS POR HERMANOS — por referencia (MENSUAL)
+   ============================================================ */
+const REFERENCIAS = {
+  INTERNO: { mensual: 50000, totals: { 2: 80000 } },
+  EXTERNO: { mensual: 6000, totals: { 2: 8000, 3: 10000 } }
+};
+
+function getPorcDescuentoDerivado(categoriaNombre = '', familyCount = 1) {
+  const catNorm = normalizar(categoriaNombre).includes('extern') ? 'EXTERNO' : 'INTERNO';
+  const ref = REFERENCIAS[catNorm];
+  if (!ref?.mensual || !ref?.totals) return 0;
+
+  const N = Math.max(1, Number(familyCount) || 1);
+  if (N === 1) return 0;
+
+  let Nref = ref.totals[N] ? N : undefined;
+  if (!Nref && N >= 3 && ref.totals[3]) Nref = 3;
+  if (!Nref && ref.totals[2]) Nref = 2;
+  if (!Nref) return 0;
+
+  const totalGrupoRef = Number(ref.totals[Nref] || 0);
+  const mensualRef = Number(ref.mensual || 0);
+  if (!(totalGrupoRef > 0) || !(mensualRef > 0)) return 0;
+
+  const perCapitaRef = totalGrupoRef / Nref;
+  const ratio = perCapitaRef / mensualRef; // e.g. 0.8 => 20% OFF
+  const descuento = 1 - ratio;
+  return Math.max(0, Math.min(descuento, 0.95));
+}
+
+/* ============================================================
+   DESCUENTOS ANUALES
+   - EXTERNO: totales anuales por grupo (2: 70000, 3: 80000)
+   - INTERNO: usar % de hermanos derivado (sobre el anual base de la DB)
+   ============================================================ */
+const ANUAL_REFERENCIAS = {
+  EXTERNO: { totals: { 2: 70000, 3: 80000 } },
+  // Para interno no hay tabla de totales anuales: se usa el % de hermanos ya calculado
+};
+
+// Redondeo a centenas: 9.999 -> 10.000
+const roundToHundreds = (n) => {
+  const v = Math.round((Number(n) || 0) / 100) * 100;
+  return v < 0 ? 0 : v;
 };
 
 const ModalPagos = ({ socio, onClose }) => {
@@ -45,11 +98,11 @@ const ModalPagos = ({ socio, onClose }) => {
   const nowYear = now.getFullYear();
   const ventanaAnualActiva = dentroVentanaAnual(now);
 
-  const [meses, setMeses] = useState([]);                     // [{ id, nombre }]
-  const [periodosPagados, setPeriodosPagados] = useState([]); // [id_mes,...]
-  const [periodosEstado, setPeriodosEstado] = useState({});   // { [id_mes]: 'pagado' | 'condonado' }
-  const [seleccionados, setSeleccionados] = useState([]);     // [id_mes,...] (solo 1..12)
-  const [fechaIngreso, setFechaIngreso] = useState('');       // 'YYYY-MM-DD'
+  const [meses, setMeses] = useState([]);
+  const [periodosPagados, setPeriodosPagados] = useState([]);
+  const [periodosEstado, setPeriodosEstado] = useState({});
+  const [seleccionados, setSeleccionados] = useState([]);
+  const [fechaIngreso, setFechaIngreso] = useState('');
   const [cargando, setCargando] = useState(false);
   const [toast, setToast] = useState(null);
   const [todosSeleccionados, setTodosSeleccionados] = useState(false);
@@ -66,22 +119,36 @@ const ModalPagos = ({ socio, onClose }) => {
 
   // ===== Precio por categoría (dinámico) =====
   const [precioMensual, setPrecioMensual] = useState(0);
-  const [montoAnual, setMontoAnual] = useState(0);            // <-- desde API categoria_monto
-  const [nombreCategoria, setNombreCategoria] = useState(''); // "INTERNO"/"EXTERNO"/...
+  const [montoAnual, setMontoAnual] = useState(0);
+  const [nombreCategoria, setNombreCategoria] = useState('');
 
-  // ===== Extras: CONTADO ANUAL (ID 13) y MATRÍCULA (ID 14) =====
+  // ===== Extras =====
   const [anualSeleccionado, setAnualSeleccionado] = useState(false);
   const [matriculaSeleccionada, setMatriculaSeleccionada] = useState(false);
   const [matriculaEditando, setMatriculaEditando] = useState(false);
-  const [montoMatricula, setMontoMatricula] = useState(15000); // valor local (se actualiza al cargar)
+  const [montoMatricula, setMontoMatricula] = useState(15000);
   const [guardandoMatricula, setGuardandoMatricula] = useState(false);
 
   // ===== Modo libre =====
   const [libreActivo, setLibreActivo] = useState(false);
-  const [libreValor, setLibreValor] = useState(''); // string para input
+  const [libreValor, setLibreValor] = useState('');
 
   // ===== Estado para controlar modo activo =====
   const [modoActivo, setModoActivo] = useState('meses'); // 'meses' | 'anual' | 'matricula'
+
+  // ===== Info de familia =====
+  const [familiaInfo, setFamiliaInfo] = useState({
+    tieneFamilia: false,
+    id_familia: null,
+    nombre_familia: '',
+    miembros_total: 0,
+    miembros_activos: 0,
+    miembros: [] // [{id_alumno, apellido, nombre, activo}]
+  });
+  const [mostrarMiembros, setMostrarMiembros] = useState(false);
+
+  // NUEVO: aplicar a grupo familiar
+  const [aplicarFamilia, setAplicarFamilia] = useState(false);
 
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
@@ -92,7 +159,7 @@ const ModalPagos = ({ socio, onClose }) => {
   /* ================= Helpers ================= */
   const formatearFecha = (f) => {
     if (!f) return '—';
-    const parts = String(f).split('-'); // [yyyy, mm, dd]
+    const parts = String(f).split('-');
     if (parts.length !== 3) return f;
     const [yyyy, mm, dd] = parts;
     return `${dd}/${mm}/${yyyy}`;
@@ -101,10 +168,8 @@ const ModalPagos = ({ socio, onClose }) => {
   const formatearARS = (monto) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(monto);
 
-  // Solo 1..12 para la grilla
   const mesesGrid = useMemo(() => meses.filter(m => Number(m.id) >= 1 && Number(m.id) <= 12), [meses]);
 
-  // Externo?
   const esExterno = useMemo(() => {
     const raw =
       nombreCategoria ||
@@ -112,20 +177,65 @@ const ModalPagos = ({ socio, onClose }) => {
       socio?.nombre_categoria ||
       socio?.categoria ||
       '';
-    return normalizar(raw) === 'externo';
+    return normalizar(raw).includes('extern');
   }, [nombreCategoria, socio]);
 
-  // Precio unitario vigente para meses
-  const precioUnitarioVigente = useMemo(() => {
+  /* ========= Descuento por hermanos ========= */
+  const familyCount = useMemo(() => {
+    const mA = Number(familiaInfo.miembros_activos || 0);
+    const mT = Number(familiaInfo.miembros_total || 0);
+    const base = Math.max(mA, mT, 0);
+    return familiaInfo.tieneFamilia ? Math.max(1, base) : 1;
+  }, [familiaInfo]);
+
+  const porcDescHermanos = useMemo(
+    () => getPorcDescuentoDerivado(nombreCategoria, familyCount),
+    [nombreCategoria, familyCount]
+  );
+
+  const precioMensualConDescuento = useMemo(() => {
     if (condonar) return 0;
     if (libreActivo) {
       const v = Number(libreValor);
       return Number.isFinite(v) && v > 0 ? v : 0;
     }
-    return Number(precioMensual || 0);
-  }, [condonar, libreActivo, libreValor, precioMensual]);
+    const base = Number(precioMensual || 0);
+    const porc = Number(porcDescHermanos || 0);
+    const ajustado = Math.round(base * (1 - porc));
+    return Math.max(0, ajustado);
+  }, [condonar, libreActivo, libreValor, precioMensual, porcDescHermanos]);
 
-  // Periodos meses ordenados
+  // ====== ANUAL con descuento ======
+  const montoAnualConDescuento = useMemo(() => {
+    if (condonar) return 0;
+    const base = Number(montoAnual || 0);
+    if (!base) return 0;
+
+    const N = Math.max(1, Number(familyCount) || 1);
+
+    // EXTERNO con tablas de totales anuales por grupo
+    if (esExterno && N > 1 && ANUAL_REFERENCIAS?.EXTERNO?.totals) {
+      const totals = ANUAL_REFERENCIAS.EXTERNO.totals;
+      let Nref = totals[N] ? N : undefined;
+      if (!Nref && N >= 3 && totals[3]) Nref = 3;
+      if (!Nref && totals[2]) Nref = 2;
+
+      if (Nref) {
+        const totalGrupoRef = Number(totals[Nref] || 0);
+        if (totalGrupoRef > 0) {
+          const perCapita = Math.round(totalGrupoRef / Nref);
+          return Math.max(0, perCapita);
+        }
+      }
+      // Si no hay match, cae a porcentaje de hermanos
+    }
+
+    // INTERNO (o fallback EXTERNO sin tabla): aplicar % de hermanos sobre el anual base
+    const porc = Number(porcDescHermanos || 0);
+    return Math.max(0, Math.round(esExterno ? base * (1 - porc) : base));
+  }, [condonar, montoAnual, familyCount, esExterno, porcDescHermanos]);
+
+  // Orden de meses
   const periodosMesesOrdenados = useMemo(
     () => [...seleccionados].map(Number).sort((a, b) => a - b),
     [seleccionados]
@@ -133,12 +243,14 @@ const ModalPagos = ({ socio, onClose }) => {
 
   // Totales
   const totalMeses = useMemo(
-    () => (condonar ? 0 : periodosMesesOrdenados.length * precioUnitarioVigente),
-    [condonar, periodosMesesOrdenados.length, precioUnitarioVigente]
+    () => (condonar ? 0 : periodosMesesOrdenados.length * precioMensualConDescuento),
+    [condonar, periodosMesesOrdenados.length, precioMensualConDescuento]
   );
   const totalExtras = useMemo(
-    () => (anualSeleccionado ? Number(montoAnual || 0) : 0) + (matriculaSeleccionada ? Number(montoMatricula || 0) : 0),
-    [anualSeleccionado, montoAnual, matriculaSeleccionada, montoMatricula]
+    () =>
+      (anualSeleccionado ? Number(montoAnualConDescuento || 0) : 0) +
+      (matriculaSeleccionada ? Number(montoMatricula || 0) : 0),
+    [anualSeleccionado, montoAnualConDescuento, matriculaSeleccionada, montoMatricula]
   );
   const total = totalMeses + totalExtras;
 
@@ -154,9 +266,23 @@ const ModalPagos = ({ socio, onClose }) => {
     return `${nombres.join(' / ')} ${anioTrabajo}`;
   }, [meses, periodosMesesOrdenados, anualSeleccionado, matriculaSeleccionada, anioTrabajo]);
 
+  /* ===== Orden de miembros para UI ===== */
+  const miembrosOrdenados = useMemo(() => {
+    const arr = Array.isArray(familiaInfo.miembros) ? [...familiaInfo.miembros] : [];
+    return arr.sort((a, b) => {
+      const isAActual = a.id_alumno === idAlumno ? -1 : 0;
+      const isBActual = b.id_alumno === idAlumno ? -1 : 0;
+      if (isAActual !== isBActual) return isAActual - isBActual;
+      if ((b.activo ? 1 : 0) !== (a.activo ? 1 : 0)) return (b.activo ? 1 : 0) - (a.activo ? 1 : 0);
+      const na = `${a.apellido ?? ''} ${a.nombre ?? ''}`.trim().toLowerCase();
+      const nb = `${b.apellido ?? ''} ${b.nombre ?? ''}`.trim().toLowerCase();
+      return na.localeCompare(nb);
+    });
+  }, [familiaInfo.miembros, idAlumno]);
+
   /* ================= Efectos ================= */
 
-  // Cargar precio mensual / categoría / monto anual (categoria_monto)
+  // Cargar precio mensual / categoría / monto anual
   useEffect(() => {
     const cargarMontoCategoria = async () => {
       try {
@@ -180,6 +306,9 @@ const ModalPagos = ({ socio, onClose }) => {
           setPrecioMensual(Number.isFinite(montoMensual) ? montoMensual : 0);
           setNombreCategoria(nombre ? nombre.toUpperCase() : '');
           setMontoAnual(Number.isFinite(anual) ? anual : 0);
+          if (Number.isFinite(data?.monto_matricula)) {
+            setMontoMatricula(Number(data.monto_matricula));
+          }
         } else {
           setPrecioMensual(0);
           setNombreCategoria('');
@@ -198,7 +327,7 @@ const ModalPagos = ({ socio, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idAlumno]);
 
-  // ➜ Cargar monto de matrícula desde la DB
+  // Cargar monto de matrícula (fallback)
   useEffect(() => {
     const cargarMatricula = async () => {
       try {
@@ -208,37 +337,83 @@ const ModalPagos = ({ socio, onClose }) => {
         if (data?.exito) {
           const v = Number(data.monto);
           setMontoMatricula(Number.isFinite(v) ? v : 0);
-        } else {
-          mostrarToast('advertencia', data?.mensaje || 'No se pudo cargar el monto de matrícula.');
         }
       } catch (e) {
-        console.error('cargarMatricula()', e);
-        mostrarToast('error', 'Error al cargar matrícula.');
+        console.warn('cargarMatricula() fallback', e);
       }
     };
-    cargarMatricula();
-    // BASE_URL es constante; evitar re-fetch innecesario
+    if (montoMatricula === 15000) cargarMatricula();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idAlumno]);
+
+  // Cargar info de familia + miembros
+  useEffect(() => {
+    const cargarFamilia = async () => {
+      try {
+        if (!idAlumno) return;
+        const url = `${BASE_URL}/api.php?action=obtener_info_familia&id_alumno=${encodeURIComponent(idAlumno)}`;
+        const res = await fetch(url, { method: 'GET' });
+        if (!res.ok) throw new Error(`obtener_info_familia HTTP ${res.status}`);
+        const data = await res.json().catch(() => ({}));
+        if (data?.exito) {
+          const info = {
+            tieneFamilia: !!data.tiene_familia,
+            id_familia: data.id_familia ?? null,
+            nombre_familia: data.nombre_familia ?? '',
+            miembros_total: Number(data.miembros_total || 0),
+            miembros_activos: Number(data.miembros_activos || 0),
+            miembros: Array.isArray(data.miembros) ? data.miembros : []
+          };
+          setFamiliaInfo(info);
+          const activos = (info.miembros || []).filter(m => m.activo);
+          setAplicarFamilia(info.tieneFamilia && activos.length > 0);
+        } else {
+          setFamiliaInfo({
+            tieneFamilia: false,
+            id_familia: null,
+            nombre_familia: '',
+            miembros_total: 0,
+            miembros_activos: 0,
+            miembros: []
+          });
+          setAplicarFamilia(false);
+        }
+      } catch (e) {
+        console.error('cargarFamilia()', e);
+        setFamiliaInfo({
+          tieneFamilia: false,
+          id_familia: null,
+          nombre_familia: '',
+          miembros_total: 0,
+          miembros_activos: 0,
+          miembros: []
+        });
+        setAplicarFamilia(false);
+      }
+    };
+    cargarFamilia();
+  }, [idAlumno, BASE_URL]);
 
   // Limpiar selección al cambiar alumno o año
   useEffect(() => {
     setSeleccionados([]);
     setAnualSeleccionado(false);
     setMatriculaSeleccionada(false);
-    setModoActivo('meses'); // Resetear al modo por defecto
+    setModoActivo('meses');
   }, [idAlumno, anioTrabajo]);
 
-  // Sincronizar modoActivo con los estados de selección
+  // Sincronizar modoActivo con estados (prioridad: anual > meses > matricula)
   useEffect(() => {
-    if (anualSeleccionado && modoActivo !== 'anual') {
+    if (anualSeleccionado) {
       setModoActivo('anual');
-    } else if (matriculaSeleccionada && modoActivo !== 'matricula') {
+    } else if (seleccionados.length > 0) {
+      setModoActivo('meses');
+    } else if (matriculaSeleccionada) {
       setModoActivo('matricula');
-    } else if (!anualSeleccionado && !matriculaSeleccionada && seleccionados.length > 0 && modoActivo !== 'meses') {
+    } else {
       setModoActivo('meses');
     }
-  }, [anualSeleccionado, matriculaSeleccionada, seleccionados.length, modoActivo]);
+  }, [anualSeleccionado, matriculaSeleccionada, seleccionados.length]);
 
   // Actualizar "Seleccionar todos"
   useEffect(() => {
@@ -253,7 +428,7 @@ const ModalPagos = ({ socio, onClose }) => {
     setTodosSeleccionados(all);
   }, [seleccionados, mesesGrid, periodosPagados, periodosEstado]);
 
-  // Cargar meses y estado de pagos
+  // Cargar meses/estado
   useEffect(() => {
     const cargar = async () => {
       if (!idAlumno) {
@@ -333,33 +508,31 @@ const ModalPagos = ({ socio, onClose }) => {
   /* ================= Helpers de exclusión de modos ================= */
   const activarSoloMeses = () => {
     setAnualSeleccionado(false);
-    setMatriculaSeleccionada(false);
     setModoActivo('meses');
   };
 
   const activarSoloAnual = () => {
     setSeleccionados([]);
     setMatriculaSeleccionada(false);
+    setLibreActivo(false);
+    setLibreValor('');
     setModoActivo('anual');
   };
 
   const activarSoloMatricula = () => {
-    setSeleccionados([]);
     setAnualSeleccionado(false);
-    // Si elegís matrícula, el libre no puede seguir activo
-    setLibreActivo(false);
-    setLibreValor('');
     setModoActivo('matricula');
   };
 
-  /* ================= Acciones (selección y exclusiones) ================= */
+  /* ================= Acciones ================= */
 
   const togglePeriodo = (id) => {
     const idNum = Number(id);
-    if (idNum < 1 || idNum > 12) return; // solo meses comunes
+    if (idNum < 1 || idNum > 12) return;
     if (periodosEstado[idNum] || periodosPagados.includes(idNum)) return;
 
-    activarSoloMeses();
+    setAnualSeleccionado(false);
+    setModoActivo('meses');
 
     setSeleccionados((prev) =>
       prev.includes(idNum) ? prev.filter((x) => x !== idNum) : [...prev, idNum]
@@ -387,18 +560,17 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-const toggleMatricula = (checked) => {
-  if (checked) {
-    activarSoloMatricula();
-    setMatriculaSeleccionada(true);
-    setMatriculaEditando(true);     // ⬅️ abrir editor automáticamente
-  } else {
-    setMatriculaSeleccionada(false);
-    setMatriculaEditando(false);    // ⬅️ cerrar editor al destildar
-    if (modoActivo === 'matricula') setModoActivo('meses');
-  }
-};
-
+  const toggleMatricula = (checked) => {
+    if (checked) {
+      activarSoloMatricula();
+      setMatriculaSeleccionada(true);
+    } else {
+      setMatriculaSeleccionada(false);
+      if (modoActivo === 'matricula' && seleccionados.length > 0) {
+        setModoActivo('meses');
+      }
+    }
+  };
 
   const onToggleCondonar = (checked) => {
     setCondonar(checked);
@@ -409,14 +581,13 @@ const toggleMatricula = (checked) => {
   };
 
   const onToggleLibre = (checked) => {
-    // Activar libre ⇒ desactiva matrícula automáticamente
-    if (checked) {
-      setMatriculaSeleccionada(false);
-    } else {
-      setLibreValor('');
-    }
     setLibreActivo(checked);
-    if (checked) setCondonar(false);
+    if (!checked) setLibreValor('');
+    if (checked) {
+      setCondonar(false);
+      setAnualSeleccionado(false);
+      if (modoActivo === 'anual') setModoActivo('meses');
+    }
   };
 
   const handleLibreChange = (e) => {
@@ -458,6 +629,50 @@ const toggleMatricula = (checked) => {
     }
   };
 
+  // === NUEVO: ids de familia activos (excluye al actual para evitar duplicar) ===
+  const idsFamiliaActivos = useMemo(() => {
+    if (!familiaInfo?.tieneFamilia) return [];
+    const activos = (familiaInfo.miembros || [])
+      .filter(m => m.activo && m.id_alumno !== idAlumno)
+      .map(m => Number(m.id_alumno))
+      .filter(Boolean);
+    return Array.from(new Set(activos));
+  }, [familiaInfo, idAlumno]);
+
+  const personasFamiliaActivas = useMemo(() => {
+    if (!familiaInfo?.tieneFamilia) return [];
+    const arr = (familiaInfo.miembros || []).filter(m => m.activo);
+    return arr;
+  }, [familiaInfo]);
+
+  // === NUEVO: construir SIEMPRE la misma lista base de personas a operar (para impresión / conteo) ===
+  const listaParaOperar = useMemo(() => {
+    // Base: siempre incluye al alumno actual
+    const alumnoBaseMin = {
+      id_alumno: Number(idAlumno),
+      apellido_nombre: socio?.apellido_nombre || socio?.nombre || `#${idAlumno}`,
+      categoria_nombre: nombreCategoria || ''
+    };
+
+    const lista = [alumnoBaseMin];
+
+    if (aplicarFamilia && personasFamiliaActivas.length > 0) {
+      const idsYa = new Set([Number(idAlumno)]);
+      for (const m of personasFamiliaActivas) {
+        const idm = Number(m.id_alumno);
+        if (!m.activo) continue;
+        if (!idm || idsYa.has(idm)) continue;
+        lista.push({
+          id_alumno: idm,
+          apellido_nombre: `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${idm}`,
+          categoria_nombre: nombreCategoria || ''
+        });
+        idsYa.add(idm);
+      }
+    }
+    return lista;
+  }, [aplicarFamilia, personasFamiliaActivas, idAlumno, socio?.apellido_nombre, socio?.nombre, nombreCategoria]);
+
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
 
@@ -472,9 +687,9 @@ const toggleMatricula = (checked) => {
 
     const montosPorPeriodo = {};
     for (const id of periodosMesesOrdenados) {
-      montosPorPeriodo[id] = Math.round(condonar ? 0 : Number(precioUnitarioVigente || 0));
+      montosPorPeriodo[id] = Math.round(condonar ? 0 : Number(precioMensualConDescuento || 0));
     }
-    if (anualSeleccionado) montosPorPeriodo[ID_CONTADO_ANUAL] = Math.round(Number(montoAnual || 0));
+    if (anualSeleccionado) montosPorPeriodo[ID_CONTADO_ANUAL] = Math.round(Number(montoAnualConDescuento || 0));
     if (matriculaSeleccionada) montosPorPeriodo[ID_MATRICULA] = Math.round(Number(montoMatricula || 0));
 
     setCargando(true);
@@ -484,8 +699,15 @@ const toggleMatricula = (checked) => {
         periodos: periodosSeleccionados,
         anio: Number(anioTrabajo),
         condonar: !!condonar,
-        monto_unitario: Math.round(condonar ? 0 : Number(precioUnitarioVigente || 0)),
+        monto_unitario: Math.round(condonar ? 0 : Number(precioMensualConDescuento || 0)),
         montos_por_periodo: montosPorPeriodo,
+        meta_descuento_hermanos: {
+          familia: familyCount,
+          categoria: nombreCategoria,
+          porcentaje: porcDescHermanos
+        },
+        aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
+        ids_familia: idsFamiliaActivos
       };
 
       if (libreActivo && !condonar) {
@@ -503,6 +725,7 @@ const toggleMatricula = (checked) => {
       const data = await res.json().catch(() => ({}));
       if (data?.exito) {
         setPagoExitoso(true);
+        // Actualizamos estado local del actual
         setPeriodosPagados(prev => {
           const set = new Set(prev);
           periodosMesesOrdenados.forEach(id => set.add(Number(id)));
@@ -526,8 +749,8 @@ const toggleMatricula = (checked) => {
     }
   };
 
-  // Acción post-éxito
-  const handleComprobante = async () => {
+  // === NUEVO: helper para armar la lista completa con montos y periodos (para imprimir/pdf) ===
+  const buildListaCompleta = () => {
     const periodos = [
       ...periodosMesesOrdenados,
       ...(anualSeleccionado ? [ID_CONTADO_ANUAL] : []),
@@ -535,33 +758,94 @@ const toggleMatricula = (checked) => {
     ];
     const periodoCodigo = periodos[0] || 0;
 
-    const alumnoParaImprimir = {
+    // Montos por periodo del alumno actual (plantilla)
+    const montosBase = {
+      ...Object.fromEntries(periodosMesesOrdenados.map(id => [id, Math.round(condonar ? 0 : Number(precioMensualConDescuento || 0))])),
+      ...(anualSeleccionado ? { [ID_CONTADO_ANUAL]: Math.round(Number(montoAnualConDescuento || 0)) } : {}),
+      ...(matriculaSeleccionada ? { [ID_MATRICULA]: Math.round(Number(montoMatricula || 0)) } : {}),
+    };
+
+    // Para cada persona usar los mismos periodos/montos (por ahora), ya que es pago conjunto
+    const lista = listaParaOperar.map(p => ({
       ...socio,
+      id_alumno: Number(p.id_alumno),
+      nombre: p.apellido_nombre,
+      apellido_nombre: p.apellido_nombre,
       id_periodo: periodoCodigo,
       periodos,
       periodo_texto: periodoTextoFinal,
-      precio_unitario: precioUnitarioVigente,
+      precio_unitario: Math.round(condonar ? 0 : Number(precioMensualConDescuento || 0)),
       importe_total: total,
       precio_total: total,
       anio: anioTrabajo,
-      categoria_nombre: libreActivo ? 'LIBRE' : (nombreCategoria || ''),
-      montos_por_periodo: {
-        ...Object.fromEntries(periodosMesesOrdenados.map(id => [id, precioUnitarioVigente])),
-        ...(anualSeleccionado ? { [ID_CONTADO_ANUAL]: Number(montoAnual || 0) } : {}),
-        ...(matriculaSeleccionada ? { [ID_MATRICULA]: Number(montoMatricula || 0) } : {}),
+      categoria_nombre: libreActivo ? 'LIBRE' : (p.categoria_nombre || nombreCategoria || ''),
+      montos_por_periodo: { ...montosBase },
+      meta_descuento_hermanos: {
+        familia: familyCount,
+        categoria: nombreCategoria,
+        porcentaje: porcDescHermanos
       }
-    };
+    }));
+
+    return { lista, periodos, periodoCodigo };
+  };
+
+  // Acción post-éxito
+  const handleComprobante = async () => {
+    const { lista, periodos, periodoCodigo } = buildListaCompleta();
 
     if (modoComprobante === 'pdf') {
       try {
-        await generarComprobanteAlumnoPDF(alumnoParaImprimir, {
-          anio: anioTrabajo,
-          periodoId: periodoCodigo,
-          periodoTexto: periodoTextoFinal,
-          importeTotal: total,
-          precioUnitario: precioUnitarioVigente,
-          periodos,
-        });
+        // Si es grupo (más de 1) => generar **un** PDF combinado
+        if (aplicarFamilia && lista.length > 1) {
+          const nombres = lista.map(p => p.apellido_nombre || p.nombre || `#${p.id_alumno}`).join(' / ');
+          const totalGrupo = roundToHundreds(
+            lista.reduce((acc, p) => acc + (Number(p.precio_total) || 0), 0)
+          );
+
+          const combinado = {
+            ...lista[0],
+            id_alumno: lista[0].id_alumno,
+            nombre: nombres,
+            apellido_nombre: nombres,
+            // importe_total/precio_total como total combinado (redondeado)
+            importe_total: totalGrupo,
+            precio_total: totalGrupo,
+            // opcionalmente, precio_unitario no aplica; lo dejamos como 0 para evitar confusiones
+            precio_unitario: 0,
+            // periodos y montos: podemos dejar un único registro resumido
+            periodos,
+            periodo_texto: lista[0].periodo_texto,
+            montos_por_periodo: { ...lista[0].montos_por_periodo },
+          };
+
+          await generarComprobanteAlumnoPDF(combinado, {
+            anio: combinado.anio,
+            periodoId: combinado.id_periodo,
+            periodoTexto: combinado.periodo_texto,
+            // redondeo aplicado aquí también
+            importeTotal: totalGrupo,
+            precioUnitario: 0,
+            periodos: combinado.periodos,
+          });
+        } else {
+          // Caso individual: 1 PDF con redondeo aplicado al total
+          const p = lista[0];
+          const totalRedondeado = roundToHundreds(Number(p.precio_total) || 0);
+          const personaPDF = {
+            ...p,
+            precio_total: totalRedondeado,
+            importe_total: totalRedondeado,
+          };
+          await generarComprobanteAlumnoPDF(personaPDF, {
+            anio: personaPDF.anio,
+            periodoId: personaPDF.id_periodo,
+            periodoTexto: personaPDF.periodo_texto,
+            importeTotal: totalRedondeado,
+            precioUnitario: Number(personaPDF.precio_unitario) || 0,
+            periodos: personaPDF.periodos,
+          });
+        }
       } catch (e) {
         console.error('Error al generar PDF:', e);
         mostrarToast('error', 'No se pudo generar el PDF.');
@@ -569,25 +853,39 @@ const toggleMatricula = (checked) => {
       return;
     }
 
+    // IMPRESIÓN: abrir ventana y mandar **lista completa** (1 comprobante por persona)
     const win = window.open('', '_blank');
-    if (!win) return alert('Habilitá ventanas emergentes para imprimir el comprobante.');
+    if (!win) return alert('Habilitá ventanas emergentes para imprimir los comprobantes.');
 
     const opciones = { anioPago: anioTrabajo };
+
     if (esExterno) {
-      await imprimirRecibosExternos([alumnoParaImprimir], periodoCodigo, win, opciones);
+      await imprimirRecibosExternos(lista, periodoCodigo, win, opciones);
     } else {
-      await imprimirRecibos([alumnoParaImprimir], periodoCodigo, win, opciones);
+      await imprimirRecibos(lista, periodoCodigo, win, opciones);
     }
   };
 
   if (!socio) return null;
+
+  const textoFamilia = familiaInfo.tieneFamilia
+    ? `Fam: Sí (${Math.max(familiaInfo.miembros_total, familiaInfo.miembros_activos || 0)})`
+    : 'Fam: No';
+
+  // === NUEVO: conteo correcto de registros/comprobantes pospago ===
+  const cantidadRegistrosLista = listaParaOperar.length;
 
   /* ================= VISTA: ÉXITO ================= */
   if (pagoExitoso) {
     const tituloExito = condonar ? '¡Condonación registrada!' : '¡Pago registrado!';
     const subExito = condonar
       ? 'El período seleccionado quedó marcado como Condonado.'
-      : 'Generá o imprimí el comprobante cuando quieras.';
+      : 'Generá o imprimí los comprobantes cuando quieras.';
+
+    const badgeDesc =
+      !condonar && !libreActivo && porcDescHermanos > 0
+        ? `Desc. hermanos: ${(porcDescHermanos * 100).toFixed(1)}%`
+        : null;
 
     return (
       <>
@@ -626,11 +924,15 @@ const toggleMatricula = (checked) => {
                     <h3 className="success-title">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
                     <p className="success-sub">{subExito}</p>
                     <ul className="summary-list" aria-label="Resumen de pago">
-                      <li><span>Valor por mes</span><strong>{formatearARS(precioUnitarioVigente)}</strong></li>
+                      <li><span>Familia</span><strong>{textoFamilia}</strong></li>
+                      {badgeDesc && <li><span>Beneficio</span><strong>{badgeDesc}</strong></li>}
+                      <li><span>Valor por mes</span><strong>{formatearARS(precioMensualConDescuento)}</strong></li>
                       <li><span>Meses</span><strong>{periodosMesesOrdenados.length}</strong></li>
-                      {anualSeleccionado && <li><span>Contado anual</span><strong>{formatearARS(montoAnual)}</strong></li>}
+                      {anualSeleccionado && <li><span>Contado anual</span><strong>{formatearARS(montoAnualConDescuento)}</strong></li>}
                       {matriculaSeleccionada && <li><span>Matrícula</span><strong>{formatearARS(montoMatricula)}</strong></li>}
                       <li><span>Total</span><strong>{formatearARS(total)}</strong></li>
+                      {/* NUEVO: usa la misma lista para el conteo de registros */}
+                      <li><span>Registros</span><strong>{cantidadRegistrosLista}</strong></li>
                       {periodoTextoFinal && (
                         <li className="full-row"><span>Período</span><strong>{periodoTextoFinal}</strong></li>
                       )}
@@ -660,8 +962,8 @@ const toggleMatricula = (checked) => {
                 </div>
                 <div className="hint">
                   {modoComprobante === 'pdf'
-                    ? 'Descargá un PDF listo para enviar o guardar.'
-                    : 'Abrí la vista de impresión con tu diseño de recibo.'}
+                    ? 'Generará un único PDF si pagó el grupo familiar.'
+                    : 'Abrirá la vista de impresión con un comprobante por persona.'}
                 </div>
               </div>
             </div>
@@ -688,6 +990,11 @@ const toggleMatricula = (checked) => {
   }
 
   /* ================= VISTA: NORMAL ================= */
+  const badgeDescNow =
+    !condonar && !libreActivo && porcDescHermanos > 0
+      ? `Desc. hermanos: ${(porcDescHermanos * 100).toFixed(1)}%`
+      : null;
+
   return (
     <>
       {toast && (
@@ -728,11 +1035,108 @@ const toggleMatricula = (checked) => {
                   </div>
                 )}
               </div>
-              <div className="socio-info-extra">
+
+              <div className="socio-info-extra" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span className="valor-mes valor-mes--danger">
                   <strong>Valor mensual</strong>{' '}
-                  {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioUnitarioVigente)}
+                  {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioMensualConDescuento)}
                 </span>
+
+                {badgeDescNow && <span className="badge-info">{badgeDescNow}</span>}
+
+                <span
+                  className="badge-info"
+                  title={familiaInfo.nombre_familia ? `Familia: ${familiaInfo.nombre_familia}` : 'Sin familia'}
+                >
+                  {familiaInfo.tieneFamilia ? `Fam: Sí (${Math.max(familiaInfo.miembros_total, familiaInfo.miembros_activos || 0)})` : 'Fam: No'}
+                </span>
+
+                {/* Toggle aplicar a familia */}
+                {familiaInfo.tieneFamilia && (
+                  <label className="condonar-check" style={{ marginLeft: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={aplicarFamilia}
+                      onChange={(e)=> setAplicarFamilia(e.target.checked)}
+                      disabled={cargando}
+                    />
+                    <span className="switch"><span className="switch-thumb" /></span>
+                    <span className="switch-label"><strong>Aplicar pago al grupo familiar</strong></span>
+                  </label>
+                )}
+
+                {/* === Desplegable de miembros de la familia === */}
+                {familiaInfo.tieneFamilia && (
+                  <div className="family-dropdown">
+                    <button
+                      type="button"
+                      className="btn btn-small btn-terciario"
+                      aria-expanded={mostrarMiembros}
+                      aria-controls="family-members-panel"
+                      onClick={() => setMostrarMiembros((v) => !v)}
+                    >
+                      {mostrarMiembros ? 'Ocultar miembros' : 'Ver miembros'}
+                    </button>
+
+                    {mostrarMiembros && (
+                      <div
+                        id="family-members-panel"
+                        className="family-members-panel"
+                        role="region"
+                        aria-label="Miembros del grupo familiar"
+                        style={{
+                          marginTop: 8,
+                          padding: 10,
+                          background: '#fff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 10,
+                          minWidth: 260
+                        }}
+                      >
+                        {miembrosOrdenados.length === 0 ? (
+                          <div style={{ fontSize: 13, color: '#64748b' }}>Sin integrantes cargados.</div>
+                        ) : (
+                          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
+                            {miembrosOrdenados.map((m) => {
+                              const esActual = m.id_alumno === idAlumno;
+                              const etiqueta = `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${m.id_alumno}`;
+                              return (
+                                <li
+                                  key={m.id_alumno}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '6px 8px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 8,
+                                    background: esActual ? '#fff7ed' : '#f8fafc'
+                                  }}
+                                >
+                                  <span style={{ fontWeight: esActual ? 700 : 500 }}>
+                                    {etiqueta}{esActual ? ' (actual)' : ''}
+                                  </span>
+                                  <span
+                                    className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
+                                    style={{
+                                      fontSize: 11,
+                                      padding: '2px 8px',
+                                      borderRadius: 999,
+                                      border: '1px solid #e2e8f0',
+                                      background: m.activo ? '#ecfdf5' : '#f1f5f9'
+                                    }}
+                                  >
+                                    {m.activo ? 'Activo' : 'Inactivo'}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -745,12 +1149,8 @@ const toggleMatricula = (checked) => {
                   onChange={(e) => onToggleCondonar(e.target.checked)}
                   disabled={cargando}
                 />
-                <span className="switch">
-                  <span className="switch-thumb" />
-                </span>
-                <span className="switch-label">
-                  Marcar como <strong>Condonado</strong> (no genera cobro)
-                </span>
+                <span className="switch"><span className="switch-thumb" /></span>
+                <span className="switch-label">Marcar como <strong>Condonado</strong> (no genera cobro)</span>
               </label>
 
               <div className="year-picker">
@@ -761,8 +1161,7 @@ const toggleMatricula = (checked) => {
                   disabled={cargando}
                   title="Cambiar año"
                 >
-                  <FaCalendarAlt />
-                  <span>{anioTrabajo}</span>
+                  <FaCalendarAlt /><span>{anioTrabajo}</span>
                 </button>
 
                 {showYearPicker && (
@@ -788,14 +1187,10 @@ const toggleMatricula = (checked) => {
                   type="checkbox"
                   checked={libreActivo}
                   onChange={(e) => onToggleLibre(e.target.checked)}
-                  disabled={cargando /* ya no se bloquea por matrícula */}
+                  disabled={cargando}
                 />
-                <span className="switch">
-                  <span className="switch-thumb" />
-                </span>
-                <span className="switch-label">
-                  Usar <strong>monto libre por mes</strong>
-                </span>
+              <span className="switch"><span className="switch-thumb" /></span>
+                <span className="switch-label">Usar <strong>monto libre por mes</strong></span>
               </label>
 
               <div className="year-picker" style={{ gap: 10 }}>
@@ -824,13 +1219,14 @@ const toggleMatricula = (checked) => {
                     type="checkbox"
                     checked={anualSeleccionado}
                     onChange={(e) => toggleAnual(e.target.checked)}
-                    disabled={cargando || matriculaSeleccionada || libreActivo /* opcional: evitar combinaciones raras */}
+                    disabled={cargando || matriculaSeleccionada || libreActivo}
                   />
-                  <span className="switch">
-                    <span className="switch-thumb" />
-                  </span>
+                  <span className="switch"><span className="switch-thumb" /></span>
                   <span className="switch-label">
-                    <strong>CONTADO ANUAL</strong> {montoAnual > 0 ? `(${formatearARS(montoAnual)})` : '(sin monto anual definido)'}
+                    <strong>CONTADO ANUAL</strong>{' '}
+                    {montoAnual > 0
+                      ? `(${formatearARS(montoAnualConDescuento)}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`
+                      : '(sin monto anual definido)'}
                   </span>
                 </label>
               </div>
@@ -842,11 +1238,9 @@ const toggleMatricula = (checked) => {
                   type="checkbox"
                   checked={matriculaSeleccionada}
                   onChange={(e) => toggleMatricula(e.target.checked)}
-                  disabled={cargando || anualSeleccionado /* ya no se bloquea por libreActivo */}
+                  disabled={cargando || anualSeleccionado}
                 />
-                <span className="switch">
-                  <span className="switch-thumb" />
-                </span>
+                <span className="switch"><span className="switch-thumb" /></span>
                 <span className="switch-label" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                   <strong>MATRÍCULA</strong>
                   {!matriculaEditando && (
@@ -866,7 +1260,6 @@ const toggleMatricula = (checked) => {
                 </span>
               </label>
 
-              {/* Bloque de edición */}
               {matriculaEditando && (
                 <div
                   className="edit-inline"
@@ -874,6 +1267,7 @@ const toggleMatricula = (checked) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
+                    marginTop: 10,
                     padding: 8,
                     border: '1px dashed #cbd5e1',
                     borderRadius: 10,
@@ -887,11 +1281,9 @@ const toggleMatricula = (checked) => {
                     inputMode="numeric"
                     value={montoMatricula}
                     onChange={(e)=> setMontoMatricula(Number(e.target.value || 0))}
-                    style={{ padding: 8, width: 180,height:26, borderRadius: 8, border: '1px solid #cbd5e1' }}
+                    style={{ padding: 8, width: 180, borderRadius: 8, border: '1px solid #cbd5e1' }}
                     disabled={guardandoMatricula}
                   />
-
-                  {/* Guardar (✓) */}
                   <button
                     type="button"
                     className="btn btn-danger"
@@ -899,12 +1291,10 @@ const toggleMatricula = (checked) => {
                     disabled={guardandoMatricula}
                     title="Guardar matrícula"
                     aria-label="Guardar matrícula"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 36, borderRadius: 8 }}
                   >
                     {guardandoMatricula ? '…' : <FaCheck />}
                   </button>
-
-                  {/* Cancelar (✕) */}
                   <button
                     type="button"
                     className="btn btn-secondary"
@@ -912,7 +1302,7 @@ const toggleMatricula = (checked) => {
                     disabled={guardandoMatricula}
                     title="Cancelar edición"
                     aria-label="Cancelar edición"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 36, borderRadius: 8 }}
                   >
                     <FaTimes />
                   </button>
@@ -920,7 +1310,7 @@ const toggleMatricula = (checked) => {
               )}
             </div>
 
-            {/* Selección de meses (1..12) */}
+            {/* Selección de meses */}
             <div className="periodos-section">
               <div className="section-header">
                 <h4 className="section-title">Meses disponibles</h4>
@@ -928,7 +1318,7 @@ const toggleMatricula = (checked) => {
                   <button
                     className="btn btn-small btn-terciario"
                     onClick={toggleSeleccionarTodos}
-                    disabled={cargando || mesesGrid.length === 0 || matriculaSeleccionada || anualSeleccionado}
+                    disabled={cargando || mesesGrid.length === 0 || anualSeleccionado}
                     type="button"
                   >
                     {todosSeleccionados ? 'Deseleccionar todos' : 'Seleccionar todos'} ({seleccionados.length})
@@ -949,8 +1339,7 @@ const toggleMatricula = (checked) => {
                       const estado = periodosEstado[idMes];
                       const yaOcupado = !!estado || periodosPagados.includes(idMes);
                       const sel = seleccionados.includes(idMes);
-
-                      const disabledPorOtroModo = matriculaSeleccionada || anualSeleccionado;
+                      const disabledPorOtroModo = anualSeleccionado;
 
                       return (
                         <div
@@ -1021,11 +1410,7 @@ const toggleMatricula = (checked) => {
                 onClick={confirmarPago}
                 disabled={
                   cargando ||
-                  (
-                    seleccionados.length === 0 &&
-                    !anualSeleccionado &&
-                    !matriculaSeleccionada
-                  )
+                  (seleccionados.length === 0 && !anualSeleccionado && !matriculaSeleccionada)
                 }
                 type="button"
               >
