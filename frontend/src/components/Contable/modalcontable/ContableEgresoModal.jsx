@@ -535,7 +535,7 @@ export default function ContableEgresoModal({
           </header>
 
           <form onSubmit={onSubmit} className="mm_body">
-            {/* Row 1 */}
+            {/* Row 1: Fecha + Medio */}
             <div className="mm_row">
               {/* Fecha */}
               <div
@@ -580,6 +580,7 @@ export default function ContableEgresoModal({
               </div>
             </div>
 
+            {/* Nuevo medio (si corresponde) */}
             {medioEsOtro && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
@@ -595,14 +596,14 @@ export default function ContableEgresoModal({
               </div>
             )}
 
-            {/* Row 2 */}
+            {/* Row 2: Categoría + Comprobante */}
             <div className="mm_row">
               <div className="mm_field always-float has-icon">
                 <select
                   value={categoriaEsOtra ? VALOR_OTRO : categoriaId}
                   onChange={(e)=>onChangeCategoria(e.target.value)}
                 >
-                  <option value="">(sin categoría)</option>
+                  <option value="">Seleccione...</option>
                   {listaCategorias.map(c => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
                   <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
                 </select>
@@ -619,20 +620,6 @@ export default function ContableEgresoModal({
                 />
                 <label>Comprobante</label>
                 <span className="mm_iconField"><FontAwesomeIcon icon={faHashtag} /></span>
-              </div>
-
-              <div className="mm_field has-icon">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  value={importe}
-                  onChange={(e)=>setImporte(onlyDigits(e.target.value))}
-                  placeholder=" "
-                  required
-                />
-                <label>Importe</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
               </div>
             </div>
 
@@ -651,22 +638,38 @@ export default function ContableEgresoModal({
               </div>
             )}
 
-            {/* Row 3 - Proveedor */}
+            {/* Row 3: Proveedor + Descripción (misma fila) */}
             <div className="mm_row">
+              {/* Proveedor */}
               <div className="mm_field always-float has-icon">
                 <select
                   value={proveedorEsOtro ? VALOR_OTRO : proveedorId}
                   onChange={(e)=>onChangeProveedor(e.target.value)}
                 >
-                  <option value="">(sin proveedor)</option>
+                  <option value="">Seleccione...</option>
                   {listaProveedores.map(p => (<option key={p.id} value={p.id}>{p.nombre}</option>))}
                   <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
                 </select>
                 <label>Proveedor</label>
                 <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
               </div>
+
+              {/* Descripción */}
+              <div className="mm_field always-float has-icon">
+                <select
+                  value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
+                  onChange={(e)=>onChangeDescripcion(e.target.value)}
+                >
+                  <option value="">Seleccione...</option>
+                  {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{d.texto}</option>))}
+                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
+                </select>
+                <label>Descripción</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
+              </div>
             </div>
 
+            {/* Campos al vuelo */}
             {proveedorEsOtro && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
@@ -682,22 +685,6 @@ export default function ContableEgresoModal({
               </div>
             )}
 
-            {/* Row 4 - Descripción */}
-            <div className="mm_row">
-              <div className="mm_field always-float has-icon">
-                <select
-                  value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
-                  onChange={(e)=>onChangeDescripcion(e.target.value)}
-                >
-                  <option value="">(sin descripción)</option>
-                  {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{d.texto}</option>))}
-                  <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
-                </select>
-                <label>Descripción</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
-              </div>
-            </div>
-
             {descripcionEsOtra && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
@@ -712,7 +699,21 @@ export default function ContableEgresoModal({
                 </div>
               </div>
             )}
-
+            <div className="mm_row">
+              <div className="mm_field has-icon grow">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  value={importe}
+                  onChange={(e)=>setImporte(onlyDigits(e.target.value))}
+                  placeholder=" "
+                  required
+                />
+                <label>Importe</label>
+                <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
+              </div>
+            </div>
             {/* Dropzone */}
             <div className="dz_wrap">
               <div
@@ -790,6 +791,10 @@ export default function ContableEgresoModal({
               </div>
             </div>
 
+            {/* ÚLTIMO CAMPO: Importe */}
+
+
+            {/* Footer */}
             <div className="mm_footer">
               <button type="button" className="mm_btn ghost" onClick={onClose}>Cancelar</button>
               <button type="submit" className="mm_btn primary" disabled={saving || uploading}>

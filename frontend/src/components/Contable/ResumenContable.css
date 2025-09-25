@@ -167,7 +167,7 @@
   background: var(--reg-primary);
   box-shadow: inset 0 0 0 1px #ffffff66;
 }
-.rc_kpi_icon.warn { background: var(--reg-danger); }
+
 
 .rc_kpi_txt .rc_kpi_label {
   margin: 0;
@@ -340,8 +340,8 @@
   align-items: center;
 }
 
-.gt_cell { padding: .9rem .75rem; }
-.gt_cell.right { text-align: right; font-weight: 800; }
+.gt_cell { padding: .9rem 0; }
+.gt_cell.right { text-align: center; font-weight: 800; }
 .gt_cell.pos { color: #15803d; }
 .gt_cell.neg { color: #b91c1c; }
 

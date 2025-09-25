@@ -387,16 +387,18 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-  const toggleMatricula = (checked) => {
-    if (checked) {
-      // Activar matrícula ⇒ desactivar anual y libre automáticamente
-      activarSoloMatricula();
-      setMatriculaSeleccionada(true);
-    } else {
-      setMatriculaSeleccionada(false);
-      if (modoActivo === 'matricula') setModoActivo('meses');
-    }
-  };
+const toggleMatricula = (checked) => {
+  if (checked) {
+    activarSoloMatricula();
+    setMatriculaSeleccionada(true);
+    setMatriculaEditando(true);     // ⬅️ abrir editor automáticamente
+  } else {
+    setMatriculaSeleccionada(false);
+    setMatriculaEditando(false);    // ⬅️ cerrar editor al destildar
+    if (modoActivo === 'matricula') setModoActivo('meses');
+  }
+};
+
 
   const onToggleCondonar = (checked) => {
     setCondonar(checked);
@@ -872,7 +874,6 @@ const ModalPagos = ({ socio, onClose }) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    marginTop: 10,
                     padding: 8,
                     border: '1px dashed #cbd5e1',
                     borderRadius: 10,
@@ -886,7 +887,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     inputMode="numeric"
                     value={montoMatricula}
                     onChange={(e)=> setMontoMatricula(Number(e.target.value || 0))}
-                    style={{ padding: 8, width: 180, borderRadius: 8, border: '1px solid #cbd5e1' }}
+                    style={{ padding: 8, width: 180,height:26, borderRadius: 8, border: '1px solid #cbd5e1' }}
                     disabled={guardandoMatricula}
                   />
 
@@ -898,7 +899,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={guardandoMatricula}
                     title="Guardar matrícula"
                     aria-label="Guardar matrícula"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 36, borderRadius: 8 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8 }}
                   >
                     {guardandoMatricula ? '…' : <FaCheck />}
                   </button>
@@ -911,7 +912,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={guardandoMatricula}
                     title="Cancelar edición"
                     aria-label="Cancelar edición"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 36, borderRadius: 8 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8 }}
                   >
                     <FaTimes />
                   </button>

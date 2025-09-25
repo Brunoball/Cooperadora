@@ -452,15 +452,7 @@ export default function IngresosContable() {
               <span>{innerTab === "alumnos" ? "Categorías (alumnos)" : "Categorías (ingresos)"}</span>
             </div>
 
-            {/* Chip de filtro activo */}
-            {catFiltro && (
-              <div className="ing-filterchip">
-                <span>Filtro: <strong>{catFiltro}</strong></span>
-                <button className="ing-filterchip__clear" onClick={() => setCatFiltro("")} title="Quitar filtro">
-                  Quitar
-                </button>
-              </div>
-            )}
+
 
             {categoriasMes.length === 0 ? (
               <div className="ing-empty">Sin datos</div>

@@ -398,19 +398,7 @@ export default function EgresoContable(){
 
             <h3 className="eg_cats__header"><FontAwesomeIcon icon={faChartPie}/> Categorías</h3>
 
-            {fCat && (
-              <div className="ing-filterchip">
-                <span>Filtro: <strong>{fCat}</strong></span>
-                <button
-                  className="ing-filterchip__clear"
-                  onClick={() => setFCat("")}
-                  title="Quitar filtro"
-                  type="button"
-                >
-                  Quitar
-                </button>
-              </div>
-            )}
+
 
             <div className="eg_cats">
               {catBreakdown.map(c=>{

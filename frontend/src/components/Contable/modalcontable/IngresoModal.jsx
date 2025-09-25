@@ -334,7 +334,7 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
             onChange={(v)=>onChangeProveedor(v)}
             options={listaProveedores}
             extraOption
-            placeholder="(SIN PROVEEDOR)"
+            placeholder="Seleccione..."
           />
           {proveedorEsOtro && (
             <InputField icon={faUser} label="Nuevo proveedor" value={proveedorNuevo} onChange={(e)=>setProveedorNuevo(onlyLetters(e.target.value))} required />
@@ -348,7 +348,7 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
             onChange={(v)=>onChangeCategoria(v)}
             options={listaCategorias}
             extraOption
-            placeholder="(SIN CATEGORÍA)"
+            placeholder="Seleccione..."
           />
           {categoriaEsOtra && (
             <InputField icon={faTags} label="Nueva categoría" value={categoriaNueva} onChange={(e)=>setCategoriaNueva(onlyLetters(e.target.value))} required />
@@ -363,7 +363,7 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
               onChange={(v)=>onChangeImputacion(v)}
               options={listaImputaciones}
               extraOption
-              placeholder="(SIN IMPUTACIÓN)"
+              placeholder="Seleccione..."
             />
 
             <InputField
@@ -690,7 +690,7 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
             onChange={(v)=>onChangeProveedor(v)}
             options={listaProveedores}
             extraOption
-            placeholder="(SIN PROVEEDOR)"
+            placeholder="Seleccione..."
           />
           {proveedorEsOtro && (
             <InputField icon={faUser} label="Nuevo proveedor" value={proveedorNuevo} onChange={(e)=>setProveedorNuevo(onlyLetters(e.target.value))} required />
@@ -704,7 +704,7 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
             onChange={(v)=>onChangeCategoria(v)}
             options={listaCategorias}
             extraOption
-            placeholder="(SIN CATEGORÍA)"
+            placeholder="Seleccione..."
           />
           {categoriaEsOtra && (
             <InputField icon={faTags} label="Nueva categoría" value={categoriaNueva} onChange={(e)=>setCategoriaNueva(onlyLetters(e.target.value))} required />
@@ -719,7 +719,7 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
               onChange={(v)=>onChangeImputacion(v)}
               options={listaImputaciones}
               extraOption
-              placeholder="(SIN IMPUTACIÓN)"
+              placeholder="Seleccione..."
             />
 
             <InputField

@@ -54,23 +54,22 @@ function useAnimatedNumber(target, { duration = 800, deps = [] } = {}) {
 }
 
 /* ---------- DonutChart (Ingresos = AZUL / Egresos = ROJO) ---------- */
+/* Arreglo: un arco por serie con dasharray fijo + offset. Evita saltos/gaps. */
 function DonutChart({ ingresos = 0, egresos = 0 }) {
   const total = Math.max(ingresos + egresos, 1);
-  const targetPIng = ingresos / total;
+  const targetP = ingresos / total; // 0..1
 
-  // porcentaje animado
-  const pIng = useAnimatedNumber(targetPIng, { duration: 900, deps: [ingresos, egresos] });
+  // número central animado (suave)
+  const animIngresos = useAnimatedNumber(ingresos, { duration: 800, deps: [ingresos] });
 
   const size = 180;
   const stroke = 18;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
-  const arcIng = `${c * pIng} ${c * (1 - pIng)}`;
-  const arcEgr = `${c * (1 - pIng)} ${c * pIng}`;
-
-  // número central animado
-  const animIngresos = useAnimatedNumber(ingresos, { duration: 900, deps: [ingresos] });
+  // largos de arcos
+  const lenIng = c * targetP;
+  const lenEgr = c * (1 - targetP);
 
   return (
     <div className="rc_donut">
@@ -94,23 +93,29 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
           </linearGradient>
         </defs>
 
-        {/* Fondo */}
+        {/* anillo de fondo */}
         <circle cx={size/2} cy={size/2} r={r} stroke="#eef2ff" strokeWidth={stroke} fill="none" />
-        {/* Ingresos */}
+
+        {/* Ingresos (arranca arriba, -90°) */}
         <circle
           cx={size/2} cy={size/2} r={r}
           stroke="url(#gradIng)" strokeWidth={stroke} fill="none"
-          strokeDasharray={arcIng} strokeLinecap="round"
+          strokeLinecap="round"
+          strokeDasharray={`${lenIng} ${c}`}
+          strokeDashoffset={0}
           transform={`rotate(-90 ${size/2} ${size/2})`}
-          className="rc_donut_arc rc_donut_arc--ing"
+          className="rc_donut_arc"
         />
-        {/* Egresos */}
+
+        {/* Egresos (arranca donde termina Ingresos) */}
         <circle
           cx={size/2} cy={size/2} r={r}
           stroke="url(#gradEgr)" strokeWidth={stroke} fill="none"
-          strokeDasharray={arcEgr} strokeLinecap="round"
-          transform={`rotate(${pIng * 360 - 90} ${size/2} ${size/2})`}
-          className="rc_donut_arc rc_donut_arc--egr"
+          strokeLinecap="round"
+          strokeDasharray={`${lenEgr} ${c}`}
+          strokeDashoffset={-lenIng}
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          className="rc_donut_arc"
         />
 
         {/* Centro */}
@@ -135,6 +140,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
 }
 
 /* ---------- LineChart (con animaciones) ---------- */
+/* Arreglo: sacamos el filter de sombra (costoso en SVG) para que no pegue tirones. */
 function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
   const W = 700, H = 240, P = 24;
   const maxV = Math.max(...data.map((d) => d.value), 1);
@@ -163,9 +169,6 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
             <stop offset="0%" stopColor={color} stopOpacity="0.35" />
             <stop offset="100%" stopColor={color} stopOpacity="0.02" />
           </linearGradient>
-          <filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#93c5fd" floodOpacity="0.25" />
-          </filter>
         </defs>
 
         <g className="axis">
@@ -183,13 +186,12 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
         {/* área con fade-in */}
         <path d={area} fill="url(#gradLine)" className="rc_line_area_in" />
 
-        {/* trazo que se dibuja */}
+        {/* trazo que se dibuja (sin filter pesado) */}
         <path
           d={path}
           stroke={color}
           strokeWidth="2.5"
           fill="none"
-          filter="url(#soft)"
           className="rc_line_path_draw"
           pathLength="1"
         />
@@ -319,13 +321,14 @@ export default function ResumenContable() {
   );
 
   const lineData = useMemo(() => {
-    const key = "ingresos";
+    const key = "ingresos"; // podés alternar con 'egresos' o 'saldo' si agregás tabs
     return meses12.map((m) => ({ label: m.nombre_mes, value: Number(m[key] || 0) }));
   }, [meses12]);
 
   const serieColor = "#1D428A";
 
-  const chartKey = `${chartTab}-${anioRes}-${totals.ingresos}-${totals.egresos}`;
+  // Arreglo: key estable. Antes incluía totals.* y re-montaba el SVG a cada refetch.
+  const chartKey = `${chartTab}-${anioRes}`;
   const tableKey = `${anioRes}-${resumen.length}`;
 
   return (
