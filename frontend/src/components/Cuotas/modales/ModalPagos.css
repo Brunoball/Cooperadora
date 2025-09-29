@@ -155,7 +155,7 @@
   background-color: transparent;
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 560px;
+  max-width: 1060px;
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -420,7 +420,66 @@
 
 /* Acento rojo solicitado */
 .socio-info-card--danger { border-left-color: var(--danger-600); }
-.valor-mes--danger strong { color: var(--danger-700); }
+
+.socio-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.socio-nombre {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.socio-fecha {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.fecha-label {
+  color: var(--text-secondary);
+}
+
+.fecha-valor {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.socio-info-extra {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.valor-mes {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.valor-mes--danger strong { 
+  color: var(--danger-700); 
+}
+
+.badge-info {
+  background: var(--secondary-50);
+  color: var(--secondary-700);
+  border: 1px solid var(--secondary-200);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.family-toggle {
+  margin-left: 8px;
+}
 
 /* =========================================================
    Condonar — Caja con switch y selector de año
@@ -429,6 +488,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 11vh;
+  max-height: 11vh;
   gap: 1rem;
   padding: 0.9rem 1rem;
   background: var(--surface-secondary);
@@ -436,6 +497,7 @@
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-sm);
   transition: var(--transition-smooth);
+  margin-top: 10px;
 }
 .condonar-box:is(:hover, :focus-within) { border-color: var(--secondary-200); }
 .condonar-box.is-active {
@@ -494,6 +556,17 @@
 }
 .switch-label strong { font-weight: 700; color: var(--gray-900); }
 
+.matricula-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.matricula-monto {
+  margin-left: 6px;
+}
+
 /* Selector de año */
 .year-picker {
   margin-left: auto;
@@ -501,6 +574,17 @@
   align-items: center;
   position: relative;
   gap: .5rem;
+}
+
+.libre-input-container {
+  gap: 10px;
+}
+
+.libre-input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  width: 220px;
 }
 
 .year-button {
@@ -566,6 +650,112 @@
   background: var(--secondary-600);
   color: var(--text-on-primary);
   border-color: var(--secondary-600);
+}
+
+/* =========================================================
+   Controles de mitades anuales
+   ========================================================= */
+.anual-mitades {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px ;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.anual-mitades-info {
+  font-size: 12px;
+  color: #475569;
+}
+
+/* =========================================================
+   Edición de matrícula
+   ========================================================= */
+.matricula-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.matricula-input {
+  padding: 8px;
+  width: 180px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+
+/* =========================================================
+   Familia - miembros
+   ========================================================= */
+.family-dropdown {
+  position: relative;
+}
+
+.members-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.current-member {
+  background: #fff7ed;
+}
+
+.member-name {
+  font-weight: 500;
+}
+
+.chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.chip-success {
+  background: #ecfdf5;
+}
+
+.chip-muted {
+  background: #f1f5f9;
+}
+
+.no-members {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.family-members-panel {
+  position: absolute;
+  z-index: 9999;
+  right: 0;
+  margin-top: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: var(--shadow-lg);
+  border-radius: 10px;
+  min-width: 260px;
 }
 
 /* =========================================================
@@ -647,6 +837,10 @@
   inset: 0;
   background-color: rgba(255, 255, 255, 0.6);
 }
+.periodo-card.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* Checkbox custom */
 .periodo-checkbox { position: relative; margin-right: 0.75rem; z-index: 1; }
@@ -720,6 +914,16 @@
 }
 
 .success-footer { background: #fff; }
+
+.footer-left {
+  display: flex;
+  align-items: center;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 1rem;
+}
 
 .total-badge {
   display: inline-flex;
@@ -840,6 +1044,16 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Botón ghost */
+.btn.btn-ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.btn.btn-ghost:hover:not(:disabled) {
+  background: var(--gray-100);
+}
+
 /* Spinner dentro de botón */
 .spinner-btn {
   display: inline-block;
@@ -851,8 +1065,6 @@
   animation: spin 1s ease-in-out infinite;
   margin-right: 0.5rem;
 }
-
-.footer-actions{display: flex; gap: 1rem;}
 
 /* =========================================================
    Breakpoints
@@ -882,10 +1094,131 @@
     align-items: flex-start;
   }
   .year-picker { width: 100%; justify-content: flex-end; }
+  
+  .socio-info-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .socio-info-extra {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
 
 @media (max-width: 400px) {
   .modal-header-content { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .modal-icon-circle { display: none; }
+  
+  .anual-mitades {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .matricula-edit {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .matricula-input {
+    width: 100%;
+  }
+}
+.centrar-familia{ display: flex; justify-content: space-between; width: 100%;}
+.condonarAño-montoLibre{display: flex; flex-wrap: nowrap; gap: 10px;}
+
+.sitch-labes{
+  display:flex;              /* apila los hijos */
+  flex-direction:column;
+  line-height:1.2;
 }
 
+.sitch-labes .subline{
+  font-weight:400;
+  opacity:.8;                /* opcional, para bajarle el tono */
+  margin-top:2px;            /* separa del título */
+}
+
+/* ===== Tooltip de info (arriba y centrado) ===== */
+.anual-mitades-info{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:12px;
+  color:#475569;
+  overflow: visible; /* aseguro que el hijo pueda sobresalir */
+}
+
+.anual-mitades-importe{
+  font-weight:600;
+  color: var(--gray-800);
+}
+
+.info-icon{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  border:1px solid var(--gray-300);
+  background:#fff;
+  color: var(--primary-600);
+  transition: var(--transition-fast);
+}
+.info-icon:hover{ background: var(--gray-100); }
+.info-icon:focus-visible{
+  outline:2px solid var(--secondary-500);
+  outline-offset:2px;
+}
+
+/* Tooltip arriba y centrado respecto al icono */
+.info-icon .tip{
+  position:absolute;
+  bottom: calc(100% + 10px);     /* arriba del icono */
+  transform: translateX(-50%);
+  width: 240px;
+  padding: 6px 10px;
+  background: var(--secondary-50);
+  color:var(--secondary-700);
+  border:1px solid rgba(0,0,0,.15);
+  border-radius:10px;
+  font-size:12px;
+  font-weight: 500;
+  line-height:1.25;
+  text-align: center;
+  white-space: normal;            /* permite varias líneas si hace falta */
+  box-shadow: var(--shadow-lg);
+  opacity:0;
+  pointer-events:none;
+  transition: var(--transition-fast);
+  z-index: 30;                    /* por encima de chips/bordes */
+}
+
+/* Flechita apuntando hacia el icono (abajo del tooltip) */
+.info-icon .tip::before{
+  content:"";
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform: translateX(-50%);
+  border-width:6px;
+  border-style:solid;
+  border-color: var(--secondary-700) transparent transparent transparent;
+}
+
+/* Mostrar al hover o foco por teclado */
+.info-icon:hover .tip,
+.info-icon:focus-visible .tip{
+  opacity:1;
+}
+
+/* Opcional: en pantallas muy angostas, achicar un poco */
+@media (max-width: 480px){
+  .info-icon .tip{ max-width: 200px; }
+}
+
+.sep_headeric{display: flex; gap: 10px;}

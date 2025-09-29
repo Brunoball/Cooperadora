@@ -1,6 +1,6 @@
 // src/components/Cuotas/modales/ModalPagos.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes, FaInfoCircle } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalPagos.css';
@@ -1116,7 +1116,24 @@ const ModalPagos = ({ socio, onClose }) => {
           <div className="modal-body">
             <div className="socio-info-card socio-info-card--danger">
               <div className="socio-info-header">
-                <h3 className="socio-nombre">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
+                <div className='sep_header'>
+                                  <h3 className="socio-nombre">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
+                                <span className="valor-mes valor-mes--danger">
+                  <strong>Valor mensual</strong>{' '}
+                  {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioMensualConDescuento)}
+                </span>
+                </div>
+               <div className='sep_headeric'>
+                                  {badgeDescNow && <span className="badge-info">{badgeDescNow}</span>}
+
+                <span
+                  className="badge-info"
+                  title={familiaInfo.nombre_familia ? `Familia: ${familiaInfo.nombre_familia}` : 'Sin familia'}
+                >
+                  {familiaInfo.tieneFamilia ? `Fam: Sí (${Math.max(familiaInfo.miembros_total, familiaInfo.miembros_activos || 0)})` : 'Fam: No'}
+                </span>
+               </div>
+
                 {fechaIngreso && (
                   <div className="socio-fecha">
                     <span className="fecha-label">Ingreso:</span>
@@ -1125,24 +1142,12 @@ const ModalPagos = ({ socio, onClose }) => {
                 )}
               </div>
 
-              <div className="socio-info-extra" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span className="valor-mes valor-mes--danger">
-                  <strong>Valor mensual</strong>{' '}
-                  {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioMensualConDescuento)}
-                </span>
-
-                {badgeDescNow && <span className="badge-info">{badgeDescNow}</span>}
-
-                <span
-                  className="badge-info"
-                  title={familiaInfo.nombre_familia ? `Familia: ${familiaInfo.nombre_familia}` : 'Sin familia'}
-                >
-                  {familiaInfo.tieneFamilia ? `Fam: Sí (${Math.max(familiaInfo.miembros_total, familiaInfo.miembros_activos || 0)})` : 'Fam: No'}
-                </span>
+              <div className="socio-info-extra">
 
                 {/* Toggle aplicar a familia */}
                 {familiaInfo.tieneFamilia && (
-                  <label className="condonar-check" style={{ marginLeft: 8 }}>
+                  <div className='centrar-familia'>
+                    <label className="condonar-check family-toggle">
                     <input
                       type="checkbox"
                       checked={aplicarFamilia}
@@ -1152,11 +1157,9 @@ const ModalPagos = ({ socio, onClose }) => {
                     <span className="switch"><span className="switch-thumb" /></span>
                     <span className="switch-label"><strong>Aplicar pago al grupo familiar</strong></span>
                   </label>
-                )}
 
-                {/* === Desplegable de miembros de la familia === */}
-                {familiaInfo.tieneFamilia && (
-                  <div className="family-dropdown">
+
+                                    <div className="family-dropdown">
                     <button
                       type="button"
                       className="btn btn-small btn-terciario"
@@ -1173,47 +1176,24 @@ const ModalPagos = ({ socio, onClose }) => {
                         className="family-members-panel"
                         role="region"
                         aria-label="Miembros del grupo familiar"
-                        style={{
-                          marginTop: 8,
-                          padding: 10,
-                          background: '#fff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: 10,
-                          minWidth: 260
-                        }}
                       >
                         {miembrosOrdenados.length === 0 ? (
-                          <div style={{ fontSize: 13, color: '#64748b' }}>Sin integrantes cargados.</div>
+                          <div className="no-members">Sin integrantes cargados.</div>
                         ) : (
-                          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
+                          <ul className="members-list">
                             {miembrosOrdenados.map((m) => {
                               const esActual = m.id_alumno === idAlumno;
                               const etiqueta = `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${m.id_alumno}`;
                               return (
                                 <li
                                   key={m.id_alumno}
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '6px 8px',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: 8,
-                                    background: esActual ? '#fff7ed' : '#f8fafc'
-                                  }}
+                                  className={`member-item ${esActual ? 'current-member' : ''}`}
                                 >
-                                  <span style={{ fontWeight: esActual ? 700 : 500 }}>
+                                  <span className="member-name">
                                     {etiqueta}{esActual ? ' (actual)' : ''}
                                   </span>
                                   <span
                                     className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
-                                    style={{
-                                      fontSize: 11,
-                                      padding: '2px 8px',
-                                      borderRadius: 999,
-                                      border: '1px solid #e2e8f0',
-                                      background: m.activo ? '#ecfdf5' : '#f1f5f9'
-                                    }}
                                   >
                                     {m.activo ? 'Activo' : 'Inactivo'}
                                   </span>
@@ -1225,12 +1205,18 @@ const ModalPagos = ({ socio, onClose }) => {
                       </div>
                     )}
                   </div>
+                  </div>
+
                 )}
+
+                {/* === Desplegable de miembros de la familia === */}
+
               </div>
             </div>
 
             {/* Condonar + Año */}
-            <div className={`condonar-box ${condonar ? 'is-active' : ''}`}>
+            <div className='condonarAño-montoLibre'>
+              <div className={`condonar-box ${condonar ? 'is-active' : ''}`}>
               <label className="condonar-check">
                 <input
                   type="checkbox"
@@ -1239,7 +1225,7 @@ const ModalPagos = ({ socio, onClose }) => {
                   disabled={cargando}
                 />
                 <span className="switch"><span className="switch-thumb" /></span>
-                <span className="switch-label">Marcar como <strong>Condonado</strong> (no genera cobro)</span>
+                <span className="switch-label">Marcar como <strong>Condonado</strong>(no genera cobro)</span>
               </label>
 
               <div className="year-picker">
@@ -1270,7 +1256,7 @@ const ModalPagos = ({ socio, onClose }) => {
             </div>
 
             {/* Modo libre */}
-            <div className={`condonar-box ${libreActivo ? 'is-active' : ''}`} style={{ marginTop: 10 }}>
+            <div className={`condonar-box ${libreActivo ? 'is-active' : ''}`}>
               <label className="condonar-check">
                 <input
                   type="checkbox"
@@ -1282,7 +1268,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 <span className="switch-label">Usar <strong>monto libre por mes</strong></span>
               </label>
 
-              <div className="year-picker" style={{ gap: 10 }}>
+              <div className="year-picker libre-input-container">
                 <input
                   type="number"
                   min="0"
@@ -1295,14 +1281,15 @@ const ModalPagos = ({ socio, onClose }) => {
                     if (e.key === '-' || e.key === 'Minus') e.preventDefault();
                   }}
                   disabled={!libreActivo || cargando}
-                  style={{ padding: 10, borderRadius: 8, border: '1px solid #cbd5e1', width: 220 }}
+                  className="libre-input"
                 />
               </div>
             </div>
-
+          </div>
+          
             {/* ====== EXTRAS: CONTADO ANUAL y MATRÍCULA ====== */}
             {ventanaAnualActiva && (
-              <div className={`condonar-box ${anualSeleccionado ? 'is-active' : ''}`} style={{ marginTop: 10 }}>
+              <div className={`condonar-box ${anualSeleccionado ? 'is-active' : ''}`}>
                 <label className="condonar-check">
                   <input
                     type="checkbox"
@@ -1311,31 +1298,22 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={cargando || matriculaSeleccionada || libreActivo}
                   />
                   <span className="switch"><span className="switch-thumb" /></span>
-                  <span className="switch-label">
-                    <strong>CONTADO ANUAL</strong>{' '}
-                    {montoAnual > 0
-                      ? `(${formatearARS(montoAnualConDescuento)}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`
-                      : '(sin monto anual definido)'}
-                  </span>
+<span className="switch-label sitch-labes">
+  <strong>CONTADO ANUAL</strong>
+  <span className="subline">
+    {montoAnual > 0
+      ? `(${formatearARS(montoAnualConDescuento)}${
+          (esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''
+        })`
+      : '(sin monto anual definido)'}
+  </span>
+</span>
                 </label>
 
                 {/* NUEVO: controles de mitades */}
                 {anualSeleccionado && (
-                  <div
-                    className="edit-inline"
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: 12,
-                      marginTop: 10,
-                      padding: 10,
-                      border: '1px dashed #cbd5e1',
-                      borderRadius: 10,
-                      background: '#fff'
-                    }}
-                  >
-                    <label className="condonar-check" style={{ margin: 0 }}>
+                  <div className="edit-inline anual-mitades">
+                    <label className="condonar-check">
                       <input
                         type="checkbox"
                         checked={anualH1}
@@ -1346,7 +1324,7 @@ const ModalPagos = ({ socio, onClose }) => {
                       <span className="switch-label"><strong>1ª mitad</strong> (Ene–Jul)</span>
                     </label>
 
-                    <label className="condonar-check" style={{ margin: 0 }}>
+                    <label className="condonar-check">
                       <input
                         type="checkbox"
                         checked={anualH2}
@@ -1357,18 +1335,29 @@ const ModalPagos = ({ socio, onClose }) => {
                       <span className="switch-label"><strong>2ª mitad</strong> (Ago–Dic)</span>
                     </label>
 
-                    <div style={{ fontSize: 12, color: '#475569' }}>
-                      {(!anualH1 && !anualH2) && 'Sin mitades seleccionadas: se toma el año completo.'}
-                      {(anualH1 && !anualH2) && `Importe: ${formatearARS(Math.round((montoAnualConDescuento||0)/2))}`}
-                      {(!anualH1 && anualH2) && `Importe: ${formatearARS(Math.round((montoAnualConDescuento||0)/2))}`}
-                      {(anualH1 && anualH2) && `Importe: ${formatearARS(Math.round(montoAnualConDescuento||0))}`}
-                    </div>
+<div className="anual-mitades-info">
+  <span className="anual-mitades-importe">
+    Importe: {formatearARS(Math.round(anualConfig?.importe || 0))}
+  </span>
+
+  <button
+    type="button"
+    className="info-icon"
+    aria-label="Ver información sobre mitades"
+  >
+    <FaInfoCircle aria-hidden="true" />
+    <span className="tip" role="tooltip">
+      Si no se eligen mitades, se considera todo el año.
+    </span>
+  </button>
+</div>
+
                   </div>
                 )}
               </div>
             )}
 
-            <div className={`condonar-box ${matriculaSeleccionada ? 'is-active' : ''}`} style={{ marginTop: 10 }}>
+            <div className={`condonar-box ${matriculaSeleccionada ? 'is-active' : ''}`}>
               <label className="condonar-check">
                 <input
                   type="checkbox"
@@ -1377,17 +1366,16 @@ const ModalPagos = ({ socio, onClose }) => {
                   disabled={cargando || anualSeleccionado}
                 />
                 <span className="switch"><span className="switch-thumb" /></span>
-                <span className="switch-label" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="switch-label matricula-label">
                   <strong>MATRÍCULA</strong>
                   {!matriculaEditando && (
                     <>
-                      <span style={{ marginLeft: 6 }}>{formatearARS(montoMatricula)}</span>
+                      <span className="matricula-monto">{formatearARS(montoMatricula)}</span>
                       <button
                         type="button"
                         className="btn btn-ghost"
                         title="Editar monto"
                         onClick={()=> setMatriculaEditando(true)}
-                        style={{ marginLeft: 10 }}
                       >
                         <FaPen />
                       </button>
@@ -1397,19 +1385,7 @@ const ModalPagos = ({ socio, onClose }) => {
               </label>
 
               {matriculaEditando && (
-                <div
-                  className="edit-inline"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginTop: 10,
-                    padding: 8,
-                    border: '1px dashed #cbd5e1',
-                    borderRadius: 10,
-                    background: '#fff'
-                  }}
-                >
+                <div className="edit-inline matricula-edit">
                   <input
                     type="number"
                     min="0"
@@ -1417,7 +1393,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     inputMode="numeric"
                     value={montoMatricula}
                     onChange={(e)=> setMontoMatricula(Number(e.target.value || 0))}
-                    style={{ padding: 8, width: 180, borderRadius: 8, border: '1px solid #cbd5e1' }}
+                    className="matricula-input"
                     disabled={guardandoMatricula}
                   />
                   <button
@@ -1427,7 +1403,6 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={guardandoMatricula}
                     title="Guardar matrícula"
                     aria-label="Guardar matrícula"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 36, borderRadius: 8 }}
                   >
                     {guardandoMatricula ? '…' : <FaCheck />}
                   </button>
@@ -1438,7 +1413,6 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={guardandoMatricula}
                     title="Cancelar edición"
                     aria-label="Cancelar edición"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 36, borderRadius: 8 }}
                   >
                     <FaTimes />
                   </button>
