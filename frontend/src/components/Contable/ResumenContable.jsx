@@ -463,7 +463,7 @@ export default function ResumenContable() {
                     key={idx}
                     style={{ "--delay": `${idx * 55}ms` }}
                   >
-                    <div className="gt_cell" role="cell">{r.nombre_mes}</div>
+                    <div className="gt_cell mespading" role="cell">{r.nombre_mes}</div>
                     <div className="gt_cell right" role="cell">
                       ${Number(r.ingresos || 0).toLocaleString("es-AR")}
                     </div>

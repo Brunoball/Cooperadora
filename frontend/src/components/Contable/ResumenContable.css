@@ -466,3 +466,6 @@
   animation: rcPointIn 300ms ease-out forwards;
   animation-delay: var(--delay, 0ms);
 }
+.mespading{
+  padding: 0 10px;
+}

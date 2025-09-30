@@ -391,3 +391,114 @@
 /* ===== (ya tenías) — asegúrate que el resto de tu CSS siga igual ===== */
 
 /* ...(mantener TODO tu CSS previo tal como lo pegaste)... */
+/* ===== Viewer toolbar – estilo compacto y limpio ===== */
+.viewer_toolbar{
+  position: sticky;                /* queda fija si hay scroll interno */
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  background:
+    linear-gradient(180deg, #fff 0%, color-mix(in srgb, #fff 85%, var(--mm-border)) 100%);
+  border-bottom: 1px solid var(--mm-border);
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  z-index: 2;
+}
+
+/* Íconos redondos (zoom +/-, reset, cerrar) dentro del viewer */
+.viewer_toolbar .mm_icon{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--mm-border);
+  background: var(--mm-surface);
+  color: var(--mm-text);
+  display: grid;
+  place-items: center;
+  transition: var(--reg-transition);
+}
+.viewer_toolbar .mm_icon:hover{
+  transform: translateY(-1px);
+  border-color: var(--mm-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  color: var(--mm-primary);
+  background: #fff;
+}
+.viewer_toolbar .mm_icon:active{
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Botón “Abrir en pestaña” dentro del visor */
+.viewer_toolbar .mm_btn{
+  padding: 8px 12px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: .9rem;
+  border: 1px solid var(--mm-border);
+  background: #fff;
+  color: var(--mm-text);
+  transition: var(--reg-transition);
+}
+.viewer_toolbar .mm_btn:hover{
+  transform: translateY(-1px);
+  border-color: var(--mm-primary);
+  color: var(--mm-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.viewer_toolbar .mm_btn:active{
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Etiqueta de zoom más sobria */
+.viewer_toolbar .zoom_label{
+  color: var(--mm-muted);
+  font-weight: 700;
+  min-width: 48px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+/* ===== Botones de acciones (previsualización de archivo) ===== */
+.dz_actions{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dz_actions .mm_btn{
+  padding: 8px 12px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: .9rem;
+  border: 1px solid var(--mm-border);
+  background: #fff;
+  color: var(--mm-text);
+  transition: var(--reg-transition);
+}
+.dz_actions .mm_btn:hover{
+  transform: translateY(-1px);
+  border-color: var(--mm-primary);
+  color: var(--mm-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.dz_actions .mm_btn.danger{
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+.dz_actions .mm_btn.danger:hover{
+  background: #991b1b;
+  color: #fff;
+  border-color: #991b1b;
+}
+
+/* Tamaño de iconos dentro de botones pequeños */
+.viewer_toolbar .mm_icon svg,
+.viewer_toolbar .mm_btn svg,
+.dz_actions .mm_btn svg{
+  width: 16px;
+  height: 16px;
+}
