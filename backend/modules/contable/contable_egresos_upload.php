@@ -6,12 +6,11 @@ date_default_timezone_set('America/Argentina/Cordoba');
 
 try {
     // __DIR__ = .../api/modules/contable
-    // subimos 2 niveles => .../api
     $apiDir = dirname(__DIR__, 2);
 
     // Carpeta real donde se guardan los archivos
     $uploadsDir = $apiDir . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'egresos';
-    // Ruta pública relativa correcta (incluye /api/)
+    // Ruta pública relativa (incluye /api/)
     $uploadsRel = 'api/uploads/egresos';
 
     if (!is_dir($uploadsDir)) {
@@ -48,6 +47,21 @@ try {
         echo json_encode(['ok' => false, 'mensaje' => 'El archivo supera 10MB']);
         exit;
     }
+
+    // === Lee y sanitiza fecha y comprobante ===
+    $fechaRaw = isset($_POST['fecha']) ? trim((string)$_POST['fecha']) : '';
+    // Permitimos solo dígitos y guiones, y lo recortamos a 10 (YYYY-MM-DD)
+    $fechaSafe = substr(preg_replace('/[^0-9\-]/', '', $fechaRaw), 0, 10);
+    // Validación básica de forma; si no viene, usamos hoy
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaSafe)) {
+        $fechaSafe = date('Y-m-d');
+    }
+
+    $compRaw = isset($_POST['comprobante']) ? strtoupper(trim((string)$_POST['comprobante'])) : '';
+    // Permitimos A-Z, 0-9, guion y guion bajo; quitamos el resto
+    $compSan = preg_replace('/[^A-Z0-9\-_]/', '', $compRaw);
+    // Si queda vacío, metemos un placeholder; limitamos longitud por si viene largo
+    $compPart = substr($compSan !== '' ? $compSan : 'SINCOMPROBANTE', 0, 40);
 
     // Detección de tipo robusta
     $mime = null;
@@ -87,10 +101,9 @@ try {
 
     $ext = $permitidos[$mime];
 
-    // Nombre único
+    // Nombre único y legible: egreso_YYYY-MM-DD_COMPROBANTE_<slug>.ext
     $slug     = bin2hex(random_bytes(8));
-    $fecha    = date('Ymd_His');
-    $filename = "egreso_{$fecha}_{$slug}.{$ext}";
+    $filename = sprintf('egreso_%s_%s_%s.%s', $fechaSafe, $compPart, $slug, $ext);
     $destPath = $uploadsDir . DIRECTORY_SEPARATOR . $filename;
 
     if (!move_uploaded_file($file['tmp_name'], $destPath)) {

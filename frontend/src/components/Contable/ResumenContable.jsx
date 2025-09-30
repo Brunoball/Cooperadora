@@ -237,12 +237,16 @@ export default function ResumenContable() {
 
   const loadAniosDisponibles = async (prefer = anioRes) => {
     try {
+      // Usamos el endpoint contable_resumen que ahora devuelve los años disponibles
       const raw = await fetchJSON(
-        `${BASE_URL}/api.php?action=contable_ingresos&year=${prefer}&detalle=1`
+        `${BASE_URL}/api.php?action=contable_resumen&year=${prefer}`
       );
       const anios = Array.isArray(raw?.anios_disponibles) ? raw.anios_disponibles : [];
       setAniosCat(anios);
-      if (anios.length > 0 && !anios.includes(prefer)) setAnioRes(anios[0]);
+      // Si el año preferido no está disponible, seleccionar el primero de la lista
+      if (anios.length > 0 && !anios.includes(prefer)) {
+        setAnioRes(anios[0]);
+      }
     } catch (e) {
       console.error("Error cargando años:", e);
       setAniosCat([]);
@@ -256,6 +260,10 @@ export default function ResumenContable() {
         `${BASE_URL}/api.php?action=contable_resumen&year=${anioRes}`
       );
       setResumen(raw?.resumen || []);
+      // Actualizar también la lista de años disponibles desde la respuesta
+      if (raw?.anios_disponibles) {
+        setAniosCat(raw.anios_disponibles);
+      }
     } catch (e) {
       console.error(e);
       setResumen([]);

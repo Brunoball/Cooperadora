@@ -52,13 +52,21 @@ function obtener_anios_disponibles(PDO $pdo): array {
   $st = $pdo->query("SELECT DISTINCT YEAR(fecha) AS anio FROM egresos ORDER BY anio DESC");
   return array_map(static fn($r)=>(int)$r['anio'], $st->fetchAll(PDO::FETCH_ASSOC));
 }
+function obtener_max_fecha(PDO $pdo): ?string {
+  $r = $pdo->query("SELECT DATE_FORMAT(MAX(fecha),'%Y-%m-%d') AS f FROM egresos")->fetch(PDO::FETCH_ASSOC);
+  return $r && $r['f'] ? $r['f'] : null;
+}
 
 /* ---------- Router ---------- */
 try {
   $op = $_GET['op'] ?? 'list';
 
   if ($op === 'list_years') {
-    echo json_encode(['exito'=>true,'anios_disponibles'=>obtener_anios_disponibles($pdo)], JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+      'exito' => true,
+      'anios_disponibles' => obtener_anios_disponibles($pdo),
+      'max_fecha' => obtener_max_fecha($pdo),
+    ], JSON_UNESCAPED_UNICODE);
     exit;
   }
 
@@ -146,7 +154,7 @@ try {
 
     $idMedio = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
 
-    $importe = $in['importe'] ?? null; // 👈 ahora sí
+    $importe = $in['importe'] ?? null;
     if (!is_numeric($importe) || (int)$importe <= 0) {
       throw new InvalidArgumentException('importe inválido.');
     }
@@ -194,7 +202,7 @@ try {
       ':url'  => $compURL,
     ]);
 
-    echo json_encode(['exito'=>true,'id_egreso'=>(int)$pdo->lastInsertId()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['exito'=>true,'id_egreso'=>(int)$pdo->lastInsertId(), 'fecha'=>$fecha], JSON_UNESCAPED_UNICODE);
     exit;
   }
 
@@ -268,7 +276,7 @@ try {
       ':url'  => $compURL,
     ]);
 
-    echo json_encode(['exito'=>true], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['exito'=>true,'fecha'=>$fecha], JSON_UNESCAPED_UNICODE);
     exit;
   }
 
@@ -286,6 +294,6 @@ try {
   echo json_encode(['exito'=>false,'mensaje'=>'Operación no válida.'], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
-  http_response_code(400); // ahora sí 400 en errores
+  http_response_code(400);
   echo json_encode(['exito'=>false,'mensaje'=>'Error: '.$e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

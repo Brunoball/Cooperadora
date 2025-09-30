@@ -182,15 +182,37 @@ try {
         $mesCat[(int)$m['id_mes']] = (string)$m['nombre'];
     }
 
-    // años disponibles
-    $stYears = $pdo->query("
+    // años disponibles - OBTENER DE AMBAS TABLAS: pagos E ingresos
+    $stYearsPagos = $pdo->query("
         SELECT DISTINCT YEAR(fecha_pago) AS anio
         FROM pagos
         WHERE UPPER(estado)='PAGADO'
         ORDER BY anio DESC
     ");
-    $aniosDisponibles = array_map(static fn($r) => (int)$r['anio'], $stYears->fetchAll(PDO::FETCH_ASSOC));
-    if (!in_array($year, $aniosDisponibles, true)) array_unshift($aniosDisponibles, $year);
+    $aniosPagos = array_map(static fn($r) => (int)$r['anio'], $stYearsPagos->fetchAll(PDO::FETCH_ASSOC));
+
+    $stYearsIngresos = $pdo->query("
+        SELECT DISTINCT YEAR(fecha) AS anio
+        FROM ingresos
+        ORDER BY anio DESC
+    ");
+    $aniosIngresos = array_map(static fn($r) => (int)$r['anio'], $stYearsIngresos->fetchAll(PDO::FETCH_ASSOC));
+
+    // Combinar y eliminar duplicados
+    $aniosDisponibles = array_unique(array_merge($aniosPagos, $aniosIngresos));
+    rsort($aniosDisponibles); // Ordenar descendente
+
+    // Si no hay años en ninguna tabla, usar el año actual
+    if (empty($aniosDisponibles)) {
+        $aniosDisponibles = [$year];
+    }
+
+    // Si el año solicitado no está en la lista, agregarlo
+    if (!in_array($year, $aniosDisponibles, true)) {
+        array_unshift($aniosDisponibles, $year);
+        sort($aniosDisponibles); // Reordenar después de agregar
+        $aniosDisponibles = array_reverse($aniosDisponibles); // Volver a orden descendente
+    }
 
     // detectar columnas reales en alumnos
     $nombreCandidates   = ['nombre', 'nombres', 'nombre_alumno'];

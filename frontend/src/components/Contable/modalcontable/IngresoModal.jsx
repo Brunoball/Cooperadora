@@ -13,6 +13,8 @@ import "../modalcontable/IngresoModal.css";
 const U = (v = "") => String(v).toUpperCase();
 const onlyLetters = (v = "") => U(v).replace(/[^\p{L}\s]/gu, ""); // letras+espacios (incluye acentos/ñ)
 const onlyDigits = (v = "") => String(v).replace(/\D/g, "");       // solo números
+// Nueva función para proveedores que acepta letras, números y espacios
+const onlyLettersNumbersSpaces = (v = "") => U(v).replace(/[^\p{L}\d\s]/gu, "");
 const VALOR_OTRO = "__OTRO__";
 const MAX_IMPORTE = 50_000_000;
 
@@ -194,8 +196,9 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
   };
 
   const crearProveedor = async (nombre) => {
-    const nombreOK = onlyLetters(nombre).trim();
-    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor (solo letras).");
+    // CAMBIO IMPORTANTE: Ahora usa onlyLettersNumbersSpaces en lugar de onlyLetters
+    const nombreOK = onlyLettersNumbersSpaces(nombre).trim();
+    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor.");
     if (nombreOK.length > 120) throw new Error("El proveedor no puede superar 120 caracteres.");
 
     const r = await fetchJSON(`${BASE_URL}/api.php?action=agregar_proveedor`, {
@@ -219,7 +222,8 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
     if (!medioEsOtro && !String(form.id_medio_pago || "").trim()) { safeNotify("advertencia", "Seleccioná un medio de pago."); return; }
     if (categoriaEsOtra && !onlyLetters(categoriaNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva categoría (solo letras)."); return; }
     if (imputacionEsOtra && !onlyLetters(imputacionNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva imputación (solo letras)."); return; }
-    if (proveedorEsOtro && !onlyLetters(proveedorNuevo).trim()) { safeNotify("advertencia", "Ingresá el nuevo proveedor (solo letras)."); return; }
+    // CAMBIO IMPORTANTE: Ahora usa onlyLettersNumbersSpaces para proveedor
+    if (proveedorEsOtro && !onlyLettersNumbersSpaces(proveedorNuevo).trim()) { safeNotify("advertencia", "Ingresá el nuevo proveedor."); return; }
 
     try {
       setSaving(true);
@@ -337,7 +341,8 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
             placeholder="Seleccione..."
           />
           {proveedorEsOtro && (
-            <InputField icon={faUser} label="Nuevo proveedor" value={proveedorNuevo} onChange={(e)=>setProveedorNuevo(onlyLetters(e.target.value))} required />
+            // CAMBIO IMPORTANTE: Ahora usa onlyLettersNumbersSpaces para proveedor
+            <InputField icon={faUser} label="Nuevo proveedor" value={proveedorNuevo} onChange={(e)=>setProveedorNuevo(onlyLettersNumbersSpaces(e.target.value))} required />
           )}
 
           {/* Categoría */}
@@ -555,8 +560,9 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
     return { id: String(r.id), nombre: r.texto || textoOK };
   };
   const crearProveedor = async (nombre) => {
-    const nombreOK = onlyLetters(nombre).trim();
-    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor (solo letras).");
+    // CAMBIO IMPORTANTE: Ahora usa onlyLettersNumbersSpaces en lugar de onlyLetters
+    const nombreOK = onlyLettersNumbersSpaces(nombre).trim();
+    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor.");
     if (nombreOK.length > 120) throw new Error("El proveedor no puede superar 120 caracteres.");
 
     const r = await fetchJSON(`${BASE_URL}/api.php?action=agregar_proveedor`, {
@@ -580,7 +586,8 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
     if (!medioEsOtro && !String(form.id_medio_pago || "").trim()) { safeNotify("advertencia", "Seleccioná un medio de pago."); return; }
     if (categoriaEsOtra && !onlyLetters(categoriaNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva categoría (solo letras)."); return; }
     if (imputacionEsOtra && !onlyLetters(imputacionNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva imputación (solo letras)."); return; }
-    if (proveedorEsOtro && !onlyLetters(proveedorNuevo).trim()) { safeNotify("advertencia", "Ingresá el nuevo proveedor (solo letras)."); return; }
+    // CAMBIO IMPORTANTE: Ahora usa onlyLettersNumbersSpaces para proveedor
+    if (proveedorEsOtro && !onlyLettersNumbersSpaces(proveedorNuevo).trim()) { safeNotify("advertencia", "Ingresá el nuevo proveedor."); return; }
 
     try {
       setSaving(true);
@@ -693,7 +700,8 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
             placeholder="Seleccione..."
           />
           {proveedorEsOtro && (
-            <InputField icon={faUser} label="Nuevo proveedor" value={proveedorNuevo} onChange={(e)=>setProveedorNuevo(onlyLetters(e.target.value))} required />
+            // CAMBIO IMPORTANTE: Ahora usa onlyLettersNumbersSpaces para proveedor
+            <InputField icon={faUser} label="Nuevo proveedor" value={proveedorNuevo} onChange={(e)=>setProveedorNuevo(onlyLettersNumbersSpaces(e.target.value))} required />
           )}
 
           {/* Categoría */}

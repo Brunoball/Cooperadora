@@ -19,6 +19,8 @@ const MAX_IMPORTE_SOSPECHOSO = 50_000_000;
 const toUpper = (v = "") => String(v).toUpperCase();
 // Solo letras (mantiene acentos/ñ) + espacios
 const onlyLetters = (v = "") => toUpper(v).replace(/[^\p{L}\s]/gu, "");
+// Letras (incl. tildes) + dígitos + espacios  ✅ NUEVO para PROVEEDOR
+const onlyLettersDigits = (v = "") => toUpper(v).replace(/[^\p{L}\p{N}\s]/gu, "");
 // Solo dígitos
 const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
 
@@ -72,16 +74,13 @@ export default function ContableEgresoModal({
 
   // ====== HOST LOCAL DE TOASTS ======
   const [toasts, setToasts] = useState([]);
-  // Mapa de dedupe: tipo|mensaje -> timestamp
   const recentToastMapRef = useRef(new Map());
 
-  // Limpiar toasts al cerrar/abrir el modal para que no “vuelvan a aparecer”
   useEffect(() => {
     if (!open) {
       setToasts([]);
       recentToastMapRef.current.clear();
     } else {
-      // al abrir, también limpiamos por seguridad
       setToasts([]);
       recentToastMapRef.current.clear();
     }
@@ -91,14 +90,12 @@ export default function ContableEgresoModal({
     const key = `${tipo}|${mensaje}`;
     const now = Date.now();
     const last = recentToastMapRef.current.get(key);
-    // si se intentó mostrar el mismo toast en los últimos 4s, lo ignoramos
     if (last && now - last < 4000) return;
     recentToastMapRef.current.set(key, now);
 
     const id = `${now}-${Math.random().toString(36).slice(2)}`;
     setToasts(t => [...t, { id, tipo, mensaje, dur }]);
 
-    // liberar la clave cuando expira el toast (dur + un colchón)
     setTimeout(() => {
       recentToastMapRef.current.delete(key);
     }, Math.max(0, dur + 500));
@@ -107,9 +104,7 @@ export default function ContableEgresoModal({
   const closeToast = (id) => setToasts(t => t.filter(x => x.id !== id));
 
   const safeNotify = (tipo, mensaje, dur = 3000) => {
-    // Lanza toast local SIEMPRE (visible arriba del modal)
     pushToast(tipo, mensaje, dur);
-    // Además, si el padre tiene notify, también lo usa
     try { typeof notify === "function" && notify(tipo, mensaje, dur); } catch {}
   };
 
@@ -118,7 +113,7 @@ export default function ContableEgresoModal({
     const sep = url.includes("?") ? "&" : "?";
     const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || data?.exito === false) {
+    if (!res.ok || data?.exito === false || data?.ok === false) {
       const msg = data?.mensaje || `Error del servidor (HTTP ${res.status}).`;
       throw new Error(msg);
     }
@@ -196,9 +191,10 @@ export default function ContableEgresoModal({
     return r;
   };
 
+  // ✅ ACEPTA LETRAS Y NÚMEROS
   const crearProveedor = async (nombre) => {
-    const nombreOK = onlyLetters(nombre).trim();
-    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor (solo letras).");
+    const nombreOK = onlyLettersDigits(nombre).trim();
+    if (!nombreOK) throw new Error("Ingresá el nuevo proveedor (letras y números).");
     if (nombreOK.length > 120) throw new Error("El proveedor no puede superar los 120 caracteres.");
     const r = await fetchJSON(`${BASE_URL}/api.php?action=agregar_proveedor`, {
       method: "POST",
@@ -317,6 +313,10 @@ export default function ContableEgresoModal({
     try {
       const form = new FormData();
       form.append("file", file);
+      // 👉 Enviamos fecha y comprobante para que el backend nombre el archivo
+      form.append("fecha", fecha || "");
+      form.append("comprobante", comprobante || "");
+
       const url = `${BASE_URL}/api.php?action=contable_egresos_upload`;
       const res = await fetch(url, { method: "POST", body: form });
       const data = await res.json().catch(() => ({}));
@@ -342,7 +342,8 @@ export default function ContableEgresoModal({
     if (file) uploadFile(file);
   };
 
-  const clearComprobante = () => {
+  const clearComprobante = (e) => {
+    if (e) e.stopPropagation(); // ⛔ Evita abrir el picker
     setCompURL(""); setLocalPreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
     setViewerOpen(false); setZoom(1);
@@ -367,6 +368,29 @@ export default function ContableEgresoModal({
     else { setProveedorEsOtro(false); setProveedorId(val); setProveedorNuevo(""); }
   };
 
+  // ====== Abrir el almanaque desde cualquier parte del campo de fecha ======
+  const openDatePicker = (withKeyboard = false) => {
+    const el = dateInputRef.current;
+    if (!el) return;
+
+    try { el.focus({ preventScroll: true }); } catch {}
+
+    try {
+      if (typeof el.showPicker === "function") {
+        el.showPicker();
+      } else {
+        el.click();
+      }
+    } catch {
+      setTimeout(() => {
+        try { el.click(); } catch {}
+      }, 0);
+    }
+
+    if (withKeyboard) return false;
+    return true;
+  };
+
   // ===== Submit =====
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -386,8 +410,9 @@ export default function ContableEgresoModal({
       return;
     }
 
-    if (proveedorEsOtro && !onlyLetters(proveedorNuevo).trim()) {
-      safeNotify("advertencia", "Ingresá el nombre del proveedor (solo letras).");
+    // ✅ Proveedor permite letras y números
+    if (proveedorEsOtro && !onlyLettersDigits(proveedorNuevo).trim()) {
+      safeNotify("advertencia", "Ingresá el nombre del proveedor (letras y números).");
       return;
     }
 
@@ -445,7 +470,7 @@ export default function ContableEgresoModal({
         safeNotify("exito", "Descripción agregada.");
       }
 
-      // 4) proveedor -> id
+      // 4) proveedor -> id  ✅ usa crearProveedor con alfanumérico
       let idProv = proveedorId || null;
       if (proveedorEsOtro) {
         const r = await crearProveedor(proveedorNuevo);
@@ -465,7 +490,7 @@ export default function ContableEgresoModal({
         comprobante: (toUpper(comprobante) || null),
         id_cont_descripcion: idDesc ? Number(idDesc) : null,
         id_medio_pago: Number(idMedio || 0),
-        importe: importeNum,
+        importe: Number(onlyDigits(importe) || 0),
         comprobante_url: compURL || null,
       };
 
@@ -492,6 +517,7 @@ export default function ContableEgresoModal({
 
   if (!open) return null;
   const isPDF = (localPreview || compURL)?.toLowerCase?.().endsWith(".pdf");
+  const hasFile = Boolean(localPreview || compURL);
 
   return createPortal(
     <>
@@ -540,17 +566,24 @@ export default function ContableEgresoModal({
               {/* Fecha */}
               <div
                 className="mm_field has-icon"
-                onMouseDown={(e) => {
-                  if (e.target !== dateInputRef.current) {
+                role="button"
+                tabIndex={0}
+                aria-label="Campo de fecha (abrir calendario)"
+                onPointerDown={(e) => {
+                  if (e.pointerType !== "mouse" && e.pointerType !== "pen" && e.pointerType !== "touch") return;
+                  e.preventDefault();
+                  openDatePicker();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  openDatePicker();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    const el = dateInputRef.current;
-                    if (!el) return;
-                    try { el.focus(); el.showPicker?.(); } catch { try { el.click(); } catch {} }
+                    openDatePicker(true);
                   }
                 }}
-                tabIndex={0}
-                role="group"
-                aria-label="Campo de fecha"
               >
                 <input
                   ref={dateInputRef}
@@ -675,7 +708,7 @@ export default function ContableEgresoModal({
                 <div className="mm_field grow has-icon">
                   <input
                     value={proveedorNuevo}
-                    onChange={(e)=>setProveedorNuevo(onlyLetters(e.target.value))}
+                    onChange={(e)=>setProveedorNuevo(onlyLettersDigits(e.target.value))}  
                     placeholder=" "
                     required
                   />
@@ -699,6 +732,7 @@ export default function ContableEgresoModal({
                 </div>
               </div>
             )}
+
             <div className="mm_row">
               <div className="mm_field has-icon grow">
                 <input
@@ -714,18 +748,25 @@ export default function ContableEgresoModal({
                 <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
               </div>
             </div>
+
             {/* Dropzone */}
             <div className="dz_wrap">
               <div
                 ref={dropRef}
                 className="dz_area mm_surface"
-                onClick={()=>fileInputRef.current?.click()}
+                onClick={(e)=>{
+                  // ⛔ Si ya hay archivo, NO abrir el explorador con click en la caja.
+                  if (hasFile) return;
+                  fileInputRef.current?.click();
+                }}
                 onDragOver={(e)=>{ e.preventDefault(); dropRef.current?.classList.add("dz_over"); }}
                 onDragLeave={()=>dropRef.current?.classList.remove("dz_over")}
                 onDrop={(e)=>{ e.preventDefault(); dropRef.current?.classList.remove("dz_over"); const f = e.dataTransfer.files?.[0]; if (f) uploadFile(f); }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e)=>{ if (e.key === "Enter") fileInputRef.current?.click(); }}
+                onKeyDown={(e)=>{ 
+                  if (e.key === "Enter" && !hasFile) fileInputRef.current?.click();
+                }}
               >
                 <div className="dz_header">
                   <div className="dz_icon dz_icon--lg"><FontAwesomeIcon icon={faUpload} /></div>
@@ -746,7 +787,7 @@ export default function ContableEgresoModal({
                 </p>
 
                 {(compURL || localPreview) && (
-                  <div className="dz_preview">
+                  <div className="dz_preview" onClick={(e)=>e.stopPropagation()}>
                     {compURL && (
                       <div className="dz_file">
                         {(() => {
@@ -765,16 +806,28 @@ export default function ContableEgresoModal({
                         src={localPreview || compURL}
                         alt="Vista previa del comprobante"
                         className="dz_thumb"
+                        onClick={(e)=>{ e.stopPropagation(); setViewerOpen(true); setZoom(1); }}
                       />
                     ) : (
                       <div className="dz_pdf">PDF listo para ver</div>
                     )}
 
-                    <div className="dz_actions">
-                      <button type="button" className="mm_btn" onClick={()=>{ if (compURL || localPreview) { setViewerOpen(true); setZoom(1); } }}>
+                    <div className="dz_actions" onClick={(e)=>e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="mm_btn"
+                        onClick={(e)=>{ 
+                          e.stopPropagation(); 
+                          if (compURL || localPreview) { setViewerOpen(true); setZoom(1); } 
+                        }}
+                      >
                         <FontAwesomeIcon icon={faEye} /> Ver
                       </button>
-                      <button type="button" className="mm_btn danger" onClick={clearComprobante}>
+                      <button
+                        type="button"
+                        className="mm_btn danger"
+                        onClick={clearComprobante}
+                      >
                         <FontAwesomeIcon icon={faTrash} /> Quitar
                       </button>
                     </div>
@@ -790,9 +843,6 @@ export default function ContableEgresoModal({
                 />
               </div>
             </div>
-
-            {/* ÚLTIMO CAMPO: Importe */}
-
 
             {/* Footer */}
             <div className="mm_footer">
@@ -818,7 +868,10 @@ export default function ContableEgresoModal({
                   {isPDF && (compURL || localPreview) && (
                     <button
                       className="mm_btn ghost"
-                      onClick={()=>{ try{ window.open(compURL || localPreview, "_blank","noopener,noreferrer"); } catch{ window.location.href = compURL || localPreview; } }}
+                      onClick={()=>{ 
+                        try{ window.open(compURL || localPreview, "_blank","noopener,noreferrer"); } 
+                        catch{ window.location.href = compURL || localPreview; } 
+                      }}
                     >
                       Abrir en pestaña
                     </button>

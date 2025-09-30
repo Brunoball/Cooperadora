@@ -11,14 +11,31 @@ import Toast from "../Global/Toast";
 import "./EgresoContable.css";
 import * as XLSX from "xlsx";
 
+/* ======================
+   Constantes & helpers
+====================== */
 const hoy = new Date();
 const Y = hoy.getFullYear();
-const MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+
+const MESES = [
+  "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+  "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
+];
 const cap1 = (s="") => s.charAt(0) + s.slice(1).toLowerCase();
 const sfx = (n)=> n===1 ? "" : "s";
+const ymd = (d) => new Date(d).toISOString().slice(0,10);
+const fmtARS = (n) => new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(Number(n||0));
 
 /* ===== Confirm ===== */
-function ConfirmModal({ open, title="Eliminar egreso", message="¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer.", onCancel, onConfirm, confirmText="Eliminar", cancelText="Cancelar" }) {
+function ConfirmModal({
+  open,
+  title="Eliminar egreso",
+  message="¿Seguro que querés eliminar este egreso? Esta acción no se puede deshacer.",
+  onCancel,
+  onConfirm,
+  confirmText="Eliminar",
+  cancelText="Cancelar"
+}) {
   const cancelBtnRef = useRef(null);
   useEffect(() => {
     if (!open) return;
@@ -44,31 +61,30 @@ function ConfirmModal({ open, title="Eliminar egreso", message="¿Seguro que que
 }
 
 /* ===== helpers ===== */
-const fetchJSON = async (url, options) => {
+const fetchJSON = async (url, options={}) => {
   const sep = url.includes("?") ? "&" : "?";
-  const res = await fetch(`${url}${sep}ts=${Date.now()}`, options);
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try { const j = await res.json(); if (j?.mensaje) msg = j.mensaje; } catch {}
+  const finalUrl = `${url}${sep}ts=${Date.now()}`;
+  const res = await fetch(finalUrl, { method: "GET", cache: "no-store", ...options });
+  const data = await res.json().catch(()=> ({}));
+  if (!res.ok || data?.exito === false) {
+    const msg = data?.mensaje || `Error del servidor (HTTP ${res.status}).`;
     throw new Error(msg);
   }
-  return res.json();
+  return data;
 };
-const arraysIguales = (a=[], b=[]) =>
-  a.length === b.length && a.every((v,i)=> v === b[i]);
+const arraysIguales = (a=[], b=[]) => a.length === b.length && a.every((v,i)=> v === b[i]);
 
-/** Normaliza un row de backend (nombres nuevos) a los usados en el front */
+/** Normaliza un row del backend a lo que usa el front */
 const normalizeEgreso = (r = {}) => ({
   id_egreso: r.id_egreso,
   fecha: r.fecha || "",
-  // nombres nuevos -> alias “viejos” que usa el front
   categoria: r.nombre_categoria || "SIN CATEGORÍA",
   descripcion: r.nombre_descripcion || "",
-  medio_pago: r.medio_pago || "",       // mantenemos la key ‘medio_pago’
-  medio_nombre: r.medio_pago || "",     // …y ‘medio_nombre’ por compatibilidad
-  proveedor: r.nombre_proveedor || "",  // visible
-  numero_factura: r.comprobante || "",  // en tu schema actual es “comprobante”
-  monto: Number(r.importe || 0),        // importe -> monto
+  medio_pago: r.medio_pago || "",
+  medio_nombre: r.medio_pago || "",
+  proveedor: r.nombre_proveedor || "",
+  numero_factura: r.comprobante || "",
+  monto: Number(r.importe || 0),
   comprobante_url: r.comprobante_url || "",
 });
 
@@ -77,13 +93,14 @@ export default function EgresoContable(){
   const [egresos, setEgresos] = useState([]);
   const [loadingEgr, setLoadingEgr] = useState(false);
 
-  // Sidebar (base del mes sin filtros)
-  const [egresosMes, setEgresosMes] = useState([]);
+  // Sidebar (base para KPIs/categorías)
+  const [egresosBase, setEgresosBase] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
 
-  const [anio, setAnio] = useState(Y);
-  const [anios, setAnios] = useState([Y, Y - 1]);
-  const [month, setMonth] = useState(hoy.getMonth());
+  // Filtros
+  const [anio, setAnio] = useState("ALL");
+  const [anios, setAnios] = useState([Y]);
+  const [mes, setMes]   = useState("ALL");
   const [fCat, setFCat] = useState("");
   const [fMedio, setFMedio] = useState("");
   const [q, setQ] = useState("");
@@ -94,6 +111,7 @@ export default function EgresoContable(){
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState(null);
 
+  // Toasts
   const [toasts, setToasts] = useState([]);
   const toastSeq = useRef(0);
   const addToast = (tipo, mensaje, duracion=3000) => {
@@ -102,104 +120,131 @@ export default function EgresoContable(){
   };
   const removeToast = (id)=> setToasts(prev=>prev.filter(t=>t.id!==id));
 
-  // ===== Cascada
+  // Animación cascada
   const [cascading, setCascading] = useState(false);
   useEffect(() => {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
-  }, [anio, month, fCat, fMedio, q]);
+  }, [anio, mes, fCat, fMedio, q]);
 
-  const { fStart, fEnd } = useMemo(() => {
-    const first = new Date(anio, month, 1);
-    const last = new Date(anio, month + 1, 0);
-    const toISO = (d) => d.toISOString().slice(0,10);
-    return { fStart: toISO(first), fEnd: toISO(last) };
-  }, [anio, month]);
+  /* -------------
+    Rango fechas
+  ------------- */
+  const rango = useMemo(() => {
+    if (anio === "ALL") return { start: null, end: null, label: "Todos los años" };
+    const y = Number(anio);
 
-  const loadMediosPago = useCallback(async () => {
-    try {
-      const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
-      setMediosPago(Array.isArray(data?.listas?.medios_pago) ? data.listas.medios_pago : []);
-    } catch {
-      addToast("error","No se pudieron cargar los medios de pago.");
-      setMediosPago([]);
+    if (mes === "ALL") {
+      const start = `${y}-01-01`;
+      const end   = `${y}-12-31`;
+      return { start, end, label: `Enero–Diciembre ${y}` };
     }
+
+    const m = Number(mes);
+    const first = new Date(Date.UTC(y, m, 1));
+    const last  = new Date(Date.UTC(y, m+1, 0));
+    return { start: ymd(first), end: ymd(last), label: `${cap1(MESES[m])} ${y}` };
+  }, [anio, mes]);
+
+  /* -----------------
+        Cargas base (una sola vez)
+        - Evita doble ejecución por StrictMode
+  ------------------*/
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+
+    (async () => {
+      // Medios de pago
+      try {
+        const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
+        const list = Array.isArray(data?.listas?.medios_pago) ? data.listas.medios_pago : [];
+        setMediosPago(list.map(m => ({ id: Number(m.id), nombre: String(m.nombre || m.medio_pago || "") })));
+      } catch {
+        addToast("error","No se pudieron cargar los medios de pago.");
+        setMediosPago([]);
+      }
+
+      // Años disponibles
+      try {
+        const j1 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list_years`);
+        if (Array.isArray(j1?.anios_disponibles) && j1.anios_disponibles.length) {
+          const list = [...j1.anios_disponibles].sort((a,b)=>b-a).map(String);
+          setAnios(list);
+        } else {
+          // Fallback a list meta
+          const j2 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&meta=1`);
+          if (Array.isArray(j2?.anios_disponibles) && j2.anios_disponibles.length) {
+            const list = [...j2.anios_disponibles].sort((a,b)=>b-a).map(String);
+            setAnios(list);
+          }
+        }
+      } catch {
+        /* silencioso */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // === BASE sidebar (solo fechas)
-  const loadEgresosMes = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({ start:fStart, end:fEnd });
-      const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
-      const datos = (raw?.datos || []).map(normalizeEgreso);
-      setEgresosMes(datos);
-    } catch {
-      setEgresosMes([]);
-    }
-  }, [fStart, fEnd]);
+  /* -----------------
+        Carga de datos (tabla + base) sincronizada
+        - Un solo loader
+        - AbortController para evitar "doble carga" y race conditions
+  ------------------*/
+  useEffect(() => {
+    const ac = new AbortController();
+    const signal = ac.signal;
 
-  // === TABLA (fechas + filtros)
-  const loadEgresos = useCallback(async () => {
-    setLoadingEgr(true);
-    try {
-      const params = new URLSearchParams({ start:fStart, end:fEnd });
-      if (fCat) params.set("categoria", fCat);
-      if (fMedio) params.set("medio", fMedio);
-      const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&${params.toString()}`);
-      const datos = (raw?.datos || []).map(normalizeEgreso);
-      setEgresos(datos);
+    (async () => {
+      try {
+        setLoadingEgr(true);
 
-      // años disponibles (derivados)
-      const yearsFromData = Array.from(
-        new Set(
-          datos
-            .map(e => (e?.fecha ? Number(String(e.fecha).slice(0,4)) : null))
-            .filter(v => Number.isFinite(v))
-        )
-      ).sort((a,b)=>b-a);
+        // Parámetros para la TABLA (incluye filtros categoría/medio)
+        const pTabla = new URLSearchParams({ op: "list" });
+        if (rango.start && rango.end) { pTabla.set("start", rango.start); pTabla.set("end", rango.end); }
+        if (fCat) pTabla.set("categoria", fCat);
+        if (fMedio) pTabla.set("medio", fMedio);
 
-      if (yearsFromData.length && !arraysIguales(yearsFromData, anios)) {
-        setAnios(yearsFromData);
-        if (!yearsFromData.includes(anio)) {
-          setAnio(yearsFromData[0]);
+        // Parámetros para la BASE (solo rango)
+        const pBase = new URLSearchParams({ op: "list" });
+        if (rango.start && rango.end) { pBase.set("start", rango.start); pBase.set("end", rango.end); }
+
+        const [rawTabla, rawBase] = await Promise.all([
+          fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&${pTabla.toString()}`, { signal }),
+          fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&${pBase.toString()}`, { signal }),
+        ]);
+
+        if (signal.aborted) return;
+
+        const datosTabla = (rawTabla?.datos || []).map(normalizeEgreso);
+        const datosBase  = (rawBase?.datos || []).map(normalizeEgreso);
+
+        setEgresos(datosTabla);
+        setEgresosBase(datosBase);
+
+        // Fallback para años si vinieron con la tabla y todavía no los tenemos bien
+        if (Array.isArray(rawTabla?.anios_disponibles) && rawTabla.anios_disponibles.length) {
+          const list = [...rawTabla.anios_disponibles].sort((a,b)=>b-a).map(String);
+          setAnios(prev => (arraysIguales(prev, list) ? prev : list));
         }
+      } catch (e) {
+        if (e?.name === "AbortError") return;
+        addToast("error","Error al cargar los egresos.");
+        setEgresos([]);
+        setEgresosBase([]);
+      } finally {
+        if (!signal.aborted) setLoadingEgr(false);
       }
-    } catch {
-      addToast("error","Error al cargar los egresos.");
-      setEgresos([]);
-    } finally { setLoadingEgr(false); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fStart, fEnd, fCat, fMedio]);
+    })();
 
-  const loadAniosDisponibles = useCallback(async () => {
-    try {
-      const j1 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list_years`);
-      if (Array.isArray(j1?.anios_disponibles) && j1.anios_disponibles.length) {
-        const list = [...j1.anios_disponibles].sort((a,b)=>b-a);
-        if (!arraysIguales(list, anios)) setAnios(list);
-        if (!list.includes(anio)) setAnio(list[0]);
-        return;
-      }
-    } catch {}
-    try {
-      const j2 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&meta=1`);
-      if (Array.isArray(j2?.anios_disponibles) && j2.anios_disponibles.length) {
-        const list = [...j2.anios_disponibles].sort((a,b)=>b-a);
-        if (!arraysIguales(list, anios)) setAnios(list);
-        if (!list.includes(anio)) setAnio(list[0]);
-        return;
-      }
-    } catch {}
-  }, [anio, anios]);
+    return () => ac.abort();
+  }, [rango.start, rango.end, fCat, fMedio]); // <- Ojo: NO depende de `anios` para evitar recargas innecesarias
 
-  useEffect(()=>{ loadMediosPago(); },[loadMediosPago]);
-  useEffect(()=>{ loadAniosDisponibles(); },[loadAniosDisponibles]);
-  useEffect(()=>{ loadEgresosMes(); }, [loadEgresosMes]);
-  useEffect(()=>{ loadEgresos(); }, [loadEgresos]);
-
-  const totalEgresos = useMemo(()=> egresos.reduce((a,b)=> a + Number(b.monto||0),0),[egresos]);
-
+  /* -----------------
+         Derivados
+  ------------------*/
   const egresosFiltrados = useMemo(()=>{
     const needle = q.trim().toLowerCase();
     if (!needle) return egresos;
@@ -212,10 +257,9 @@ export default function EgresoContable(){
     });
   },[egresos,q]);
 
-  // Breakdown por categoría usa la base completa del mes
   const catBreakdown = useMemo(()=>{
     const map = new Map();
-    for (const e of egresosMes){
+    for (const e of egresosBase){
       const k = e.categoria || "SIN CATEGORÍA";
       const monto = Number(e.monto || 0);
       if (!map.has(k)) map.set(k, { label:k, total:0, count:0 });
@@ -223,8 +267,11 @@ export default function EgresoContable(){
       obj.total += monto; obj.count += 1;
     }
     return Array.from(map.values()).sort((a,b)=> b.total - a.total);
-  },[egresosMes]);
+  },[egresosBase]);
 
+  /* -----------------
+         Acciones
+  ------------------*/
   const onCreateEgreso = ()=>{ setEditRow(null); setModalOpen(true); };
   const onEditEgreso = (row)=>{ setEditRow(row); setModalOpen(true); };
 
@@ -248,28 +295,54 @@ export default function EgresoContable(){
     if (!toDeleteId) return;
     try{
       await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=delete`,{
-        method:"POST", headers:{ "Content-Type":"application/json" },
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ id_egreso: toDeleteId }),
       });
       addToast("exito","Egreso eliminado correctamente.");
-      loadEgresos();
-      loadEgresosMes();
+      // Recargar datos una sola vez (se respeta AbortController del efecto principal)
+      // Forzamos nueva ejecución cambiando un filtro “neutro”:
+      // mejor: relanzar el efecto haciendo un pequeño truco: tocar `q` a sí misma no relanza.
+      // Así que simplemente dejamos que el efecto principal re-evalúe con mismos deps:
+      // Para asegurar, podemos reestablecer modal y listo:
     }catch{ addToast("error","No se pudo eliminar el egreso."); }
-    finally{ cancelDelete(); }
+    finally{
+      setConfirmOpen(false);
+      setToDeleteId(null);
+      // Disparar recarga explícita cambiando el rango mínimamente es tosco,
+      // preferimos un pequeño patrón: togglear un “tick” no-dependiente (no necesario aquí).
+      // Como el backend ya cambió, el efecto seguirá igual; recargamos manualmente con un fetch rápido:
+      try {
+        const pTabla = new URLSearchParams({ op: "list" });
+        if (rango.start && rango.end) { pTabla.set("start", rango.start); pTabla.set("end", rango.end); }
+        if (fCat) pTabla.set("categoria", fCat);
+        if (fMedio) pTabla.set("medio", fMedio);
+        const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&${pTabla.toString()}`);
+        setEgresos((raw?.datos || []).map(normalizeEgreso));
+      } catch {/* silencioso */}
+    }
   };
 
-  const onSavedEgreso = ()=>{ 
-    setModalOpen(false); 
-    loadEgresos(); 
-    loadEgresosMes();
+  const onSavedEgreso = ()=>{
+    setModalOpen(false);
+    // recarga suave de tabla
+    (async ()=>{
+      try{
+        const pTabla = new URLSearchParams({ op: "list" });
+        if (rango.start && rango.end) { pTabla.set("start", rango.start); pTabla.set("end", rango.end); }
+        if (fCat) pTabla.set("categoria", fCat);
+        if (fMedio) pTabla.set("medio", fMedio);
+        const raw = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&${pTabla.toString()}`);
+        setEgresos((raw?.datos || []).map(normalizeEgreso));
+      }catch{/* silencioso */}
+    })();
   };
 
-  /* ========= Exportar (EXCEL: todas las columnas visibles menos Categoría) ========= */
+  /* ========= Exportar (EXCEL: columnas visibles sin “Categoría”) ========= */
   const exportarXLSX = () => {
     const rows = egresosFiltrados;
     if (!rows.length) { addToast("advertencia","No hay datos para exportar."); return; }
 
-    // Orden visible sin “Categoría”
     const headers = ["Fecha","N° Factura","Descripción","Proveedor","Medio","Monto (ARS)"];
     const data = rows.map(e => ([
       e.fecha || "",
@@ -284,16 +357,19 @@ export default function EgresoContable(){
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-    // Columna de Monto ahora es la #6 => índice 5
-    const startRow = 2, endRow = aoa.length;
-    for (let r = startRow; r <= endRow; r++) {
+    // Forzar "Monto" como número (col 5 -> índice 5)
+    for (let r = 2; r <= aoa.length; r++) {
       const addr = XLSX.utils.encode_cell({ r: r-1, c: 5 });
-      if (ws[addr]) ws[addr].t = 'n';
+      if (ws[addr]) ws[addr].t = "n";
     }
 
     ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 22 }, { wch: 18 }, { wch: 14 }];
 
-    XLSX.utils.book_append_sheet(wb, ws, `Egresos_${cap1(MESES[month])}_${anio}`);
+    const sheetName =
+      anio === "ALL" ? "Todos_los_años" :
+      (mes === "ALL" ? `Año_${anio}` : `${cap1(MESES[Number(mes)])}_${anio}`);
+
+    XLSX.utils.book_append_sheet(wb, ws, `Egresos_${sheetName}` );
     const d = new Date();
     const name = `Egresos_${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}.xlsx`;
     XLSX.writeFile(wb, name);
@@ -331,8 +407,12 @@ export default function EgresoContable(){
     addToast("exito","Exportado exitosamente (CSV).");
   };
 
+  /* ==================
+            UI
+  ===================*/
   return (
     <div className="eg_layout">
+      {/* Toasts */}
       <div className="toast-stack">
         {toasts.map(t=>(
           <Toast key={t.id} tipo={t.tipo} mensaje={t.mensaje} duracion={t.duracion} onClose={()=>removeToast(t.id)} />
@@ -344,22 +424,32 @@ export default function EgresoContable(){
         <aside className="eg_filters cardd">
           <div className="textcenterfiltros">
             <h2 className="eg_filters__title"><FontAwesomeIcon icon={faFilter}/> Filtros</h2>
-            <h3>Detalle — {cap1(MESES[month])} {anio}</h3>
+            <h3>Detalle — {
+              anio === "ALL" ? "Todos los años"
+                : (mes === "ALL" ? `${anio}`
+                : `${cap1(MESES[Number(mes)])} ${anio}`)
+            }</h3>
           </div>
 
           <div className="paddingcenter">
             <div className="eg_row">
               <div className="eg_field">
                 <label>Año</label>
-                <select value={anio} onChange={e=> setAnio(Number(e.target.value))}>
-                  {anios.map(a=> <option key={a} value={a}>{a}</option>)}
+                <select value={anio} onChange={e=> setAnio(e.target.value)}>
+                  <option value="ALL">TODOS</option>
+                  {anios.map(a=> <option key={a} value={String(a)}>{a}</option>)}
                 </select>
               </div>
 
               <div className="eg_field">
                 <label>Mes</label>
-                <select value={month} onChange={e=>setMonth(Number(e.target.value))}>
-                  {MESES.map((m,i)=> <option key={m} value={i}>{m}</option>)}
+                <select
+                  value={mes}
+                  onChange={e=>setMes(e.target.value)}
+                  disabled={anio === "ALL"}
+                >
+                  <option value="ALL">TODOS</option>
+                  {MESES.map((m,i)=> <option key={m} value={String(i)}>{m}</option>)}
                 </select>
               </div>
             </div>
@@ -369,7 +459,9 @@ export default function EgresoContable(){
                 <div className="eg_stat__icon">$</div>
                 <div>
                   <p className="eg_stat__label">Total</p>
-                  <p className="eg_stat__value">${totalEgresos.toLocaleString("es-AR")}</p>
+                  <p className="eg_stat__value">
+                    {fmtARS(egresosFiltrados.reduce((acc, e) => acc + Number(e.monto||0), 0))}
+                  </p>
                 </div>
               </div>
             </div>
@@ -398,8 +490,6 @@ export default function EgresoContable(){
 
             <h3 className="eg_cats__header"><FontAwesomeIcon icon={faChartPie}/> Categorías</h3>
 
-
-
             <div className="eg_cats">
               {catBreakdown.map(c=>{
                 const active = fCat && fCat === c.label;
@@ -416,7 +506,7 @@ export default function EgresoContable(){
                       <div className="eg_catcard__count">{c.count} registro{sfx(c.count)}</div>
                     </div>
                     <div className="eg_catcard__value">
-                      ${c.total.toLocaleString("es-AR")}
+                      {fmtARS(c.total)}
                     </div>
                   </button>
                 );
@@ -433,18 +523,22 @@ export default function EgresoContable(){
             <div className="eg_header_actions">
               <div className="eg_search eg_search--redpill">
                 <FontAwesomeIcon icon={faSearch} />
-                <input placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)} aria-label="Buscar egresos"/>
+                <input
+                  placeholder="Buscar..."
+                  value={q}
+                  onChange={e=>setQ(e.target.value)}
+                  aria-label="Buscar egresos"
+                />
               </div>
 
               <button type="button" className="eg_btn eg_btn--redpill" onClick={exportarXLSX}>
                 <FontAwesomeIcon icon={faFileExcel} /> Exportar Excel
               </button>
 
-              {/* Si querés un botón CSV, descomentá:
-              <button type="button" className="eg_btn eg_btn--whitepill" onClick={exportarCSV}>
+              {/* Si querés CSV, descomentá: */}
+              {/* <button type="button" className="eg_btn eg_btn--whitepill" onClick={exportarCSV}>
                 <FontAwesomeIcon icon={faFileExcel} /> Exportar CSV
-              </button>
-              */}
+              </button> */}
 
               <button type="button" className="eg_btn eg_btn--whitepill" onClick={onCreateEgreso}>
                 <FontAwesomeIcon icon={faPlus} /> Registrar egreso
@@ -488,7 +582,7 @@ export default function EgresoContable(){
                     <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
                     <div className="gt_cell truncate" role="cell" title={e.proveedor || "-"}>{e.proveedor || "-"}</div>
                     <div className="gt_cell center" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
-                    <div className="gt_cell center" role="cell">${Number(e.monto || 0).toLocaleString("es-AR")}</div>
+                    <div className="gt_cell center" role="cell">{fmtARS(e.monto)}</div>
                     <div className="gt_cell" role="cell">
                       <div className="row_actions">
                         <button className="icon_btn view" title="Ver comprobante" onClick={()=>onViewComprobante(e)} disabled={!hasFile}>

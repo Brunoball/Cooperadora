@@ -20,10 +20,13 @@ import { IngresoCrearModal, IngresoEditarModal } from "./modalcontable/IngresoMo
 const hoy = new Date();
 const Y = hoy.getFullYear();
 const MESES = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
 
+const cap1 = (s = "") => s.charAt(0) + s.slice(1).toLowerCase();
+const sfx = (n) => n === 1 ? "" : "s";
+const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 const fmtMonto = (n) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -152,22 +155,21 @@ function ConfirmModal({
 
 /* ========= Componente principal ========= */
 export default function IngresosContable() {
-  const [anio, setAnio] = useState(Y);
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
+  // Filtros como en EgresoContable
+  const [anio, setAnio] = useState("ALL");
+  const [anios, setAnios] = useState([Y]);
+  const [mes, setMes] = useState("ALL");
   const [query, setQuery] = useState("");
 
   const [filas, setFilas] = useState([]);           // alumnos
-  const [anios, setAnios] = useState([Y, Y - 1]);
-  const [cargando, setCargando] = useState(false);
-
   const [filasIngresos, setFilasIngresos] = useState([]); // ingresos manuales
-  const [cargandoIngresos, setCargandoIngresos] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
   const [sideOpen, setSideOpen] = useState(true);
   const [cascading, setCascading] = useState(false);
   const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
 
-  // NUEVO: filtro por categoría (igual a egresos)
+  // Filtro por categoría
   const [catFiltro, setCatFiltro] = useState("");
 
   // Modales
@@ -188,23 +190,82 @@ export default function IngresosContable() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
+  /* ====== Rango de fechas (igual que EgresoContable) ====== */
+  const rango = useMemo(() => {
+    if (anio === "ALL") return { start: null, end: null, label: "Todos los años" };
+    const y = Number(anio);
+
+    if (mes === "ALL") {
+      const start = `${y}-01-01`;
+      const end = `${y}-12-31`;
+      return { start, end, label: `Enero–Diciembre ${y}` };
+    }
+
+    const m = Number(mes);
+    const first = new Date(Date.UTC(y, m, 1));
+    const last = new Date(Date.UTC(y, m + 1, 0));
+    return { start: ymd(first), end: ymd(last), label: `${cap1(MESES[m])} ${y}` };
+  }, [anio, mes]);
+
   /* ====== CARGA API ====== */
+  const fetchJSON = useCallback(async (url, options = {}) => {
+    const sep = url.includes("?") ? "&" : "?";
+    const finalUrl = `${url}${sep}ts=${Date.now()}`;
+    const res = await fetch(finalUrl, { method: "GET", cache: "no-store", ...options });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.exito === false) {
+      const msg = data?.mensaje || `Error del servidor (HTTP ${res.status}).`;
+      throw new Error(msg);
+    }
+    return data;
+  }, []);
+
   const loadPagosAlumnos = useCallback(async () => {
     setCargando(true);
     try {
-      const url = `${BASE_URL}/api.php?action=contable_ingresos&year=${anio}&detalle=1&ts=${Date.now()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw = await res.json();
+      let url = `${BASE_URL}/api.php?action=contable_ingresos&detalle=1`;
+      
+      // Si hay rango específico, usarlo
+      if (rango.start && rango.end) {
+        url += `&start=${rango.start}&end=${rango.end}`;
+      } else if (anio !== "ALL") {
+        // Si solo se seleccionó año, cargar todo el año
+        url += `&year=${anio}`;
+      }
+      // Si es "ALL", no se agregan filtros de fecha
+
+      const raw = await fetchJSON(url);
 
       if (Array.isArray(raw?.anios_disponibles) && raw.anios_disponibles.length) {
         setAnios(raw.anios_disponibles);
       }
 
-      const key = `${String(anio).padStart(4, "0")}-${String(mes).padStart(2, "0")}`;
-      const det = Array.isArray(raw?.detalle?.[key]) ? raw.detalle[key] : [];
+      // Obtener todos los datos del rango
+      const detalleCompleto = raw?.detalle || {};
+      
+      // Combinar todos los datos del rango seleccionado
+      const todosLosDatos = [];
+      Object.keys(detalleCompleto).forEach(key => {
+        // Si es "ALL", tomar todos los años
+        if (anio === "ALL") {
+          todosLosDatos.push(...detalleCompleto[key]);
+        } 
+        // Si hay año específico, filtrar por año
+        else if (key.startsWith(`${anio}-`)) {
+          // Si hay mes específico, filtrar también por mes
+          if (mes !== "ALL") {
+            const mesFormateado = String(mes).padStart(2, "0");
+            if (key.endsWith(`-${mesFormateado}`)) {
+              todosLosDatos.push(...detalleCompleto[key]);
+            }
+          } else {
+            // Si no hay mes específico, tomar todos los meses del año
+            todosLosDatos.push(...detalleCompleto[key]);
+          }
+        }
+      });
 
-      const rows = det.map((r, i) => ({
+      const rows = todosLosDatos.map((r, i) => ({
         id: `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Monto || 0}|${i}`,
         fecha: r?.fecha_pago ?? "",
         alumno: r?.Alumno ?? "",
@@ -220,18 +281,38 @@ export default function IngresosContable() {
     } finally {
       setCargando(false);
     }
-  }, [anio, mes]);
+  }, [anio, mes, rango, fetchJSON]);
 
   const loadIngresos = useCallback(async () => {
-    setCargandoIngresos(true);
+    setCargando(true);
     try {
-      const url = `${BASE_URL}/api.php?action=ingresos_list&year=${anio}&month=${mes}&ts=${Date.now()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      let url = `${BASE_URL}/api.php?action=ingresos_list`;
+      
+      // Si hay rango específico, usarlo
+      if (rango.start && rango.end) {
+        url += `&start=${rango.start}&end=${rango.end}`;
+      } else if (anio !== "ALL") {
+        // Si solo se seleccionó año, cargar todo el año
+        url += `&year=${anio}`;
+      }
+      // Si es "ALL", no se agregan filtros de fecha
+
+      const data = await fetchJSON(url);
       const list = Array.isArray(data?.items) ? data.items : [];
 
-      const rows = list.map((r) => {
+      // Filtrar por mes en el frontend si es necesario
+      let filteredList = list;
+      if (anio !== "ALL" && mes !== "ALL") {
+        filteredList = list.filter(item => {
+          if (!item.fecha) return false;
+          const fecha = new Date(item.fecha);
+          const itemAnio = fecha.getFullYear();
+          const itemMes = fecha.getMonth(); // getMonth() devuelve 0-11
+          return itemAnio === Number(anio) && itemMes === Number(mes);
+        });
+      }
+
+      const rows = filteredList.map((r) => {
         const categoriaText = r.categoria || r.denominacion || "-";
         const medioText = r.medio || r.medio_pago || "";
         const proveedorText = r.proveedor || r.nombre_proveedor || "";
@@ -242,14 +323,14 @@ export default function IngresosContable() {
           id_ingreso: Number(r.id_ingreso),
           id_medio_pago: Number(r.id_medio_pago || 0),
           fecha: r.fecha,
-          categoria: categoriaText,       // visible
-          imputacion: imputacionText,     // visible (antes "descripcion")
-          proveedor: proveedorText,       // NUEVO visible
+          categoria: categoriaText,
+          imputacion: imputacionText,
+          proveedor: proveedorText,
           importe: Number(r.importe || 0),
-          medio: medioText,               // visible
+          medio: medioText,
           // compat edición:
           denominacion: categoriaText,
-          descripcion: imputacionText,    // mantengo por compat. en filtros previos
+          descripcion: imputacionText,
         };
       });
       setFilasIngresos(rows);
@@ -257,18 +338,46 @@ export default function IngresosContable() {
       console.error("Error al cargar tabla ingresos:", e);
       setFilasIngresos([]);
     } finally {
-      setCargandoIngresos(false);
+      setCargando(false);
     }
-  }, [anio, mes]);
+  }, [anio, mes, rango, fetchJSON]);
 
   const loadAll = useCallback(async () => {
     await Promise.all([loadPagosAlumnos(), loadIngresos()]);
   }, [loadPagosAlumnos, loadIngresos]);
 
-  useEffect(() => { loadAll(); }, [anio, mes, loadAll]);
+  // Cargar años disponibles al inicio
+  useEffect(() => {
+    const loadAnios = async () => {
+      try {
+        const data = await fetchJSON(`${BASE_URL}/api.php?action=contable_ingresos&meta=1`);
+        if (Array.isArray(data?.anios_disponibles) && data.anios_disponibles.length) {
+          const list = [...data.anios_disponibles].sort((a, b) => b - a).map(String);
+          setAnios(list);
+        }
+      } catch (e) {
+        console.error("Error al cargar años:", e);
+      }
+    };
+    loadAnios();
+  }, [fetchJSON]);
 
-  /* Reset filtro categoría al cambiar contexto */
-  useEffect(() => { setCatFiltro(""); }, [innerTab, anio, mes]);
+  // Cargar datos cuando cambian los filtros
+  useEffect(() => {
+    loadAll();
+  }, [anio, mes, loadAll]);
+
+  // Reset filtro categoría al cambiar contexto
+  useEffect(() => {
+    setCatFiltro("");
+  }, [innerTab, anio, mes]);
+
+  // Animación cascada
+  useEffect(() => {
+    setCascading(true);
+    const t = setTimeout(() => setCascading(false), 500);
+    return () => clearTimeout(t);
+  }, [anio, mes, query, innerTab, catFiltro]);
 
   /* Derivados: búsqueda + filtro categoría */
   const filasFiltradasAlu = useMemo(() => {
@@ -305,7 +414,7 @@ export default function IngresosContable() {
     return { total, cantidad: base.length };
   }, [filasFiltradasAlu, filasFiltradasIng, innerTab]);
 
-  // AGRUPA POR CATEGORÍA (para ambas pestañas) — usado en el sidebar clickeable
+  // AGRUPA POR CATEGORÍA (para ambas pestañas)
   const categoriasMes = useMemo(() => {
     const base = innerTab === "alumnos" ? filas : filasIngresos;
     const map = new Map();
@@ -318,12 +427,6 @@ export default function IngresosContable() {
     });
     return Array.from(map.values()).sort((a, b) => b.monto - a.monto);
   }, [filas, filasIngresos, innerTab]);
-
-  useEffect(() => {
-    setCascading(true);
-    const t = setTimeout(() => setCascading(false), 500);
-    return () => clearTimeout(t);
-  }, [anio, mes, query, innerTab, catFiltro]);
 
   const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
 
@@ -345,7 +448,6 @@ export default function IngresosContable() {
         "Mes pagado": r.mesPagado,
       }));
     } else {
-      // Exportar TODO lo visible MENOS la columna Categoría
       rows = base.map((r) => ({
         Fecha: r.fecha,
         Proveedor: r.proveedor || "",
@@ -354,7 +456,7 @@ export default function IngresosContable() {
         Medio: r.medio,
       }));
     }
-    const wbName = `Ingresos_${MESES[mes - 1]}_${anio}_${isAlu ? "Alumnos" : "Ingresos"}`;
+    const wbName = `Ingresos_${anio === "ALL" ? "Todos_los_años" : (mes === "ALL" ? `Año_${anio}` : `${cap1(MESES[Number(mes)])}_${anio}`)}_${isAlu ? "Alumnos" : "Ingresos"}`;
     await exportToExcelLike({ workbookName: wbName, sheetName: "Datos", rows });
     addToast("exito", "Exportado exitosamente.");
   };
@@ -403,23 +505,36 @@ export default function IngresosContable() {
                 <span>Filtros</span>
               </div>
               <div className="ing-detail-inline">
-                <small className="muted">Detalle — {MESES[mes - 1]} {anio}</small>
+                <small className="muted">
+                  Detalle — {
+                    anio === "ALL" ? "Todos los años"
+                    : (mes === "ALL" ? `${anio}`
+                    : `${cap1(MESES[Number(mes)])} ${anio}`)
+                  }
+                </small>
               </div>
             </div>
 
-            {/* Año / Mes */}
+            {/* Año / Mes - IGUAL QUE EGRESOS */}
             <div className="ing-fieldrow">
               <div className="ing-field">
                 <label htmlFor="anio">Año</label>
-                <select id="anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
-                  {anios.map((a) => (<option key={a} value={a}>{a}</option>))}
+                <select id="anio" value={anio} onChange={(e) => setAnio(e.target.value)}>
+                  <option value="ALL">TODOS</option>
+                  {anios.map((a) => (<option key={a} value={String(a)}>{a}</option>))}
                 </select>
               </div>
               <div className="ing-field">
                 <label htmlFor="mes">Mes</label>
-                <select id="mes" value={mes} onChange={(e) => setMes(Number(e.target.value))}>
+                <select 
+                  id="mes" 
+                  value={mes} 
+                  onChange={(e) => setMes(e.target.value)}
+                  disabled={anio === "ALL"}
+                >
+                  <option value="ALL">TODOS</option>
                   {MESES.map((m, i) => (
-                    <option key={m} value={i + 1}>{m.toUpperCase()}</option>
+                    <option key={m} value={String(i)}>{m}</option>
                   ))}
                 </select>
               </div>
@@ -451,8 +566,6 @@ export default function IngresosContable() {
               <FontAwesomeIcon icon={faChartPie} />
               <span>{innerTab === "alumnos" ? "Categorías (alumnos)" : "Categorías (ingresos)"}</span>
             </div>
-
-
 
             {categoriasMes.length === 0 ? (
               <div className="ing-empty">Sin datos</div>
@@ -574,16 +687,24 @@ export default function IngresosContable() {
                       <div className="c-mes">{f.mesPagado}</div>
                     </div>
                   ))}
-                  {!filasFiltradasAlu.length && !cargando && <div className="ing-empty big">Sin pagos</div>}
+                  {!filasFiltradasAlu.length && !cargando && (
+                    <div className="ing-empty big">
+                      Sin pagos para {
+                        anio === "ALL" ? "todos los años" 
+                        : (mes === "ALL" ? `año ${anio}`
+                        : `${cap1(MESES[Number(mes)])} ${anio}`)
+                      }
+                    </div>
+                  )}
                 </div>
               ) : (
-                /* ===== TABLA: MANUALES (toda la info del modal) ===== */
+                /* ===== TABLA: MANUALES ===== */
                 <div
-                  className={`ing-tablewrap is-manuales ${cargandoIngresos ? "is-loading" : ""}`}
+                  className={`ing-tablewrap is-manuales ${cargando ? "is-loading" : ""}`}
                   role="table"
                   aria-label="Listado de ingresos (tabla ingresos)"
                 >
-                  {cargandoIngresos && (
+                  {cargando && (
                     <div className="ing-tableloader" role="status" aria-live="polite">
                       <div className="ing-spinner" /><span>Cargando…</span>
                     </div>
@@ -617,7 +738,15 @@ export default function IngresosContable() {
                       </div>
                     </div>
                   ))}
-                  {!filasFiltradasIng.length && !cargandoIngresos && <div className="ing-empty big">Sin ingresos</div>}
+                  {!filasFiltradasIng.length && !cargando && (
+                    <div className="ing-empty big">
+                      Sin ingresos para {
+                        anio === "ALL" ? "todos los años" 
+                        : (mes === "ALL" ? `año ${anio}`
+                        : `${cap1(MESES[Number(mes)])} ${anio}`)
+                      }
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -630,7 +759,7 @@ export default function IngresosContable() {
       {/* === Modales === */}
       <IngresoCrearModal
         open={openCreate}
-        defaultDate={new Date(anio, mes - 1, Math.min(28, new Date().getDate())).toISOString().slice(0,10)}
+        defaultDate={new Date().toISOString().slice(0,10)}
         onClose={() => setOpenCreate(false)}
         onSaved={async () => { addToast("exito", "Ingreso creado correctamente."); await loadIngresos(); }}
       />
