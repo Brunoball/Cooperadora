@@ -156,6 +156,10 @@ const ModalPagos = ({ socio, onClose }) => {
   const [anualH1, setAnualH1] = useState(false); // Ene–Jul
   const [anualH2, setAnualH2] = useState(false); // Ago–Dic
 
+  // ====== NUEVO: medios de pago ======
+  const [mediosPago, setMediosPago] = useState([]);          // [{id, nombre}]
+  const [medioSeleccionado, setMedioSeleccionado] = useState(''); // id como string
+
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
 
@@ -472,7 +476,7 @@ const ModalPagos = ({ socio, onClose }) => {
     setTodosSeleccionados(all);
   }, [seleccionados, mesesGrid, periodosPagados, periodosEstado]);
 
-  // Cargar meses/estado
+  // Cargar meses/estado + NUEVO: medios de pago
   useEffect(() => {
     const cargar = async () => {
       if (!idAlumno) {
@@ -496,14 +500,30 @@ const ModalPagos = ({ socio, onClose }) => {
         const [dataListas, dataPagados] = await Promise.all([resListas.json(), resPagados.json()]);
 
         if (dataListas?.exito) {
+          // MESES
           const arrMeses = Array.isArray(dataListas?.listas?.meses) ? dataListas.listas.meses : [];
           const norm = arrMeses
             .map((m) => ({ id: Number(m.id), nombre: m.nombre }))
             .sort((a, b) => a.id - b.id);
           setMeses(norm);
+
+          // ===== MEDIOS DE PAGO (sin autoseleccionar el primero) =====
+          const arrMedios = Array.isArray(dataListas?.listas?.medios_pago) ? dataListas.listas.medios_pago : [];
+          const med = arrMedios
+            .map(m => ({ id: Number(m.id), nombre: String(m.nombre) }))
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+          setMediosPago(med);
+
+          // Si el valor actual ya no existe en la lista, resetear a ""
+          setMedioSeleccionado(prev => (
+            med.some(m => String(m.id) === String(prev)) ? prev : ''
+          ));
         } else {
           setMeses([]);
-          mostrarToast('advertencia', dataListas?.mensaje || 'No se pudieron cargar los meses.');
+          setMediosPago([]);
+          setMedioSeleccionado(''); // placeholder "Seleccionar..."
+          mostrarToast('advertencia', dataListas?.mensaje || 'No se pudieron cargar las listas.');
         }
 
         if (dataPagados?.exito) {
@@ -741,7 +761,6 @@ const ModalPagos = ({ socio, onClose }) => {
     return roundToHundreds(totalPersona * n);
   }, [total, esPagoGrupo, cantidadRegistrosLista]);
 
-
   const etiquetaTotal = esPagoGrupo
     ? `Total grupo (${cantidadRegistrosLista})`
     : 'Total';
@@ -783,6 +802,8 @@ const ModalPagos = ({ socio, onClose }) => {
         },
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
         ids_familia: idsFamiliaActivos,
+        // NUEVO → medio de pago seleccionado (puede ir null si no aplica)
+        id_medio_pago: medioSeleccionado ? Number(medioSeleccionado) : null,
         // meta de anual para auditoría
         meta_anual: anualSeleccionado ? {
           tipo: anualConfig.tipo, // 'full' | 'h1' | 'h2'
@@ -977,6 +998,9 @@ const ModalPagos = ({ socio, onClose }) => {
       ? anualConfig.etiqueta
       : null;
 
+    // Helper para mostrar nombre del medio
+    const medioNombre = mediosPago.find(m => String(m.id) === String(medioSeleccionado))?.nombre || '—';
+
     return (
       <>
         {toast && (
@@ -1020,6 +1044,7 @@ const ModalPagos = ({ socio, onClose }) => {
                       <li><span>Meses</span><strong>{periodosMesesOrdenados.length}</strong></li>
                       {etiquetaAnualResumen && <li><span>Contado anual</span><strong>{etiquetaAnualResumen}</strong></li>}
                       {matriculaSeleccionada && <li><span>Matrícula</span><strong>{formatearARS(montoMatricula)}</strong></li>}
+                      <li><span>Medio de pago</span><strong>{medioNombre}</strong></li>
                       <li><span>{etiquetaTotal}</span><strong>{formatearARS(totalParaMostrar)}</strong></li>
                       <li><span>Registros</span><strong>{cantidadRegistrosLista}</strong></li>
                       {periodoTextoFinal && (
@@ -1084,6 +1109,9 @@ const ModalPagos = ({ socio, onClose }) => {
       ? `Desc. hermanos: ${(porcDescHermanos * 100).toFixed(1)}%`
       : null;
 
+  // Helper UI medio pago
+  const medioNombreActual = mediosPago.find(m => String(m.id) === String(medioSeleccionado))?.nombre;
+
   return (
     <>
       {toast && (
@@ -1117,22 +1145,22 @@ const ModalPagos = ({ socio, onClose }) => {
             <div className="socio-info-card socio-info-card--danger">
               <div className="socio-info-header">
                 <div className='sep_header'>
-                                  <h3 className="socio-nombre">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
-                                <span className="valor-mes valor-mes--danger">
-                  <strong>Valor mensual</strong>{' '}
-                  {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioMensualConDescuento)}
-                </span>
+                  <h3 className="socio-nombre">{socio?.nombre || socio?.apellido_nombre || 'Alumno'}</h3>
+                  <span className="valor-mes valor-mes--danger">
+                    <strong>Valor mensual</strong>{' '}
+                    {libreActivo ? '(LIBRE)' : (nombreCategoria ? `(${nombreCategoria})` : '')}: {formatearARS(precioMensualConDescuento)}
+                  </span>
                 </div>
-               <div className='sep_headeric'>
-                                  {badgeDescNow && <span className="badge-info">{badgeDescNow}</span>}
 
-                <span
-                  className="badge-info"
-                  title={familiaInfo.nombre_familia ? `Familia: ${familiaInfo.nombre_familia}` : 'Sin familia'}
-                >
-                  {familiaInfo.tieneFamilia ? `Fam: Sí (${Math.max(familiaInfo.miembros_total, familiaInfo.miembros_activos || 0)})` : 'Fam: No'}
-                </span>
-               </div>
+                <div className='sep_headeric'>
+                  {badgeDescNow && <span className="badge-info">{badgeDescNow}</span>}
+                  <span
+                    className="badge-info"
+                    title={familiaInfo.nombre_familia ? `Familia: ${familiaInfo.nombre_familia}` : 'Sin familia'}
+                  >
+                    {familiaInfo.tieneFamilia ? `Fam: Sí (${Math.max(familiaInfo.miembros_total, familiaInfo.miembros_activos || 0)})` : 'Fam: No'}
+                  </span>
+                </div>
 
                 {fechaIngreso && (
                   <div className="socio-fecha">
@@ -1142,151 +1170,169 @@ const ModalPagos = ({ socio, onClose }) => {
                 )}
               </div>
 
+              {/* ===== NUEVO: selector de Medio de pago ===== */}
               <div className="socio-info-extra">
+                <div className="socio-info-extra">
+                  <div className="medio-pago-row">
+                    <label className="medio-pago-label" htmlFor="medio-pago-select">
+                      Medio de pago
+                    </label>
+                    <select
+                      id="medio-pago-select"
+                      className="medio-pago-select"
+                      value={medioSeleccionado || ""}
+                      onChange={(e) => setMedioSeleccionado(e.target.value)}
+                      disabled={cargando}
+                    >
+                      <option value="" disabled>Seleccionar...</option>
+                      {mediosPago.length === 0 && <option value="">(Sin datos)</option>}
+                      {mediosPago.map((mp) => (
+                        <option key={mp.id} value={String(mp.id)}>
+                          {mp.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
                 {/* Toggle aplicar a familia */}
                 {familiaInfo.tieneFamilia && (
                   <div className='centrar-familia'>
                     <label className="condonar-check family-toggle">
-                    <input
-                      type="checkbox"
-                      checked={aplicarFamilia}
-                      onChange={(e)=> setAplicarFamilia(e.target.checked)}
-                      disabled={cargando}
-                    />
-                    <span className="switch"><span className="switch-thumb" /></span>
-                    <span className="switch-label"><strong>Aplicar pago al grupo familiar</strong></span>
-                  </label>
+                      <input
+                        type="checkbox"
+                        checked={aplicarFamilia}
+                        onChange={(e)=> setAplicarFamilia(e.target.checked)}
+                        disabled={cargando}
+                      />
+                      <span className="switch"><span className="switch-thumb" /></span>
+                      <span className="switch-label"><strong>Aplicar pago al grupo familiar</strong></span>
+                    </label>
 
-
-                                    <div className="family-dropdown">
-                    <button
-                      type="button"
-                      className="btn btn-small btn-terciario"
-                      aria-expanded={mostrarMiembros}
-                      aria-controls="family-members-panel"
-                      onClick={() => setMostrarMiembros((v) => !v)}
-                    >
-                      {mostrarMiembros ? 'Ocultar miembros' : 'Ver miembros'}
-                    </button>
-
-                    {mostrarMiembros && (
-                      <div
-                        id="family-members-panel"
-                        className="family-members-panel"
-                        role="region"
-                        aria-label="Miembros del grupo familiar"
+                    <div className="family-dropdown">
+                      <button
+                        type="button"
+                        className="btn btn-small btn-terciario"
+                        aria-expanded={mostrarMiembros}
+                        aria-controls="family-members-panel"
+                        onClick={() => setMostrarMiembros((v) => !v)}
                       >
-                        {miembrosOrdenados.length === 0 ? (
-                          <div className="no-members">Sin integrantes cargados.</div>
-                        ) : (
-                          <ul className="members-list">
-                            {miembrosOrdenados.map((m) => {
-                              const esActual = m.id_alumno === idAlumno;
-                              const etiqueta = `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${m.id_alumno}`;
-                              return (
-                                <li
-                                  key={m.id_alumno}
-                                  className={`member-item ${esActual ? 'current-member' : ''}`}
-                                >
-                                  <span className="member-name">
-                                    {etiqueta}{esActual ? ' (actual)' : ''}
-                                  </span>
-                                  <span
-                                    className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
+                        {mostrarMiembros ? 'Ocultar miembros' : 'Ver miembros'}
+                      </button>
+
+                      {mostrarMiembros && (
+                        <div
+                          id="family-members-panel"
+                          className="family-members-panel"
+                          role="region"
+                          aria-label="Miembros del grupo familiar"
+                        >
+                          {miembrosOrdenados.length === 0 ? (
+                            <div className="no-members">Sin integrantes cargados.</div>
+                          ) : (
+                            <ul className="members-list">
+                              {miembrosOrdenados.map((m) => {
+                                const esActual = m.id_alumno === idAlumno;
+                                const etiqueta = `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${m.id_alumno}`;
+                                return (
+                                  <li
+                                    key={m.id_alumno}
+                                    className={`member-item ${esActual ? 'current-member' : ''}`}
                                   >
-                                    {m.activo ? 'Activo' : 'Inactivo'}
-                                  </span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </div>
-                    )}
+                                    <span className="member-name">
+                                      {etiqueta}{esActual ? ' (actual)' : ''}
+                                    </span>
+                                    <span
+                                      className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
+                                    >
+                                      {m.activo ? 'Activo' : 'Inactivo'}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  </div>
-
                 )}
-
-                {/* === Desplegable de miembros de la familia === */}
-
               </div>
             </div>
 
             {/* Condonar + Año */}
             <div className='condonarAño-montoLibre'>
               <div className={`condonar-box ${condonar ? 'is-active' : ''}`}>
-              <label className="condonar-check">
-                <input
-                  type="checkbox"
-                  checked={condonar}
-                  onChange={(e) => onToggleCondonar(e.target.checked)}
-                  disabled={cargando}
-                />
-                <span className="switch"><span className="switch-thumb" /></span>
-                <span className="switch-label">Marcar como <strong>Condonado</strong>(no genera cobro)</span>
-              </label>
+                <label className="condonar-check">
+                  <input
+                    type="checkbox"
+                    checked={condonar}
+                    onChange={(e) => onToggleCondonar(e.target.checked)}
+                    disabled={cargando}
+                  />
+                  <span className="switch"><span className="switch-thumb" /></span>
+                  <span className="switch-label">Marcar como <strong>Condonado</strong>(no genera cobro)</span>
+                </label>
 
-              <div className="year-picker">
-                <button
-                  type="button"
-                  className="year-button"
-                  onClick={() => setShowYearPicker((s) => !s)}
-                  disabled={cargando}
-                  title="Cambiar año"
-                >
-                  <FaCalendarAlt /><span>{anioTrabajo}</span>
-                </button>
+                <div className="year-picker">
+                  <button
+                    type="button"
+                    className="year-button"
+                    onClick={() => setShowYearPicker((s) => !s)}
+                    disabled={cargando}
+                    title="Cambiar año"
+                  >
+                    <FaCalendarAlt /><span>{anioTrabajo}</span>
+                  </button>
 
-                {showYearPicker && (
-                  <div className="year-popover" onMouseLeave={() => setShowYearPicker(false)}>
-                    {yearOptions.map((y) => (
-                      <button
-                        key={y}
-                        className={`year-item ${y === anioTrabajo ? 'active' : ''}`}
-                        onClick={() => { setAnioTrabajo(y); setShowYearPicker(false); }}
-                      >
-                        {y}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {showYearPicker && (
+                    <div className="year-popover" onMouseLeave={() => setShowYearPicker(false)}>
+                      {yearOptions.map((y) => (
+                        <button
+                          key={y}
+                          className={`year-item ${y === anioTrabajo ? 'active' : ''}`}
+                          onClick={() => { setAnioTrabajo(y); setShowYearPicker(false); }}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modo libre */}
+              <div className={`condonar-box ${libreActivo ? 'is-active' : ''}`}>
+                <label className="condonar-check">
+                  <input
+                    type="checkbox"
+                    checked={libreActivo}
+                    onChange={(e) => onToggleLibre(e.target.checked)}
+                    disabled={cargando}
+                  />
+                  <span className="switch"><span className="switch-thumb" /></span>
+                  <span className="switch-label">Usar <strong>monto libre por mes</strong></span>
+                </label>
+
+                <div className="year-picker libre-input-container">
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    inputMode="numeric"
+                    placeholder="Ingresá el monto libre por mes"
+                    value={libreValor}
+                    onChange={handleLibreChange}
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'Minus') e.preventDefault();
+                    }}
+                    disabled={!libreActivo || cargando}
+                    className="libre-input"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Modo libre */}
-            <div className={`condonar-box ${libreActivo ? 'is-active' : ''}`}>
-              <label className="condonar-check">
-                <input
-                  type="checkbox"
-                  checked={libreActivo}
-                  onChange={(e) => onToggleLibre(e.target.checked)}
-                  disabled={cargando}
-                />
-              <span className="switch"><span className="switch-thumb" /></span>
-                <span className="switch-label">Usar <strong>monto libre por mes</strong></span>
-              </label>
-
-              <div className="year-picker libre-input-container">
-                <input
-                  type="number"
-                  min="0"
-                  step="500"
-                  inputMode="numeric"
-                  placeholder="Ingresá el monto libre por mes"
-                  value={libreValor}
-                  onChange={handleLibreChange}
-                  onKeyDown={(e) => {
-                    if (e.key === '-' || e.key === 'Minus') e.preventDefault();
-                  }}
-                  disabled={!libreActivo || cargando}
-                  className="libre-input"
-                />
-              </div>
-            </div>
-          </div>
-          
             {/* ====== EXTRAS: CONTADO ANUAL y MATRÍCULA ====== */}
             {ventanaAnualActiva && (
               <div className={`condonar-box ${anualSeleccionado ? 'is-active' : ''}`}>
@@ -1298,16 +1344,16 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={cargando || matriculaSeleccionada || libreActivo}
                   />
                   <span className="switch"><span className="switch-thumb" /></span>
-<span className="switch-label sitch-labes">
-  <strong>CONTADO ANUAL</strong>
-  <span className="subline">
-    {montoAnual > 0
-      ? `(${formatearARS(montoAnualConDescuento)}${
-          (esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''
-        })`
-      : '(sin monto anual definido)'}
-  </span>
-</span>
+                  <span className="switch-label sitch-labes">
+                    <strong>CONTADO ANUAL</strong>
+                    <span className="subline">
+                      {montoAnual > 0
+                        ? `(${formatearARS(montoAnualConDescuento)}${
+                            (esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''
+                          })`
+                        : '(sin monto anual definido)'}
+                    </span>
+                  </span>
                 </label>
 
                 {/* NUEVO: controles de mitades */}
@@ -1335,23 +1381,22 @@ const ModalPagos = ({ socio, onClose }) => {
                       <span className="switch-label"><strong>2ª mitad</strong> (Ago–Dic)</span>
                     </label>
 
-<div className="anual-mitades-info">
-  <span className="anual-mitades-importe">
-    Importe: {formatearARS(Math.round(anualConfig?.importe || 0))}
-  </span>
+                    <div className="anual-mitades-info">
+                      <span className="anual-mitades-importe">
+                        Importe: {formatearARS(Math.round(anualConfig?.importe || 0))}
+                      </span>
 
-  <button
-    type="button"
-    className="info-icon"
-    aria-label="Ver información sobre mitades"
-  >
-    <FaInfoCircle aria-hidden="true" />
-    <span className="tip" role="tooltip">
-      Si no se eligen mitades, se considera todo el año.
-    </span>
-  </button>
-</div>
-
+                      <button
+                        type="button"
+                        className="info-icon"
+                        aria-label="Ver información sobre mitades"
+                      >
+                        <FaInfoCircle aria-hidden="true" />
+                        <span className="tip" role="tooltip">
+                          Si no se eligen mitades, se considera todo el año.
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

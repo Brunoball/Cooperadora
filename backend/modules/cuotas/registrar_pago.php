@@ -21,10 +21,14 @@ try {
     $payload = json_decode(file_get_contents('php://input'), true) ?: [];
 
     // ===== Payload base =====
-    $idAlumno   = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
-    $periodos   = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
-    $condonar   = !empty($payload['condonar']);
-    $anioInput  = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
+    $idAlumno      = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
+    $periodos      = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
+    $condonar      = !empty($payload['condonar']);
+    $anioInput     = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
+
+    // NUEVO: medio de pago (puede ser null)
+    $idMedioPago   = isset($payload['id_medio_pago']) && $payload['id_medio_pago'] !== ''
+                     ? (int)$payload['id_medio_pago'] : null;
 
     // Compat: monto_libre / monto_unitario
     $montoLibre = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
@@ -85,11 +89,6 @@ try {
         return 0;
     };
 
-    /**
-     * Distribuye un total entero en N partes enteras que sumen exactamente el total.
-     * Reparte el resto de a +1 en las primeras posiciones.
-     * @return int[] largo N
-     */
     $distribuirEntero = function (int $total, int $n) : array {
         if ($n <= 0) return [];
         if ($total <= 0) return array_fill(0, $n, 0);
@@ -102,12 +101,6 @@ try {
         return $out;
     };
 
-    /**
-     * A partir de los periodos seleccionados arma:
-     * - $mesesExplícitos: meses 1..12 elegidos explícitamente
-     * - $matriculaSeleccionada: bool
-     * - $segmentosAnuales: lista de arrays con ['tipo'=>'full|h1|h2', 'meses'=>[...], 'total'=>int]
-     */
     $parsearSeleccion = function(array $periodos, array $montosPorPeriodo) use ($condonar) {
         $mesesExp = [];
         $matricula = false;
@@ -139,12 +132,6 @@ try {
         ];
     };
 
-    /**
-     * Construye el mapa final de montos por MES 1..12 a insertar,
-     * combinando:
-     * - meses explícitos (con su propio monto)
-     * - prorrateos de segmentos anuales (sin pisar meses explícitos)
-     */
     $construirMontosMensuales = function(
         array $mesesExplicitos,
         array $segmentosAnuales,
@@ -156,12 +143,10 @@ try {
 
         $map = []; // mes => monto
 
-        // 1) Asignar primero montos de meses explícitos
         foreach ($mesesExplicitos as $m) {
             $map[$m] = $resolverMontoMensual($condonar, $montoUI, $montoLibre, $montosPorPeriodo, (int)$m);
         }
 
-        // 2) Agregar prorrateos anuales en meses NO explícitos
         foreach ($segmentosAnuales as $seg) {
             $mesesSeg = $seg['meses'];
             $totalSeg = (int)($seg['total'] ?? 0);
@@ -180,13 +165,11 @@ try {
     };
 
     // ===================== LÓGICA PRINCIPAL =====================
-    // Armamos selecciones
     $seleccion = $parsearSeleccion($periodos, $montosPorPeriodo);
-    $mesesExplicitos  = $seleccion['mesesExplicitos'];   // [1,4,5] etc.
-    $matriculaSel     = $seleccion['matricula'];         // bool
-    $segmentosAnuales = $seleccion['segmentosAnuales'];  // lista de segmentos a prorratear
+    $mesesExplicitos  = $seleccion['mesesExplicitos'];
+    $matriculaSel     = $seleccion['matricula'];
+    $segmentosAnuales = $seleccion['segmentosAnuales'];
 
-    // Construimos montos finales por MES (1..12)
     $montosPorMes = $construirMontosMensuales(
         $mesesExplicitos,
         $segmentosAnuales,
@@ -196,9 +179,6 @@ try {
         $montoLibre
     );
 
-    // Períodos válidos que se insertan realmente: 1..12 + opcional 14 (matrícula)
-    $validosInsertables = array_fill(1, 14, true);
-
     // ===== Preparar consultas =====
     $stExist = $pdo->prepare("
         SELECT id_mes, estado
@@ -207,15 +187,15 @@ try {
            AND YEAR(fecha_pago) = :anio
     ");
 
+    // NUEVO: insert con id_medio_pago
     $stIns = $pdo->prepare("
-        INSERT INTO pagos (id_alumno, id_mes, fecha_pago, estado, monto_pago)
-        VALUES (:id_alumno, :id_mes, :fecha_pago, :estado, :monto_pago)
+        INSERT INTO pagos (id_alumno, id_mes, fecha_pago, estado, monto_pago, id_medio_pago)
+        VALUES (:id_alumno, :id_mes, :fecha_pago, :estado, :monto_pago, :id_medio_pago)
     ");
 
     // ===== Armar lista final de alumnos a procesar =====
     $alumnosObjetivo = [$idAlumno];
     if ($aplicarFamilia && !empty($idsFamilia)) {
-        // Evitar duplicados y excluir el alumno principal por si vino en el array
         $set = [];
         foreach ($alumnosObjetivo as $idp) $set[$idp] = true;
         foreach ($idsFamilia as $idf) $set[(int)$idf] = true;
@@ -223,21 +203,20 @@ try {
     }
 
     $totalInsertados = 0;
-    $detallePorAlumno = []; // para respuesta
+    $detallePorAlumno = [];
 
     $pdo->beginTransaction();
 
     foreach ($alumnosObjetivo as $idA) {
         if ($idA <= 0) continue;
 
-        // Consultar existentes para ese alumno y año
         $stExist->execute([
             ':id_alumno' => $idA,
             ':anio'      => $anioInput,
         ]);
         $existentes = $stExist->fetchAll(PDO::FETCH_ASSOC);
 
-        $yaPorMes = []; // [id_mes] => estado
+        $yaPorMes = [];
         foreach ($existentes as $row) {
             $yaPorMes[(int)$row['id_mes']] = (string)$row['estado'];
         }
@@ -245,10 +224,10 @@ try {
         $insertadosAlumno = 0;
         $yaRegistradosAlumno = [];
 
-        // 1) Insertar MESES 1..12 según montos calculados
+        // 1) Insertar MESES 1..12
         foreach ($montosPorMes as $mes => $monto) {
             $mes = (int)$mes;
-            if ($mes < 1 || $mes > 12) continue; // solo meses reales
+            if ($mes < 1 || $mes > 12) continue;
 
             if (array_key_exists($mes, $yaPorMes)) {
                 $yaRegistradosAlumno[] = [
@@ -259,11 +238,12 @@ try {
             }
 
             $stIns->execute([
-                ':id_alumno'  => $idA,
-                ':id_mes'     => $mes,
-                ':fecha_pago' => $fechaPagoStr,
-                ':estado'     => $estadoRegistrar,
-                ':monto_pago' => $condonar ? 0 : (int)max(0, $monto),
+                ':id_alumno'     => $idA,
+                ':id_mes'        => $mes,
+                ':fecha_pago'    => $fechaPagoStr,
+                ':estado'        => $estadoRegistrar,
+                ':monto_pago'    => $condonar ? 0 : (int)max(0, $monto),
+                ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
             ]);
 
             $insertadosAlumno++;
@@ -277,11 +257,12 @@ try {
                 $montoMatricula = $resolverMontoMensual($condonar, $montoUI, $montoLibre, $montosPorPeriodo, 14);
 
                 $stIns->execute([
-                    ':id_alumno'  => $idA,
-                    ':id_mes'     => $mes,
-                    ':fecha_pago' => $fechaPagoStr,
-                    ':estado'     => $estadoRegistrar,
-                    ':monto_pago' => $condonar ? 0 : (int)max(0, $montoMatricula),
+                    ':id_alumno'     => $idA,
+                    ':id_mes'        => $mes,
+                    ':fecha_pago'    => $fechaPagoStr,
+                    ':estado'        => $estadoRegistrar,
+                    ':monto_pago'    => $condonar ? 0 : (int)max(0, $montoMatricula),
+                    ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
                 ]);
                 $insertadosAlumno++;
                 $totalInsertados++;
