@@ -413,7 +413,7 @@
 .socio-info-card {
   background-color: var(--surface-secondary);
   border-radius: var(--border-radius);
-  padding: 1.25rem;
+  padding: 1.25rem 1rem;
   margin-bottom: 1.5rem;
   border-left: 4px solid var(--secondary-color);
 }
@@ -477,9 +477,7 @@
   font-size: 0.8rem;
 }
 
-.family-toggle {
-  margin-left: 8px;
-}
+
 
 /* =========================================================
    Condonar — Caja con switch y selector de año
@@ -678,7 +676,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
   padding: 8px;
   border: 1px dashed #cbd5e1;
   border-radius: 10px;
@@ -1224,3 +1221,134 @@
 .sep_headeric{display: flex; gap: 10px;}
 
 
+/* =========================
+   Medio de pago – estilos
+   ========================= */
+.medio-pago-row{
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.medio-pago-label{
+  font-weight: 700;
+  color: var(--gray-800);
+  letter-spacing: .2px;
+}
+
+.medio-pago-select{
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 40px 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: var(--transition-fast);
+  box-shadow: 0 1px 0 rgb(0 0 0 / .02);
+  appearance: none;                 /* oculta flecha por defecto */
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(transparent,transparent), /* para permitir hover */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%2364758b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+}
+
+.medio-pago-select:hover{
+  border-color: var(--secondary-300);
+  background-color: var(--secondary-50);
+}
+
+.medio-pago-select:focus{
+  outline: none;
+  border-color: var(--secondary-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+}
+
+.medio-pago-select:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+  background-color: var(--gray-100);
+}
+
+/* Estado “sin datos” (option vacía) */
+.medio-pago-select option[disabled][value=""]{
+  color: var(--text-secondary);
+}
+
+/* Variante compacta para pantallas chicas */
+@media (max-width: 640px){
+  .medio-pago-row{
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+  .medio-pago-label{
+    font-size: .9rem;
+  }
+}
+
+/* (Opcional) Si querés un ícono a la izquierda del select: 
+   agregá un contenedor con .medio-pago-input y un span .medio-pago-icon */
+.medio-pago-input{
+  position: relative;
+}
+.medio-pago-icon{
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--gray-500);
+  pointer-events: none;
+}
+.medio-pago-input .medio-pago-select{
+  padding-left: 34px; /* deja espacio para el ícono */
+}
+/* ==== Medio de pago al lado de Matrícula (misma fila) ==== */
+.matricula-box {
+  /* ya hereda condonar-box: display:flex; justify-content:space-between; */
+  gap: 12px;
+}
+
+/* Contenedor del selector a la derecha */
+.medio-pago-inline{             /* empuja a la derecha */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 280px;                   /* ancho cómodo del select */
+}
+
+/* Etiqueta compacta */
+.medio-pago-inline-label{
+  font-weight: 700;
+  color: var(--gray-800);
+  white-space: nowrap;
+}
+
+/* Reutilizamos .medio-pago-select existente */
+.medio-pago-input{
+  position: relative;
+}
+
+/* Responsive: en móviles, que baje debajo de la etiqueta de matrícula */
+@media (max-width: 640px){
+  .matricula-box{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .medio-pago-inline{
+    margin-left: 0;
+    min-width: 100%;
+  }
+}

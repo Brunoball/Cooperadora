@@ -1170,94 +1170,68 @@ const ModalPagos = ({ socio, onClose }) => {
                 )}
               </div>
 
-              {/* ===== NUEVO: selector de Medio de pago ===== */}
-              <div className="socio-info-extra">
-                <div className="socio-info-extra">
-                  <div className="medio-pago-row">
-                    <label className="medio-pago-label" htmlFor="medio-pago-select">
-                      Medio de pago
-                    </label>
-                    <select
-                      id="medio-pago-select"
-                      className="medio-pago-select"
-                      value={medioSeleccionado || ""}
-                      onChange={(e) => setMedioSeleccionado(e.target.value)}
+              {/* Toggle aplicar a familia */}
+              {familiaInfo.tieneFamilia && (
+                <div className='centrar-familia'>
+                  <label className="condonar-check family-toggle">
+                    <input
+                      type="checkbox"
+                      checked={aplicarFamilia}
+                      onChange={(e)=> setAplicarFamilia(e.target.checked)}
                       disabled={cargando}
+                    />
+                    <span className="switch"><span className="switch-thumb" /></span>
+                    <span className="switch-label"><strong>Aplicar pago al grupo familiar</strong></span>
+                  </label>
+
+                  <div className="family-dropdown">
+                    <button
+                      type="button"
+                      className="btn btn-small btn-terciario"
+                      aria-expanded={mostrarMiembros}
+                      aria-controls="family-members-panel"
+                      onClick={() => setMostrarMiembros((v) => !v)}
                     >
-                      <option value="" disabled>Seleccionar...</option>
-                      {mediosPago.length === 0 && <option value="">(Sin datos)</option>}
-                      {mediosPago.map((mp) => (
-                        <option key={mp.id} value={String(mp.id)}>
-                          {mp.nombre}
-                        </option>
-                      ))}
-                    </select>
+                      {mostrarMiembros ? 'Ocultar miembros' : 'Ver miembros'}
+                    </button>
+
+                    {mostrarMiembros && (
+                      <div
+                        id="family-members-panel"
+                        className="family-members-panel"
+                        role="region"
+                        aria-label="Miembros del grupo familiar"
+                      >
+                        {miembrosOrdenados.length === 0 ? (
+                          <div className="no-members">Sin integrantes cargados.</div>
+                        ) : (
+                          <ul className="members-list">
+                            {miembrosOrdenados.map((m) => {
+                              const esActual = m.id_alumno === idAlumno;
+                              const etiqueta = `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${m.id_alumno}`;
+                              return (
+                                <li
+                                  key={m.id_alumno}
+                                  className={`member-item ${esActual ? 'current-member' : ''}`}
+                                >
+                                  <span className="member-name">
+                                    {etiqueta}{esActual ? ' (actual)' : ''}
+                                  </span>
+                                  <span
+                                    className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
+                                  >
+                                    {m.activo ? 'Activo' : 'Inactivo'}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Toggle aplicar a familia */}
-                {familiaInfo.tieneFamilia && (
-                  <div className='centrar-familia'>
-                    <label className="condonar-check family-toggle">
-                      <input
-                        type="checkbox"
-                        checked={aplicarFamilia}
-                        onChange={(e)=> setAplicarFamilia(e.target.checked)}
-                        disabled={cargando}
-                      />
-                      <span className="switch"><span className="switch-thumb" /></span>
-                      <span className="switch-label"><strong>Aplicar pago al grupo familiar</strong></span>
-                    </label>
-
-                    <div className="family-dropdown">
-                      <button
-                        type="button"
-                        className="btn btn-small btn-terciario"
-                        aria-expanded={mostrarMiembros}
-                        aria-controls="family-members-panel"
-                        onClick={() => setMostrarMiembros((v) => !v)}
-                      >
-                        {mostrarMiembros ? 'Ocultar miembros' : 'Ver miembros'}
-                      </button>
-
-                      {mostrarMiembros && (
-                        <div
-                          id="family-members-panel"
-                          className="family-members-panel"
-                          role="region"
-                          aria-label="Miembros del grupo familiar"
-                        >
-                          {miembrosOrdenados.length === 0 ? (
-                            <div className="no-members">Sin integrantes cargados.</div>
-                          ) : (
-                            <ul className="members-list">
-                              {miembrosOrdenados.map((m) => {
-                                const esActual = m.id_alumno === idAlumno;
-                                const etiqueta = `${m.apellido ?? ''} ${m.nombre ?? ''}`.trim() || `#${m.id_alumno}`;
-                                return (
-                                  <li
-                                    key={m.id_alumno}
-                                    className={`member-item ${esActual ? 'current-member' : ''}`}
-                                  >
-                                    <span className="member-name">
-                                      {etiqueta}{esActual ? ' (actual)' : ''}
-                                    </span>
-                                    <span
-                                      className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
-                                    >
-                                      {m.activo ? 'Activo' : 'Inactivo'}
-                                    </span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Condonar + Año */}
@@ -1402,7 +1376,8 @@ const ModalPagos = ({ socio, onClose }) => {
               </div>
             )}
 
-            <div className={`condonar-box ${matriculaSeleccionada ? 'is-active' : ''}`}>
+            {/* ===== MATRÍCULA + Medio de pago inline ===== */}
+            <div className={`condonar-box matricula-box ${matriculaSeleccionada ? 'is-active' : ''}`}>
               <label className="condonar-check">
                 <input
                   type="checkbox"
@@ -1429,6 +1404,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 </span>
               </label>
 
+              {/* Bloque de edición (si aplica) */}
               {matriculaEditando && (
                 <div className="edit-inline matricula-edit">
                   <input
@@ -1463,6 +1439,26 @@ const ModalPagos = ({ socio, onClose }) => {
                   </button>
                 </div>
               )}
+
+              {/* ===== Medio de pago inline (MISMA FILA) ===== */}
+              <div className="medio-pago-inline">
+                <label className="medio-pago-inline-label" htmlFor="medio-pago-select">Medio de pago</label>
+                <div className="medio-pago-input">
+                  <select
+                    id="medio-pago-select"
+                    className="medio-pago-select"
+                    value={medioSeleccionado || ""}
+                    onChange={(e) => setMedioSeleccionado(e.target.value)}
+                    disabled={cargando}
+                  >
+                    <option value="" disabled>Seleccionar...</option>
+                    {mediosPago.length === 0 && <option value="">(Sin datos)</option>}
+                    {mediosPago.map((mp) => (
+                      <option key={mp.id} value={String(mp.id)}>{mp.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Selección de meses */}
