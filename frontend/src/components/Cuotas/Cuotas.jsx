@@ -355,7 +355,7 @@ const Cuotas = () => {
     const isInterno  = tipoCat === 'interno';
     const isExterno  = tipoCat === 'externo';
 
-    const cascadeClass = cascadeActive && index < 15 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
+    const cascadeClass = cascadeActive && index < 25 ? `gcuotas-cascade gcuotas-cascade-${index}` : '';
     const zebraClass   = index % 2 === 0 ? 'gcuotas-row-even' : 'gcuotas-row-odd';
 
     const actionButtons = (
@@ -516,8 +516,7 @@ const Cuotas = () => {
   const resyncAll = useCallback(() => { fetchAniosPago(); obtenerCuotasYListas(); }, [fetchAniosPago, obtenerCuotasYListas]);
 
   return (
-    <div className={`gcuotas-container ${cascadeActive ? 'gcuotas-cascading' : ''}`}>
-      {toastVisible && (
+<div className={`gcuotas-container gcuotas--table-fullwidth ${cascadeActive ? 'gcuotas-cascading' : ''}`}>      {toastVisible && (
         <Toast
           tipo={toastTipo}
           mensaje={toastMensaje}
