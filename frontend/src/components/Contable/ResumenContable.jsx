@@ -8,7 +8,8 @@ import "./ResumenContable.css";
 
 const hoy = new Date();
 const Y = hoy.getFullYear();
-const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+
 
 /* ---------- Helpers ---------- */
 // Importante: NO mandamos headers personalizados para no disparar preflight CORS.
@@ -328,10 +329,16 @@ export default function ResumenContable() {
     [meses12]
   );
 
+  // 👇 ÚNICO CAMBIO: etiquetas del gráfico mensual en 3 letras (Ene, Feb, Mar, ...)
   const lineData = useMemo(() => {
-    const key = "ingresos"; // podés alternar con 'egresos' o 'saldo' si agregás tabs
-    return meses12.map((m) => ({ label: m.nombre_mes, value: Number(m[key] || 0) }));
+    const key = "ingresos";
+    return meses12.map((m, idx) => {
+      const src = (m.nombre_mes || MESES[idx] || "").toString();
+      const label = src.slice(0, 3).toUpperCase(); // ← mantiene MAYÚSCULAS
+      return { label, value: Number(m[key] || 0) };
+    });
   }, [meses12]);
+
 
   const serieColor = "#1D428A";
 

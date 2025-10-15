@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
 import './inicio.css';
 import logoRH from '../../imagenes/Escudo.png';
+import Toast from '../Global/Toast';
 
 const STORAGE_KEYS = {
   rememberFlag: 'rememberLogin',
@@ -11,7 +12,6 @@ const STORAGE_KEYS = {
   pass: 'remember_contrasena', // base64
 };
 
-// helper: decodificar JWT (payload)
 function decodeJwtPayload(token) {
   try {
     const [, payloadB64] = token.split('.');
@@ -27,32 +27,29 @@ function decodeJwtPayload(token) {
 const Inicio = () => {
   const [nombre, setNombre] = useState('');
   const [contrasena, setContrasena] = useState('');
-  const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
 
+  const [toast, setToast] = useState(null);
+  const mostrarToast = (tipo, mensaje, duracion = 3000) =>
+    setToast({ tipo, mensaje, duracion });
+
   const navigate = useNavigate();
 
-  // Cargar datos recordados al montar
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.rememberFlag) === '1';
     if (saved) {
       const savedUser = localStorage.getItem(STORAGE_KEYS.user) || '';
       const savedPassB64 = localStorage.getItem(STORAGE_KEYS.pass) || '';
       let savedPass = '';
-      try {
-        savedPass = savedPassB64 ? atob(savedPassB64) : '';
-      } catch {
-        savedPass = '';
-      }
+      try { savedPass = savedPassB64 ? atob(savedPassB64) : ''; } catch { savedPass = ''; }
       setRemember(true);
       setNombre(savedUser);
       setContrasena(savedPass);
     }
   }, []);
 
-  // Persistir/limpiar localStorage
   const persistRemember = (user, pass, flag) => {
     if (flag) {
       localStorage.setItem(STORAGE_KEYS.rememberFlag, '1');
@@ -65,75 +62,86 @@ const Inicio = () => {
     }
   };
 
-  // Si está activo "recordar", persiste a medida que se escribe
   useEffect(() => {
     if (remember) persistRemember(nombre, contrasena, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nombre, contrasena, remember]);
 
-  const togglePasswordVisibility = () => setShowPassword((v) => !v);
+  const togglePasswordVisibility = () => setShowPassword(v => !v);
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
-    if (cargando) return; // evita doble submit
+    if (cargando) return;
     setCargando(true);
-    setMensaje('');
 
     if (!nombre || !contrasena) {
-      setMensaje('Por favor complete todos los campos');
+      mostrarToast('advertencia', 'Por favor complete todos los campos');
       setCargando(false);
       return;
     }
 
     try {
-      const respuesta = await fetch(`${BASE_URL}/api.php?action=inicio`, {
+      const res = await fetch(`${BASE_URL}/api.php?action=inicio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombre, contrasena }),
       });
 
-      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-
-      const data = await respuesta.json();
-
-      if (data?.exito) {
-        // 1) Guardar token
-        const token = data.token;
-        if (token) localStorage.setItem('token', token);
-
-        // 2) Derivar rol desde diferentes fuentes
-        const usuarioResp = data.usuario || {};
-        let rol =
-          (usuarioResp.rol || data.rol || '').toString().toLowerCase();
-
-        // 3) Si no vino rol explícito, intentar leerlo del JWT
-        if ((!rol || rol === '') && token && token.split('.').length === 3) {
-          const payload = decodeJwtPayload(token);
-          const fromJwt =
-            (payload?.rol || payload?.role || payload?.scope || '').toString().toLowerCase();
-          if (fromJwt) rol = fromJwt;
-        }
-
-        // 4) Por seguridad, si no hay rol, default a 'vista' (más restrictivo)
-        if (!rol) rol = 'vista';
-
-        // 5) Guardar usuario + rol unificado
-        const usuarioFinal = {
-          ...usuarioResp,
-          rol, // <- acá queda persistido
-        };
-        localStorage.setItem('usuario', JSON.stringify(usuarioFinal));
-
-        // Mantener o limpiar recordatorio según el check
-        persistRemember(nombre, contrasena, remember);
-
-        navigate('/panel');
-      } else {
-        setMensaje(data?.mensaje || 'Credenciales incorrectas');
+      // Si quedara algún 401 por atrás, no “tiramos” error: solo UI
+      if (res.status === 401) {
+        let d = null; try { d = await res.json(); } catch {}
+        mostrarToast('error', d?.mensaje || 'Usuario o contraseña incorrectos');
+        setCargando(false);
+        return;
       }
-    } catch (err) {
-      console.error('Error al iniciar sesión:', err);
-      setMensaje('Error del servidor. Intente más tarde.');
+
+      // Para mantener la consola limpia: nunca throw.
+      if (!res.ok) {
+        mostrarToast('error', 'No se pudo iniciar sesión. Intente nuevamente.');
+        setCargando(false);
+        return;
+      }
+
+      let data = null;
+      try { data = await res.json(); } catch {}
+
+      if (!data) {
+        mostrarToast('error', 'Respuesta inválida del servidor.');
+        setCargando(false);
+        return;
+      }
+
+      if (!data.exito) {
+        mostrarToast('error', data.mensaje || 'Usuario o contraseña incorrectos');
+        setCargando(false);
+        return;
+      }
+
+      // Login OK
+      const token = data.token;
+      if (token) localStorage.setItem('token', token);
+
+      const usuarioResp = data.usuario || {};
+      let rol = (usuarioResp.rol || data.rol || '').toString().toLowerCase();
+
+      if ((!rol || rol === '') && token && token.split('.').length === 3) {
+        const payload = decodeJwtPayload(token);
+        const fromJwt = (payload?.rol || payload?.role || payload?.scope || '')
+          .toString()
+          .toLowerCase();
+        if (fromJwt) rol = fromJwt;
+      }
+      if (!rol) rol = 'vista';
+
+      const usuarioFinal = { ...usuarioResp, rol };
+      localStorage.setItem('usuario', JSON.stringify(usuarioFinal));
+
+      persistRemember(nombre, contrasena, remember);
+
+      navigate('/panel');
+    } catch {
+      // Nada de console.error: consola limpia
+      mostrarToast('error', 'No se pudo iniciar sesión. Intente nuevamente.');
     } finally {
       setCargando(false);
     }
@@ -147,8 +155,6 @@ const Inicio = () => {
           <h1 className="ini_titulo">Iniciar Sesión</h1>
           <p className="ini_subtitulo">Ingresá tus credenciales para acceder al sistema</p>
         </div>
-
-        {mensaje && <p className="ini_mensaje">{mensaje}</p>}
 
         <form onSubmit={manejarEnvio} className="ini_formulario" autoComplete="on" noValidate>
           <div className="ini_campo">
@@ -197,7 +203,6 @@ const Inicio = () => {
             </button>
           </div>
 
-          {/* Checkbox Recordar cuenta */}
           <div className="ini_check-row">
             <input
               id="recordar"
@@ -222,6 +227,15 @@ const Inicio = () => {
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast
+          tipo={toast.tipo}
+          mensaje={toast.mensaje}
+          duracion={toast.duracion}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

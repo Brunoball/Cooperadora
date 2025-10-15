@@ -243,18 +243,21 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-tablewrap.is-loading { pointer-events: none; }
 .ing-tablewrap.is-loading .ing-row.data { opacity: .55; filter: grayscale(.1); }
 
-/* Cabecera sticky y filas */
+/* =========================
+   TABLA BASE (ALUMNOS) – 6 columnas
+   ========================= */
 .ing-row.h {
   position: sticky; top: 0; z-index: 2;
   background: #f7f7fb; color: #64748b; border-bottom: 1px solid var(--border);
   font-weight: 900; font-size: var(--fs-th);
   display: grid; align-items: center; gap: 10px;
-  grid-template-columns: 0.6fr 1.6fr 0.9fr 0.7fr 0.9fr;
+  /* Fecha | Alumno | Categoría | Monto | Medio | Mes */
+  grid-template-columns: 0.8fr 1.6fr 1.0fr 0.9fr 1.0fr 1.0fr; /* ← FIX: 6 columnas */
   padding: 10px 12px;
 }
 .ing-row {
-  display: grid; align-items: center; 
-  grid-template-columns: 0.6fr 1.6fr 0.9fr 0.7fr 0.9fr;
+  display: grid; align-items: center;
+  grid-template-columns: 0.8fr 1.6fr 1.0fr 0.9fr 1.0fr 1.0fr;  /* ← FIX: 6 columnas */
   border-bottom: 1px solid var(--border);
   padding: 10px 12px; font-size: var(--fs-td);
 }
@@ -263,9 +266,16 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-tablewrap .ing-row.data:nth-of-type(even) { background: var(--row-even); }
 .ing-tablewrap .ing-row.data:hover { background: var(--row-hover); }
 
+/* mínimos de columna para evitar solapamientos */
+.c-fecha   { min-width: 110px; }
+.c-alumno  { min-width: 220px; }
+.c-cat     { min-width: 120px; }
+.c-monto   { min-width: 120px; }
+.c-medio   { min-width: 120px; text-align: center; }
+.c-mes     { min-width: 120px; text-align: center; }
+
 .ing-row > div { padding: 2px 4px; }
 .t-right { text-align: right; }
-.c-mes { text-align: center; }
 .c-alumno { overflow: hidden; }
 
 .name-small{ font-size: 0.92rem; line-height: 1.25; }
@@ -311,6 +321,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
   .show-on-mobile{ display:inline-flex; }
 }
 @media (max-width: 720px){
+  /* Para móviles: 4 columnas y ocultamos Mes */
   .ing-row, .ing-row.h{ grid-template-columns: 0.9fr 1.4fr 0.9fr 0.8fr; }
   .c-mes{ display:none; }
 
@@ -370,23 +381,24 @@ small { font-size: var(--fs-small); color: var(--muted); }
 }
 .ing-side__row--top.gradient--brand-red .ing-sectiontitle svg{ color:#fff; }
 
-/* ====== Grilla para "manuales" (SIN columna N°) ====== */
+/* ======================================
+   GRILLA PARA "INGRESOS MANUALES" (7 col)
+   ====================================== */
 .is-manuales .ing-row.h,
 .is-manuales .ing-row {
   /* Fecha | Medio | Proveedor | Categoría | Imputación | Importe | Acciones */
   grid-template-columns: 0.8fr 1.0fr 1.2fr 1.0fr 1.2fr 0.9fr 0.9fr;
 }
-
-/* Centrado de Importe y Medio SOLO en "manuales" */
 .is-manuales .c-importe,
 .is-manuales .c-medio { text-align: center; }
-.is-manuales .c-importe .num { font-variant-numeric: tabular-nums; }
+.is-manuales .c-proveedor{ min-width: 180px; }
+.is-manuales .c-imputacion{ min-width: 220px; }
+.is-manuales .c-cat{ min-width: 130px; }
 
-/* Responsive para manuales */
 @media (max-width: 720px){
   .is-manuales .ing-row.h,
   .is-manuales .ing-row{
-    grid-template-columns: 0.9fr 1.1fr 1fr 0.9fr 0.9fr 0.7fr;
+    grid-template-columns: 0.9fr 1.1fr 1fr 0.9fr 0.9fr 0.7fr; /* se ocultan acciones si hace falta via CSS del botón */
   }
 }
 
@@ -413,63 +425,38 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .logout-btn--solid-danger{ background:#b91c1c; color:#fff; border-color:#b91c1c; }
 .logout-btn--solid-danger:hover{ filter:brightness(.95); }
 
-/* === Botones de acciones redondos (como la imagen) === */
+/* === Botones acciones redondos === */
 :root{
   --act-size: 42px;
   --act-shadow: 0 6px 16px rgba(2,6,23,.10);
   --act-shadow-hover: 0 10px 22px rgba(2,6,23,.14);
-  /* Paleta por acción */
-  --act-view-bg: #eef2ff;   /* indigo-100 */
-  --act-view-fg: #4f46e5;   /* indigo-600 */
-  --act-edit-bg: #e0f2fe;   /* sky-100 */
-  --act-edit-fg: #0284c7;   /* sky-600 */
-  --act-del-bg:  #fee2e2;   /* red-100 */
-  --act-del-fg:  #b91c1c;   /* red-700 */
+  --act-view-bg: #eef2ff;
+  --act-view-fg: #4f46e5;
+  --act-edit-bg: #e0f2fe;
+  --act-edit-fg: #0284c7;
+  --act-del-bg:  #fee2e2;
+  --act-del-fg:  #b91c1c;
 }
 
 .c-actions{
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
 }
-
 .act-btn{
   width: 34px; height: 34px; display: inline-grid; place-items: center;
   border-radius: 999px; border: 1px solid var(--border); background: #fff;
   box-shadow: var(--act-shadow); cursor: pointer;
   transition: transform .12s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease, filter .18s ease;
 }
-
-/* Variantes por acción */
 .act-btn.is-edit{  background:#ecfeff; border-color:#cffafe; color:#0369a1; }
 .act-btn.is-del{   background:#fee2e2; border-color:#fecaca; color:#991b1b; }
-
-/* Hovers (más vivos) */
-.act-btn:hover{
-  transform: translateY(-1px);
-  box-shadow: var(--act-shadow-hover);
-}
+.act-btn:hover{ transform: translateY(-1px); box-shadow: var(--act-shadow-hover); }
 .act-btn.is-edit:hover{ background:#cffafe; border-color:#a5f3fc; color:#0c4a6e; }
 .act-btn.is-del:hover{  background:#fff1f1; border-color:#fecaca; color:#7f1d1d; }
-
-/* Focus accesible */
 .act-btn:focus-visible{
   outline: none;
-  box-shadow:
-    0 0 0 3px rgba(96,165,250,.28),
-    var(--act-shadow-hover);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.28), var(--act-shadow-hover);
 }
-
-/* Estado activo (click) */
-.act-btn:active{
-  transform: translateY(0);
-  filter: saturate(1.05);
-}
-
-/* Modo compact en mobile */
-@media (max-width: 720px){
-  :root{ --act-size: 38px; }
-  .c-actions{ gap: 8px; }
-  .act-btn svg{ width: 17px; height: 17px; }
-}
+.act-btn:active{ transform: translateY(0); filter: saturate(1.05); }
 
 /* Chip del filtro activo */
 .ing-filterchip{

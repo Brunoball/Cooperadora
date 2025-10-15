@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -12,10 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../config/db.php'; // debe definir $pdo (PDO conectado)
 
-define('DEBUG_LOGIN', false); // ponelo true si querés ver el detalle de errores en la respuesta
+define('DEBUG_LOGIN', false); // true para ver detalle en 'detalle'
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        // Este sí puede ser 405; no afecta al flujo normal de login
         http_response_code(405);
         echo json_encode(['exito' => false, 'mensaje' => 'Método no permitido.']);
         exit;
@@ -31,19 +33,18 @@ try {
     $nombre     = isset($data['nombre']) ? trim((string)$data['nombre']) : '';
     $contrasena = isset($data['contrasena']) ? (string)$data['contrasena'] : '';
 
+    // ⚠️ Importante: para mantener la consola limpia NO devolvemos 401
     if ($nombre === '' || $contrasena === '') {
         echo json_encode(['exito' => false, 'mensaje' => 'Faltan datos.']);
         exit;
     }
 
-    // 🔑 Importante: NO prefijar esquema. Usamos la DB actual de la conexión ($pdo).
-    // Como los nombres de columnas pueden variar, traemos todo y resolvemos en PHP.
+    // Buscar por distintas columnas posibles
     $sql = "SELECT * FROM usuarios WHERE Nombre_Completo = :nombre LIMIT 1";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':nombre' => $nombre]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Si no se encontró por Nombre_Completo, probamos alternativas comunes (opcional)
     if (!$usuario) {
         $sqlAlt = "SELECT * FROM usuarios WHERE usuario = :nombre OR nombre = :nombre LIMIT 1";
         $stmt   = $pdo->prepare($sqlAlt);
@@ -51,8 +52,8 @@ try {
         $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Si no existe el usuario: 200 + exito:false (no 401)
     if (!$usuario) {
-        http_response_code(401);
         echo json_encode(['exito' => false, 'mensaje' => 'Credenciales incorrectas.']);
         exit;
     }
@@ -87,17 +88,19 @@ try {
         // Verifica bcrypt/argon/etc.
         $ok = password_verify($contrasena, $hashGuardado);
     }
-    // Fallback si se guarda en texto plano (no recomendado, pero compatible)
+    // Fallback si la DB guarda en texto plano (no recomendado, pero compatible)
     if (!$ok && $passPlano !== null) {
+        // hash_equals para comparación constante
         $ok = hash_equals($passPlano, $contrasena);
     }
 
+    // Password incorrecto: 200 + exito:false (no 401)
     if (!$ok) {
-        http_response_code(401);
         echo json_encode(['exito' => false, 'mensaje' => 'Credenciales incorrectas.']);
         exit;
     }
 
+    // Éxito
     echo json_encode([
         'exito'   => true,
         'usuario' => [
@@ -105,9 +108,11 @@ try {
             'Nombre_Completo' => $display,
             'rol'             => $rol,
         ],
-        // 'token' => '...' // si luego sumás JWT
+        // 'token' => '...' // si luego agregás JWT
     ], JSON_UNESCAPED_UNICODE);
+
 } catch (Throwable $e) {
+    // Errores inesperados sí devuelven 500
     http_response_code(500);
     echo json_encode([
         'exito'   => false,

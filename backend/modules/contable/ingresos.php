@@ -18,7 +18,7 @@
  * Contratos devueltos por el informe:
  * - anios_disponibles: [YYYY, YYYY-1, ...]
  * - resumen: [{anio, mes, nombre_mes, ingresos, cantidad}]
- * - detalle: { "YYYY-MM": [{fecha_pago, Alumno, Categoria, Monto, Mes_pagado, Mes_pagado_id}] }  (si detalle=1)
+ * - detalle: { "YYYY-MM": [{fecha_pago, Alumno, Categoria, Monto, Mes_pagado, Mes_pagado_id, Medio}] }  (si detalle=1)
  */
 
 declare(strict_types=1);
@@ -210,8 +210,8 @@ try {
     // Si el año solicitado no está en la lista, agregarlo
     if (!in_array($year, $aniosDisponibles, true)) {
         array_unshift($aniosDisponibles, $year);
-        sort($aniosDisponibles); // Reordenar después de agregar
-        $aniosDisponibles = array_reverse($aniosDisponibles); // Volver a orden descendente
+        sort($aniosDisponibles);
+        $aniosDisponibles = array_reverse($aniosDisponibles);
     }
 
     // detectar columnas reales en alumnos
@@ -220,7 +220,7 @@ try {
 
     $nombreCol = null;
     foreach ($nombreCandidates as $c) if ($columnExists($pdo, 'alumnos', $c)) { $nombreCol = $c; break; }
-    if (!$nombreCol) $nombreCol = $nombreCandidates[0]; // por si acaso (no se usará si no existe)
+    if (!$nombreCol) $nombreCol = $nombreCandidates[0];
 
     $apellidoCol = null;
     foreach ($apellidoCandidates as $c) if ($columnExists($pdo, 'alumnos', $c)) { $apellidoCol = $c; break; }
@@ -228,37 +228,41 @@ try {
 
     // detectar tabla y columna de categoría
     $categoriaTable = null;
-    if ($tableExists($pdo, 'categoria'))   $categoriaTable = 'categoria';
-    elseif ($tableExists($pdo, 'categorias')) $categoriaTable = 'categorias';
+    if ($tableExists($pdo, 'categoria'))          $categoriaTable = 'categoria';
+    elseif ($tableExists($pdo, 'categorias'))     $categoriaTable = 'categorias';
 
     $catNameCol = null;
     if ($categoriaTable) {
         foreach (['nombre_categoria','Nombre_Categoria','nombre'] as $c) {
             if ($columnExists($pdo, $categoriaTable, $c)) { $catNameCol = $c; break; }
         }
-        if (!$catNameCol) { $categoriaTable = null; } // si no hay columna nombre, ignoramos join
+        if (!$catNameCol) { $categoriaTable = null; }
     }
 
     // armar SQL evitando referenciar columnas inexistentes
-    $selectNombre   = $columnExists($pdo, 'alumnos', $nombreCol)   ? "a.`$nombreCol` AS nombre_alumno"   : "NULL AS nombre_alumno";
-    $selectApellido = $columnExists($pdo, 'alumnos', $apellidoCol) ? "a.`$apellidoCol` AS apellido_alumno" : "NULL AS apellido_alumno";
-    $joinCategoria  = $categoriaTable ? "LEFT JOIN `$categoriaTable` c ON c.id_categoria = a.id_categoria" : "";
-    $selectCategoria= $categoriaTable ? "c.`$catNameCol` AS nombre_categoria" : "NULL AS nombre_categoria";
+    $selectNombre    = $columnExists($pdo, 'alumnos', $nombreCol)   ? "a.`$nombreCol` AS nombre_alumno"      : "NULL AS nombre_alumno";
+    $selectApellido  = $columnExists($pdo, 'alumnos', $apellidoCol) ? "a.`$apellidoCol` AS apellido_alumno"  : "NULL AS apellido_alumno";
+    $joinCategoria   = $categoriaTable ? "LEFT JOIN `$categoriaTable` c ON c.id_categoria = a.id_categoria"   : "";
+    $selectCategoria = $categoriaTable ? "c.`$catNameCol` AS nombre_categoria"                                 : "NULL AS nombre_categoria";
 
+    // 🔹 NUEVO: join a medio_pago para obtener el “Medio”
     $sql = "
         SELECT
             p.id_pago,
             p.fecha_pago,
             p.monto_pago,
             p.id_mes,
+            p.id_medio_pago,
+            mp.medio_pago AS medio_texto,
             a.id_alumno,
             $selectNombre,
             $selectApellido,
             a.id_categoria,
             $selectCategoria
         FROM pagos p
-        LEFT JOIN alumnos a ON a.id_alumno = p.id_alumno
+        LEFT JOIN alumnos a   ON a.id_alumno = p.id_alumno
         $joinCategoria
+        LEFT JOIN medio_pago mp ON mp.id_medio_pago = p.id_medio_pago
         WHERE UPPER(p.estado)='PAGADO' AND YEAR(p.fecha_pago)=:y
         ORDER BY p.fecha_pago ASC, p.id_pago ASC
     ";
@@ -295,6 +299,10 @@ try {
             $catNom   = (string)($r['nombre_categoria'] ?? '');
             if ($catNom === '' || $catNom === null) $catNom = 'SIN CATEGORÍA';
 
+            // 🔹 NUEVO: “Medio” (puede venir NULL si el pago no lo tiene)
+            $medioTxt = (string)($r['medio_texto'] ?? '');
+            if ($medioTxt === '') $medioTxt = '—';
+
             $detalle[$key][] = [
                 'fecha_pago'    => $fecha,
                 'Alumno'        => $alumno,
@@ -302,6 +310,7 @@ try {
                 'Monto'         => $monto,
                 'Mes_pagado'    => (string)($mesCat[$mesNum] ?? ''),
                 'Mes_pagado_id' => $mesNum,
+                'Medio'         => $medioTxt,   // <-- agregado
             ];
         }
     }

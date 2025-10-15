@@ -10,8 +10,9 @@ import Toast from "../Global/Toast";
 import "./Familias.css";
 import ModalFamilia from "./modales/ModalFamilia";
 import ModalMiembros from "./modales/ModalMiembros";
+import * as XLSX from "xlsx";
 
-/* ========= Modal de eliminación (calcado del diseño anterior) ========= */
+/* ========= Modal de eliminación ========= */
 function ConfirmDeleteFamiliaModal({ open, familia, isDeleting, onConfirm, onCancel, notify }) {
   const [forzar, setForzar] = useState(false);
 
@@ -44,54 +45,21 @@ function ConfirmDeleteFamiliaModal({ open, familia, isDeleting, onConfirm, onCan
   };
 
   return (
-    <div
-      className="famdel-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="famdel-modal-title"
-      onClick={onCancel}
-    >
-      <div
-        className="famdel-modal-container famdel-modal--danger"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="famdel-modal__icon" aria-hidden="true">
-          <FaTrash />
-        </div>
-
-        <h3 id="famdel-modal-title" className="famdel-modal-title famdel-modal-title--danger">
-          Eliminar familia
-        </h3>
-
+    <div className="famdel-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="famdel-modal-title" onClick={onCancel}>
+      <div className="famdel-modal-container famdel-modal--danger" onClick={(e) => e.stopPropagation()}>
+        <div className="famdel-modal__icon" aria-hidden="true"><FaTrash /></div>
+        <h3 id="famdel-modal-title" className="famdel-modal-title famdel-modal-title--danger">Eliminar familia</h3>
         <p className="famdel-modal-text">
           ¿Estás seguro de eliminar la familia <strong>"{familia?.nombre_familia || '—'}"</strong>?
         </p>
-
-        <label
-          className={`modalmi-selectable famdel-check-mini ${forzar ? 'is-checked' : ''}`}
-          title="Forzar borrado"
-        >
-          <input
-            type="checkbox"
-            checked={forzar}
-            onChange={(e) => setForzar(e.target.checked)}
-            disabled={isDeleting}
-          />
+        <label className={`modalmi-selectable famdel-check-mini ${forzar ? 'is-checked' : ''}`} title="Forzar borrado">
+          <input type="checkbox" checked={forzar} onChange={(e) => setForzar(e.target.checked)} disabled={isDeleting} />
           <div className="modalmi-checkslot" aria-hidden="true" />
-          <span className="famdel-check-mini-text">
-            Forzar borrado (desvincula alumnos y elimina la familia)
-          </span>
+          <span className="famdel-check-mini-text">Forzar borrado (desvincula alumnos y elimina la familia)</span>
         </label>
-
         <div className="famdel-modal-buttons">
-          <button className="famdel-btn famdel-btn--ghost" onClick={onCancel} disabled={isDeleting}>
-            Cancelar
-          </button>
-          <button
-            className="famdel-btn famdel-btn--solid-danger"
-            onClick={handleConfirmClick}
-            disabled={isDeleting}
-          >
+          <button className="famdel-btn famdel-btn--ghost" onClick={onCancel} disabled={isDeleting}>Cancelar</button>
+          <button className="famdel-btn famdel-btn--solid-danger" onClick={handleConfirmClick} disabled={isDeleting}>
             {isDeleting ? 'Eliminando…' : 'Eliminar'}
           </button>
         </div>
@@ -130,6 +98,95 @@ const Avatar = ({ name }) => {
   return <div className="avatar" aria-hidden>{i}</div>;
 };
 
+/** Construye workbook con 2 hojas: Familias y Miembros */
+function buildWorkbookFamiliasYMiembros({ familias = [], miembrosMap = new Map() }) {
+  // Hoja Familias
+  const famRows = (familias || []).map((f) => ({
+    "ID Familia": f.id_familia,
+    "Familia": toUpperSafe(f.nombre_familia) || "—",
+    "Observaciones": toUpperSafe(f.observaciones) || "—",
+    "Fecha alta": f.fecha_alta ? f.fecha_alta : fmtFechaSolo(f.creado_en),
+    "Miembros activos": Number(f.miembros_activos ?? 0),
+    "Miembros totales": Number(f.miembros_totales ?? f.miembros_activos ?? 0),
+  }));
+  const wsFam = XLSX.utils.json_to_sheet(famRows, { skipHeader: false });
+  wsFam["!cols"] = [{ wch: 10 }, { wch: 26 }, { wch: 40 }, { wch: 12 }, { wch: 16 }, { wch: 16 }];
+
+  // Hoja Miembros (una fila por miembro por familia)
+  const memberRows = [];
+  for (const f of familias) {
+    const list = miembrosMap.get(String(f.id_familia)) || [];
+    const familiaNombre = toUpperSafe(f.nombre_familia) || "—";
+    for (const m of list) {
+      memberRows.push({
+        "ID Familia": f.id_familia,
+        "Familia": familiaNombre,
+        "Alumno": m.nombre || "—",
+        "DNI": m.dni || "—",
+        "Localidad": m.localidad || "—",
+        "Activo": Number(m.activo ?? 1) === 1 ? "Sí" : "No",
+      });
+    }
+    // Si no tiene miembros, igual dejamos una fila vacía para que se vea
+    if (list.length === 0) {
+      memberRows.push({
+        "ID Familia": f.id_familia,
+        "Familia": familiaNombre,
+        "Alumno": "—",
+        "DNI": "—",
+        "Localidad": "—",
+        "Activo": "—",
+      });
+    }
+  }
+  const wsMem = XLSX.utils.json_to_sheet(memberRows, { skipHeader: false });
+  wsMem["!cols"] = [{ wch: 10 }, { wch: 26 }, { wch: 34 }, { wch: 14 }, { wch: 20 }, { wch: 8 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsFam, "Familias");
+  XLSX.utils.book_append_sheet(wb, wsMem, "Miembros");
+  return wb;
+}
+
+/** Descarga un blob con nombre dado */
+function downloadBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+/** Obtiene miembros de N familias (en paralelo) y devuelve Map<id_familia, miembros[]> */
+async function fetchMiembrosDeFamilias(familias = []) {
+  const map = new Map();
+  const tasks = (familias || []).map(async (f) => {
+    try {
+      const r = await fetch(
+        `${BASE_URL}/api.php?action=familia_miembros&id_familia=${f.id_familia}&ts=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      const j = await r.json();
+      const rows = (j?.miembros || j?.alumnos || []).map((a) => ({
+        id_alumno: a.id_alumno ?? a.id ?? a.idAlumno,
+        nombre: a.nombre_completo ? a.nombre_completo : [a.apellido, a.nombre].filter(Boolean).join(", "),
+        dni: a.dni ?? a.num_documento ?? "",
+        localidad: a.localidad ?? "",
+        activo: Number(a.activo ?? 1),
+      }));
+      map.set(String(f.id_familia), rows);
+    } catch {
+      map.set(String(f.id_familia), []); // en error, deja vacío para no romper
+    }
+  });
+
+  await Promise.all(tasks);
+  return map;
+}
+
 export default function Familias() {
   const navigate = useNavigate();
 
@@ -146,12 +203,12 @@ export default function Familias() {
   const [modalMiembrosOpen, setModalMiembrosOpen] = useState(false);
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState(null);
 
-  // Modal eliminar (nuevo diseño)
+  // Modal eliminar
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Ref buscador y UX lupa↔cruz + ESC
+  // Buscador
   const searchRef = useRef(null);
   const handleSearchIcon = useCallback(() => {
     if (!q.trim()) { searchRef.current?.focus(); return; }
@@ -168,18 +225,11 @@ export default function Familias() {
   const cargarFamilias = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(
-        `${BASE_URL}/api.php?action=familias_listar&ts=${Date.now()}`,
-        { cache: "no-store" }
-      );
+      const r = await fetch(`${BASE_URL}/api.php?action=familias_listar&ts=${Date.now()}`, { cache: "no-store" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-      if (j?.exito) {
-        setFamilias(j.familias || []);
-      } else {
-        showToast(j?.mensaje || "No se pudieron obtener familias", "error");
-        setFamilias([]);
-      }
+      if (j?.exito) setFamilias(j.familias || []);
+      else { showToast(j?.mensaje || "No se pudieron obtener familias", "error"); setFamilias([]); }
     } catch {
       showToast("Error de red al obtener familias", "error");
       setFamilias([]);
@@ -227,9 +277,8 @@ export default function Familias() {
     }
   };
 
-  // === Eliminar con modal “forzar” (igual al diseño analizado) ===
+  // Eliminar
   const requestDeleteFamilia = (f) => { setDeleteTarget(f); setDeleteOpen(true); };
-
   const confirmDeleteFamilia = useCallback(async (forzar) => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -287,28 +336,54 @@ export default function Familias() {
     []
   );
 
-  // Exportar Excel (mantengo tu endpoint backend)
+  // ===== Exportar Excel con miembros =====
   const exportarExcel = async () => {
+    const filename = "familias.xlsx";
+    const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    // 1) Intento de backend (ideal: que ya devuelva ambas hojas)
     try {
       const r = await fetch(
-        `${BASE_URL}/api.php?action=familias_exportar_excel&ts=${Date.now()}`
+        `${BASE_URL}/api.php?action=familias_exportar_excel&incluir_miembros=1&ts=${Date.now()}`,
+        { cache: "no-store" }
       );
+
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "familias.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      showToast("No se pudo exportar el Excel", "error");
+
+      const contentType = (r.headers.get("Content-Type") || "").toLowerCase();
+      if (contentType.includes(XLSX_MIME)) {
+        const blob = await r.blob();
+        const xBlob = new Blob([blob], { type: XLSX_MIME });
+        downloadBlob(xBlob, filename);
+        return;
+      }
+
+      // Si no es XLSX, leo texto para log y voy a fallback
+      const preview = await r.text();
+      console.warn("Servidor no devolvió XLSX. Content-Type:", contentType, "Preview:", preview.slice(0, 200));
+      throw new Error("El backend no devolvió un .xlsx válido");
+    } catch (err) {
+      // 2) Fallback local: obtenemos miembros por familia visible y armamos workbook
+      try {
+        const familiasVisibles = [...filtradas];
+        const miembrosMap = await fetchMiembrosDeFamilias(familiasVisibles);
+
+        const wb = buildWorkbookFamiliasYMiembros({
+          familias: familiasVisibles,
+          miembrosMap,
+        });
+        const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        const blob = new Blob([wbout], { type: XLSX_MIME });
+        downloadBlob(blob, filename);
+        showToast("Excel generado correctamente con familias y miembros.", "exito");
+      } catch (e) {
+        console.error("Error generando XLSX local:", e);
+        showToast("No se pudo exportar el Excel", "error");
+      }
     }
   };
 
-  // Volver: historial si existe; fallback a /panel
+  // Volver
   const navigateBack = useCallback(() => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1);
     else navigate('/panel');
@@ -325,7 +400,7 @@ export default function Familias() {
         />
       )}
 
-      {/* TOP BAR (Título | Buscador | Volver) */}
+      {/* TOP BAR */}
       <header className="ntg-topbar">
         <h1 className="ntg-title">Gestión de familia</h1>
 
@@ -375,7 +450,7 @@ export default function Familias() {
               <button
                 className="btn btn-export"
                 onClick={exportarExcel}
-                title="Exporta las familias visibles con sus miembros"
+                title="Exporta las familias visibles y sus miembros"
               >
                 <FaFileExcel /> Exportar Excel
               </button>
@@ -402,10 +477,7 @@ export default function Familias() {
                 filtradas.map((f) => {
                   const apellido = toUpperSafe(f.nombre_familia);
                   const obs = toUpperSafe(f.observaciones);
-                  const cantidad = Number(
-                    f.miembros_totales ?? f.miembros_activos ?? 0
-                  );
-
+                  const cantidad = Number(f.miembros_totales ?? f.miembros_activos ?? 0);
                   return (
                     <div key={f.id_familia} className="t-row">
                       <div className="cell-name" title={apellido}>
@@ -421,30 +493,18 @@ export default function Familias() {
                         {f.fecha_alta ? f.fecha_alta : fmtFechaSolo(f.creado_en)}
                       </div>
 
-                      <div className="center" title={`Miembros en la familia`}>
+                      <div className="center" title="Miembros en la familia">
                         {cantidad}
                       </div>
 
                       <div className="cell-ops center">
-                        <button
-                          title="Gestionar miembros"
-                          className="icon-btn icon-btn--link"
-                          onClick={() => abrirMiembros(f)}
-                        >
+                        <button title="Gestionar miembros" className="icon-btn icon-btn--link" onClick={() => abrirMiembros(f)}>
                           <FaLink />
                         </button>
-                        <button
-                          title="Editar"
-                          className="icon-btn icon-btn--edit"
-                          onClick={() => { setEditFamilia(f); setModalFamiliaOpen(true); }}
-                        >
+                        <button title="Editar" className="icon-btn icon-btn--edit" onClick={() => { setEditFamilia(f); setModalFamiliaOpen(true); }}>
                           <FaEdit />
                         </button>
-                        <button
-                          title="Eliminar"
-                          className="icon-btn danger"
-                          onClick={() => requestDeleteFamilia(f)}
-                        >
+                        <button title="Eliminar" className="icon-btn danger" onClick={() => requestDeleteFamilia(f)}>
                           <FaTrash />
                         </button>
                       </div>

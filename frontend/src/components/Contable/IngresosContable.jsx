@@ -25,7 +25,7 @@ const MESES = [
 ];
 
 const cap1 = (s = "") => s.charAt(0) + s.slice(1).toLowerCase();
-const sfx = (n) => n === 1 ? "" : "s";
+const sfx = (n) => (n === 1 ? "" : "s");
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 const fmtMonto = (n) =>
   new Intl.NumberFormat("es-AR", {
@@ -155,13 +155,13 @@ function ConfirmModal({
 
 /* ========= Componente principal ========= */
 export default function IngresosContable() {
-  // Filtros como en EgresoContable
+  // Filtros
   const [anio, setAnio] = useState("ALL");
   const [anios, setAnios] = useState([Y]);
-  const [mes, setMes] = useState("ALL");
+  const [mes, setMes] = useState("ALL"); // string "0..11" o "ALL"
   const [query, setQuery] = useState("");
 
-  const [filas, setFilas] = useState([]);           // alumnos
+  const [filas, setFilas] = useState([]);                // alumnos
   const [filasIngresos, setFilasIngresos] = useState([]); // ingresos manuales
   const [cargando, setCargando] = useState(false);
 
@@ -186,11 +186,11 @@ export default function IngresosContable() {
   };
   const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  // Confirmación delete
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
-  /* ====== Rango de fechas (igual que EgresoContable) ====== */
+  /* ====== Rango de fechas ====== */
   const rango = useMemo(() => {
     if (anio === "ALL") return { start: null, end: null, label: "Todos los años" };
     const y = Number(anio);
@@ -224,42 +224,33 @@ export default function IngresosContable() {
     setCargando(true);
     try {
       let url = `${BASE_URL}/api.php?action=contable_ingresos&detalle=1`;
-      
-      // Si hay rango específico, usarlo
       if (rango.start && rango.end) {
         url += `&start=${rango.start}&end=${rango.end}`;
       } else if (anio !== "ALL") {
-        // Si solo se seleccionó año, cargar todo el año
         url += `&year=${anio}`;
       }
-      // Si es "ALL", no se agregan filtros de fecha
-
       const raw = await fetchJSON(url);
 
       if (Array.isArray(raw?.anios_disponibles) && raw.anios_disponibles.length) {
         setAnios(raw.anios_disponibles);
       }
 
-      // Obtener todos los datos del rango
       const detalleCompleto = raw?.detalle || {};
-      
-      // Combinar todos los datos del rango seleccionado
       const todosLosDatos = [];
-      Object.keys(detalleCompleto).forEach(key => {
-        // Si es "ALL", tomar todos los años
+      Object.keys(detalleCompleto).forEach((key) => {
         if (anio === "ALL") {
+          // Si está "Todos los años" no debería llegar acá porque el select de mes se deshabilita,
+          // pero igual acumulamos todo.
           todosLosDatos.push(...detalleCompleto[key]);
-        } 
-        // Si hay año específico, filtrar por año
-        else if (key.startsWith(`${anio}-`)) {
-          // Si hay mes específico, filtrar también por mes
+        } else if (key.startsWith(`${anio}-`)) {
           if (mes !== "ALL") {
-            const mesFormateado = String(mes).padStart(2, "0");
-            if (key.endsWith(`-${mesFormateado}`)) {
+            // 🔧 FIX: mes 0-based -> 1-based
+            const mesIdx = Number(mes);            // 0..11
+            const mm = String(mesIdx + 1).padStart(2, "0"); // "01".."12"
+            if (key.endsWith(`-${mm}`)) {
               todosLosDatos.push(...detalleCompleto[key]);
             }
           } else {
-            // Si no hay mes específico, tomar todos los meses del año
             todosLosDatos.push(...detalleCompleto[key]);
           }
         }
@@ -272,6 +263,7 @@ export default function IngresosContable() {
         categoria: r?.Categoria ?? "-",
         monto: Number(r?.Monto ?? 0),
         mesPagado: r?.Mes_pagado || MESES[(Number(r?.Mes_pagado_id || 0) - 1)] || "-",
+        medio: r?.Medio || r?.medio || "—",
       }));
 
       setFilas(rows);
@@ -287,27 +279,21 @@ export default function IngresosContable() {
     setCargando(true);
     try {
       let url = `${BASE_URL}/api.php?action=ingresos_list`;
-      
-      // Si hay rango específico, usarlo
       if (rango.start && rango.end) {
         url += `&start=${rango.start}&end=${rango.end}`;
       } else if (anio !== "ALL") {
-        // Si solo se seleccionó año, cargar todo el año
         url += `&year=${anio}`;
       }
-      // Si es "ALL", no se agregan filtros de fecha
-
       const data = await fetchJSON(url);
       const list = Array.isArray(data?.items) ? data.items : [];
 
-      // Filtrar por mes en el frontend si es necesario
       let filteredList = list;
       if (anio !== "ALL" && mes !== "ALL") {
-        filteredList = list.filter(item => {
+        filteredList = list.filter((item) => {
           if (!item.fecha) return false;
           const fecha = new Date(item.fecha);
           const itemAnio = fecha.getFullYear();
-          const itemMes = fecha.getMonth(); // getMonth() devuelve 0-11
+          const itemMes = fecha.getMonth(); // 0-11
           return itemAnio === Number(anio) && itemMes === Number(mes);
         });
       }
@@ -328,7 +314,6 @@ export default function IngresosContable() {
           proveedor: proveedorText,
           importe: Number(r.importe || 0),
           medio: medioText,
-          // compat edición:
           denominacion: categoriaText,
           descripcion: imputacionText,
         };
@@ -388,7 +373,8 @@ export default function IngresosContable() {
           (f.alumno || "").toLowerCase().includes(q) ||
           (f.categoria || "").toLowerCase().includes(q) ||
           (f.fecha || "").toLowerCase().includes(q) ||
-          (f.mesPagado || "").toLowerCase().includes(q)
+          (f.mesPagado || "").toLowerCase().includes(q) ||
+          (f.medio || "").toLowerCase().includes(q)
         );
     return catFiltro ? base.filter((f) => (f.categoria || "-") === catFiltro) : base;
   }, [filas, query, catFiltro]);
@@ -414,7 +400,7 @@ export default function IngresosContable() {
     return { total, cantidad: base.length };
   }, [filasFiltradasAlu, filasFiltradasIng, innerTab]);
 
-  // AGRUPA POR CATEGORÍA (para ambas pestañas)
+  // AGRUPA POR CATEGORÍA
   const categoriasMes = useMemo(() => {
     const base = innerTab === "alumnos" ? filas : filasIngresos;
     const map = new Map();
@@ -446,12 +432,13 @@ export default function IngresosContable() {
         Categoría: r.categoria,
         Monto: r.monto,
         "Mes pagado": r.mesPagado,
+        Medio: r.medio,
       }));
     } else {
       rows = base.map((r) => ({
         Fecha: r.fecha,
         Proveedor: r.proveedor || "",
-        "Imputación": r.imputacion || r.descripcion || "",
+        Imputación: r.imputacion || r.descripcion || "",
         Importe: r.importe,
         Medio: r.medio,
       }));
@@ -515,7 +502,7 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            {/* Año / Mes - IGUAL QUE EGRESOS */}
+            {/* Año / Mes */}
             <div className="ing-fieldrow">
               <div className="ing-field">
                 <label htmlFor="anio">Año</label>
@@ -526,9 +513,9 @@ export default function IngresosContable() {
               </div>
               <div className="ing-field">
                 <label htmlFor="mes">Mes</label>
-                <select 
-                  id="mes" 
-                  value={mes} 
+                <select
+                  id="mes"
+                  value={mes}
                   onChange={(e) => setMes(e.target.value)}
                   disabled={anio === "ALL"}
                 >
@@ -670,6 +657,7 @@ export default function IngresosContable() {
                     <div className="c-alumno">Alumno</div>
                     <div className="c-cat">Categoría</div>
                     <div className="c-monto t-right">Monto</div>
+                    <div className="c-medio">Medio</div>
                     <div className="c-mes">Mes pagado</div>
                   </div>
                   {filasFiltradasAlu.map((f, idx) => (
@@ -684,13 +672,14 @@ export default function IngresosContable() {
                       </div>
                       <div className="c-cat"><span className="pill">{f.categoria}</span></div>
                       <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.monto)}</span></div>
+                      <div className="c-medio">{f.medio || "—"}</div>
                       <div className="c-mes">{f.mesPagado}</div>
                     </div>
                   ))}
                   {!filasFiltradasAlu.length && !cargando && (
                     <div className="ing-empty big">
                       Sin pagos para {
-                        anio === "ALL" ? "todos los años" 
+                        anio === "ALL" ? "todos los años"
                         : (mes === "ALL" ? `año ${anio}`
                         : `${cap1(MESES[Number(mes)])} ${anio}`)
                       }
@@ -741,7 +730,7 @@ export default function IngresosContable() {
                   {!filasFiltradasIng.length && !cargando && (
                     <div className="ing-empty big">
                       Sin ingresos para {
-                        anio === "ALL" ? "todos los años" 
+                        anio === "ALL" ? "todos los años"
                         : (mes === "ALL" ? `año ${anio}`
                         : `${cap1(MESES[Number(mes)])} ${anio}`)
                       }
@@ -774,7 +763,7 @@ export default function IngresosContable() {
         open={confirmOpen}
         title="Eliminar ingreso"
         message="¿Seguro que querés eliminar este ingreso? Esta acción no se puede deshacer."
-        onCancel={cancelDelete}
+        onCancel={() => setConfirmOpen(false)}
         onConfirm={confirmDelete}
         confirmText="Eliminar"
         cancelText="Cancelar"
