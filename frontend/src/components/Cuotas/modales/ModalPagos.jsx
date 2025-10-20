@@ -131,6 +131,11 @@ const ModalPagos = ({ socio, onClose }) => {
   const [montoMatricula, setMontoMatricula] = useState(15000);
   const [guardandoMatricula, setGuardandoMatricula] = useState(false);
 
+  // ===== NUEVO: Anual editable (monto manual solo para esta operación) =====
+  const [anualEditando, setAnualEditando] = useState(false);
+  const [anualManualActivo, setAnualManualActivo] = useState(false);
+  const [montoAnualManual, setMontoAnualManual] = useState('');
+
   // ===== Modo libre =====
   const [libreActivo, setLibreActivo] = useState(false);
   const [libreValor, setLibreValor] = useState('');
@@ -215,7 +220,7 @@ const ModalPagos = ({ socio, onClose }) => {
     return Math.max(0, ajustado);
   }, [condonar, libreActivo, libreValor, precioMensual, porcDescHermanos]);
 
-  // ====== ANUAL con descuento ======
+  // ====== ANUAL con descuento (valor base de la DB; NO manual) ======
   const montoAnualConDescuento = useMemo(() => {
     if (condonar) return 0;
     const base = Number(montoAnual || 0);
@@ -242,10 +247,20 @@ const ModalPagos = ({ socio, onClose }) => {
     return Math.max(0, Math.round(esExterno ? base * (1 - porc) : base));
   }, [condonar, montoAnual, familyCount, esExterno, porcDescHermanos]);
 
-  // ====== NUEVO: cálculo de anual considerando mitades ======
+  // ====== NUEVO: cálculo de anual considerando monto manual y mitades ======
   const anualConfig = useMemo(() => {
     // Devuelve { tipo: 'full'|'h1'|'h2', idPeriodo, importe, etiqueta }
     if (!anualSeleccionado) return { tipo: null, idPeriodo: null, importe: 0, etiqueta: '' };
+
+    // Base del anual: manual (si activo) o calculado
+    const baseAnual = Math.max(
+      0,
+      Math.round(
+        anualManualActivo
+          ? Number(montoAnualManual || 0)
+          : Number(montoAnualConDescuento || 0)
+      )
+    );
 
     // Si marcó ambas mitades o ninguna => FULL
     const halfSelectedCount = (anualH1 ? 1 : 0) + (anualH2 ? 1 : 0);
@@ -253,7 +268,7 @@ const ModalPagos = ({ socio, onClose }) => {
       return {
         tipo: 'full',
         idPeriodo: ID_CONTADO_ANUAL,
-        importe: Math.max(0, Math.round(montoAnualConDescuento || 0)),
+        importe: baseAnual,
         etiqueta: 'CONTADO ANUAL'
       };
     }
@@ -261,7 +276,7 @@ const ModalPagos = ({ socio, onClose }) => {
       return {
         tipo: 'h1',
         idPeriodo: ID_CONTADO_ANUAL_H1,
-        importe: Math.max(0, Math.round((montoAnualConDescuento || 0) / 2)),
+        importe: Math.max(0, Math.round(baseAnual / 2)),
         etiqueta: 'CONTADO ANUAL (1ª mitad)'
       };
     }
@@ -269,10 +284,10 @@ const ModalPagos = ({ socio, onClose }) => {
     return {
       tipo: 'h2',
       idPeriodo: ID_CONTADO_ANUAL_H2,
-      importe: Math.max(0, Math.round((montoAnualConDescuento || 0) / 2)),
+      importe: Math.max(0, Math.round(baseAnual / 2)),
       etiqueta: 'CONTADO ANUAL (2ª mitad)'
     };
-  }, [anualSeleccionado, anualH1, anualH2, montoAnualConDescuento]);
+  }, [anualSeleccionado, anualH1, anualH2, montoAnualConDescuento, anualManualActivo, montoAnualManual]);
 
   // Orden de meses
   const periodosMesesOrdenados = useMemo(
@@ -448,6 +463,10 @@ const ModalPagos = ({ socio, onClose }) => {
     setAnualH2(false);
     setMatriculaSeleccionada(false);
     setModoActivo('meses');
+    // Resetear anual manual al cambiar de alumno/año
+    setAnualEditando(false);
+    setAnualManualActivo(false);
+    setMontoAnualManual('');
   }, [idAlumno, anioTrabajo]);
 
   // Sincronizar modoActivo con estados (prioridad: anual > meses > matricula)
@@ -808,7 +827,8 @@ const ModalPagos = ({ socio, onClose }) => {
         meta_anual: anualSeleccionado ? {
           tipo: anualConfig.tipo, // 'full' | 'h1' | 'h2'
           id_periodo: anualConfig.idPeriodo,
-          importe: anualConfig.importe
+          importe: anualConfig.importe,
+          manual: anualManualActivo ? 1 : 0
         } : null
       };
 
@@ -1112,6 +1132,15 @@ const ModalPagos = ({ socio, onClose }) => {
   // Helper UI medio pago
   const medioNombreActual = mediosPago.find(m => String(m.id) === String(medioSeleccionado))?.nombre;
 
+  // Helper: guardar / cancelar anual manual (local, no toca backend)
+  const guardarAnualManual = () => {
+    let v = Math.max(0, Math.round(Number(montoAnualManual) || 0));
+    if (!Number.isFinite(v)) v = 0;
+    setMontoAnualManual(v);
+    setAnualManualActivo(true);
+    setAnualEditando(false);
+  };
+
   return (
     <>
       {toast && (
@@ -1284,7 +1313,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     onChange={(e) => onToggleLibre(e.target.checked)}
                     disabled={cargando}
                   />
-                  <span className="switch"><span className="switch-thumb" /></span>
+                <span className="switch"><span className="switch-thumb" /></span>
                   <span className="switch-label">Usar <strong>monto libre por mes</strong></span>
                 </label>
 
@@ -1321,57 +1350,143 @@ const ModalPagos = ({ socio, onClose }) => {
                   <span className="switch-label sitch-labes">
                     <strong>CONTADO ANUAL</strong>
                     <span className="subline">
-                      {montoAnual > 0
-                        ? `(${formatearARS(montoAnualConDescuento)}${
-                            (esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''
-                          })`
-                        : '(sin monto anual definido)'}
+                      {(() => {
+                        const base = anualManualActivo
+                          ? Number(montoAnualManual || 0)
+                          : Number(montoAnualConDescuento || 0);
+                        const txtBase = formatearARS(Math.max(0, Math.round(base)));
+                        if (anualManualActivo) return `(${txtBase} • monto manual)`;
+                        return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
+                      })()}
                     </span>
+                    {/* Botones editar/quitar como en matrícula */}
+                    {!anualEditando && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          title="Editar monto anual"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setAnualSeleccionado(true); // asegurar que quede seleccionado
+                            setAnualEditando(true);
+                          }}
+                          style={{ marginLeft: 8 }}
+                        >
+                          <FaPen />
+                        </button>
+                        {anualManualActivo && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            title="Quitar monto manual"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setAnualManualActivo(false);
+                              setMontoAnualManual('');
+                              setAnualSeleccionado(true); // mantener seleccionado
+                            }}
+                            style={{ marginLeft: 6 }}
+                          >
+                            <FaTimes />
+                          </button>
+                        )}
+                      </>
+                    )}
                   </span>
                 </label>
 
-                {/* NUEVO: controles de mitades */}
+                {/* NUEVO: controles de mitades + editor de monto anual */}
                 {anualSeleccionado && (
-                  <div className="edit-inline anual-mitades">
-                    <label className="condonar-check">
-                      <input
-                        type="checkbox"
-                        checked={anualH1}
-                        onChange={(e) => setAnualH1(e.target.checked)}
-                        disabled={cargando}
-                      />
-                      <span className="switch"><span className="switch-thumb" /></span>
-                      <span className="switch-label"><strong>1ª mitad</strong> (Ene–Jul)</span>
-                    </label>
+                  <>
+                    {/* Editor de monto anual manual */}
+                    {anualEditando && (
+                      <div className="edit-inline matricula-edit" style={{ marginTop: 8 }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="500"
+                          inputMode="numeric"
+                          value={montoAnualManual}
+                          onChange={(e)=> setMontoAnualManual(e.target.value)}
+                          className="matricula-input"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            guardarAnualManual();
+                            setAnualSeleccionado(true); // por si acaso
+                          }}
+                          title="Guardar monto anual"
+                          aria-label="Guardar monto anual"
+                        >
+                          <FaCheck />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setAnualEditando(false);
+                            setAnualSeleccionado(true); // mantener seleccionado
+                          }}
+                          title="Cancelar edición"
+                          aria-label="Cancelar edición"
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
+                    )}
 
-                    <label className="condonar-check">
-                      <input
-                        type="checkbox"
-                        checked={anualH2}
-                        onChange={(e) => setAnualH2(e.target.checked)}
-                        disabled={cargando}
-                      />
-                      <span className="switch"><span className="switch-thumb" /></span>
-                      <span className="switch-label"><strong>2ª mitad</strong> (Ago–Dic)</span>
-                    </label>
+                    <div className="edit-inline anual-mitades">
+                      <label className="condonar-check">
+                        <input
+                          type="checkbox"
+                          checked={anualH1}
+                          onChange={(e) => setAnualH1(e.target.checked)}
+                          disabled={cargando}
+                        />
+                        <span className="switch"><span className="switch-thumb" /></span>
+                        <span className="switch-label"><strong>1ª mitad</strong> (Ene–Jul)</span>
+                      </label>
 
-                    <div className="anual-mitades-info">
-                      <span className="anual-mitades-importe">
-                        Importe: {formatearARS(Math.round(anualConfig?.importe || 0))}
-                      </span>
+                      <label className="condonar-check">
+                        <input
+                          type="checkbox"
+                          checked={anualH2}
+                          onChange={(e) => setAnualH2(e.target.checked)}
+                          disabled={cargando}
+                        />
+                        <span className="switch"><span className="switch-thumb" /></span>
+                        <span className="switch-label"><strong>2ª mitad</strong> (Ago–Dic)</span>
+                      </label>
 
-                      <button
-                        type="button"
-                        className="info-icon"
-                        aria-label="Ver información sobre mitades"
-                      >
-                        <FaInfoCircle aria-hidden="true" />
-                        <span className="tip" role="tooltip">
-                          Si no se eligen mitades, se considera todo el año.
+                      <div className="anual-mitades-info">
+                        <span className="anual-mitades-importe">
+                          Importe: {formatearARS(Math.round(anualConfig?.importe || 0))}
                         </span>
-                      </button>
+
+                        <button
+                          type="button"
+                          className="info-icon"
+                          aria-label="Ver información sobre mitades"
+                        >
+                          <FaInfoCircle aria-hidden="true" />
+                          <span className="tip" role="tooltip">
+                            Si no se eligen mitades, se considera todo el año.
+                          </span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
