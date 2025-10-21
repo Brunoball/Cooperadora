@@ -1347,7 +1347,9 @@ const ModalPagos = ({ socio, onClose }) => {
                     disabled={cargando || matriculaSeleccionada || libreActivo}
                   />
                   <span className="switch"><span className="switch-thumb" /></span>
-                  <span className="switch-label sitch-labes">
+
+                                    <div className='dis-newedit'>
+                                                        <span className="switch-label sitch-labes">
                     <strong>CONTADO ANUAL</strong>
                     <span className="subline">
                       {(() => {
@@ -1359,7 +1361,8 @@ const ModalPagos = ({ socio, onClose }) => {
                         return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
                       })()}
                     </span>
-                    {/* Botones editar/quitar como en matrícula */}
+                  </span>
+                                      {/* Botones editar/quitar como en matrícula */}
                     {!anualEditando && (
                       <>
                         <button
@@ -1397,7 +1400,8 @@ const ModalPagos = ({ socio, onClose }) => {
                         )}
                       </>
                     )}
-                  </span>
+                                    </div>
+
                 </label>
 
                 {/* NUEVO: controles de mitades + editor de monto anual */}
@@ -1405,8 +1409,9 @@ const ModalPagos = ({ socio, onClose }) => {
                   <>
                     {/* Editor de monto anual manual */}
                     {anualEditando && (
-                      <div className="edit-inline matricula-edit" style={{ marginTop: 8 }}>
+                      <div className="edit-inline matricula-edit" id='btn-editmatricula'>
                         <input
+                        id='input-editmetricula'
                           type="number"
                           min="0"
                           step="500"

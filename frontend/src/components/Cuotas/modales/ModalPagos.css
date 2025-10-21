@@ -155,7 +155,7 @@
   background-color: transparent;
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 1060px;
+  max-width: 1160px;
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -1312,9 +1312,7 @@
   color: var(--gray-500);
   pointer-events: none;
 }
-.medio-pago-input .medio-pago-select{
-  padding-left: 34px; /* deja espacio para el ícono */
-}
+
 /* ==== Medio de pago al lado de Matrícula (misma fila) ==== */
 .matricula-box {
   /* ya hereda condonar-box: display:flex; justify-content:space-between; */
@@ -1352,3 +1350,9 @@
     min-width: 100%;
   }
 }
+
+.dis-newedit{
+  display: flex;
+}
+#btn-editmatricula{max-width: 25%;}
+#input-editmetricula{max-width: 120px;}
