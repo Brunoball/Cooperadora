@@ -252,7 +252,13 @@ const ModalPagos = ({ socio, onClose }) => {
     return Math.max(0, Math.round(esExterno ? base * (1 - porc) : base));
   }, [condonar, montoAnual, familyCount, esExterno, porcDescHermanos]);
 
-  // ====== NUEVO: cálculo de anual considerando monto manual y mitades ======
+  // ====== AUX: estados ya registrados para extras ======
+  const estadoAnualFull = periodosEstado[ID_CONTADO_ANUAL];   // 13
+  const estadoAnualH1   = periodosEstado[ID_CONTADO_ANUAL_H1]; // 15
+  const estadoAnualH2   = periodosEstado[ID_CONTADO_ANUAL_H2]; // 16
+  const estadoMatricula = periodosEstado[ID_MATRICULA];        // 14
+
+  // ====== NUEVO: cálculo de anual considerando monto manual, mitades y lo YA pagado ======
   const anualConfig = useMemo(() => {
     // Devuelve { tipo: 'full'|'h1'|'h2', idPeriodo, importe, etiqueta }
     if (!anualSeleccionado) return { tipo: null, idPeriodo: null, importe: 0, etiqueta: '' };
@@ -267,7 +273,30 @@ const ModalPagos = ({ socio, onClose }) => {
       )
     );
 
-    // Si marcó ambas mitades o ninguna => FULL
+    // 🚨 Regla nueva: si ya hay una mitad registrada, siempre cobrar la otra mitad,
+    // aunque los checkboxes de mitad no estén seleccionados.
+    if (!estadoAnualFull) {
+      if (estadoAnualH1 && !estadoAnualH2) {
+        return {
+          tipo: 'h2',
+          idPeriodo: ID_CONTADO_ANUAL_H2,
+          importe: Math.max(0, Math.round(baseAnual / 2)),
+          etiqueta: 'CONTADO ANUAL (2ª mitad)'
+        };
+      }
+      if (!estadoAnualH1 && estadoAnualH2) {
+        return {
+          tipo: 'h1',
+          idPeriodo: ID_CONTADO_ANUAL_H1,
+          importe: Math.max(0, Math.round(baseAnual / 2)),
+          etiqueta: 'CONTADO ANUAL (1ª mitad)'
+        };
+      }
+    }
+
+    // Comportamiento normal: si no hay mitades ya pagadas,
+    // - 0 o 2 checks => FULL
+    // - 1 check => mitad correspondiente
     const halfSelectedCount = (anualH1 ? 1 : 0) + (anualH2 ? 1 : 0);
     if (halfSelectedCount === 0 || halfSelectedCount === 2) {
       return {
@@ -285,14 +314,23 @@ const ModalPagos = ({ socio, onClose }) => {
         etiqueta: 'CONTADO ANUAL (1ª mitad)'
       };
     }
-    // anualH2
     return {
       tipo: 'h2',
       idPeriodo: ID_CONTADO_ANUAL_H2,
       importe: Math.max(0, Math.round(baseAnual / 2)),
       etiqueta: 'CONTADO ANUAL (2ª mitad)'
     };
-  }, [anualSeleccionado, anualH1, anualH2, montoAnualConDescuento, anualManualActivo, montoAnualManual]);
+  }, [
+    anualSeleccionado,
+    anualH1,
+    anualH2,
+    anualManualActivo,
+    montoAnualManual,
+    montoAnualConDescuento,
+    estadoAnualH1,
+    estadoAnualH2,
+    estadoAnualFull
+  ]);
 
   // ====== NUEVO: Monto de matrícula a usar (manual o global) ======
   const montoMatriculaFinal = useMemo(() => {
@@ -354,14 +392,10 @@ const ModalPagos = ({ socio, onClose }) => {
     });
   }, [familiaInfo.miembros, idAlumno]);
 
-  /* ====== AUX: estados ya registrados para extras ====== */
-  const estadoAnualFull = periodosEstado[ID_CONTADO_ANUAL];   // 13
-  const estadoAnualH1   = periodosEstado[ID_CONTADO_ANUAL_H1]; // 15
-  const estadoAnualH2   = periodosEstado[ID_CONTADO_ANUAL_H2]; // 16
-  const estadoMatricula = periodosEstado[ID_MATRICULA];        // 14
-
+  // NUEVO: solo bloquea cuando YA está todo el año cubierto (full o ambas mitades)
   const bloqueadoAnual =
-    !!(estadoAnualFull || estadoAnualH1 || estadoAnualH2);
+    !!(estadoAnualFull || (estadoAnualH1 && estadoAnualH2));
+
   const bloqueadoMatricula = !!estadoMatricula;
 
   /* ================= Efectos ================= */
@@ -669,10 +703,21 @@ const ModalPagos = ({ socio, onClose }) => {
   const toggleAnual = (checked) => {
     if (checked) {
       activarSoloAnual();
+      // Autoselección inteligente:
+      // - Si H1 ya está pagada y H2 NO, marcamos H2 (queda "2ª mitad")
+      // - Si H2 ya está pagada y H1 NO, marcamos H1 (queda "1ª mitad")
+      // - Si ninguna mitad está pagada, NO marcamos mitades (queda FULL)
+      if (estadoAnualH1 && !estadoAnualH2) {
+        setAnualH1(false);
+        setAnualH2(true);
+      } else if (!estadoAnualH1 && estadoAnualH2) {
+        setAnualH1(true);
+        setAnualH2(false);
+      } else {
+        setAnualH1(false);
+        setAnualH2(false);
+      }
       setAnualSeleccionado(true);
-      // Por defecto: sin mitades marcadas => toma "full"
-      setAnualH1(false);
-      setAnualH2(false);
     } else {
       setAnualSeleccionado(false);
       setAnualH1(false);
@@ -1449,7 +1494,7 @@ const ModalPagos = ({ socio, onClose }) => {
                       )}
                     </span>
 
-                    {/* Botones editar/quitar (solo si no está bloqueado por pago previo) */}
+                    {/* Botones editar/quitar (solo si NO está bloqueado por pago previo total) */}
                     {!bloqueadoAnual && !anualEditando && (
                       <>
                         <button
@@ -1490,7 +1535,7 @@ const ModalPagos = ({ socio, onClose }) => {
                   </div>
                 </label>
 
-                {/* NUEVO: controles de mitades + editor de monto anual */}
+                {/* Controles de mitades + editor de monto anual (solo si NO está bloqueado totalmente) */}
                 {anualSeleccionado && !bloqueadoAnual && (
                   <>
                     {anualEditando && (
@@ -1511,7 +1556,11 @@ const ModalPagos = ({ socio, onClose }) => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            guardarAnualManual();
+                            let v = Math.max(0, Math.round(Number(montoAnualManual) || 0));
+                            if (!Number.isFinite(v)) v = 0;
+                            setMontoAnualManual(v);
+                            setAnualManualActivo(true);
+                            setAnualEditando(false);
                             setAnualSeleccionado(true);
                           }}
                           title="Guardar monto anual"
@@ -1581,7 +1630,7 @@ const ModalPagos = ({ socio, onClose }) => {
                         <button type="button" className="info-icon" aria-label="Ver información sobre mitades">
                           <FaInfoCircle aria-hidden="true" />
                           <span className="tip" role="tooltip">
-                            Si no se eligen mitades, se considera todo el año.
+                            Si no se eligen mitades, se considera todo el año. Si ya hay una mitad pagada, se selecciona automáticamente la restante.
                           </span>
                         </button>
                       </div>
@@ -1589,16 +1638,15 @@ const ModalPagos = ({ socio, onClose }) => {
                   </>
                 )}
 
-                {/* Si ya está bloqueado por pago previo, mostrar aviso */}
+                {/* Si ya está bloqueado por pago previo full o ambas mitades, mostrar aviso */}
                 {bloqueadoAnual && (
                   <div className="hint" style={{marginTop:8}}>
-                    Ya existe un registro de contado anual para este año (completo o por mitades).
+                    Ya existe un registro de contado anual completo (o ambas mitades) para este año.
                   </div>
                 )}
               </div>
             )}
 
-            {/* ===== MATRÍCULA + Medio de pago inline ===== */}
             {/* ===== MATRÍCULA + Medio de pago inline ===== */}
             <div className={`condonar-box matricula-box ${matriculaSeleccionada ? 'is-active' : ''} ${bloqueadoMatricula ? 'is-disabled' : ''}`}>
               <label className="condonar-check">
@@ -1762,7 +1810,6 @@ const ModalPagos = ({ socio, onClose }) => {
                 </div>
               )}
             </div>
-
 
             {/* Selección de meses */}
             <div className="periodos-section">
