@@ -1,6 +1,6 @@
 // src/components/Cuotas/modales/ModalPagos.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes, FaInfoCircle } from 'react-icons/fa';
+import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes, FaInfoCircle, FaSave } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalPagos.css';
@@ -165,6 +165,11 @@ const ModalPagos = ({ socio, onClose }) => {
   const [mediosPago, setMediosPago] = useState([]);          // [{id, nombre}]
   const [medioSeleccionado, setMedioSeleccionado] = useState(''); // id como string
 
+  // ====== NUEVO: Estados para matrícula manual ======
+  const [matriculaManualActiva, setMatriculaManualActiva] = useState(false);
+  const [montoMatriculaManual, setMontoMatriculaManual] = useState('');
+  const [editandoMatriculaManual, setEditandoMatriculaManual] = useState(false);
+
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
 
@@ -289,6 +294,14 @@ const ModalPagos = ({ socio, onClose }) => {
     };
   }, [anualSeleccionado, anualH1, anualH2, montoAnualConDescuento, anualManualActivo, montoAnualManual]);
 
+  // ====== NUEVO: Monto de matrícula a usar (manual o global) ======
+  const montoMatriculaFinal = useMemo(() => {
+    if (matriculaManualActiva) {
+      return Math.max(0, Math.round(Number(montoMatriculaManual) || 0));
+    }
+    return Math.max(0, Math.round(Number(montoMatricula) || 0));
+  }, [matriculaManualActiva, montoMatriculaManual, montoMatricula]);
+
   // Orden de meses
   const periodosMesesOrdenados = useMemo(
     () => [...seleccionados].map(Number).sort((a, b) => a - b),
@@ -302,9 +315,9 @@ const ModalPagos = ({ socio, onClose }) => {
   );
   const totalExtras = useMemo(() => {
     const anualImp = anualSeleccionado ? Number(anualConfig.importe || 0) : 0;
-    const matri = matriculaSeleccionada ? Number(montoMatricula || 0) : 0;
+    const matri = matriculaSeleccionada ? Number(montoMatriculaFinal || 0) : 0;
     return anualImp + matri;
-  }, [anualSeleccionado, anualConfig.importe, matriculaSeleccionada, montoMatricula]);
+  }, [anualSeleccionado, anualConfig.importe, matriculaSeleccionada, montoMatriculaFinal]);
   const total = totalMeses + totalExtras; // POR persona
 
   const periodoTextoFinal = useMemo(() => {
@@ -340,6 +353,16 @@ const ModalPagos = ({ socio, onClose }) => {
       return na.localeCompare(nb);
     });
   }, [familiaInfo.miembros, idAlumno]);
+
+  /* ====== AUX: estados ya registrados para extras ====== */
+  const estadoAnualFull = periodosEstado[ID_CONTADO_ANUAL];   // 13
+  const estadoAnualH1   = periodosEstado[ID_CONTADO_ANUAL_H1]; // 15
+  const estadoAnualH2   = periodosEstado[ID_CONTADO_ANUAL_H2]; // 16
+  const estadoMatricula = periodosEstado[ID_MATRICULA];        // 14
+
+  const bloqueadoAnual =
+    !!(estadoAnualFull || estadoAnualH1 || estadoAnualH2);
+  const bloqueadoMatricula = !!estadoMatricula;
 
   /* ================= Efectos ================= */
 
@@ -467,6 +490,10 @@ const ModalPagos = ({ socio, onClose }) => {
     setAnualEditando(false);
     setAnualManualActivo(false);
     setMontoAnualManual('');
+    // Resetear matrícula manual
+    setMatriculaManualActiva(false);
+    setMontoMatriculaManual('');
+    setEditandoMatriculaManual(false);
   }, [idAlumno, anioTrabajo]);
 
   // Sincronizar modoActivo con estados (prioridad: anual > meses > matricula)
@@ -713,16 +740,33 @@ const ModalPagos = ({ socio, onClose }) => {
       if (data?.exito) {
         setMontoMatricula(monto);
         setMatriculaEditando(false);
-        mostrarToast('exito', 'Matrícula actualizada.');
+        mostrarToast('exito', 'Matrícula global actualizada.');
       } else {
-        mostrarToast('error', data?.mensaje || 'No se pudo actualizar la matrícula.');
+        mostrarToast('error', data?.mensaje || 'No se pudo actualizar la matrícula global.');
       }
     } catch (e) {
       console.error('guardarMatricula()', e);
-      mostrarToast('error', 'Error al guardar matrícula.');
+      mostrarToast('error', 'Error al guardar matrícula global.');
     } finally {
       setGuardandoMatricula(false);
     }
+  };
+
+  // ====== NUEVO: Guardar matrícula manual (solo para esta operación) ======
+  const guardarMatriculaManual = () => {
+    let v = Math.max(0, Math.round(Number(montoMatriculaManual) || 0));
+    if (!Number.isFinite(v)) v = 0;
+    setMontoMatriculaManual(v);
+    setMatriculaManualActiva(true);
+    setEditandoMatriculaManual(false);
+    mostrarToast('exito', 'Monto manual de matrícula guardado para este pago.');
+  };
+
+  // ====== NUEVO: Cancelar matrícula manual ======
+  const cancelarMatriculaManual = () => {
+    setMatriculaManualActiva(false);
+    setMontoMatriculaManual('');
+    setEditandoMatriculaManual(false);
   };
 
   // === NUEVO: ids de familia activos (excluye al actual para evitar duplicar) ===
@@ -803,7 +847,9 @@ const ModalPagos = ({ socio, onClose }) => {
     if (anualSeleccionado && anualConfig?.idPeriodo) {
       montosPorPeriodo[anualConfig.idPeriodo] = Math.round(Number(anualConfig.importe || 0));
     }
-    if (matriculaSeleccionada) montosPorPeriodo[ID_MATRICULA] = Math.round(Number(montoMatricula || 0));
+    if (matriculaSeleccionada) {
+      montosPorPeriodo[ID_MATRICULA] = Math.round(Number(montoMatriculaFinal || 0));
+    }
 
     setCargando(true);
     try {
@@ -829,6 +875,12 @@ const ModalPagos = ({ socio, onClose }) => {
           id_periodo: anualConfig.idPeriodo,
           importe: anualConfig.importe,
           manual: anualManualActivo ? 1 : 0
+        } : null,
+        // NUEVO: meta de matrícula manual
+        meta_matricula: matriculaSeleccionada ? {
+          manual: matriculaManualActiva ? 1 : 0,
+          monto_manual: matriculaManualActiva ? Number(montoMatriculaFinal) : null,
+          monto_global: !matriculaManualActiva ? Number(montoMatriculaFinal) : null
         } : null
       };
 
@@ -884,7 +936,7 @@ const ModalPagos = ({ socio, onClose }) => {
     const montosBase = {
       ...Object.fromEntries(periodosMesesOrdenados.map(id => [id, Math.round(condonar ? 0 : Number(precioMensualConDescuento || 0))])),
       ...(anualSeleccionado && anualConfig?.idPeriodo ? { [anualConfig.idPeriodo]: Math.round(Number(anualConfig.importe || 0)) } : {}),
-      ...(matriculaSeleccionada ? { [ID_MATRICULA]: Math.round(Number(montoMatricula || 0)) } : {}),
+      ...(matriculaSeleccionada ? { [ID_MATRICULA]: Math.round(Number(montoMatriculaFinal || 0)) } : {}),
     };
 
     // Etiqueta periodo texto: anual usa su etiqueta especial
@@ -920,7 +972,12 @@ const ModalPagos = ({ socio, onClose }) => {
         familia: familyCount,
         categoria: nombreCategoria,
         porcentaje: porcDescHermanos
-      }
+      },
+      // NUEVO: info de matrícula manual
+      meta_matricula: matriculaSeleccionada ? {
+        manual: matriculaManualActiva,
+        monto_manual: matriculaManualActiva ? Number(montoMatriculaFinal) : null
+      } : null
     }));
 
     return { lista, periodos, periodoCodigo, periodoTextoCustom };
@@ -1063,7 +1120,15 @@ const ModalPagos = ({ socio, onClose }) => {
                       <li><span>Valor por mes</span><strong>{formatearARS(precioMensualConDescuento)}</strong></li>
                       <li><span>Meses</span><strong>{periodosMesesOrdenados.length}</strong></li>
                       {etiquetaAnualResumen && <li><span>Contado anual</span><strong>{etiquetaAnualResumen}</strong></li>}
-                      {matriculaSeleccionada && <li><span>Matrícula</span><strong>{formatearARS(montoMatricula)}</strong></li>}
+                      {matriculaSeleccionada && (
+                        <li>
+                          <span>Matrícula</span>
+                          <strong>
+                            {formatearARS(montoMatriculaFinal)}
+                            {matriculaManualActiva && ' (manual)'}
+                          </strong>
+                        </li>
+                      )}
                       <li><span>Medio de pago</span><strong>{medioNombre}</strong></li>
                       <li><span>{etiquetaTotal}</span><strong>{formatearARS(totalParaMostrar)}</strong></li>
                       <li><span>Registros</span><strong>{cantidadRegistrosLista}</strong></li>
@@ -1338,32 +1403,54 @@ const ModalPagos = ({ socio, onClose }) => {
 
             {/* ====== EXTRAS: CONTADO ANUAL y MATRÍCULA ====== */}
             {ventanaAnualActiva && (
-              <div className={`condonar-box ${anualSeleccionado ? 'is-active' : ''}`}>
+              <div className={`condonar-box ${anualSeleccionado ? 'is-active' : ''} ${bloqueadoAnual ? 'is-disabled' : ''}`}>
                 <label className="condonar-check">
                   <input
                     type="checkbox"
                     checked={anualSeleccionado}
                     onChange={(e) => toggleAnual(e.target.checked)}
-                    disabled={cargando || matriculaSeleccionada || libreActivo}
+                    disabled={cargando || matriculaSeleccionada || libreActivo || bloqueadoAnual}
                   />
                   <span className="switch"><span className="switch-thumb" /></span>
 
-                                    <div className='dis-newedit'>
-                                                        <span className="switch-label sitch-labes">
-                    <strong>CONTADO ANUAL</strong>
-                    <span className="subline">
-                      {(() => {
-                        const base = anualManualActivo
-                          ? Number(montoAnualManual || 0)
-                          : Number(montoAnualConDescuento || 0);
-                        const txtBase = formatearARS(Math.max(0, Math.round(base)));
-                        if (anualManualActivo) return `(${txtBase} • monto manual)`;
-                        return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
-                      })()}
+                  <div className='dis-newedit'>
+                    <span className="switch-label sitch-labes">
+                      <strong>CONTADO ANUAL</strong>
+                      <span className="subline">
+                        {(() => {
+                          const base = anualManualActivo
+                            ? Number(montoAnualManual || 0)
+                            : Number(montoAnualConDescuento || 0);
+                          const txtBase = formatearARS(Math.max(0, Math.round(base)));
+                          if (anualManualActivo) return `(${txtBase} • monto manual)`;
+                          return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
+                        })()}
+                      </span>
+
+                      {/* Chips de estado si ya hay registros */}
+                      {estadoAnualFull && (
+                        <span className={`chip ${estadoAnualFull === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+                          Año: {capitalizar(estadoAnualFull)}
+                        </span>
+                      )}
+                      {!estadoAnualFull && (estadoAnualH1 || estadoAnualH2) && (
+                        <>
+                          {estadoAnualH1 && (
+                            <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+                              1ª mitad: {capitalizar(estadoAnualH1)}
+                            </span>
+                          )}
+                          {estadoAnualH2 && (
+                            <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
+                              2ª mitad: {capitalizar(estadoAnualH2)}
+                            </span>
+                          )}
+                        </>
+                      )}
                     </span>
-                  </span>
-                                      {/* Botones editar/quitar como en matrícula */}
-                    {!anualEditando && (
+
+                    {/* Botones editar/quitar (solo si no está bloqueado por pago previo) */}
+                    {!bloqueadoAnual && !anualEditando && (
                       <>
                         <button
                           type="button"
@@ -1373,7 +1460,7 @@ const ModalPagos = ({ socio, onClose }) => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setAnualSeleccionado(true); // asegurar que quede seleccionado
+                            setAnualSeleccionado(true);
                             setAnualEditando(true);
                           }}
                           style={{ marginLeft: 8 }}
@@ -1391,7 +1478,7 @@ const ModalPagos = ({ socio, onClose }) => {
                               e.stopPropagation();
                               setAnualManualActivo(false);
                               setMontoAnualManual('');
-                              setAnualSeleccionado(true); // mantener seleccionado
+                              setAnualSeleccionado(true);
                             }}
                             style={{ marginLeft: 6 }}
                           >
@@ -1400,18 +1487,16 @@ const ModalPagos = ({ socio, onClose }) => {
                         )}
                       </>
                     )}
-                                    </div>
-
+                  </div>
                 </label>
 
                 {/* NUEVO: controles de mitades + editor de monto anual */}
-                {anualSeleccionado && (
+                {anualSeleccionado && !bloqueadoAnual && (
                   <>
-                    {/* Editor de monto anual manual */}
                     {anualEditando && (
                       <div className="edit-inline matricula-edit" id='btn-editmatricula'>
                         <input
-                        id='input-editmetricula'
+                          id='input-editmetricula'
                           type="number"
                           min="0"
                           step="500"
@@ -1427,7 +1512,7 @@ const ModalPagos = ({ socio, onClose }) => {
                             e.preventDefault();
                             e.stopPropagation();
                             guardarAnualManual();
-                            setAnualSeleccionado(true); // por si acaso
+                            setAnualSeleccionado(true);
                           }}
                           title="Guardar monto anual"
                           aria-label="Guardar monto anual"
@@ -1441,7 +1526,7 @@ const ModalPagos = ({ socio, onClose }) => {
                             e.preventDefault();
                             e.stopPropagation();
                             setAnualEditando(false);
-                            setAnualSeleccionado(true); // mantener seleccionado
+                            setAnualSeleccionado(true);
                           }}
                           title="Cancelar edición"
                           aria-label="Cancelar edición"
@@ -1452,26 +1537,40 @@ const ModalPagos = ({ socio, onClose }) => {
                     )}
 
                     <div className="edit-inline anual-mitades">
-                      <label className="condonar-check">
+                      <label className={`condonar-check ${estadoAnualH1 ? 'is-disabled' : ''}`}>
                         <input
                           type="checkbox"
                           checked={anualH1}
                           onChange={(e) => setAnualH1(e.target.checked)}
-                          disabled={cargando}
+                          disabled={cargando || !!estadoAnualH1}
                         />
                         <span className="switch"><span className="switch-thumb" /></span>
-                        <span className="switch-label"><strong>1ª mitad</strong> (Ene–Jul)</span>
+                        <span className="switch-label">
+                          <strong>1ª mitad</strong> (Mar–Jul)
+                          {estadoAnualH1 && (
+                            <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
+                              {capitalizar(estadoAnualH1)}
+                            </span>
+                          )}
+                        </span>
                       </label>
 
-                      <label className="condonar-check">
+                      <label className={`condonar-check ${estadoAnualH2 ? 'is-disabled' : ''}`}>
                         <input
                           type="checkbox"
                           checked={anualH2}
                           onChange={(e) => setAnualH2(e.target.checked)}
-                          disabled={cargando}
+                          disabled={cargando || !!estadoAnualH2}
                         />
                         <span className="switch"><span className="switch-thumb" /></span>
-                        <span className="switch-label"><strong>2ª mitad</strong> (Ago–Dic)</span>
+                        <span className="switch-label">
+                          <strong>2ª mitad</strong> (Ago–Dic)
+                          {estadoAnualH2 && (
+                            <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
+                              {capitalizar(estadoAnualH2)}
+                            </span>
+                          )}
+                        </span>
                       </label>
 
                       <div className="anual-mitades-info">
@@ -1479,11 +1578,7 @@ const ModalPagos = ({ socio, onClose }) => {
                           Importe: {formatearARS(Math.round(anualConfig?.importe || 0))}
                         </span>
 
-                        <button
-                          type="button"
-                          className="info-icon"
-                          aria-label="Ver información sobre mitades"
-                        >
+                        <button type="button" className="info-icon" aria-label="Ver información sobre mitades">
                           <FaInfoCircle aria-hidden="true" />
                           <span className="tip" role="tooltip">
                             Si no se eligen mitades, se considera todo el año.
@@ -1493,74 +1588,155 @@ const ModalPagos = ({ socio, onClose }) => {
                     </div>
                   </>
                 )}
+
+                {/* Si ya está bloqueado por pago previo, mostrar aviso */}
+                {bloqueadoAnual && (
+                  <div className="hint" style={{marginTop:8}}>
+                    Ya existe un registro de contado anual para este año (completo o por mitades).
+                  </div>
+                )}
               </div>
             )}
 
             {/* ===== MATRÍCULA + Medio de pago inline ===== */}
-            <div className={`condonar-box matricula-box ${matriculaSeleccionada ? 'is-active' : ''}`}>
+            {/* ===== MATRÍCULA + Medio de pago inline ===== */}
+            <div className={`condonar-box matricula-box ${matriculaSeleccionada ? 'is-active' : ''} ${bloqueadoMatricula ? 'is-disabled' : ''}`}>
               <label className="condonar-check">
                 <input
                   type="checkbox"
                   checked={matriculaSeleccionada}
                   onChange={(e) => toggleMatricula(e.target.checked)}
-                  disabled={cargando || anualSeleccionado}
+                  disabled={cargando || anualSeleccionado || bloqueadoMatricula}
                 />
                 <span className="switch"><span className="switch-thumb" /></span>
                 <span className="switch-label matricula-label">
                   <strong>MATRÍCULA</strong>
-                  {!matriculaEditando && (
+                  {estadoMatricula && (
+                    <span className={`chip ${estadoMatricula === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+                      {capitalizar(estadoMatricula)}
+                    </span>
+                  )}
+
+                  {!bloqueadoMatricula && !matriculaEditando && !editandoMatriculaManual && (
                     <>
-                      <span className="matricula-monto">{formatearARS(montoMatricula)}</span>
+                      <span className="matricula-monto">
+                        {formatearARS(montoMatriculaFinal)}
+                        {matriculaManualActiva && ' (manual)'}
+                      </span>
+
+                      {/* Botón: editar monto global (NO togglea el checkbox) */}
                       <button
                         type="button"
                         className="btn btn-ghost"
-                        title="Editar monto"
-                        onClick={()=> setMatriculaEditando(true)}
+                        title="Editar monto global"
+                        onMouseDown={(e)=> e.preventDefault()}
+                        onClick={(e)=> { e.preventDefault(); e.stopPropagation(); setMatriculaEditando(true); }}
+                      >
+                        <FaSave />
+                      </button>
+
+                      {/* Botón: ingresar monto manual (NO togglea el checkbox) */}
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        title="Ingresar monto manual"
+                        onMouseDown={(e)=> e.preventDefault()}
+                        onClick={(e)=> { e.preventDefault(); e.stopPropagation(); setEditandoMatriculaManual(true); }}
                       >
                         <FaPen />
                       </button>
+
+                      {/* Botón: quitar monto manual (NO togglea el checkbox) */}
+                      {matriculaManualActiva && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          title="Quitar monto manual"
+                          onMouseDown={(e)=> e.preventDefault()}
+                          onClick={(e)=> { e.preventDefault(); e.stopPropagation(); cancelarMatriculaManual(); }}
+                        >
+                          <FaTimes />
+                        </button>
+                      )}
                     </>
                   )}
                 </span>
               </label>
 
-              {/* Bloque de edición (si aplica) */}
-              {matriculaEditando && (
-                <div className="edit-inline matricula-edit">
-                  <input
-                    type="number"
-                    min="0"
-                    step="500"
-                    inputMode="numeric"
-                    value={montoMatricula}
-                    onChange={(e)=> setMontoMatricula(Number(e.target.value || 0))}
-                    className="matricula-input"
-                    disabled={guardandoMatricula}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={guardarMatricula}
-                    disabled={guardandoMatricula}
-                    title="Guardar matrícula"
-                    aria-label="Guardar matrícula"
-                  >
-                    {guardandoMatricula ? '…' : <FaCheck />}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setMatriculaEditando(false)}
-                    disabled={guardandoMatricula}
-                    title="Cancelar edición"
-                    aria-label="Cancelar edición"
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
+              {/* Edición de matrícula: sólo si NO está ya pagada/condonada */}
+              {!bloqueadoMatricula && (
+                <>
+                  {matriculaEditando && (
+                    <div className="edit-inline matricula-edit">
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        inputMode="numeric"
+                        value={montoMatricula}
+                        onChange={(e)=> setMontoMatricula(Number(e.target.value || 0))}
+                        className="matricula-input"
+                        disabled={guardandoMatricula}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={guardarMatricula}
+                        disabled={guardandoMatricula}
+                        title="Guardar matrícula global"
+                        aria-label="Guardar matrícula global"
+                      >
+                        {guardandoMatricula ? '…' : <FaCheck />}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setMatriculaEditando(false)}
+                        disabled={guardandoMatricula}
+                        title="Cancelar edición global"
+                        aria-label="Cancelar edición global"
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                  )}
+
+                  {editandoMatriculaManual && (
+                    <div className="edit-inline matricula-edit">
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        inputMode="numeric"
+                        value={montoMatriculaManual}
+                        onChange={(e)=> setMontoMatriculaManual(e.target.value)}
+                        className="matricula-input"
+                        placeholder="Ingresá monto manual"
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={guardarMatriculaManual}
+                        title="Guardar monto manual"
+                        aria-label="Guardar monto manual"
+                      >
+                        <FaCheck />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setEditandoMatriculaManual(false)}
+                        title="Cancelar monto manual"
+                        aria-label="Cancelar monto manual"
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* ===== Medio de pago inline (MISMA FILA) ===== */}
+              {/* Medio de pago inline */}
               <div className="medio-pago-inline">
                 <label className="medio-pago-inline-label" htmlFor="medio-pago-select">Medio de pago</label>
                 <div className="medio-pago-input">
@@ -1579,7 +1755,14 @@ const ModalPagos = ({ socio, onClose }) => {
                   </select>
                 </div>
               </div>
+
+              {bloqueadoMatricula && (
+                <div className="hint" style={{marginTop:8}}>
+                  Ya existe un registro de matrícula para este año.
+                </div>
+              )}
             </div>
+
 
             {/* Selección de meses */}
             <div className="periodos-section">

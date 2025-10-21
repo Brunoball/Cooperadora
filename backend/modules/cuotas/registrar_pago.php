@@ -89,38 +89,29 @@ try {
         return 0;
     };
 
-    $distribuirEntero = function (int $total, int $n) : array {
-        if ($n <= 0) return [];
-        if ($total <= 0) return array_fill(0, $n, 0);
-        $base = intdiv($total, $n);
-        $resto = $total - ($base * $n);
-        $out = [];
-        for ($i = 0; $i < $n; $i++) {
-            $out[] = $base + ($i < $resto ? 1 : 0);
-        }
-        return $out;
-    };
-
+    // 👉 MODIFICADO: parseo de selección (mitades se guardan como un único registro 15/16)
     $parsearSeleccion = function(array $periodos, array $montosPorPeriodo) use ($condonar) {
         $mesesExp = [];
         $matricula = false;
-        $segs = [];
+        $segs = []; // cada seg: ['id_mes'=>13|15|16, 'total'=>X]
 
         foreach ($periodos as $p) {
             $p = (int)$p;
             if ($p >= 1 && $p <= 12) {
-                $mesesExp[$p] = true;
+                $mesesExp[$p] = true; // meses explícitos
             } elseif ($p === 14) {
                 $matricula = true;
             } elseif ($p === 13) {
                 $total = (int)($montosPorPeriodo[13] ?? 0);
-                $segs[] = ['tipo'=>'full', 'meses'=>range(1,12), 'total'=>$condonar ? 0 : $total];
+                $segs[] = ['id_mes'=>13, 'total'=>$condonar ? 0 : $total];
             } elseif ($p === 15) {
+                // 1ª mitad (Mar–Jul) -> se registra como id_mes = 15 **un solo pago**
                 $total = (int)($montosPorPeriodo[15] ?? 0);
-                $segs[] = ['tipo'=>'h1', 'meses'=>range(1,7), 'total'=>$condonar ? 0 : $total];
+                $segs[] = ['id_mes'=>15, 'total'=>$condonar ? 0 : $total];
             } elseif ($p === 16) {
+                // 2ª mitad (Ago–Dic) -> se registra como id_mes = 16 **un solo pago**
                 $total = (int)($montosPorPeriodo[16] ?? 0);
-                $segs[] = ['tipo'=>'h2', 'meses'=>range(8,12), 'total'=>$condonar ? 0 : $total];
+                $segs[] = ['id_mes'=>16, 'total'=>$condonar ? 0 : $total];
             }
         }
 
@@ -128,51 +119,36 @@ try {
         return [
             'mesesExplicitos' => array_keys($mesesExp),
             'matricula'       => $matricula,
-            'segmentosAnuales'=> $segs,
+            'segmentos'       => $segs, // 13/15/16 como registro único
         ];
     };
 
+    // 👉 MODIFICADO: construir montos SOLO para meses explícitos (1..12)
     $construirMontosMensuales = function(
         array $mesesExplicitos,
-        array $segmentosAnuales,
         array $montosPorPeriodo,
         bool $condonar,
         ?int $montoUI,
         int $montoLibre
-    ) use ($resolverMontoMensual, $distribuirEntero) {
+    ) use ($resolverMontoMensual) {
 
-        $map = []; // mes => monto
+        $map = []; // mes => monto (solo 1..12)
 
         foreach ($mesesExplicitos as $m) {
             $map[$m] = $resolverMontoMensual($condonar, $montoUI, $montoLibre, $montosPorPeriodo, (int)$m);
         }
-
-        foreach ($segmentosAnuales as $seg) {
-            $mesesSeg = $seg['meses'];
-            $totalSeg = (int)($seg['total'] ?? 0);
-            $n = count($mesesSeg);
-            $dist = $distribuirEntero(max(0, $totalSeg), $n);
-
-            foreach ($mesesSeg as $i => $mes) {
-                if (!isset($map[$mes])) {
-                    $map[$mes] = $condonar ? 0 : (int)$dist[$i];
-                }
-            }
-        }
-
         ksort($map);
-        return $map; // solo 1..12
+        return $map;
     };
 
     // ===================== LÓGICA PRINCIPAL =====================
     $seleccion = $parsearSeleccion($periodos, $montosPorPeriodo);
-    $mesesExplicitos  = $seleccion['mesesExplicitos'];
-    $matriculaSel     = $seleccion['matricula'];
-    $segmentosAnuales = $seleccion['segmentosAnuales'];
+    $mesesExplicitos  = $seleccion['mesesExplicitos']; // 1..12
+    $matriculaSel     = $seleccion['matricula'];       // bool
+    $segmentos        = $seleccion['segmentos'];       // registros únicos 13/15/16
 
     $montosPorMes = $construirMontosMensuales(
         $mesesExplicitos,
-        $segmentosAnuales,
         $montosPorPeriodo,
         $condonar,
         $montoUI,
@@ -187,7 +163,7 @@ try {
            AND YEAR(fecha_pago) = :anio
     ");
 
-    // NUEVO: insert con id_medio_pago
+    // Insert genérico (con id_medio_pago)
     $stIns = $pdo->prepare("
         INSERT INTO pagos (id_alumno, id_mes, fecha_pago, estado, monto_pago, id_medio_pago)
         VALUES (:id_alumno, :id_mes, :fecha_pago, :estado, :monto_pago, :id_medio_pago)
@@ -224,7 +200,7 @@ try {
         $insertadosAlumno = 0;
         $yaRegistradosAlumno = [];
 
-        // 1) Insertar MESES 1..12
+        // 1) Insertar MESES explícitos 1..12 (si los eligieron)
         foreach ($montosPorMes as $mes => $monto) {
             $mes = (int)$mes;
             if ($mes < 1 || $mes > 12) continue;
@@ -250,7 +226,7 @@ try {
             $totalInsertados++;
         }
 
-        // 2) Insertar MATRÍCULA si corresponde (14)
+        // 2) Insertar MATRÍCULA (14) si corresponde
         if ($matriculaSel) {
             $mes = 14;
             if (!array_key_exists($mes, $yaPorMes)) {
@@ -272,6 +248,32 @@ try {
                     'estado'  => $yaPorMes[14],
                 ];
             }
+        }
+
+        // 3) 👉 NUEVO: Insertar registros únicos para ANUAL/mitades (13, 15, 16)
+        foreach ($segmentos as $seg) {
+            $idMesSeg = (int)$seg['id_mes']; // 13|15|16
+            $montoSeg = (int)($seg['total'] ?? 0);
+
+            if (array_key_exists($idMesSeg, $yaPorMes)) {
+                $yaRegistradosAlumno[] = [
+                    'periodo' => $idMesSeg,
+                    'estado'  => $yaPorMes[$idMesSeg],
+                ];
+                continue;
+            }
+
+            $stIns->execute([
+                ':id_alumno'     => $idA,
+                ':id_mes'        => $idMesSeg,
+                ':fecha_pago'    => $fechaPagoStr,
+                ':estado'        => $estadoRegistrar,
+                ':monto_pago'    => $condonar ? 0 : (int)max(0, $montoSeg),
+                ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
+            ]);
+
+            $insertadosAlumno++;
+            $totalInsertados++;
         }
 
         $detallePorAlumno[] = [

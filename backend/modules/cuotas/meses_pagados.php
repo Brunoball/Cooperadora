@@ -32,7 +32,6 @@ try {
     if (isset($pdo) && $pdo instanceof PDO) {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Sólo tabla 'pagos' (sin prefijo de base)
         $sql = "
             SELECT p.id_mes, p.estado
               FROM pagos p
@@ -47,32 +46,47 @@ try {
         $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
         $detalles = [];
-        $ids = [];
+        $idsMeses = [];     // 1..12 (compat)
+        $idsTodos = [];     // 1..16 (nuevo)
+
         foreach ($rows as $r) {
-            $id_mes = (int)$r['id_mes'];
+            $id_mes = (int)($r['id_mes'] ?? 0);
+            if ($id_mes <= 0) continue;
             $estado = isset($r['estado']) ? strtolower((string)$r['estado']) : '';
-            if ($id_mes >= 1 && $id_mes <= 12) {
-                $ids[] = $id_mes;
+            if ($estado === '') $estado = 'pagado';
+
+            // detalles: incluir TODOS los períodos que vengan guardados (1..16)
+            if ($id_mes >= 1 && $id_mes <= 16) {
                 $detalles[] = [
                     'id_mes' => $id_mes,
-                    'estado' => $estado ?: 'pagado' // fallback
+                    'estado' => $estado
                 ];
+                $idsTodos[$id_mes] = true;
+            }
+
+            // compat: sólo meses 1..12
+            if ($id_mes >= 1 && $id_mes <= 12) {
+                $idsMeses[$id_mes] = true;
             }
         }
 
-        // (Opcional) fecha de ingreso del alumno — sólo tabla 'alumnos'
+        // (Opcional) fecha de ingreso — si luego querés activarlo
         $ingreso = null;
         // try {
-        //     $st2 = $pdo->prepare("SELECT fecha_ingreso FROM alumnos WHERE id = :id LIMIT 1");
-        //     $st2->execute([':id' => $id_alumno]);
-        //     $ingreso = $st2->fetchColumn() ?: null;
+        //   $st2 = $pdo->prepare("SELECT fecha_ingreso FROM alumnos WHERE id = :id LIMIT 1");
+        //   $st2->execute([':id' => $id_alumno]);
+        //   $ingreso = $st2->fetchColumn() ?: null;
         // } catch (Throwable $e) {}
 
         echo json_encode([
-            'exito'          => true,
-            'meses_pagados'  => array_values(array_unique($ids)), // compat con frontend viejo
-            'detalles'       => $detalles,                        // estado por mes
-            'ingreso'        => $ingreso
+            'exito'             => true,
+            // Compat con frontend antiguo:
+            'meses_pagados'     => array_values(array_map('intval', array_keys($idsMeses))),
+            // Nuevo (útil si lo necesitás):
+            'periodos_pagados'  => array_values(array_map('intval', array_keys($idsTodos))),
+            // Estados por período (incluye 13, 14, 15, 16)
+            'detalles'          => $detalles,
+            'ingreso'           => $ingreso
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -86,25 +100,34 @@ try {
         $result = $stmt->get_result();
 
         $detalles = [];
-        $ids = [];
+        $idsMeses = [];
+        $idsTodos = [];
+
         while ($r = $result->fetch_assoc()) {
-            $id_mes = (int)$r['id_mes'];
+            $id_mes = (int)($r['id_mes'] ?? 0);
+            if ($id_mes <= 0) continue;
             $estado = isset($r['estado']) ? strtolower((string)$r['estado']) : '';
-            if ($id_mes >= 1 && $id_mes <= 12) {
-                $ids[] = $id_mes;
+            if ($estado === '') $estado = 'pagado';
+
+            if ($id_mes >= 1 && $id_mes <= 16) {
                 $detalles[] = [
                     'id_mes' => $id_mes,
-                    'estado' => $estado ?: 'pagado'
+                    'estado' => $estado
                 ];
+                $idsTodos[$id_mes] = true;
+            }
+            if ($id_mes >= 1 && $id_mes <= 12) {
+                $idsMeses[$id_mes] = true;
             }
         }
         $stmt->close();
 
         echo json_encode([
-            'exito'          => true,
-            'meses_pagados'  => array_values(array_unique($ids)),
-            'detalles'       => $detalles,
-            'ingreso'        => null
+            'exito'             => true,
+            'meses_pagados'     => array_values(array_map('intval', array_keys($idsMeses))),
+            'periodos_pagados'  => array_values(array_map('intval', array_keys($idsTodos))),
+            'detalles'          => $detalles,
+            'ingreso'           => null
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
