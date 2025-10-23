@@ -501,8 +501,8 @@
   align-items: center;
   justify-content: space-between;
   min-height: 11vh;
-  max-height: 11vh;
-  gap: 1rem;
+  max-height: 12vh;
+
   padding: 0.9rem 1rem;
   background: var(--surface-secondary);
   border: 1px solid var(--border-color);
@@ -959,14 +959,14 @@
 
 /* DANGER (rojo) */
 .btn.btn-danger {
-  background: var(--danger-500) !important;
+  background: var(--primary-500) !important;
   color: #fff !important;
-  border: 1px solid var(--danger-500) !important;
+  border: 1px solid var(--primary-500) !important;
   box-shadow: var(--shadow-sm);
 }
 .btn.btn-danger:hover:not(:disabled) {
-  background: var(--danger-600) !important;
-  border-color: var(--danger-600) !important;
+  background: var(--primary-600) !important;
+  border-color: var(--primary-600) !important;
   box-shadow: var(--shadow-md);
 }
 .btn.btn-danger:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-sm); }
@@ -1062,7 +1062,7 @@
   flex-direction:column;
   line-height:1.2;
 }
-.sitch-labes .subline{ font-weight:400; opacity:.8; margin-top:2px; }
+.sitch-labes .subline{ font-weight:400; opacity:.8;  }
 
 /* ===== Tooltip de info (arriba y centrado) ===== */
 .anual-mitades-info{
@@ -1148,3 +1148,30 @@
 .dis-newedit{ display: flex; }
 #btn-editmatricula{max-width: 25%;}
 #input-editmetricula{max-width: 120px;}
+/* Bloque textual del CONTADO ANUAL: fila cuando está apagado, columna cuando está activo */
+.sitch-labes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; line-height: 1.2; }
+
+/* El subline ya lo tenías */
+.sitch-labes .subline { font-weight: 400; opacity: .8; }
+
+/* Controla el layout del título + subline */
+.anual-text.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;         /* 👉 todo en una fila cuando NO está activo */
+  flex-wrap: wrap;
+}
+
+.anual-text.stack {
+  display: flex;
+  flex-direction: column; /* 👉 apilado como en tu imagen cuando SÍ está activo */
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* En móvil ajustamos los espacios */
+@media (max-width: 640px){
+  .sitch-labes { gap: 6px; }
+  .anual-text.row { gap: 6px; }
+  .anual-text.stack { gap: 2px; }
+}

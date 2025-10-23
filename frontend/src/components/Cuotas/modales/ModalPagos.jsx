@@ -1460,40 +1460,50 @@ const ModalPagos = ({ socio, onClose }) => {
                   <span className="switch"><span className="switch-thumb" /></span>
 
                   <div className='dis-newedit'>
-                    <span className="switch-label sitch-labes">
-                      <strong>CONTADO ANUAL</strong>
-                      <span className="subline">
-                        {(() => {
-                          const base = anualManualActivo
-                            ? Number(montoAnualManual || 0)
-                            : Number(montoAnualConDescuento || 0);
-                          const txtBase = formatearARS(Math.max(0, Math.round(base)));
-                          if (anualManualActivo) return `(${txtBase} • monto manual)`;
-                          return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
-                        })()}
-                      </span>
+<span className="switch-label">
+  <span className="sitch-labes">
+    {/* Título + subline: cambian de fila a columna según el estado */}
+    <span className={`anual-text ${anualSeleccionado ? 'stack' : 'row'}`}>
+      <strong>CONTADO ANUAL</strong>
+      <span className="subline">
+        {(() => {
+          const base = anualManualActivo
+            ? Number(montoAnualManual || 0)
+            : Number(montoAnualConDescuento || 0);
+          const txtBase = formatearARS(Math.max(0, Math.round(base)));
+          if (anualManualActivo) return `(${txtBase} • monto manual)`;
+          return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
+        })()}
+      </span>
+    </span>
 
-                      {/* Chips de estado si ya hay registros */}
-                      {estadoAnualFull && (
-                        <span className={`chip ${estadoAnualFull === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-                          Año: {capitalizar(estadoAnualFull)}
-                        </span>
-                      )}
-                      {!estadoAnualFull && (estadoAnualH1 || estadoAnualH2) && (
-                        <>
-                          {estadoAnualH1 && (
-                            <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-                              1ª mitad: {capitalizar(estadoAnualH1)}
-                            </span>
-                          )}
-                          {estadoAnualH2 && (
-                            <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
-                              2ª mitad: {capitalizar(estadoAnualH2)}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
+    {/* Chips SOLO cuando NO está activo el anual */}
+    {!anualSeleccionado && (
+      <>
+        {estadoAnualFull && (
+          <span className={`chip ${estadoAnualFull === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+            Año: {capitalizar(estadoAnualFull)}
+          </span>
+        )}
+        {!estadoAnualFull && (estadoAnualH1 || estadoAnualH2) && (
+          <>
+            {estadoAnualH1 && (
+              <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+                1ª mitad: {capitalizar(estadoAnualH1)}
+              </span>
+            )}
+            {estadoAnualH2 && (
+              <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
+                2ª mitad: {capitalizar(estadoAnualH2)}
+              </span>
+            )}
+          </>
+        )}
+      </>
+    )}
+  </span>
+</span>
+
 
                     {/* Botones editar/quitar (solo si NO está bloqueado por pago previo total) */}
                     {!bloqueadoAnual && !anualEditando && (
