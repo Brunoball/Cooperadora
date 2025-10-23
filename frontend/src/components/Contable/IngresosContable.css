@@ -364,10 +364,10 @@ small { font-size: var(--fs-small); color: var(--muted); }
 }
 .gradient--brand-red .btn.ghost:hover{ background: rgba(255,255,255,.18); }
 .gradient--brand-red .btn.solid{
-  background:#fff; color:#b91c1c; border-color:transparent;
+  background:#fff; color:var(--primary); border-color:transparent;
   box-shadow: 0 8px 18px rgba(184,28,28,.22);
 }
-.gradient--brand-red .btn.solid:hover{ color:#991b1b; }
+
 
 /* ===== Franja roja del sidebar ===== */
 .ing-side__row--top.gradient--brand-red{
@@ -489,3 +489,35 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-catitem-btn:focus-visible{
   outline:0; box-shadow: 0 0 0 3px rgba(59,130,246,.35);
 }
+/* === Evitar desbordes de texto entre columnas (ellipsis) === */
+.ing-row > div{
+  min-width: 0;            /* 💡 imprescindible en grid para que pueda encogerse */
+  overflow: hidden;        /* oculta lo que se pasa */
+  text-overflow: ellipsis; /* muestra "..." */
+  white-space: nowrap;     /* todo en una sola línea */
+}
+
+/* Asegurar ellipsis en columnas textuales largas */
+.c-alumno .name-small,
+.c-proveedor,
+.c-imputacion,
+.c-medio,
+.c-fecha,
+.c-mes{
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La “pill” de categoría también con ellipsis si es muy larga */
+.c-cat .pill{
+  max-width: 100%;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La columna de acciones no necesita ellipsis */
+.c-actions{ overflow: visible; white-space: normal; }

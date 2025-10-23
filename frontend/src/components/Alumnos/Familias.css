@@ -1,43 +1,52 @@
 /* src/components/Alumnos/Familias.css */
-/* ========= Variables (paleta roja) ========= */
+/* ========= Variables (paleta azul institucional vía alias reg-*) ========= */
 :root{
-  --reg-primary:#B71C1C;
-  --reg-primary-light:#E53935;
-  --reg-primary-dark:#7F0000;
+  /* Colores base */
+  --reg-primary:        var(--blue-inst-primary);
+  --reg-primary-light:  var(--blue-inst-primary-light);
+  --reg-primary-dark:   var(--blue-inst-primary-dark);
 
-  --reg-secondary:#1D428A;
-  --reg-accent:#C62828;
+  --reg-secondary:      var(--blue-inst-secondary);
+  --reg-accent:         var(--blue-inst-accent);
 
-  --reg-success:#10B981;
-  --reg-warning:#F59E0B;
-  --reg-danger:#D32F2F;
-  --reg-light:#F8FAFC;
-  --reg-dark:#0F172A;
+  /* Estados */
+  --reg-success:        var(--blue-inst-success);
+  --reg-warning:        var(--blue-inst-warning);
+  --reg-danger:         var(--blue-inst-danger);
 
-  --reg-gray-100:#F1F5F9;
-  --reg-gray-200:#E2E8F0;
-  --reg-gray-300:#CBD5E1;
-  --reg-gray-400:#94A3B8;
-  --reg-gray-500:#64748B;
-  --reg-gray-600:#475569;
-  --reg-gray-700:#334155;
-  --reg-gray-800:#1E293B;
-  --reg-gray-900:#0F172A;
+  /* Neutros */
+  --reg-light:          var(--blue-inst-light);
+  --reg-dark:           var(--blue-inst-dark);
 
-  --reg-border-radius:12px;
-  --reg-border-radius-sm:8px;
-  --reg-border-radius-lg:16px;
-  --reg-border-radius-xl:20px;
+  --reg-gray-100:       var(--blue-inst-gray-100);
+  --reg-gray-200:       var(--blue-inst-gray-200);
+  --reg-gray-300:       var(--blue-inst-gray-300);
+  --reg-gray-400:       var(--blue-inst-gray-400);
+  --reg-gray-500:       var(--blue-inst-gray-500);
+  --reg-gray-600:       var(--blue-inst-gray-600);
+  --reg-gray-700:       var(--blue-inst-gray-700);
+  --reg-gray-800:       var(--blue-inst-gray-800);
+  --reg-gray-900:       var(--blue-inst-gray-900);
 
-  --reg-transition:all .3s cubic-bezier(.4,0,.2,1);
+  /* Radios */
+  --reg-border-radius:    var(--blue-inst-radius);
+  --reg-border-radius-sm: 8px; /* no hay sm en blue-inst, mantenemos 8px */
+  --reg-border-radius-lg: var(--blue-inst-radius-lg);
+  --reg-border-radius-xl: var(--blue-inst-radius-xl);
 
-  --reg-shadow-sm:0 1px 3px rgba(0,0,0,.05);
-  --reg-shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);
-  --reg-shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);
-  --reg-shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04);
+  /* Transición */
+  --reg-transition:     var(--blue-inst-transition);
 
-  --mix-primary-10: color-mix(in srgb, var(--reg-primary) 12%, white);
+  /* Sombras */
+  --reg-shadow-sm:      var(--blue-inst-shadow-sm);
+  --reg-shadow-md:      var(--blue-inst-shadow-md);
+  --reg-shadow-lg:      var(--blue-inst-shadow-lg);
+  --reg-shadow-xl:      var(--blue-inst-shadow-xl);
+
+  /* Utilidad: mezcla basada en el nuevo primary */
+  --mix-primary-10:     color-mix(in srgb, var(--reg-primary) 12%, white);
 }
+
 
 /* ========= Página / Topbar ========= */
 .ntg-page{

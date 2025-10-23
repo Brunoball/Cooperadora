@@ -1,18 +1,20 @@
+// src/components/Principal/Principal.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUsers,
-  faMoneyCheckDollar,   // Cuotas
-  faUserPlus,            // Registro
-  faSignOutAlt,          // Salir
-  faIdCard,              // Tipos de documento
-  faLayerGroup           // Categorías
+  faMoneyCheckDollar,
+  faUserPlus,
+  faSignOutAlt,
+  faIdCard,
+  faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import logoRH from "../../imagenes/Escudo.png";
 import "./principal.css";
+import "../Global/roots.css";
 
-/* =========== Modal cierre de sesión ============= */
+/* =========== Modal cierre de sesión (clases: modalprincipal-*) ============= */
 const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
   const cancelBtnRef = useRef(null);
 
@@ -26,34 +28,36 @@ const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
 
   if (!open) return null;
 
+  const stop = (e) => e.stopPropagation();
+
   return (
     <div
-      className="logout-modal-overlay"
+      className="modalprincipal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="logout-modal-title"
+      aria-labelledby="modalprincipal-title"
       onMouseDown={onClose}
     >
       <div
-        className="logout-modal-container logout-modal--danger"
-        onMouseDown={(e) => e.stopPropagation()}
+        className="modalprincipal-container modalprincipal--danger"
+        onMouseDown={stop}
       >
-        <div className="logout-modal__icon" aria-hidden="true">
+        <div className="modalprincipal__icon" aria-hidden="true">
           <FontAwesomeIcon icon={faSignOutAlt} />
         </div>
 
-        <h3 id="logout-modal-title" className="logout-modal-title logout-modal-title--danger">
+        <h3 id="modalprincipal-title" className="modalprincipal-title">
           Confirmar cierre de sesión
         </h3>
 
-        <p className="logout-modal-text">
+        <p className="modalprincipal-text">
           ¿Estás seguro de que deseas cerrar la sesión?
         </p>
 
-        <div className="logout-modal-buttons">
+        <div className="modalprincipal-buttons">
           <button
             type="button"
-            className="logout-btn logout-btn--ghost"
+            className="modalprincipal-btn modalprincipal-btn--ghost"
             onClick={onClose}
             ref={cancelBtnRef}
           >
@@ -61,7 +65,7 @@ const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
           </button>
           <button
             type="button"
-            className="logout-btn logout-btn--solid-danger"
+            className="modalprincipal-btn modalprincipal-btn--solid-danger"
             onClick={onConfirm}
           >
             Confirmar
@@ -76,7 +80,6 @@ const Principal = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-
   const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
@@ -97,22 +100,18 @@ const Principal = () => {
     } catch {}
   }, []);
 
-  // rol normalizado (no limita accesos)
   const role = (usuario?.rol || "").toLowerCase();
   const isAdmin = role === "admin";
 
-  // Menú (REMOVIDO "Gestión Contable" /contable; AGREGADO "Libro Contable" /contable/libro)
   const menuItems = [
-    { icon: faUsers,            text: "Gestionar Alumnos",     ruta: "/alumnos" },
-    { icon: faMoneyCheckDollar, text: "Gestionar Cuotas",      ruta: "/cuotas" },
-    { icon: faIdCard,           text: "Tipos de Documento",    ruta: "/tipos-documentos" },
-    { icon: faLayerGroup,       text: "Categorías",            ruta: "/categorias" },
-    { icon: faUserPlus,         text: "Registro de Usuarios",  ruta: "/registro" },
-    // ⬇️ Nuevo acceso en lugar de “Gestión Contable”
-    { icon: faMoneyCheckDollar, text: "Contable",        ruta: "/contable/libro" },
+    { icon: faUsers,            text: "Gestionar Alumnos",    ruta: "/alumnos" },
+    { icon: faMoneyCheckDollar, text: "Gestionar Cuotas",     ruta: "/cuotas" },
+    { icon: faIdCard,           text: "Tipos de Documento",   ruta: "/tipos-documentos" },
+    { icon: faLayerGroup,       text: "Categorías",           ruta: "/categorias" },
+    { icon: faUserPlus,         text: "Registro de Usuarios", ruta: "/registro" },
+    { icon: faMoneyCheckDollar, text: "Contable",             ruta: "/contable/libro" },
   ];
 
-  // 🔒 Si NO es admin, solo ve "Alumnos"
   const visibleItems = isAdmin
     ? menuItems
     : menuItems.filter((m) => m.ruta === "/alumnos");
@@ -142,38 +141,48 @@ const Principal = () => {
   return (
     <div className={`pagina-principal-container ${isExiting ? "slide-fade-out" : ""}`}>
       <div className="pagina-principal-card">
-        <div className="pagina-principal-header">
-          <div className="logo-container">
+        {/* ===== Header: texto izq / logo der ===== */}
+        <div className="pagina-principal-header header--row">
+          <div className="header-text">
+            <h1 className="title">
+              Sistema de Gestión{" "}
+              <span className="title-accent">Cooperadora IPET 50</span>
+            </h1>
+            <p className="subtitle">
+              {isAdmin ? "Panel de administración" : "Panel de consulta"}
+            </p>
+          </div>
+
+          <div className="logo-container logo-container--right">
             <img src={logoRH} alt="Logo IPET 50" className="logo" />
           </div>
-          <h1 className="title">
-              Sistema de Gestión <span className="title-accent">Cooperadora IPET 50</span>
-          </h1>
-          <p className="subtitle">
-            {isAdmin ? "Panel de administración" : "Panel de consulta"}
-          </p>
         </div>
 
+        {/* ===== Tarjetas ===== */}
         <div className="menu-container">
-          <div className="menu-grid">
+          <div className="menu-grid flex--compact">
             {visibleItems.map((item, index) => (
               <button
                 type="button"
                 key={index}
-                className="menu-button"
+                className="menu-button card--compact"
                 onClick={() => handleItemClick(item)}
                 aria-label={item.text}
               >
-                <div className="button-icon">
+                <div className="button-icon icon--sm">
                   <FontAwesomeIcon icon={item.icon} size="lg" />
                 </div>
-                <span className="button-text">{item.text}</span>
+                <span className="button-text text--sm">{item.text}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <button type="button" className="logout-button" onClick={handleCerrarSesion}>
+        <button
+          type="button"
+          className="logout-button"
+          onClick={handleCerrarSesion}
+        >
           <FontAwesomeIcon icon={faSignOutAlt} className="logout-icon" />
           <span className="logout-text-full">Cerrar Sesión</span>
           <span className="logout-text-short">Salir</span>
@@ -181,7 +190,11 @@ const Principal = () => {
 
         <footer className="pagina-principal-footer">
           Desarrollado por{" "}
-          <a href="https://3devsnet.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://3devsnet.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             3devs.solutions
           </a>
         </footer>

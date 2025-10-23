@@ -455,7 +455,7 @@ export default function EgresoContable(){
             </div>
 
             <div className="eg_stats">
-              <div className="eg_stat" style={{"--kpi-icon-bg":"linear-gradient(135deg, #ef4444, #b91c1c)"}}>
+              <div className="eg_stat">
                 <div className="eg_stat__icon">$</div>
                 <div>
                   <p className="eg_stat__label">Total</p>

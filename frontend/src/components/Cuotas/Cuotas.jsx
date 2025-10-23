@@ -32,6 +32,7 @@ import { imprimirRecibos } from '../../utils/imprimirRecibos';
 import { imprimirRecibosExternos } from '../../utils/imprimirRecibosExternos';
 import Toast from '../Global/Toast';
 import './Cuotas.css';
+import "../Global/roots.css"
 
 const normalizar = (s = '') =>
   String(s).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');

@@ -1,41 +1,45 @@
 /* ====== Fuente ====== */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
-/* ====== :root ROJO (sin degradados) — variables con prefijo ini- ====== */
+/* ====== :root AZUL (aliasando ini-* a blue-inst-*) ====== */
 :root {
-  /* 🎨 PALETA ROJA */
-  --ini-primary: #B71C1C;          /* Rojo principal */
-  --ini-primary-light: #E53935;    /* Rojo claro para focus/hover */
-  --ini-primary-dark: #7F0000;     /* Rojo profundo para hover */
+  /* 🎨 PALETA AZUL (alias) */
+  --ini-primary:           var(--blue-inst-primary);
+  --ini-primary-light:     var(--blue-inst-primary-light);
+  --ini-primary-dark:      var(--blue-inst-primary-dark);
 
-  --ini-secondary: #1D428A;        /* (se mantiene por si se usa) */
-  --ini-accent: #C62828;
+  --ini-secondary:         var(--blue-inst-secondary);
+  --ini-accent:            var(--blue-inst-accent);
 
-  --ini-success: #10B981;
-  --ini-warning: #F59E0B;
-  --ini-danger: #D32F2F;
+  /* Estados */
+  --ini-success:           var(--blue-inst-success);
+  --ini-warning:           var(--blue-inst-warning);
+  --ini-danger:            var(--blue-inst-danger);
 
-  --ini-light: #F8FAFC;
-  --ini-dark: #0F172A;
+  /* Neutros */
+  --ini-light:             var(--blue-inst-light);
+  --ini-dark:              var(--blue-inst-dark);
 
-  --ini-gray-100: #F1F5F9;
-  --ini-gray-200: #E2E8F0;
-  --ini-gray-300: #CBD5E1;
-  --ini-gray-400: #94A3B8;
-  --ini-gray-500: #64748B;
-  --ini-gray-600: #475569;
-  --ini-gray-700: #334155;
-  --ini-gray-800: #1E293B;
-  --ini-gray-900: #0F172A;
+  --ini-gray-100:          var(--blue-inst-gray-100);
+  --ini-gray-200:          var(--blue-inst-gray-200);
+  --ini-gray-300:          var(--blue-inst-gray-300);
+  --ini-gray-400:          var(--blue-inst-gray-400);
+  --ini-gray-500:          var(--blue-inst-gray-500);
+  --ini-gray-600:          var(--blue-inst-gray-600);
+  --ini-gray-700:          var(--blue-inst-gray-700);
+  --ini-gray-800:          var(--blue-inst-gray-800);
+  --ini-gray-900:          var(--blue-inst-gray-900);
 
-  --ini-border-radius: 12px;
-  --ini-border-radius-lg: 16px;
-  --ini-border-radius-xl: 20px;
-  --ini-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --ini-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --ini-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --ini-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --ini-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  /* Radios / transición / sombras */
+  --ini-border-radius:     var(--blue-inst-radius);
+  --ini-border-radius-lg:  var(--blue-inst-radius-lg);
+  --ini-border-radius-xl:  var(--blue-inst-radius-xl);
+  --ini-transition:        var(--blue-inst-transition);
+
+  --ini-shadow-sm:         var(--blue-inst-shadow-sm);
+  --ini-shadow-md:         var(--blue-inst-shadow-md);
+  --ini-shadow-lg:         var(--blue-inst-shadow-lg);
+  --ini-shadow-xl:         var(--blue-inst-shadow-xl);
 }
 
 /* ====== Fondo con IMAGEN (sin degradado) ====== */

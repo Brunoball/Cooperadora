@@ -1,110 +1,119 @@
-/* ====== :root ROJO (con más tonalidades rojas) — variables con prefijo reg- ====== */
+/* ====== :root AZUL (aliasando todo el esquema reg-* a blue-inst-*) ====== */
 :root {
-  /* 🎨 PALETA ROJA AMPLIADA */
-  --reg-primary: #C62828;          /* Rojo principal más vibrante */
-  --reg-primary-light: #EF5350;    /* Rojo claro para focus/hover */
-  --reg-primary-dark: #B71C1C;     /* Rojo profundo para hover */
-  --reg-primary-darker: #8B0000;   /* Rojo muy oscuro */
+  /* 🎨 PALETA (alias) */
+  --reg-primary:            var(--blue-inst-primary);
+  --reg-primary-light:      var(--blue-inst-primary-light);
+  --reg-primary-dark:       var(--blue-inst-primary-dark);
+  --reg-primary-darker:     var(--blue-inst-dark);
 
-  --reg-secondary: #D32F2F;        /* Rojo secundario */
-  --reg-accent: #F44336;           /* Rojo acento más brillante */
-  --reg-accent-light: #FFCDD2;     /* Rojo muy claro */
-  --reg-accent-dark: #C62828;
+  --reg-secondary:          var(--blue-inst-secondary);
+  --reg-accent:             var(--blue-inst-accent);
+  --reg-accent-light:       var(--blue-inst-gray-100);
+  --reg-accent-dark:        var(--blue-inst-primary-dark);
 
-  --reg-coral: #FF5722;            /* Rojo coral */
-  --reg-crimson: #DC143C;          /* Carmesí */
-  --reg-burgundy: #8B1538;         /* Borgoña */
-  --reg-rose: #E91E63;             /* Rosa rojizo */
+  /* Nombres extra mapeados a tonos azules/coherentes */
+  --reg-coral:              var(--blue-inst-secondary);
+  --reg-crimson:            var(--blue-inst-primary);
+  --reg-burgundy:           var(--blue-inst-primary-dark);
+  --reg-rose:               var(--blue-inst-primary-light);
 
-  --reg-success: #2E7D32;          /* Verde más oscuro */
-  --reg-warning: #FF8F00;          /* Naranja más rojizo */
-  --reg-danger: #D32F2F;           /* Rojo peligro */
+  /* Estados */
+  --reg-success:            var(--blue-inst-success);
+  --reg-warning:            var(--blue-inst-warning);
+  --reg-danger:             var(--blue-inst-danger);
 
-  --reg-light: #FAFAFA;
-  --reg-dark: #212121;
+  /* Claro/oscuro */
+  --reg-light:              var(--blue-inst-light);
+  --reg-dark:               var(--blue-inst-dark);
 
-  --reg-gray-50: #FAFAFA;
-  --reg-gray-100: #F5F5F5;
-  --reg-gray-200: #EEEEEE;
-  --reg-gray-300: #E0E0E0;
-  --reg-gray-400: #BDBDBD;
-  --reg-gray-500: #9E9E9E;
-  --reg-gray-600: #757575;
-  --reg-gray-700: #616161;
-  --reg-gray-800: #424242;
-  --reg-gray-900: #212121;
+  /* Escala de grises (equivalentes azules) */
+  --reg-gray-50:            var(--blue-inst-light);
+  --reg-gray-100:           var(--blue-inst-gray-100);
+  --reg-gray-200:           var(--blue-inst-gray-200);
+  --reg-gray-300:           var(--blue-inst-gray-300);
+  --reg-gray-400:           var(--blue-inst-gray-400);
+  --reg-gray-500:           var(--blue-inst-gray-500);
+  --reg-gray-600:           var(--blue-inst-gray-600);
+  --reg-gray-700:           var(--blue-inst-gray-700);
+  --reg-gray-800:           var(--blue-inst-gray-800);
+  --reg-gray-900:           var(--blue-inst-gray-900);
 
-  /* Tonos rojos específicos */
-  --reg-red-50: #FFEBEE;
-  --reg-red-100: #FFCDD2;
-  --reg-red-200: #EF9A9A;
-  --reg-red-300: #E57373;
-  --reg-red-400: #EF5350;
-  --reg-red-500: #F44336;
-  --reg-red-600: #E53935;
-  --reg-red-700: #D32F2F;
-  --reg-red-800: #C62828;
-  --reg-red-900: #B71C1C;
+  /* “Tonos rojos específicos” → escala azul equivalente */
+  --reg-red-50:             var(--blue-inst-light);
+  --reg-red-100:            var(--blue-inst-gray-100);
+  --reg-red-200:            var(--blue-inst-gray-200);
+  --reg-red-300:            var(--blue-inst-gray-300);
+  --reg-red-400:            var(--blue-inst-gray-400);
+  --reg-red-500:            var(--blue-inst-primary-light);
+  --reg-red-600:            var(--blue-inst-primary);
+  --reg-red-700:            var(--blue-inst-primary-dark);
+  --reg-red-800:            var(--blue-inst-gray-800);
+  --reg-red-900:            var(--blue-inst-gray-900);
 
-  --reg-border-radius: 12px;
-  --reg-border-radius-lg: 16px;
-  --reg-border-radius-xl: 20px;
+  /* Radios / transición / sombras */
+  --reg-border-radius:      var(--blue-inst-radius);
+  --reg-border-radius-lg:   var(--blue-inst-radius-lg);
+  --reg-border-radius-xl:   var(--blue-inst-radius-xl);
 
-  --reg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --reg-transition:         var(--blue-inst-transition);
 
-  --reg-shadow-sm: 0 1px 3px rgba(183, 28, 28, 0.08);
-  --reg-shadow-md: 0 4px 6px -1px rgba(183, 28, 28, 0.12), 0 2px 4px -1px rgba(183, 28, 28, 0.08);
-  --reg-shadow-lg: 0 10px 15px -3px rgba(183, 28, 28, 0.12), 0 4px 6px -2px rgba(183, 28, 28, 0.08);
-  --reg-shadow-xl: 0 20px 25px -5px rgba(183, 28, 28, 0.15), 0 10px 10px -5px rgba(183, 28, 28, 0.08);
+  --reg-shadow-sm:          var(--blue-inst-shadow-sm);
+  --reg-shadow-md:          var(--blue-inst-shadow-md);
+  --reg-shadow-lg:          var(--blue-inst-shadow-lg);
+  --reg-shadow-xl:          var(--blue-inst-shadow-xl);
 
-  /* Asignación/alias */
-  --primary-500: var(--reg-primary);
-  --primary-600: var(--reg-primary-dark);
-  --primary-700: var(--reg-primary-darker);
-  --primary-400: var(--reg-primary-light);
-  --primary-50: var(--reg-red-50);
-  --primary-200: var(--reg-red-200);
-  --secondary-50:  #eef2ff;
-  --secondary-100: #e0e7ff;
-  --secondary-300: #a5b4fc;
-  --secondary-500: var(--reg-burgundy);
-  --secondary-600: var(--reg-primary-darker);
+  /* ===== Asignación/alias (se mantienen pero ahora referencian azul) ===== */
+  --primary-500:            var(--reg-primary);
+  --primary-600:            var(--reg-primary-dark);
+  --primary-700:            var(--reg-primary-darker);
+  --primary-400:            var(--reg-primary-light);
+  --primary-50:             var(--reg-red-50);
+  --primary-200:            var(--reg-red-200);
 
-  --success-500: var(--reg-success);
-  --success-600: #1B5E20;
+  /* Antes eran tonos lilas fijos: los pasamos a la escala azul/gris */
+  --secondary-50:           var(--blue-inst-gray-100);
+  --secondary-100:          var(--blue-inst-gray-200);
+  --secondary-300:          var(--blue-inst-gray-300);
+  --secondary-500:          var(--reg-burgundy);          /* = primary-dark azul */
+  --secondary-600:          var(--reg-primary-darker);    /* = dark azul */
 
-  --warning-500: var(--reg-warning);
-  --warning-600: #E65100;
+  --success-500:            var(--reg-success);
+  --success-600:            #1B5E20;
 
-  --danger-500: var(--reg-danger);
-  --danger-600: var(--reg-primary-dark);
-  --danger-200: var(--reg-red-200);
-  --danger-50: var(--reg-red-50);
+  --warning-500:            var(--reg-warning);
+  --warning-600:            #E65100;
 
-  --text-primary: var(--reg-gray-800);
-  --text-secondary: var(--reg-gray-600);
-  --text-muted: var(--reg-gray-500);
-  --text-on-primary: #FFFFFF;
+  --danger-500:             var(--reg-danger);
+  --danger-600:             var(--reg-primary-dark);
+  --danger-200:             var(--reg-red-200);
+  --danger-50:              var(--reg-red-50);
 
-  --background-color: #FFFFFF;
-  --surface-color: #FFFFFF;
-  --surface-secondary: var(--reg-red-50);
+  --text-primary:           var(--reg-gray-800);
+  --text-secondary:         var(--reg-gray-600);
+  --text-muted:             var(--reg-gray-500);
+  --text-on-primary:        #FFFFFF;
 
-  --border-color: var(--reg-red-200);
+  --background-color:       #FFFFFF;
+  --surface-color:          #FFFFFF;
+  --surface-secondary:      var(--reg-red-50);            /* ahora es azul claro */
+  --border-color:           var(--reg-red-200);           /* ahora gris/azul 200 */
 
-  --gradient-background: linear-gradient(135deg, var(--reg-primary) 0%, var(--reg-primary-dark) 50%, var(--reg-burgundy) 100%);
-  --gradient-accent: linear-gradient(135deg, var(--reg-accent) 0%, var(--reg-crimson) 50%, var(--reg-primary) 100%);
-  --gradient-primary: linear-gradient(135deg, var(--reg-primary) 0%, var(--reg-primary-dark) 100%);
+  /* Gradientes actualizados a azul */
+  --gradient-background:    linear-gradient(135deg, var(--reg-primary) 0%, var(--reg-primary-dark) 50%, var(--reg-burgundy) 100%);
+  --gradient-accent:        linear-gradient(135deg, var(--reg-accent) 0%, var(--reg-crimson) 50%, var(--reg-primary) 100%);
+  --gradient-primary:       linear-gradient(135deg, var(--reg-primary) 0%, var(--reg-primary-dark) 100%);
 
-  --btn-agregar-alumno: var(--reg-success);
-  --btn-dados-bajas: var(--reg-danger);
+  /* Botones */
+  --btn-agregar-alumno:     var(--reg-success);
+  --btn-dados-bajas:        var(--reg-danger);
 
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --spacing-xs: 0.5rem;
+  /* Otros */
+  --transition-fast:        0.15s ease;
+  --transition-normal:      0.3s ease;
+  --spacing-xs:             0.5rem;
 
-  --border-radius: var(--reg-border-radius);
-  --border-radius-sm: 8px;
+  --border-radius:          var(--reg-border-radius);
+  --border-radius-sm:       8px;
 }
 
 /* =========================================================
@@ -413,7 +422,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-box-table {
   border-radius: var(--border-radius);
   overflow: hidden;
-  border-bottom: 2px solid var(--accent-red);
+  border-bottom: 2px solid var(--blue-inst-gray-500);
   background: var(--surface-color);
 }
 
@@ -510,10 +519,10 @@ input:-webkit-autofill { background-color: transparent !important; }
 }
 
 /* Variantes de color */
-.alu-iconchip.is-info  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
-.alu-iconchip.is-edit  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
-.alu-iconchip.is-delete{ --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
-.alu-iconchip.is-baja  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:#d32f2f; }
+.alu-iconchip.is-info  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
+.alu-iconchip.is-edit  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
+.alu-iconchip.is-delete{ --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
+.alu-iconchip.is-baja  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
 
 /* Hover genérico (levanta y sombrea) */
 .alu-iconchip:hover {

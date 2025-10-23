@@ -1,28 +1,34 @@
-/* ===== Paleta ROJA (tu sistema) ===== */
+/* ===== Paleta ROJA (aliasada a AZUL INSTITUCIONAL) ===== */
 :root{
-  --reg-primary:#B71C1C;
-  --reg-primary-light:#E53935;
-  --reg-primary-dark:#7F0000;
+  /* Colores principales */
+  --reg-primary:        var(--blue-inst-primary);
+  --reg-primary-light:  var(--blue-inst-primary-light);
+  --reg-primary-dark:   var(--blue-inst-primary-dark);
 
-  --reg-success:#10B981;
-  --reg-danger:#D32F2F;
+  /* Estados */
+  --reg-success:        var(--blue-inst-success);
+  --reg-danger:         var(--blue-inst-danger);
 
-  --reg-gray-50:#F8FAFC;
-  --reg-gray-100:#F1F5F9;
-  --reg-gray-200:#E2E8F0;
-  --reg-gray-300:#CBD5E1;
-  --reg-gray-400:#94A3B8;
-  --reg-gray-600:#475569;
-  --reg-dark:#0F172A;
+  /* Grises y fondo */
+  --reg-gray-50:        var(--blue-inst-light);         /* no hay gray-50 azul, usamos el light */
+  --reg-gray-100:       var(--blue-inst-gray-100);
+  --reg-gray-200:       var(--blue-inst-gray-200);
+  --reg-gray-300:       var(--blue-inst-gray-300);
+  --reg-gray-400:       var(--blue-inst-gray-400);
+  --reg-gray-600:       var(--blue-inst-gray-600);
+  --reg-dark:           var(--blue-inst-dark);
 
-  --reg-radius:12px;
-  --reg-radius-lg:18px;
+  /* Radios */
+  --reg-radius:         var(--blue-inst-radius);
+  --reg-radius-lg:      var(--blue-inst-radius-lg);
 
-  --reg-shadow-sm:0 1px 3px rgba(0,0,0,.05);
-  --reg-shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);
-  --reg-shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04);
+  /* Sombras */
+  --reg-shadow-sm:      var(--blue-inst-shadow-sm);
+  --reg-shadow-md:      var(--blue-inst-shadow-md);
+  --reg-shadow-xl:      var(--blue-inst-shadow-xl);
 
-  --reg-trans:all .25s cubic-bezier(.4,0,.2,1);
+  /* Transición */
+  --reg-trans:          var(--blue-inst-transition);
 }
 
 /* ===== Tokens del modal ===== */

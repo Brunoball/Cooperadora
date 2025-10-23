@@ -4,6 +4,7 @@ import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes, FaInfoCircle, FaSave }
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalPagos.css';
+import "../../Global/roots.css"
 
 // Utils impresión
 import { imprimirRecibos } from '../../../utils/imprimirRecibos.jsx';

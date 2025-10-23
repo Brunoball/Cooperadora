@@ -1,9 +1,48 @@
-/* src/components/Cuotas/modales/ModalPagos.css */
+/* =========================
+   PALETA AZUL INSTITUCIONAL (si ya la tenés global, podés quitar este bloque)
+   ========================= */
+:root {
+  --blue-inst-primary: #1D428A;
+  --blue-inst-primary-light: #2E5CBF;
+  --blue-inst-primary-dark: #102E6A;
+
+  --blue-inst-secondary: #0B5ED7;
+  --blue-inst-accent: #0B5ED7;
+
+  --blue-inst-success: #10B981;
+  --blue-inst-warning: #F59E0B;
+  --blue-inst-danger:  #D32F2F;
+
+  --blue-inst-light: #F8FAFC;
+  --blue-inst-dark:  #0F172A;
+
+  --blue-inst-gray-100: #F1F5F9;
+  --blue-inst-gray-200: #E2E8F0;
+  --blue-inst-gray-300: #CBD5E1;
+  --blue-inst-gray-400: #94A3B8;
+  --blue-inst-gray-500: #64748B;
+  --blue-inst-gray-600: #475569;
+  --blue-inst-gray-700: #334155;
+  --blue-inst-gray-800: #1E293B;
+  --blue-inst-gray-900: #0F172A;
+
+  --blue-inst-radius: 12px;
+  --blue-inst-radius-lg: 18px;
+  --blue-inst-radius-xl: 24px;
+
+  --blue-inst-transition: all .25s cubic-bezier(.4,0,.2,1);
+
+  --blue-inst-shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+  --blue-inst-shadow-md: 0 6px 18px rgba(0,0,0,.10);
+  --blue-inst-shadow-lg: 0 16px 36px -10px rgba(0,0,0,.20);
+  --blue-inst-shadow-xl: 0 28px 64px -24px rgba(0,0,0,.28);
+}
+
 /* =========================================================
-   Variables y base (PRIMARIO = GRAY 700)
+   Variables y base (PRIMARIO = GRAY 700) + mapeo institucional
    ========================================================= */
 :root {
-  /* Colores primarios GRAY */
+  /* Colores primarios GRAY (se mantienen) */
   --primary-50:  #f8fafc;
   --primary-100: #f1f5f9;
   --primary-200: #e2e8f0;
@@ -16,35 +55,38 @@
   --primary-900: #0f172a;
   --primary-950: #0a0f1a; /* ajuste profundo */
 
-  /* Alias */
+  /* Alias primarios */
   --primary-color: var(--primary-700);
   --primary-hover: var(--primary-800);
   --primary-light: var(--primary-200);
   --primary-dark: var(--primary-900);
   --primary-accent: var(--primary-500);
 
-  /* Complementarios (SECUNDARIO = AZUL para contraste) */
+  /* Complementarios (SECUNDARIO = AZUL).
+     Ajusto 500/700/900 para alinearlos al institucional,
+     el resto queda como respaldo (escala Tailwind blue). */
   --secondary-50:  #eff6ff;
   --secondary-100: #dbeafe;
   --secondary-200: #bfdbfe;
   --secondary-300: #93c5fd;
   --secondary-400: #60a5fa;
-  --secondary-500: #3b82f6;
-  --secondary-600: #2563eb;
-  --secondary-700: #1d4ed8;
-  --secondary-800: #1e40af;
-  --secondary-900: #1e3a8a;
+  --secondary-500: var(--blue-inst-primary-light); /* was #3b82f6 */
+  --secondary-600: var(--blue-inst-secondary);     /* acento */
+  --secondary-700: var(--blue-inst-primary);       /* was #1d4ed8 */
+  --secondary-800: #1e40af;                        /* respaldo */
+  --secondary-900: var(--blue-inst-primary-dark);  /* was #1e3a8a */
 
-  --secondary-color: var(--secondary-600);
-  --secondary-hover: var(--secondary-700);
+  /* Alias secundarios (usan institucional) */
+  --secondary-color: var(--blue-inst-primary);
+  --secondary-hover: var(--blue-inst-primary-dark);
 
-  /* Estado */
+  /* Estado (se mantienen, pero mapeo success/warning/danger a institucional) */
   --success-50:  #ecfdf5;
   --success-100: #d1fae5;
   --success-200: #a7f3d0;
   --success-300: #6ee7b7;
   --success-400: #34d399;
-  --success-500: #10b981;
+  --success-500: var(--blue-inst-success);
   --success-600: #059669;
   --success-700: #047857;
 
@@ -53,7 +95,7 @@
   --warning-200: #fde68a;
   --warning-300: #fcd34d;
   --warning-400: #fbbf24;
-  --warning-500: #f59e0b;
+  --warning-500: var(--blue-inst-warning);
   --warning-600: #d97706;
 
   --danger-50:  #fef2f2;
@@ -61,11 +103,11 @@
   --danger-200: #fecaca;
   --danger-300: #fca5a5;
   --danger-400: #f87171;
-  --danger-500: #ef4444;  /* rojo base */
-  --danger-600: #dc2626;  /* rojo hover / header */
+  --danger-500: var(--blue-inst-danger);  /* rojo base institucional */
+  --danger-600: #dc2626;                  /* rojo hover / header */
   --danger-700: #b91c1c;
 
-  /* Neutros / Superficies */
+  /* Neutros / Superficies (sin cambios) */
   --gray-50:  #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
@@ -81,24 +123,24 @@
   --surface-color: #ffffff;
   --surface-secondary: var(--gray-100);
   --border-color: var(--gray-200);
-  --border-focus: var(--primary-500);
+  --border-focus: var(--blue-inst-primary-light); /* foco azul institucional */
   --text-primary: var(--gray-900);
   --text-secondary: var(--gray-600);
   --text-muted: var(--gray-400);
   --text-on-primary: #ffffff;
 
-  /* Gradientes */
+  /* Gradientes (apoyados en secundarios ya mapeados al institucional) */
   --gradient-primary: linear-gradient(135deg, var(--secondary-500), var(--secondary-700));
   --gradient-danger: linear-gradient(135deg, var(--danger-500), var(--danger-600));
   --gradient-hero: linear-gradient(135deg, var(--secondary-500) 0%, var(--secondary-700) 50%, var(--secondary-900) 100%);
   --gradient-background: linear-gradient(135deg, var(--gray-100) 30%, var(--secondary-500) 70%);
   --gradient-accent: linear-gradient(90deg, var(--secondary-500), var(--secondary-700));
 
-  /* Sombras */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  /* Sombras (usan institucional) */
+  --shadow-sm: var(--blue-inst-shadow-sm);
+  --shadow-md: var(--blue-inst-shadow-md);
+  --shadow-lg: var(--blue-inst-shadow-lg);
+  --shadow-xl: var(--blue-inst-shadow-xl);
 
   /* Radios / Spacings / Transiciones */
   --border-radius: 8px;
@@ -116,7 +158,7 @@
 
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: var(--blue-inst-transition);
 
   /* Cascada */
   --cascade-stagger: 50ms;
@@ -155,7 +197,7 @@
   background-color: transparent;
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 1160px;
+  max-width: 1200px;
   max-height: 92vh;
   display: flex;
   flex-direction: column;
@@ -193,10 +235,7 @@
   background: linear-gradient(135deg, var(--success-500), var(--success-700));
 }
 
-/* Cabecera roja para el modal de registro (según pedido) */
-.danger-header {
-  background: var(--gradient-danger);
-}
+
 
 .modal-header-content {
   display: flex;
@@ -215,9 +254,7 @@
   color: var(--text-on-primary);
 }
 
-.modal-icon-circle.success-icon {
-  background-color: rgba(255, 255, 255, 0.25);
-}
+.modal-icon-circle.success-icon { background-color: rgba(255, 255, 255, 0.25); }
 
 .modal-title {
   margin: 0;
@@ -274,9 +311,7 @@
   padding: 1.25rem;
   box-shadow: var(--shadow-md);
 }
-.success-panel--full {
-  grid-template-columns: 1fr;
-}
+.success-panel--full { grid-template-columns: 1fr; }
 
 .success-left {
   display: grid;
@@ -284,9 +319,7 @@
   gap: 1rem;
   align-items: flex-start;
 }
-.success-left--full {
-  grid-template-columns: auto 1fr; /* mantiene el check + textos */
-}
+.success-left--full { grid-template-columns: auto 1fr; }
 
 .success-check {
   display: grid;
@@ -337,12 +370,7 @@
   grid-template-columns: 1fr auto;
 }
 
-.badge-line {
-  display: flex;
-  gap: .5rem;
-  flex-wrap: wrap;
-  margin-top: .5rem;
-}
+.badge-line { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
 .badge-soft {
   background: var(--secondary-50);
   color: var(--secondary-700);
@@ -403,11 +431,7 @@
   border: 1px solid var(--gray-200);
 }
 
-.hint {
-  font-size: .85rem;
-  color: var(--text-secondary);
-  text-align: center;
-}
+.hint { font-size: .85rem; color: var(--text-secondary); text-align: center; }
 
 /* Tarjeta info socio (vista normal) */
 .socio-info-card {
@@ -419,7 +443,7 @@
 }
 
 /* Acento rojo solicitado */
-.socio-info-card--danger { border-left-color: var(--danger-600); }
+.socio-info-card--danger { border-left-color: var(--blue-inst-accent); }
 
 .socio-info-header {
   display: flex;
@@ -442,10 +466,7 @@
   font-size: 0.875rem;
 }
 
-.fecha-label {
-  color: var(--text-secondary);
-}
-
+.fecha-label { color: var(--text-secondary); }
 .fecha-valor {
   color: var(--text-primary);
   font-weight: 500;
@@ -458,14 +479,8 @@
   align-items: center;
 }
 
-.valor-mes {
-  font-size: 0.95rem;
-  color: var(--text-primary);
-}
-
-.valor-mes--danger strong { 
-  color: var(--danger-700); 
-}
+.valor-mes { font-size: 0.95rem; color: var(--text-primary); }
+.valor-mes--danger strong { color: var(--agr-primary); }
 
 .badge-info {
   background: var(--secondary-50);
@@ -476,8 +491,6 @@
   font-weight: 600;
   font-size: 0.8rem;
 }
-
-
 
 /* =========================================================
    Condonar — Caja con switch y selector de año
@@ -548,23 +561,11 @@
 }
 .condonar-check input:checked + .switch .switch-thumb { transform: translateX(18px); }
 
-.switch-label {
-  font-size: .95rem;
-  color: var(--text-primary);
-  line-height: 1.25;
-}
+.switch-label { font-size: .95rem; color: var(--text-primary); line-height: 1.25; }
 .switch-label strong { font-weight: 700; color: var(--gray-900); }
 
-.matricula-label {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.matricula-monto {
-  margin-left: 6px;
-}
+.matricula-label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.matricula-monto { margin-left: 6px; }
 
 /* Selector de año */
 .year-picker {
@@ -575,9 +576,7 @@
   gap: .5rem;
 }
 
-.libre-input-container {
-  gap: 10px;
-}
+.libre-input-container { gap: 10px; }
 
 .libre-input {
   padding: 10px;
@@ -664,11 +663,8 @@
   border-radius: 10px;
   background: #fff;
 }
-
-.anual-mitades-info {
-  font-size: 12px;
-  color: #475569;
-}
+.anual-mitades-info { font-size: 12px; color: #475569; }
+.anual-mitades-importe { font-weight: 600; color: var(--gray-800); }
 
 /* =========================================================
    Edición de matrícula
@@ -682,7 +678,6 @@
   border-radius: 10px;
   background: #fff;
 }
-
 .matricula-input {
   padding: 8px;
   width: 180px;
@@ -693,9 +688,7 @@
 /* =========================================================
    Familia - miembros
    ========================================================= */
-.family-dropdown {
-  position: relative;
-}
+.family-dropdown { position: relative; }
 
 .members-list {
   list-style: none;
@@ -714,34 +707,15 @@
   border-radius: 8px;
   background: #f8fafc;
 }
+.current-member { background: #fff7ed; }
 
-.current-member {
-  background: #fff7ed;
-}
+.member-name { font-weight: 500; }
 
-.member-name {
-  font-weight: 500;
-}
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid #e2e8f0; }
+.chip-success { background: #ecfdf5; }
+.chip-muted { background: #f1f5f9; }
 
-.chip {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid #e2e8f0;
-}
-
-.chip-success {
-  background: #ecfdf5;
-}
-
-.chip-muted {
-  background: #f1f5f9;
-}
-
-.no-members {
-  font-size: 13px;
-  color: #64748b;
-}
+.no-members { font-size: 13px; color: #64748b; }
 
 .family-members-panel {
   position: absolute;
@@ -835,10 +809,7 @@
   inset: 0;
   background-color: rgba(255, 255, 255, 0.6);
 }
-.periodo-card.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.periodo-card.disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Checkbox custom */
 .periodo-checkbox { position: relative; margin-right: 0.75rem; z-index: 1; }
@@ -913,15 +884,9 @@
 
 .success-footer { background: #fff; }
 
-.footer-left {
-  display: flex;
-  align-items: center;
-}
+.footer-left { display: flex; align-items: center; }
 
-.footer-actions {
-  display: flex;
-  gap: 1rem;
-}
+.footer-actions { display: flex; gap: 1rem; }
 
 .total-badge {
   display: inline-flex;
@@ -958,17 +923,12 @@
   background: var(--surface-color);
   box-shadow: 0 1px 0 rgb(0 0 0 / .02);
 }
-.btn:hover:not(:disabled) {
-  background: var(--gray-50);
-}
+.btn:hover:not(:disabled) { background: var(--gray-50); }
 .btn:focus-visible {
-  outline: 3px solid rgba(59,130,246,.6);
+  outline: 3px solid color-mix(in srgb, var(--secondary-500) 60%, transparent);
   outline-offset: 2px;
 }
-.btn:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: none;
-}
+.btn:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 
 .btn-small { padding: 0.4rem 0.75rem; font-size: 0.75rem; min-width: auto; }
@@ -984,7 +944,7 @@
   border-color: var(--secondary-300);
 }
 
-/* PRIMARIO (se mantiene para otros lugares) */
+/* PRIMARIO (azul institucional) */
 .btn.btn-primary {
   background-color: var(--secondary-color) !important;
   color: var(--text-on-primary) !important;
@@ -997,7 +957,7 @@
   box-shadow: var(--shadow-md);
 }
 
-/* DANGER (rojo) — solicitado para botón inferior y éxito */
+/* DANGER (rojo) */
 .btn.btn-danger {
   background: var(--danger-500) !important;
   color: #fff !important;
@@ -1009,10 +969,7 @@
   border-color: var(--danger-600) !important;
   box-shadow: var(--shadow-md);
 }
-.btn.btn-danger:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: var(--shadow-sm);
-}
+.btn.btn-danger:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-sm); }
 
 /* SECUNDARIO */
 .btn.btn-secondary {
@@ -1043,14 +1000,8 @@
 }
 
 /* Botón ghost */
-.btn.btn-ghost {
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-.btn.btn-ghost:hover:not(:disabled) {
-  background: var(--gray-100);
-}
+.btn.btn-ghost { background: transparent; border: 1px solid transparent; box-shadow: none; }
+.btn.btn-ghost:hover:not(:disabled) { background: var(--gray-100); }
 
 /* Spinner dentro de botón */
 .spinner-btn {
@@ -1087,273 +1038,113 @@
     gap: 0.5rem;
   }
 
-  .condonar-box {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  .condonar-box { flex-direction: column; align-items: flex-start; }
   .year-picker { width: 100%; justify-content: flex-end; }
   
-  .socio-info-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-  
-  .socio-info-extra {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
+  .socio-info-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .socio-info-extra  { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
 }
 
 @media (max-width: 400px) {
   .modal-header-content { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .modal-icon-circle { display: none; }
-  
-  .anual-mitades {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .matricula-edit {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .matricula-input {
-    width: 100%;
-  }
+  .anual-mitades { flex-direction: column; align-items: flex-start; }
+  .matricula-edit { flex-direction: column; align-items: stretch; }
+  .matricula-input { width: 100%; }
 }
+
+/* Utilidades finales */
 .centrar-familia{ display: flex; justify-content: space-between; width: 100%;}
 .condonarAño-montoLibre{display: flex; flex-wrap: nowrap; gap: 10px;}
 
 .sitch-labes{
-  display:flex;              /* apila los hijos */
+  display:flex;
   flex-direction:column;
   line-height:1.2;
 }
-
-.sitch-labes .subline{
-  font-weight:400;
-  opacity:.8;                /* opcional, para bajarle el tono */
-  margin-top:2px;            /* separa del título */
-}
+.sitch-labes .subline{ font-weight:400; opacity:.8; margin-top:2px; }
 
 /* ===== Tooltip de info (arriba y centrado) ===== */
 .anual-mitades-info{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-size:12px;
-  color:#475569;
-  overflow: visible; /* aseguro que el hijo pueda sobresalir */
+  display:flex; align-items:center; gap:10px; font-size:12px; color:#475569; overflow: visible;
 }
-
-.anual-mitades-importe{
-  font-weight:600;
-  color: var(--gray-800);
-}
+.anual-mitades-importe{ font-weight:600; color: var(--gray-800); }
 
 .info-icon{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  border:1px solid var(--gray-300);
-  background:#fff;
-  color: var(--primary-600);
+  position:relative; display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:50%;
+  border:1px solid var(--gray-300); background:#fff; color: var(--primary-600);
   transition: var(--transition-fast);
 }
 .info-icon:hover{ background: var(--gray-100); }
-.info-icon:focus-visible{
-  outline:2px solid var(--secondary-500);
-  outline-offset:2px;
-}
+.info-icon:focus-visible{ outline:2px solid var(--secondary-500); outline-offset:2px; }
 
-/* Tooltip arriba y centrado respecto al icono */
+/* Tooltip */
 .info-icon .tip{
-  position:absolute;
-  bottom: calc(100% + 10px);     /* arriba del icono */
-  transform: translateX(-50%);
-  width: 240px;
-  padding: 6px 10px;
-  background: var(--secondary-50);
-  color:var(--secondary-700);
-  border:1px solid rgba(0,0,0,.15);
-  border-radius:10px;
-  font-size:12px;
-  font-weight: 500;
-  line-height:1.25;
-  text-align: center;
-  white-space: normal;            /* permite varias líneas si hace falta */
-  box-shadow: var(--shadow-lg);
-  opacity:0;
-  pointer-events:none;
-  transition: var(--transition-fast);
-  z-index: 30;                    /* por encima de chips/bordes */
+  position:absolute; bottom: calc(100% + 10px); transform: translateX(-50%);
+  width: 240px; padding: 6px 10px; background: var(--secondary-50); color:var(--secondary-700);
+  border:1px solid rgba(0,0,0,.15); border-radius:10px; font-size:12px; font-weight: 500; line-height:1.25; text-align: center;
+  white-space: normal; box-shadow: var(--shadow-lg); opacity:0; pointer-events:none; transition: var(--transition-fast); z-index: 30;
 }
-
-/* Flechita apuntando hacia el icono (abajo del tooltip) */
 .info-icon .tip::before{
-  content:"";
-  position:absolute;
-  top:100%;
-  left:50%;
-  transform: translateX(-50%);
-  border-width:6px;
-  border-style:solid;
-  border-color: var(--secondary-700) transparent transparent transparent;
+  content:""; position:absolute; top:100%; left:50%; transform: translateX(-50%);
+  border-width:6px; border-style:solid; border-color: var(--secondary-700) transparent transparent transparent;
 }
-
-/* Mostrar al hover o foco por teclado */
-.info-icon:hover .tip,
-.info-icon:focus-visible .tip{
-  opacity:1;
-}
-
-/* Opcional: en pantallas muy angostas, achicar un poco */
-@media (max-width: 480px){
-  .info-icon .tip{ max-width: 200px; }
-}
+.info-icon:hover .tip, .info-icon:focus-visible .tip{ opacity:1; }
 
 .sep_headeric{display: flex; gap: 10px;}
-
 
 /* =========================
    Medio de pago – estilos
    ========================= */
 .medio-pago-row{
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  background: #fff;
-  box-shadow: var(--shadow-sm);
+  display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 12px; padding: 10px 12px;
+  border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); background: #fff; box-shadow: var(--shadow-sm);
 }
-
-.medio-pago-label{
-  font-weight: 700;
-  color: var(--gray-800);
-  letter-spacing: .2px;
-}
+.medio-pago-label{ font-weight: 700; color: var(--gray-800); letter-spacing: .2px; }
 
 .medio-pago-select{
-  width: 100%;
-  min-height: 40px;
-  padding: 10px 40px 10px 12px;
-  border: 1px solid var(--gray-300);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--text-primary);
-  font-weight: 600;
-  transition: var(--transition-fast);
-  box-shadow: 0 1px 0 rgb(0 0 0 / .02);
-  appearance: none;                 /* oculta flecha por defecto */
-  -moz-appearance: none;
-  -webkit-appearance: none;
+  width: 100%; min-height: 40px; padding: 10px 40px 10px 12px;
+  border: 1px solid var(--gray-300); border-radius: 10px; background: #fff; color: var(--text-primary); font-weight: 600;
+  transition: var(--transition-fast); box-shadow: 0 1px 0 rgb(0 0 0 / .02);
+  appearance: none; -moz-appearance: none; -webkit-appearance: none;
   background-image:
-    linear-gradient(transparent,transparent), /* para permitir hover */
+    linear-gradient(transparent,transparent),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%2364758b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 14px;
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 14px;
 }
-
-.medio-pago-select:hover{
-  border-color: var(--secondary-300);
-  background-color: var(--secondary-50);
-}
-
+.medio-pago-select:hover{ border-color: var(--secondary-300); background-color: var(--secondary-50); }
 .medio-pago-select:focus{
-  outline: none;
-  border-color: var(--secondary-500);
-  box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+  outline: none; border-color: var(--secondary-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary-500) 20%, transparent);
 }
+.medio-pago-select:disabled{ opacity: .6; cursor: not-allowed; background-color: var(--gray-100); }
+.medio-pago-select option[disabled][value=""]{ color: var(--text-secondary); }
 
-.medio-pago-select:disabled{
-  opacity: .6;
-  cursor: not-allowed;
-  background-color: var(--gray-100);
-}
-
-/* Estado “sin datos” (option vacía) */
-.medio-pago-select option[disabled][value=""]{
-  color: var(--text-secondary);
-}
-
-/* Variante compacta para pantallas chicas */
+/* Compacta */
 @media (max-width: 640px){
-  .medio-pago-row{
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 10px;
-  }
-  .medio-pago-label{
-    font-size: .9rem;
-  }
+  .medio-pago-row{ grid-template-columns: 1fr; gap: 8px; padding: 10px; }
+  .medio-pago-label{ font-size: .9rem; }
 }
 
-/* (Opcional) Si querés un ícono a la izquierda del select: 
-   agregá un contenedor con .medio-pago-input y un span .medio-pago-icon */
-.medio-pago-input{
-  position: relative;
-}
+/* Ícono opcional a la izquierda */
+.medio-pago-input{ position: relative; }
 .medio-pago-icon{
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 14px;
-  color: var(--gray-500);
-  pointer-events: none;
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; color: var(--gray-500); pointer-events: none;
 }
 
 /* ==== Medio de pago al lado de Matrícula (misma fila) ==== */
-.matricula-box {
-  /* ya hereda condonar-box: display:flex; justify-content:space-between; */
-  gap: 12px;
-}
+.matricula-box { gap: 12px; }
+.medio-pago-inline{ display: flex; align-items: center; gap: 8px; min-width: 280px; }
+.medio-pago-inline-label{ font-weight: 700; color: var(--gray-800); white-space: nowrap; }
+.medio-pago-input{ position: relative; }
 
-/* Contenedor del selector a la derecha */
-.medio-pago-inline{             /* empuja a la derecha */
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 280px;                   /* ancho cómodo del select */
-}
-
-/* Etiqueta compacta */
-.medio-pago-inline-label{
-  font-weight: 700;
-  color: var(--gray-800);
-  white-space: nowrap;
-}
-
-/* Reutilizamos .medio-pago-select existente */
-.medio-pago-input{
-  position: relative;
-}
-
-/* Responsive: en móviles, que baje debajo de la etiqueta de matrícula */
 @media (max-width: 640px){
-  .matricula-box{
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .medio-pago-inline{
-    margin-left: 0;
-    min-width: 100%;
-  }
+  .matricula-box{ flex-direction: column; align-items: stretch; }
+  .medio-pago-inline{ margin-left: 0; min-width: 100%; }
 }
 
-.dis-newedit{
-  display: flex;
-}
+.dis-newedit{ display: flex; }
 #btn-editmatricula{max-width: 25%;}
 #input-editmetricula{max-width: 120px;}

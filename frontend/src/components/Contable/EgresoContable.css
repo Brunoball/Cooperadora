@@ -11,17 +11,42 @@
   --global-header-h: 86; /* Cambiá este valor si tu header cambia de alto */
 }
 
-/* ======= Paleta y base ======= */
+/* ======= Paleta y base (alias a azul institucional) ======= */
 .eg_layout{
-  --red-700:#b91c1c; --red-600:#dc2626; --red-500:#ef4444; --red-400:#f87171;
-  --bg:#f6f7fb; --surface:#fff; --border:#e8ecf4; --text:#0f172a; --muted:#64748b;
-  --primary:#b91c1c; --primary-600:#991b1b; --accent:#fecaca;
-  --ok:#10b981; --danger:#ef4444;
-  --r-xl:18px; --r-lg:16px; --r-md:12px;
-  --shadow:0 10px 30px rgba(15,23,42,.08);
-  --shadow-soft:0 6px 18px rgba(2,6,23,.06);
-  background:var(--bg);
+  /* Escala “red-*” remapeada a azules coherentes */
+  --red-700: var(--blue-inst-primary-dark);
+  --red-600: var(--blue-inst-primary);
+  --red-500: var(--blue-inst-primary-light);
+  --red-400: var(--blue-inst-gray-400);
+
+  /* Superficies y texto */
+  --bg:      var(--blue-inst-light);
+  --surface: #fff;
+  --border:  var(--blue-inst-gray-200);
+  --text:    var(--blue-inst-dark);
+  --muted:   var(--blue-inst-gray-500);
+
+  /* Primarios / acento */
+  --primary:       var(--blue-inst-primary);
+  --primary-600:   var(--blue-inst-primary-dark);
+  --accent:        var(--blue-inst-gray-100);
+
+  /* Estados */
+  --ok:     var(--blue-inst-success);
+  --danger: var(--blue-inst-danger);
+
+  /* Radios */
+  --r-xl:   var(--blue-inst-radius-xl);
+  --r-lg:   var(--blue-inst-radius-lg);
+  --r-md:   var(--blue-inst-radius);
+
+  /* Sombras */
+  --shadow:       var(--blue-inst-shadow-lg);
+  --shadow-soft:  var(--blue-inst-shadow-md);
+
+  background: var(--bg);
 }
+
 .eg_layout *{ box-sizing:border-box; }
 
 /* ======= Body two columns ======= */
@@ -148,7 +173,7 @@
 
 /* Botón blanco tipo pill (Registrar egreso) */
 .eg_btn.eg_btn--whitepill{
-  appearance:none; border:1px solid #fecaca; background:#fff; color:#7f1d1d;
+  appearance:none; border:1px solid #fecaca; background:#fff; color:var(--primary);
   border-radius:10px; padding:10px 16px; font-weight:800;
   display:inline-flex; align-items:center; gap:8px;
   transition: all .3s;
@@ -365,15 +390,37 @@
 /* ==== Layout full screen, sin islas flotantes ==== */
 html, body, #root { height:100%; }
 .eg_layout{
-  --red-700:#b91c1c; --red-600:#dc2626; --red-500:#ef4444; --red-400:#f87171;
-  --bg:#fff; --surface:#fff; --border:#e8ecf4; --text:#0f172a; --muted:#64748b;
-  --primary:#b91c1c; --primary-600:#991b1b; --accent:#fecaca;
-  --ok:#10b981; --danger:#ef4444;
-  --shadow:none; --shadow-soft:none;
-  --r-xl:0; --r-lg:0; --r-md:0;
+  /* “red-*” ahora apuntan a la escala azul */
+  --red-700: var(--blue-inst-primary-dark);
+  --red-600: var(--blue-inst-primary);
+  --red-500: var(--blue-inst-primary-light);
+  --red-400: var(--blue-inst-gray-400);
+
+  /* Superficies y texto */
+  --bg:      var(--blue-inst-light);
+  --surface: #fff;
+  --border:  var(--blue-inst-gray-200);
+  --text:    var(--blue-inst-dark);
+  --muted:   var(--blue-inst-gray-500);
+
+  /* Primarios y acento */
+  --primary:       var(--blue-inst-primary);
+  --primary-600:   var(--blue-inst-primary-dark);
+  --accent:        var(--blue-inst-gray-100);
+
+  /* Estados */
+  --ok:     var(--blue-inst-success);
+  --danger: var(--blue-inst-danger);
+
+  /* Sombras y radios (se mantienen como pediste) */
+  --shadow:      none;
+  --shadow-soft: none;
+  --r-xl: 0; --r-lg: 0; --r-md: 0;
+
   background:#fff;
   min-height: calc(100vh - var(--global-header-h));
 }
+
 .eg_body{
   display:grid;
   grid-template-columns: 320px 1fr;
