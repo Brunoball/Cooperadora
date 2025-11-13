@@ -553,3 +553,65 @@ small { font-size: var(--fs-small); color: var(--muted); }
 @media (max-width: 1024px){
   .ing-catlist{ max-height: 42vh; }
 }
+/* ====================================
+   GRILLA PARA CATEGORÍAS (SIDEBAR)
+   texto / monto
+   registros / monto
+   ==================================== */
+
+/* Que la lista nunca genere scroll horizontal */
+.ing-catlist{
+  overflow-x: hidden;
+}
+
+/* El botón de categoría se vuelve una grilla 2x2 */
+.ing-catitem-btn{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto; /* texto | monto */
+  grid-template-rows: auto auto;              /* fila 1: nombre, fila 2: registros */
+  grid-template-areas:
+    "name name"
+    "meta amount";
+  column-gap: 10px;
+  row-gap: 2px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Hacemos que los hijos de .ing-catline participen directo en la grilla */
+.ing-catline{
+  display: contents;
+}
+
+/* Nombre de la categoría: arriba a la izquierda */
+.ing-catname{
+  grid-area: name;
+  font-weight: 900;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* “18 registros”: abajo a la izquierda */
+.ing-catmeta{
+  grid-area: meta;
+  font-size: .85rem;
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Monto: columna derecha ocupando las dos filas */
+.ing-catamount{
+  grid-area: amount;
+  font-weight: 900;
+  color: var(--cat-amount);
+  white-space: nowrap;
+  justify-self: flex-end;
+  align-self: center;
+}
