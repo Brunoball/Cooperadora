@@ -584,3 +584,66 @@ html, body, #root { height:100%; }
 @media (max-width: 1200px){
   .eg_cats{ max-height: 42vh; }
 }
+/* ============================
+   CATEGORÍAS EN GRILLA
+   título | monto
+   registros | monto
+   ============================ */
+
+.eg_cats{
+  overflow-x: hidden;   /* que nunca aparezca scroll horizontal */
+}
+
+/* Tarjeta como grid 2x2 */
+.eg_catcard{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "title title"
+    "count value";
+  column-gap: 12px;
+  row-gap: 2px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* El wrapper deja pasar a los hijos al grid */
+.eg_catcard__left{
+  display: contents;
+}
+
+/* Título arriba izquierda */
+.eg_catcard__title{
+  grid-area: title;
+  font-weight: 900;
+  letter-spacing: .3px;
+  color: var(--text);
+  line-height: 1.1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "18 registros" abajo izquierda */
+.eg_catcard__count{
+  grid-area: count;
+  font-size: .85rem;
+  color: #6b7280;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Monto ocupando las dos filas a la derecha */
+.eg_catcard__value{
+  grid-area: value;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: #2563eb;
+  white-space: nowrap;
+  justify-self: flex-end;
+  align-self: center;
+}
