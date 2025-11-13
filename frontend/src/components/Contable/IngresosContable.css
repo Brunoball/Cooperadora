@@ -521,3 +521,35 @@ small { font-size: var(--fs-small); color: var(--muted); }
 
 /* La columna de acciones no necesita ellipsis */
 .c-actions{ overflow: visible; white-space: normal; }
+/* ==== Scroll solo en la lista de categorías (sidebar) ==== */
+/* Pasamos el scroll del panel a la lista de categorías */
+.ing-side { min-height: 0; }
+.ing-side__inner{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;     /* ← el panel deja de scrollear */
+  min-height: 0;        /* ← habilita overflow en hijos */
+}
+
+/* La lista ocupa el espacio restante y scrollea */
+.ing-catlist{
+  flex: 1 1 auto;       /* ← se estira dentro del sidebar */
+  overflow-y: auto;     /* ← scroll vertical */
+  min-height: 0;
+  padding-right: 4px;   /* pequeño respiro para la scrollbar */
+}
+
+/* Scrollbar sutil (opcional) */
+.ing-catlist::-webkit-scrollbar{ width: 8px; }
+.ing-catlist::-webkit-scrollbar-track{ background: transparent; }
+.ing-catlist::-webkit-scrollbar-thumb{
+  background: rgba(0,0,0,.15);
+  border-radius: 8px;
+}
+.ing-catlist:hover::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.28); }
+
+/* En móvil, limita la altura si el sidebar flota */
+@media (max-width: 1024px){
+  .ing-catlist{ max-height: 42vh; }
+}

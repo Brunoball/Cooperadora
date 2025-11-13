@@ -550,3 +550,37 @@ html, body, #root { height:100%; }
   padding:6px 10px; border-radius:8px; cursor:pointer;
 }
 .ing-filterchip__clear:hover{ filter:brightness(.96); }
+/* ==== Scroll en la lista de categorías (sin romper el layout) ==== */
+.eg_filters{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;              /* clave para permitir que hijos hagan overflow */
+}
+
+.paddingcenter{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;              /* permite que .eg_cats calcule correctamente */
+}
+
+.eg_cats{
+  flex: 1 1 auto;             /* ocupa el espacio restante del panel */
+  overflow-y: auto;           /* activa scroll vertical */
+  min-height: 0;              
+  padding-right: 4px;         /* respiro para la scrollbar */
+}
+
+/* Scrollbar sutil (opcional) */
+.eg_cats::-webkit-scrollbar{ width: 8px; }
+.eg_cats::-webkit-scrollbar-track{ background: transparent; }
+.eg_cats::-webkit-scrollbar-thumb{
+  background: rgba(0,0,0,.15);
+  border-radius: 8px;
+}
+.eg_cats:hover::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.28); }
+
+/* En vista móvil, limita altura si el sidebar ya no ocupa todo el alto */
+@media (max-width: 1200px){
+  .eg_cats{ max-height: 42vh; }
+}
