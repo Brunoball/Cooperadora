@@ -10,10 +10,8 @@ const hoy = new Date();
 const Y = hoy.getFullYear();
 const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
 
-
 /* ---------- Helpers ---------- */
 // Importante: NO mandamos headers personalizados para no disparar preflight CORS.
-// Usamos querystring ?ts=... y cache: 'no-store' (no dispara preflight).
 const fetchJSON = async (url, options = {}) => {
   const sep = url.includes("?") ? "&" : "?";
   const finalUrl = `${url}${sep}ts=${Date.now()}`;
@@ -24,7 +22,6 @@ const fetchJSON = async (url, options = {}) => {
     cache: "no-store",
     redirect: "follow",
     signal: ac.signal,
-    // credentials: "same-origin"  // si tu backend requiere cookies en otro dominio, ajustá CORS en el server
     ...options,
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -55,12 +52,11 @@ function useAnimatedNumber(target, { duration = 800, deps = [] } = {}) {
 }
 
 /* ---------- DonutChart (Ingresos = AZUL / Egresos = ROJO) ---------- */
-/* Arreglo: un arco por serie con dasharray fijo + offset. Evita saltos/gaps. */
 function DonutChart({ ingresos = 0, egresos = 0 }) {
   const total = Math.max(ingresos + egresos, 1);
   const targetP = ingresos / total; // 0..1
 
-  // número central animado (suave)
+  // número central animado
   const animIngresos = useAnimatedNumber(ingresos, { duration: 800, deps: [ingresos] });
 
   const size = 180;
@@ -68,7 +64,6 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
-  // largos de arcos
   const lenIng = c * targetP;
   const lenEgr = c * (1 - targetP);
 
@@ -82,12 +77,10 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
         aria-label="Ingresos vs Egresos"
       >
         <defs>
-          {/* Ingresos = AZUL */}
           <linearGradient id="gradIng" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#1D428A" />
             <stop offset="100%" stopColor="#1D428A" />
           </linearGradient>
-          {/* Egresos = ROJO */}
           <linearGradient id="gradEgr" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#B71C1C" />
             <stop offset="100%" stopColor="#B71C1C" />
@@ -97,7 +90,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
         {/* anillo de fondo */}
         <circle cx={size/2} cy={size/2} r={r} stroke="#eef2ff" strokeWidth={stroke} fill="none" />
 
-        {/* Ingresos (arranca arriba, -90°) */}
+        {/* Ingresos */}
         <circle
           cx={size/2} cy={size/2} r={r}
           stroke="url(#gradIng)" strokeWidth={stroke} fill="none"
@@ -108,7 +101,7 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
           className="rc_donut_arc"
         />
 
-        {/* Egresos (arranca donde termina Ingresos) */}
+        {/* Egresos */}
         <circle
           cx={size/2} cy={size/2} r={r}
           stroke="url(#gradEgr)" strokeWidth={stroke} fill="none"
@@ -141,7 +134,6 @@ function DonutChart({ ingresos = 0, egresos = 0 }) {
 }
 
 /* ---------- LineChart (con animaciones) ---------- */
-/* Arreglo: sacamos el filter de sombra (costoso en SVG) para que no pegue tirones. */
 function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
   const W = 700, H = 240, P = 24;
   const maxV = Math.max(...data.map((d) => d.value), 1);
@@ -187,7 +179,7 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
         {/* área con fade-in */}
         <path d={area} fill="url(#gradLine)" className="rc_line_area_in" />
 
-        {/* trazo que se dibuja (sin filter pesado) */}
+        {/* trazo */}
         <path
           d={path}
           stroke={color}
@@ -197,7 +189,7 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
           pathLength="1"
         />
 
-        {/* puntos con stagger */}
+        {/* puntos */}
         {points.map((p, i) => (
           <circle
             key={i}
@@ -228,7 +220,7 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
 
 /* ---------- Página ---------- */
 export default function ResumenContable() {
-  const location = useLocation(); // detecta ingreso/retorno a la ruta
+  const location = useLocation();
   const [resumen, setResumen] = useState([]);
   const [anioRes, setAnioRes] = useState(Y);
   const [aniosCat, setAniosCat] = useState([]);
@@ -238,13 +230,11 @@ export default function ResumenContable() {
 
   const loadAniosDisponibles = async (prefer = anioRes) => {
     try {
-      // Usamos el endpoint contable_resumen que ahora devuelve los años disponibles
       const raw = await fetchJSON(
         `${BASE_URL}/api.php?action=contable_resumen&year=${prefer}`
       );
       const anios = Array.isArray(raw?.anios_disponibles) ? raw.anios_disponibles : [];
       setAniosCat(anios);
-      // Si el año preferido no está disponible, seleccionar el primero de la lista
       if (anios.length > 0 && !anios.includes(prefer)) {
         setAnioRes(anios[0]);
       }
@@ -261,7 +251,6 @@ export default function ResumenContable() {
         `${BASE_URL}/api.php?action=contable_resumen&year=${anioRes}`
       );
       setResumen(raw?.resumen || []);
-      // Actualizar también la lista de años disponibles desde la respuesta
       if (raw?.anios_disponibles) {
         setAniosCat(raw.anios_disponibles);
       }
@@ -285,20 +274,20 @@ export default function ResumenContable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anioRes]);
 
-  // Cada vez que ENTRÁS/volvés a esta ruta (location.key cambia)
+  // Cada vez que volvés a la ruta
   useEffect(() => {
     loadAniosDisponibles(anioRes);
     loadResumen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
-  // Al volver el foco a la pestaña/ventana (por ejemplo, regresar desde "Ingresos" o "Egresos")
+  // Refetch al recuperar foco
   useEffect(() => {
     const refetch = () => loadResumen();
     const onVisibility = () => { if (!document.hidden) loadResumen(); };
 
     window.addEventListener("focus", refetch);
-    window.addEventListener("pageshow", refetch); // cuando vuelve desde el historial/BFCache
+    window.addEventListener("pageshow", refetch);
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
@@ -329,20 +318,18 @@ export default function ResumenContable() {
     [meses12]
   );
 
-  // 👇 ÚNICO CAMBIO: etiquetas del gráfico mensual en 3 letras (Ene, Feb, Mar, ...)
+  // datos para línea mensual
   const lineData = useMemo(() => {
-    const key = "ingresos";
+    const key = "ingresos"; // si después querés cambiar a saldo/egresos, solo tocás esto
     return meses12.map((m, idx) => {
       const src = (m.nombre_mes || MESES[idx] || "").toString();
-      const label = src.slice(0, 3).toUpperCase(); // ← mantiene MAYÚSCULAS
+      const label = src.slice(0, 3).toUpperCase();
       return { label, value: Number(m[key] || 0) };
     });
   }, [meses12]);
 
-
   const serieColor = "#1D428A";
 
-  // Arreglo: key estable. Antes incluía totals.* y re-montaba el SVG a cada refetch.
   const chartKey = `${chartTab}-${anioRes}`;
   const tableKey = `${anioRes}-${resumen.length}`;
 
@@ -455,7 +442,13 @@ export default function ResumenContable() {
             </header>
 
             <div className="rc_table__wrap" role="region" aria-label="Tabla resumen anual">
-              <div className="gt_table gt_cols-4" role="table" aria-label="Resumen por mes" key={tableKey}>
+              <div
+                className="gt_table gt_cols-4"
+                role="table"
+                aria-label="Resumen por mes"
+                key={tableKey}
+              >
+                {/* CABECERA (fija, sin scroll) */}
                 <div className="gt_header" role="row">
                   <div className="gt_cell h" role="columnheader">Mes</div>
                   <div className="gt_cell h right" role="columnheader">Ingresos</div>
@@ -463,30 +456,35 @@ export default function ResumenContable() {
                   <div className="gt_cell h right" role="columnheader">Resultado</div>
                 </div>
 
-                {meses12.map((r, idx) => (
-                  <div
-                    className="gt_row anim"
-                    role="row"
-                    key={idx}
-                    style={{ "--delay": `${idx * 55}ms` }}
-                  >
-                    <div className="gt_cell mespading" role="cell">{r.nombre_mes}</div>
-                    <div className="gt_cell right" role="cell">
-                      ${Number(r.ingresos || 0).toLocaleString("es-AR")}
-                    </div>
-                    <div className="gt_cell right" role="cell">
-                      ${Number(r.egresos || 0).toLocaleString("es-AR")}
-                    </div>
+                {/* CUERPO SCROLLEABLE */}
+                <div className="gt_body">
+                  {meses12.map((r, idx) => (
                     <div
-                      className={`gt_cell right ${Number(r.saldo) >= 0 ? "pos" : "neg"}`}
-                      role="cell"
+                      className="gt_row anim"
+                      role="row"
+                      key={idx}
+                      style={{ "--delay": `${idx * 55}ms` }}
                     >
-                      ${Number(r.saldo || 0).toLocaleString("es-AR")}
+                      <div className="gt_cell mespading" role="cell">{r.nombre_mes}</div>
+                      <div className="gt_cell right" role="cell">
+                        ${Number(r.ingresos || 0).toLocaleString("es-AR")}
+                      </div>
+                      <div className="gt_cell right" role="cell">
+                        ${Number(r.egresos || 0).toLocaleString("es-AR")}
+                      </div>
+                      <div
+                        className={`gt_cell right ${Number(r.saldo) >= 0 ? "pos" : "neg"}`}
+                        role="cell"
+                      >
+                        ${Number(r.saldo || 0).toLocaleString("es-AR")}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {!meses12.length && !loadingRes && <div className="gt_empty">Sin datos</div>}
+                  {!meses12.length && !loadingRes && (
+                    <div className="gt_empty">Sin datos</div>
+                  )}
+                </div>
               </div>
             </div>
           </section>

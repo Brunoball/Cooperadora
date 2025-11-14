@@ -317,12 +317,32 @@
 
 .gt_table {
   --cols: auto;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: .6rem;
+  height: 100%;
 }
 .gt_table.gt_cols-4 { --cols: 8rem 1fr 1fr 1fr; }
+.gt_body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;          /* 👈 acá vive la barra de scroll */
+  display: grid;
+  gap: .6rem;
+  padding-bottom: .5rem;   /* un toque de aire abajo */
+}
 
-.gt_header { display: grid; grid-template-columns: var(--cols); }
+
+.gt_header {
+    display: grid;
+  grid-template-columns: var(--cols);
+  position: sticky;      /* 👈 hace que se pegue arriba al scrollear */
+  top: 0;                /* 👈 pegado al top del contenedor con scroll */
+  z-index: 5;            /* 👈 para que quede por encima de las filas */
+  background: #fff;      /* 👈 para tapar las filas que pasan por detrás */
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08); /* opcional: sombrita */
+ }
+
 .gt_header .gt_cell.h {
   font-size: .85rem;
   color: #64748b;
@@ -468,4 +488,12 @@
 }
 .mespading{
   padding: 0 10px;
+}
+.rc_table__wrap {
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative; /* 👈 NUEVO */
 }
