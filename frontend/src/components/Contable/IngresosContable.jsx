@@ -24,15 +24,22 @@ const MESES = [
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
 ];
 
+const STORAGE_KEYS = {
+  year: "contable_year",
+  month: "contable_month",
+};
+
 const cap1 = (s = "") => s.charAt(0) + s.slice(1).toLowerCase();
 const sfx = (n) => (n === 1 ? "" : "s");
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
+
+/* 👇 CAMBIO: ahora siempre muestra 2 decimales */
 const fmtMonto = (n) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number(n || 0));
 
 /* ===== helpers export ===== */
@@ -155,10 +162,29 @@ function ConfirmModal({
 
 /* ========= Componente principal ========= */
 export default function IngresosContable() {
-  // Filtros
-  const [anio, setAnio] = useState("ALL");
+  // Filtros (leemos de localStorage)
+  const [anio, setAnio] = useState(() => {
+    if (typeof window === "undefined") return "ALL";
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.year);
+      return saved || "ALL";
+    } catch {
+      return "ALL";
+    }
+  });
+
   const [anios, setAnios] = useState([Y]);
-  const [mes, setMes] = useState("ALL"); // string "0..11" o "ALL"
+
+  const [mes, setMes] = useState(() => {
+    if (typeof window === "undefined") return "ALL";
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.month);
+      return saved || "ALL";
+    } catch {
+      return "ALL";
+    }
+  });
+
   const [query, setQuery] = useState("");
 
   const [filas, setFilas] = useState([]);                // alumnos
@@ -186,9 +212,21 @@ export default function IngresosContable() {
   };
   const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+
+  /* 🔐 Persistir filtros en localStorage cuando cambian */
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.year, anio);
+    } catch {}
+  }, [anio]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.month, mes);
+    } catch {}
+  }, [mes]);
 
   /* ====== Rango de fechas ====== */
   const rango = useMemo(() => {
@@ -239,14 +277,11 @@ export default function IngresosContable() {
       const todosLosDatos = [];
       Object.keys(detalleCompleto).forEach((key) => {
         if (anio === "ALL") {
-          // Si está "Todos los años" no debería llegar acá porque el select de mes se deshabilita,
-          // pero igual acumulamos todo.
           todosLosDatos.push(...detalleCompleto[key]);
         } else if (key.startsWith(`${anio}-`)) {
           if (mes !== "ALL") {
-            // 🔧 FIX: mes 0-based -> 1-based
-            const mesIdx = Number(mes);            // 0..11
-            const mm = String(mesIdx + 1).padStart(2, "0"); // "01".."12"
+            const mesIdx = Number(mes);
+            const mm = String(mesIdx + 1).padStart(2, "0");
             if (key.endsWith(`-${mm}`)) {
               todosLosDatos.push(...detalleCompleto[key]);
             }

@@ -24,21 +24,27 @@ function json_input(): array {
   $obj = json_decode($raw, true);
   return is_array($obj) ? $obj : [];
 }
+
 function resolver_id_medio_pago(PDO $pdo, $id, $nombre): int {
   $id = is_numeric($id) ? (int)$id : 0;
   if ($id > 0) return $id;
+
   $nom = strtoupper(trim((string)$nombre));
   if ($nom === '') throw new InvalidArgumentException('id_medio_pago o medio_pago requerido.');
+
   $st = $pdo->prepare("SELECT id_medio_pago FROM medio_pago WHERE UPPER(medio_pago)=:n LIMIT 1");
   $st->execute([':n'=>$nom]);
   $found = $st->fetchColumn();
   if ($found) return (int)$found;
+
   // fallback OTRO
   $otro = $pdo->query("SELECT id_medio_pago FROM medio_pago WHERE UPPER(medio_pago)='OTRO' LIMIT 1")->fetchColumn();
   if ($otro) return (int)$otro;
+
   $pdo->prepare("INSERT INTO medio_pago (medio_pago) VALUES ('OTRO')")->execute();
   return (int)$pdo->lastInsertId();
 }
+
 function buscar_id_por_nombre(PDO $pdo, string $tabla, string $colId, string $colNombre, ?string $nombre): ?int {
   $nombre = strtoupper(trim((string)$nombre));
   if ($nombre === '') return null;
@@ -48,10 +54,12 @@ function buscar_id_por_nombre(PDO $pdo, string $tabla, string $colId, string $co
   $id = $st->fetchColumn();
   return $id ? (int)$id : null;
 }
+
 function obtener_anios_disponibles(PDO $pdo): array {
   $st = $pdo->query("SELECT DISTINCT YEAR(fecha) AS anio FROM egresos ORDER BY anio DESC");
   return array_map(static fn($r)=>(int)$r['anio'], $st->fetchAll(PDO::FETCH_ASSOC));
 }
+
 function obtener_max_fecha(PDO $pdo): ?string {
   $r = $pdo->query("SELECT DATE_FORMAT(MAX(fecha),'%Y-%m-%d') AS f FROM egresos")->fetch(PDO::FETCH_ASSOC);
   return $r && $r['f'] ? $r['f'] : null;
@@ -105,6 +113,7 @@ try {
       else { $where .= " AND UPPER(mp.medio_pago) = UPPER(:mnom)"; $par[':mnom'] = $medio; }
     }
 
+    // Traigo los registros y el total decimal (2 decimales)
     $sql = "
       SELECT
         e.id_egreso,
@@ -132,11 +141,30 @@ try {
     $st->execute($par);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-    $total = 0; foreach ($rows as $r) $total += (int)$r['importe'];
+    // Total desde SQL para evitar errores de redondeo por PHP
+    $sqlTotal = "
+      SELECT COALESCE(SUM(e.importe), 0) AS total
+      FROM egresos e
+      INNER JOIN medio_pago mp ON mp.id_medio_pago = e.id_medio_pago
+      LEFT JOIN contable_categoria   cc ON cc.id_cont_categoria   = e.id_cont_categoria
+      LEFT JOIN contable_proveedor   cp ON cp.id_cont_proveedor   = e.id_cont_proveedor
+      LEFT JOIN contable_descripcion cd ON cd.id_cont_descripcion = e.id_cont_descripcion
+      WHERE $where
+    ";
+    $stT = $pdo->prepare($sqlTotal);
+    $stT->execute($par);
+    $totalStr = $stT->fetchColumn();
+    $total = $totalStr !== null ? (float)$totalStr : 0.0;
+    $total = round($total, 2);
 
-    $out = ['exito'=>true,'total'=>$total,'datos'=>$rows];
-    if ($wantMeta) $out['anios_disponibles'] = obtener_anios_disponibles($pdo);
-    echo json_encode($out, JSON_UNESCAPED_UNICODE);
+    echo json_encode(
+      [
+        'exito' => true,
+        'total' => $total,       // número con decimales
+        'datos' => $rows
+      ] + ($wantMeta ? ['anios_disponibles' => obtener_anios_disponibles($pdo)] : []),
+      JSON_UNESCAPED_UNICODE
+    );
     exit;
   }
 
@@ -154,10 +182,16 @@ try {
 
     $idMedio = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
 
+    // ====== Importe DECIMAL (14,2) ======
     $importe = $in['importe'] ?? null;
-    if (!is_numeric($importe) || (int)$importe <= 0) {
+    if (!is_numeric($importe)) {
       throw new InvalidArgumentException('importe inválido.');
     }
+    $importe = (float)$importe;
+    if ($importe <= 0) {
+      throw new InvalidArgumentException('importe debe ser mayor a 0.');
+    }
+    $importe = round($importe, 2);
 
     $comprobante = trim((string)($in['comprobante'] ?? '')) ?: null;
     if ($comprobante !== null && mb_strlen($comprobante) > 100) {
@@ -198,7 +232,7 @@ try {
       ':comp' => $comprobante,
       ':d'    => $idDesc,
       ':m'    => $idMedio,
-      ':i'    => (int)$importe,
+      ':i'    => $importe,     // DECIMAL(14,2)
       ':url'  => $compURL,
     ]);
 
@@ -222,10 +256,16 @@ try {
 
     $idMedio = resolver_id_medio_pago($pdo, $in['id_medio_pago'] ?? null, $in['medio_pago'] ?? null);
 
+    // ====== Importe DECIMAL (14,2) ======
     $importe = $in['importe'] ?? null;
-    if (!is_numeric($importe) || (int)$importe <= 0) {
+    if (!is_numeric($importe)) {
       throw new InvalidArgumentException('importe inválido.');
     }
+    $importe = (float)$importe;
+    if ($importe <= 0) {
+      throw new InvalidArgumentException('importe debe ser mayor a 0.');
+    }
+    $importe = round($importe, 2);
 
     $comprobante = trim((string)($in['comprobante'] ?? '')) ?: null;
     if ($comprobante !== null && mb_strlen($comprobante) > 100) {
@@ -272,7 +312,7 @@ try {
       ':comp' => $comprobante,
       ':d'    => $idDesc,
       ':m'    => $idMedio,
-      ':i'    => (int)$importe,
+      ':i'    => $importe,     // DECIMAL(14,2)
       ':url'  => $compURL,
     ]);
 

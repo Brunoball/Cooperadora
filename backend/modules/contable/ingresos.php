@@ -14,11 +14,7 @@
  *
  *   Informe alumnos/pagos:
  *     GET   /api.php?action=contable_ingresos&year=YYYY&detalle=1
- *
- * Contratos devueltos por el informe:
- * - anios_disponibles: [YYYY, YYYY-1, ...]
- * - resumen: [{anio, mes, nombre_mes, ingresos, cantidad}]
- * - detalle: { "YYYY-MM": [{fecha_pago, Alumno, Categoria, Monto, Mes_pagado, Mes_pagado_id, Medio}] }  (si detalle=1)
+ *     GET   /api.php?action=contable_ingresos&start=YYYY-MM-DD&end=YYYY-MM-DD&detalle=1
  */
 
 declare(strict_types=1);
@@ -64,6 +60,26 @@ try {
         } catch (Throwable $e) { return false; }
     };
 
+    /**
+     * Normaliza un importe (string o número) aceptando coma o punto.
+     * Devuelve string con 2 decimales y punto (ej: "1234.56") listo para DECIMAL.
+     * Lanza error si no es válido o <= 0.
+     */
+    $normalizarImporte = function($raw) use ($json_err): string {
+        if ($raw === null || $raw === '') $json_err('importe requerido', 400);
+        $clean = str_replace(',', '.', (string)$raw);
+        // Solo dígitos y un punto decimal
+        if (!preg_match('/^\d+(?:\.\d+)?$/', $clean)) {
+            $json_err('importe inválido', 400);
+        }
+        $float = (float)$clean;
+        if (!is_finite($float) || $float <= 0) {
+            $json_err('importe inválido', 400);
+        }
+        // Limitar a 2 decimales
+        return number_format($float, 2, '.', '');
+    };
+
     /* ========================= CRUD ingresos ========================= */
     if ($op === 'get' || $op === 'create' || $op === 'update') {
 
@@ -88,6 +104,7 @@ try {
             $row = $q->fetch(PDO::FETCH_ASSOC);
             if (!$row) $json_err('Ingreso no encontrado', 404);
 
+            // i.importe vendrá como string (MySQL DECIMAL), lo devolvemos como está
             $json_ok(['data' => $row]);
         }
 
@@ -100,10 +117,11 @@ try {
         $idContProveedor   = isset($in['id_cont_proveedor'])   && $in['id_cont_proveedor']   !== '' ? (int)$in['id_cont_proveedor']   : null;
         $idContDescripcion = isset($in['id_cont_descripcion']) && $in['id_cont_descripcion'] !== '' ? (int)$in['id_cont_descripcion'] : null;
         $idMedioPago = (int)($in['id_medio_pago'] ?? 0);
-        $importe     = $in['importe'] ?? null;
+
+        // 🔸 IMPORTANTE: NO casteamos a int; normalizamos a decimal con 2 cifras
+        $importe = $normalizarImporte($in['importe'] ?? null); // string "1234.56"
 
         if (!$fecha || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) $json_err('fecha requerida YYYY-MM-DD', 400);
-        if (!is_numeric($importe) || (int)$importe <= 0)           $json_err('importe inválido', 400);
         if ($idMedioPago < 1)                                      $json_err('id_medio_pago requerido', 400);
 
         // FKs
@@ -132,14 +150,15 @@ try {
                 INSERT INTO ingresos (fecha, id_cont_categoria, id_cont_proveedor, id_cont_descripcion, id_medio_pago, importe)
                 VALUES (:fecha, :cat, :prov, :descr, :medio, :importe)
             ");
-            $st->execute([
-                ':fecha'   => $fecha,
-                ':cat'     => $idContCategoria,
-                ':prov'    => $idContProveedor,
-                ':descr'   => $idContDescripcion,
-                ':medio'   => $idMedioPago,
-                ':importe' => (int)$importe,
-            ]);
+            // bindValue con tipos apropiados; DECIMAL como string
+            $st->bindValue(':fecha',  $fecha, PDO::PARAM_STR);
+            $st->bindValue(':cat',    $idContCategoria,   is_null($idContCategoria)   ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $st->bindValue(':prov',   $idContProveedor,   is_null($idContProveedor)   ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $st->bindValue(':descr',  $idContDescripcion, is_null($idContDescripcion) ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $st->bindValue(':medio',  $idMedioPago, PDO::PARAM_INT);
+            $st->bindValue(':importe', $importe, PDO::PARAM_STR); // <-- clave: NO INT
+            $st->execute();
+
             $json_ok(['id' => $pdo->lastInsertId()]);
         }
 
@@ -157,23 +176,38 @@ try {
                        importe             = :importe
                  WHERE id_ingreso = :id
             ");
-            $st->execute([
-                ':fecha'   => $fecha,
-                ':cat'     => $idContCategoria,
-                ':prov'    => $idContProveedor,
-                ':descr'   => $idContDescripcion,
-                ':medio'   => $idMedioPago,
-                ':importe' => (int)$importe,
-                ':id'      => $idIngreso,
-            ]);
+            $st->bindValue(':fecha',  $fecha, PDO::PARAM_STR);
+            $st->bindValue(':cat',    $idContCategoria,   is_null($idContCategoria)   ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $st->bindValue(':prov',   $idContProveedor,   is_null($idContProveedor)   ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $st->bindValue(':descr',  $idContDescripcion, is_null($idContDescripcion) ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $st->bindValue(':medio',  $idMedioPago, PDO::PARAM_INT);
+            $st->bindValue(':importe', $importe, PDO::PARAM_STR); // <-- clave: NO INT
+            $st->bindValue(':id',     $idIngreso, PDO::PARAM_INT);
+            $st->execute();
+
             $json_ok();
         }
     }
 
     /* ========================= Informe alumnos/pagos ========================= */
     // (Se ejecuta solo cuando NO hay ?op)
-    $year        = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+
+    // 🔧 NUEVO: soportar rango start/end y diferenciar “sin year” (TODOS los años)
+    $yearParam = $_GET['year'] ?? null;
+    $hasYearParam = $yearParam !== null && $yearParam !== '';
+
+    $year = $hasYearParam ? (int)$yearParam : (int)date('Y');
     $wantDetalle = isset($_GET['detalle']) && (int)$_GET['detalle'] === 1;
+
+    $start = $_GET['start'] ?? null;
+    $end   = $_GET['end']   ?? null;
+
+    if ($start && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start)) {
+        $start = null;
+    }
+    if ($end && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)) {
+        $end = null;
+    }
 
     // catálogo de meses
     $mesCat = [];
@@ -207,11 +241,10 @@ try {
         $aniosDisponibles = [$year];
     }
 
-    // Si el año solicitado no está en la lista, agregarlo
-    if (!in_array($year, $aniosDisponibles, true)) {
-        array_unshift($aniosDisponibles, $year);
-        sort($aniosDisponibles);
-        $aniosDisponibles = array_reverse($aniosDisponibles);
+    // Si el año solicitado explícitamente no está en la lista, agregarlo
+    if ($hasYearParam && !in_array($year, $aniosDisponibles, true)) {
+        $aniosDisponibles[] = $year;
+        rsort($aniosDisponibles);
     }
 
     // detectar columnas reales en alumnos
@@ -245,7 +278,24 @@ try {
     $joinCategoria   = $categoriaTable ? "LEFT JOIN `$categoriaTable` c ON c.id_categoria = a.id_categoria"   : "";
     $selectCategoria = $categoriaTable ? "c.`$catNameCol` AS nombre_categoria"                                 : "NULL AS nombre_categoria";
 
-    // 🔹 NUEVO: join a medio_pago para obtener el “Medio”
+    // 🔹 join a medio_pago para obtener el “Medio”
+    // 🔧 AQUÍ ajustamos el WHERE para soportar start/end y opción sin year
+    $where = "UPPER(p.estado)='PAGADO'";
+    $params = [];
+
+    if ($start && $end) {
+        $where .= " AND p.fecha_pago BETWEEN :start AND :end";
+        $params[':start'] = $start;
+        $params[':end']   = $end;
+    } elseif ($hasYearParam) {
+        // Sólo filtramos por año cuando el frontend lo manda explícitamente (?year=YYYY)
+        $where .= " AND YEAR(p.fecha_pago)=:y";
+        $params[':y'] = $year;
+    } else {
+        // Sin year y sin start/end => TODOS los años pagados (modo "ALL" del frontend)
+        // No agregamos filtro adicional
+    }
+
     $sql = "
         SELECT
             p.id_pago,
@@ -263,12 +313,12 @@ try {
         LEFT JOIN alumnos a   ON a.id_alumno = p.id_alumno
         $joinCategoria
         LEFT JOIN medio_pago mp ON mp.id_medio_pago = p.id_medio_pago
-        WHERE UPPER(p.estado)='PAGADO' AND YEAR(p.fecha_pago)=:y
+        WHERE $where
         ORDER BY p.fecha_pago ASC, p.id_pago ASC
     ";
 
     $st = $pdo->prepare($sql);
-    $st->execute([':y' => $year]);
+    $st->execute($params);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
     // armar resumen/detalle
@@ -299,7 +349,6 @@ try {
             $catNom   = (string)($r['nombre_categoria'] ?? '');
             if ($catNom === '' || $catNom === null) $catNom = 'SIN CATEGORÍA';
 
-            // 🔹 NUEVO: “Medio” (puede venir NULL si el pago no lo tiene)
             $medioTxt = (string)($r['medio_texto'] ?? '');
             if ($medioTxt === '') $medioTxt = '—';
 
@@ -310,12 +359,13 @@ try {
                 'Monto'         => $monto,
                 'Mes_pagado'    => (string)($mesCat[$mesNum] ?? ''),
                 'Mes_pagado_id' => $mesNum,
-                'Medio'         => $medioTxt,   // <-- agregado
+                'Medio'         => $medioTxt,
             ];
         }
     }
 
-    // Normalizar a 12 meses
+    // 🔧 Resumen: mantenemos los 12 meses del año seleccionado (para no romper nada que ya use esto)
+    // Si no se mandó year, usamos el año actual (como antes)
     for ($m = 1; $m <= 12; $m++) {
         $key = sprintf('%04d-%02d', $year, $m);
         $ing = isset($accMes[$key]) ? (int)$accMes[$key]['ingresos'] : 0;
@@ -336,7 +386,11 @@ try {
     }
 
     $json_ok([
-        'filtros'           => ['year' => $year],
+        'filtros'           => [
+            'year'  => $hasYearParam ? $year : null,
+            'start' => $start,
+            'end'   => $end,
+        ],
         'resumen'           => $resumen,
         'detalle'           => $wantDetalle ? $detalle : (object)[],
         'meses_catalogo'    => $meses_catalogo,

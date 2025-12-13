@@ -171,6 +171,16 @@ const ModalPagos = ({ socio, onClose }) => {
   const [montoMatriculaManual, setMontoMatriculaManual] = useState('');
   const [editandoMatriculaManual, setEditandoMatriculaManual] = useState(false);
 
+  // ===== NUEVO: Validación para habilitar el botón de confirmar pago =====
+  const puedeConfirmarPago = useMemo(() => {
+    const tienePeriodosSeleccionados = 
+      seleccionados.length > 0 || anualSeleccionado || matriculaSeleccionada;
+    
+    const tieneMedioPagoSeleccionado = !!medioSeleccionado;
+    
+    return tienePeriodosSeleccionados && tieneMedioPagoSeleccionado && !cargando;
+  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, cargando]);
+
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
 
@@ -365,6 +375,11 @@ const ModalPagos = ({ socio, onClose }) => {
       const base = anualConfig.etiqueta;
       const partes = [base];
       if (matriculaSeleccionada) partes.push('MATRÍCULA');
+      if (periodosMesesOrdenados.length > 0) {
+        const mapById = new Map(meses.map(m => [Number(m.id), String(m.nombre).trim()]));
+        const nombresMeses = periodosMesesOrdenados.map(id => mapById.get(Number(id)) || String(id));
+        partes.push(...nombresMeses);
+      }
       const suf = partes.join(' / ');
       return `${suf} ${anioTrabajo}`;
     }
@@ -531,14 +546,16 @@ const ModalPagos = ({ socio, onClose }) => {
     setEditandoMatriculaManual(false);
   }, [idAlumno, anioTrabajo]);
 
-  // Sincronizar modoActivo con estados (prioridad: anual > meses > matricula)
+  // Sincronizar modoActivo con estados (ahora permite combinaciones)
   useEffect(() => {
-    if (anualSeleccionado) {
+    if (anualSeleccionado && matriculaSeleccionada) {
+      setModoActivo('combinado');
+    } else if (anualSeleccionado) {
       setModoActivo('anual');
-    } else if (seleccionados.length > 0) {
-      setModoActivo('meses');
     } else if (matriculaSeleccionada) {
       setModoActivo('matricula');
+    } else if (seleccionados.length > 0) {
+      setModoActivo('meses');
     } else {
       setModoActivo('meses');
     }
@@ -650,29 +667,6 @@ const ModalPagos = ({ socio, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idAlumno, anioTrabajo]);
 
-  /* ================= Helpers de exclusión de modos ================= */
-  const activarSoloMeses = () => {
-    setAnualSeleccionado(false);
-    setAnualH1(false);
-    setAnualH2(false);
-    setModoActivo('meses');
-  };
-
-  const activarSoloAnual = () => {
-    setSeleccionados([]);
-    setMatriculaSeleccionada(false);
-    setLibreActivo(false);
-    setLibreValor('');
-    setModoActivo('anual');
-  };
-
-  const activarSoloMatricula = () => {
-    setAnualSeleccionado(false);
-    setAnualH1(false);
-    setAnualH2(false);
-    setModoActivo('matricula');
-  };
-
   /* ================= Acciones ================= */
 
   const togglePeriodo = (id) => {
@@ -680,19 +674,12 @@ const ModalPagos = ({ socio, onClose }) => {
     if (idNum < 1 || idNum > 12) return;
     if (periodosEstado[idNum] || periodosPagados.includes(idNum)) return;
 
-    setAnualSeleccionado(false);
-    setAnualH1(false);
-    setAnualH2(false);
-    setModoActivo('meses');
-
     setSeleccionados((prev) =>
       prev.includes(idNum) ? prev.filter((x) => x !== idNum) : [...prev, idNum]
     );
   };
 
   const toggleSeleccionarTodos = () => {
-    activarSoloMeses();
-
     const idsDisponibles = mesesGrid
       .map((m) => Number(m.id))
       .filter((id) => !periodosEstado[id] && !periodosPagados.includes(id));
@@ -703,7 +690,6 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const toggleAnual = (checked) => {
     if (checked) {
-      activarSoloAnual();
       // Autoselección inteligente:
       // - Si H1 ya está pagada y H2 NO, marcamos H2 (queda "2ª mitad")
       // - Si H2 ya está pagada y H1 NO, marcamos H1 (queda "1ª mitad")
@@ -723,20 +709,11 @@ const ModalPagos = ({ socio, onClose }) => {
       setAnualSeleccionado(false);
       setAnualH1(false);
       setAnualH2(false);
-      if (modoActivo === 'anual') setModoActivo('meses');
     }
   };
 
   const toggleMatricula = (checked) => {
-    if (checked) {
-      activarSoloMatricula();
-      setMatriculaSeleccionada(true);
-    } else {
-      setMatriculaSeleccionada(false);
-      if (modoActivo === 'matricula' && seleccionados.length > 0) {
-        setModoActivo('meses');
-      }
-    }
+    setMatriculaSeleccionada(checked);
   };
 
   const onToggleCondonar = (checked) => {
@@ -752,10 +729,6 @@ const ModalPagos = ({ socio, onClose }) => {
     if (!checked) setLibreValor('');
     if (checked) {
       setCondonar(false);
-      setAnualSeleccionado(false);
-      setAnualH1(false);
-      setAnualH2(false);
-      if (modoActivo === 'anual') setModoActivo('meses');
     }
   };
 
@@ -877,6 +850,11 @@ const ModalPagos = ({ socio, onClose }) => {
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
 
+    // ===== NUEVO: Validación obligatoria de medio de pago =====
+    if (!medioSeleccionado) {
+      return mostrarToast('error', 'Debés seleccionar un medio de pago antes de continuar.');
+    }
+
     const periodosSeleccionados = [
       ...periodosMesesOrdenados,
       ...(anualSeleccionado ? [anualConfig.idPeriodo] : []),
@@ -913,8 +891,8 @@ const ModalPagos = ({ socio, onClose }) => {
         },
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
         ids_familia: idsFamiliaActivos,
-        // NUEVO → medio de pago seleccionado (puede ir null si no aplica)
-        id_medio_pago: medioSeleccionado ? Number(medioSeleccionado) : null,
+        // NUEVO → medio de pago seleccionado (ahora es obligatorio)
+        id_medio_pago: Number(medioSeleccionado),
         // meta de anual para auditoría
         meta_anual: anualSeleccionado ? {
           tipo: anualConfig.tipo, // 'full' | 'h1' | 'h2'
@@ -987,7 +965,10 @@ const ModalPagos = ({ socio, onClose }) => {
 
     // Etiqueta periodo texto: anual usa su etiqueta especial
     const periodoTextoCustom = (anualSeleccionado && anualConfig?.etiqueta)
-      ? `${anualConfig.etiqueta}${matriculaSeleccionada ? ' / MATRÍCULA' : ''} ${anioTrabajo}`
+      ? `${anualConfig.etiqueta}${matriculaSeleccionada ? ' / MATRÍCULA' : ''}${periodosMesesOrdenados.length > 0 ? ' / ' + periodosMesesOrdenados.map(id => {
+          const mapById = new Map(meses.map(m => [Number(m.id), String(m.nombre).trim()]));
+          return mapById.get(Number(id)) || String(id);
+        }).join(' / ') : ''} ${anioTrabajo}`
       : (
         (() => {
           const mapById = new Map(meses.map(m => [Number(m.id), String(m.nombre).trim()]));
@@ -1447,7 +1428,7 @@ const ModalPagos = ({ socio, onClose }) => {
               </div>
             </div>
 
-            {/* ====== EXTRAS: CONTADO ANUAL y MATRÍCULA ====== */}
+            {/* ===== EXTRAS: CONTADO ANUAL y MATRÍCULA ===== */}
             {ventanaAnualActiva && (
               <div className={`condonar-box ${anualSeleccionado ? 'is-active' : ''} ${bloqueadoAnual ? 'is-disabled' : ''}`}>
                 <label className="condonar-check">
@@ -1455,55 +1436,54 @@ const ModalPagos = ({ socio, onClose }) => {
                     type="checkbox"
                     checked={anualSeleccionado}
                     onChange={(e) => toggleAnual(e.target.checked)}
-                    disabled={cargando || matriculaSeleccionada || libreActivo || bloqueadoAnual}
+                    disabled={cargando || libreActivo || bloqueadoAnual}
                   />
                   <span className="switch"><span className="switch-thumb" /></span>
 
                   <div className='dis-newedit'>
-<span className="switch-label">
-  <span className="sitch-labes">
-    {/* Título + subline: cambian de fila a columna según el estado */}
-    <span className={`anual-text ${anualSeleccionado ? 'stack' : 'row'}`}>
-      <strong>CONTADO ANUAL</strong>
-      <span className="subline">
-        {(() => {
-          const base = anualManualActivo
-            ? Number(montoAnualManual || 0)
-            : Number(montoAnualConDescuento || 0);
-          const txtBase = formatearARS(Math.max(0, Math.round(base)));
-          if (anualManualActivo) return `(${txtBase} • monto manual)`;
-          return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
-        })()}
-      </span>
-    </span>
+                    <span className="switch-label">
+                      <span className="sitch-labes">
+                        {/* Título + subline: cambian de fila a columna según el estado */}
+                        <span className={`anual-text ${anualSeleccionado ? 'stack' : 'row'}`}>
+                          <strong>CONTADO ANUAL</strong>
+                          <span className="subline">
+                            {(() => {
+                              const base = anualManualActivo
+                                ? Number(montoAnualManual || 0)
+                                : Number(montoAnualConDescuento || 0);
+                              const txtBase = formatearARS(Math.max(0, Math.round(base)));
+                              if (anualManualActivo) return `(${txtBase} • monto manual)`;
+                              return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
+                            })()}
+                          </span>
+                        </span>
 
-    {/* Chips SOLO cuando NO está activo el anual */}
-    {!anualSeleccionado && (
-      <>
-        {estadoAnualFull && (
-          <span className={`chip ${estadoAnualFull === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-            Año: {capitalizar(estadoAnualFull)}
-          </span>
-        )}
-        {!estadoAnualFull && (estadoAnualH1 || estadoAnualH2) && (
-          <>
-            {estadoAnualH1 && (
-              <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-                1ª mitad: {capitalizar(estadoAnualH1)}
-              </span>
-            )}
-            {estadoAnualH2 && (
-              <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
-                2ª mitad: {capitalizar(estadoAnualH2)}
-              </span>
-            )}
-          </>
-        )}
-      </>
-    )}
-  </span>
-</span>
-
+                        {/* Chips SOLO cuando NO está activo el anual */}
+                        {!anualSeleccionado && (
+                          <>
+                            {estadoAnualFull && (
+                              <span className={`chip ${estadoAnualFull === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+                                Año: {capitalizar(estadoAnualFull)}
+                              </span>
+                            )}
+                            {!estadoAnualFull && (estadoAnualH1 || estadoAnualH2) && (
+                              <>
+                                {estadoAnualH1 && (
+                                  <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
+                                    1ª mitad: {capitalizar(estadoAnualH1)}
+                                  </span>
+                                )}
+                                {estadoAnualH2 && (
+                                  <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
+                                    2ª mitad: {capitalizar(estadoAnualH2)}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </>
+                        )}
+                      </span>
+                    </span>
 
                     {/* Botones editar/quitar (solo si NO está bloqueado por pago previo total) */}
                     {!bloqueadoAnual && !anualEditando && (
@@ -1665,7 +1645,7 @@ const ModalPagos = ({ socio, onClose }) => {
                   type="checkbox"
                   checked={matriculaSeleccionada}
                   onChange={(e) => toggleMatricula(e.target.checked)}
-                  disabled={cargando || anualSeleccionado || bloqueadoMatricula}
+                  disabled={cargando || bloqueadoMatricula}
                 />
                 <span className="switch"><span className="switch-thumb" /></span>
                 <span className="switch-label matricula-label">
@@ -1797,7 +1777,7 @@ const ModalPagos = ({ socio, onClose }) => {
 
               {/* Medio de pago inline */}
               <div className="medio-pago-inline">
-                <label className="medio-pago-inline-label" htmlFor="medio-pago-select">Medio de pago</label>
+                <label className="medio-pago-inline-label" htmlFor="medio-pago-select">Medio de pago *</label>
                 <div className="medio-pago-input">
                   <select
                     id="medio-pago-select"
@@ -1805,6 +1785,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     value={medioSeleccionado || ""}
                     onChange={(e) => setMedioSeleccionado(e.target.value)}
                     disabled={cargando}
+                    required
                   >
                     <option value="" disabled>Seleccionar...</option>
                     {mediosPago.length === 0 && <option value="">(Sin datos)</option>}
@@ -1812,6 +1793,11 @@ const ModalPagos = ({ socio, onClose }) => {
                       <option key={mp.id} value={String(mp.id)}>{mp.nombre}</option>
                     ))}
                   </select>
+                  {!medioSeleccionado && (
+                    <div className="hint" style={{marginTop:4, color:'var(--danger)'}}>
+                      * Campo obligatorio para registrar el pago
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1830,7 +1816,7 @@ const ModalPagos = ({ socio, onClose }) => {
                   <button
                     className="btn btn-small btn-terciario"
                     onClick={toggleSeleccionarTodos}
-                    disabled={cargando || mesesGrid.length === 0 || anualSeleccionado}
+                    disabled={cargando || mesesGrid.length === 0}
                     type="button"
                   >
                     {todosSeleccionados ? 'Deseleccionar todos' : 'Seleccionar todos'} ({seleccionados.length})
@@ -1851,20 +1837,19 @@ const ModalPagos = ({ socio, onClose }) => {
                       const estado = periodosEstado[idMes];
                       const yaOcupado = !!estado || periodosPagados.includes(idMes);
                       const sel = seleccionados.includes(idMes);
-                      const disabledPorOtroModo = anualSeleccionado;
 
                       return (
                         <div
                           key={idMes}
-                          className={`periodo-card ${yaOcupado ? 'pagado' : ''} ${sel ? 'seleccionado' : ''} ${disabledPorOtroModo ? 'disabled' : ''}`}
+                          className={`periodo-card ${yaOcupado ? 'pagado' : ''} ${sel ? 'seleccionado' : ''}`}
                           role="button"
-                          tabIndex={disabledPorOtroModo ? -1 : 0}
+                          tabIndex={0}
                           onClick={() => {
-                            if (cargando || disabledPorOtroModo) return;
+                            if (cargando) return;
                             togglePeriodo(idMes);
                           }}
                           onKeyDown={(e) => {
-                            if (cargando || disabledPorOtroModo) return;
+                            if (cargando) return;
                             if ((e.key === 'Enter' || e.key === ' ')) {
                               e.preventDefault();
                               togglePeriodo(idMes);
@@ -1877,7 +1862,7 @@ const ModalPagos = ({ socio, onClose }) => {
                               id={`periodo-${idMes}`}
                               checked={sel}
                               onChange={() => togglePeriodo(idMes)}
-                              disabled={cargando || disabledPorOtroModo}
+                              disabled={cargando}
                             />
                             <span className="checkmark"></span>
                           </div>
@@ -1911,6 +1896,11 @@ const ModalPagos = ({ socio, onClose }) => {
               <span className={`total-badge ${condonar ? 'total-badge-warning' : ''}`}>
                 {etiquetaTotal}: {formatearARS(totalParaMostrar)}
               </span>
+              {!medioSeleccionado && (
+                <span className="total-badge total-badge-warning" style={{marginLeft:8}}>
+                  Medio de pago requerido
+                </span>
+              )}
             </div>
 
             <div className="footer-actions">
@@ -1920,10 +1910,7 @@ const ModalPagos = ({ socio, onClose }) => {
               <button
                 className={`btn ${condonar ? 'btn-warning' : 'btn-danger'}`}
                 onClick={confirmarPago}
-                disabled={
-                  cargando ||
-                  (seleccionados.length === 0 && !anualSeleccionado && !matriculaSeleccionada)
-                }
+                disabled={!puedeConfirmarPago}
                 type="button"
               >
                 {cargando ? (<><span className="spinner-btn"></span> Procesando...</>) : (condonar ? 'Condonar' : 'Confirmar Pago')}

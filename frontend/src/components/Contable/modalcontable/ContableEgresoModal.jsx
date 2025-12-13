@@ -21,8 +21,47 @@ const toUpper = (v = "") => String(v).toUpperCase();
 const onlyLetters = (v = "") => toUpper(v).replace(/[^\p{L}\s]/gu, "");
 // Letras (incl. tildes) + dígitos + espacios  ✅ NUEVO para PROVEEDOR
 const onlyLettersDigits = (v = "") => toUpper(v).replace(/[^\p{L}\p{N}\s]/gu, "");
-// Solo dígitos
-const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
+
+// ====== DECIMALES: helpers ======
+// Permite tipear dígitos y un único separador (coma o punto).
+const sanitizeDecimalInput = (v = "") => {
+  v = String(v).replace(/[^0-9.,]/g, "");
+  const firstSep = v.search(/[.,]/);
+  if (firstSep === -1) return v.replace(/[.,]/g, "");
+  const intPart = v.slice(0, firstSep).replace(/[.,]/g, "");
+  const sep = v[firstSep];
+  const decPart = v.slice(firstSep + 1).replace(/[.,]/g, "");
+  return `${intPart}${sep}${decPart}`;
+};
+// Convierte a número JS aceptando coma o punto y redondea a 2 decimales.
+const parseMonto2dec = (v = "") => {
+  const clean = String(v).replace(/,/g, ".").replace(/[^0-9.]/g, "");
+  const n = parseFloat(clean);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+};
+// Formatea a ARS con 2 decimales para mensajes
+const fmtAR = (n) =>
+  new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+// ✅ NUEVO: siempre mostrar EXACTAMENTE 2 decimales con coma en el input
+const toInputDecimal2 = (v) => {
+  if (v === null || v === undefined || v === "") return "";
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return v.toFixed(2).replace(".", ",");
+  }
+  // Puede venir "5000.50", "5000,5", "5.000,50", etc.
+  const s = String(v).trim();
+  if (!s) return "";
+  // Normalizo: quito miles, paso coma->punto para parsear y devuelvo con 2 decimales y coma
+  const n = parseFloat(
+    s
+      .replace(/\./g, "")   // quita miles posibles
+      .replace(",", ".")    // coma -> punto
+  );
+  if (!Number.isFinite(n)) return sanitizeDecimalInput(s);
+  return n.toFixed(2).replace(".", ",");
+};
 
 export default function ContableEgresoModal({
   open,
@@ -58,7 +97,7 @@ export default function ContableEgresoModal({
 
   // === Otros ===
   const [comprobante, setComprobante] = useState("");
-  const [importe, setImporte] = useState("");
+  const [importe, setImporte] = useState(""); // string para permitir coma/punto
   const [compURL, setCompURL] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -94,18 +133,20 @@ export default function ContableEgresoModal({
     recentToastMapRef.current.set(key, now);
 
     const id = `${now}-${Math.random().toString(36).slice(2)}`;
-    setToasts(t => [...t, { id, tipo, mensaje, dur }]);
+    setToasts((t) => [...t, { id, tipo, mensaje, dur }]);
 
     setTimeout(() => {
       recentToastMapRef.current.delete(key);
     }, Math.max(0, dur + 500));
   };
 
-  const closeToast = (id) => setToasts(t => t.filter(x => x.id !== id));
+  const closeToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
   const safeNotify = (tipo, mensaje, dur = 3000) => {
     pushToast(tipo, mensaje, dur);
-    try { typeof notify === "function" && notify(tipo, mensaje, dur); } catch {}
+    try {
+      typeof notify === "function" && notify(tipo, mensaje, dur);
+    } catch {}
   };
 
   // ===== infra fetch =====
@@ -125,31 +166,34 @@ export default function ContableEgresoModal({
     try {
       const data = await fetchJSON(`${BASE_URL}/api.php?action=obtener_listas`);
 
-      const mp = (data?.listas?.medios_pago ?? []).map(m => ({
+      const mp = (data?.listas?.medios_pago ?? []).map((m) => ({
         id: Number(m.id),
-        nombre: String(m.nombre || m.medio_pago || "")
+        nombre: String(m.nombre || m.medio_pago || ""),
       }));
       setMediosPago(mp);
 
-      const cats = (data?.listas?.egreso_categorias ?? data?.listas?.contable_categorias ?? []).map(c => ({
+      const cats = (data?.listas?.egreso_categorias ?? data?.listas?.contable_categorias ?? []).map((c) => ({
         id: Number(c.id),
-        nombre: String(c.nombre || c.nombre_categoria || "")
+        nombre: String(c.nombre || c.nombre_categoria || ""),
       }));
       setListaCategorias(cats);
 
-      const descs = (data?.listas?.egreso_descripciones ?? data?.listas?.contable_descripciones ?? []).map(d => ({
+      const descs = (data?.listas?.egreso_descripciones ?? data?.listas?.contable_descripciones ?? []).map((d) => ({
         id: Number(d.id),
-        texto: String(d.texto || d.nombre || d.nombre_descripcion || "")
+        texto: String(d.texto || d.nombre || d.nombre_descripcion || ""),
       }));
       setListaDescripciones(descs);
 
-      const provs = (data?.listas?.contable_proveedores ?? data?.listas?.proveedores ?? data?.listas?.egreso_proveedores ?? []).map(p => ({
+      const provs = (data?.listas?.contable_proveedores ?? data?.listas?.proveedores ?? data?.listas?.egreso_proveedores ?? []).map((p) => ({
         id: Number(p.id),
-        nombre: String(p.nombre || p.nombre_proveedor || "")
+        nombre: String(p.nombre || p.nombre_proveedor || ""),
       }));
       setListaProveedores(provs);
     } catch {
-      setMediosPago([]); setListaCategorias([]); setListaDescripciones([]); setListaProveedores([]);
+      setMediosPago([]);
+      setListaCategorias([]);
+      setListaDescripciones([]);
+      setListaProveedores([]);
       safeNotify("error", "No se pudieron cargar las listas. Reintentá más tarde.");
     }
   };
@@ -204,12 +248,14 @@ export default function ContableEgresoModal({
     return r;
   };
 
-  useEffect(() => { if (open) loadListas(); }, [open]);
+  useEffect(() => {
+    if (open) loadListas();
+  }, [open]);
 
   const findIdByName = (list, nameKey, value) => {
     const needle = toUpper(value).trim();
     if (!needle) return null;
-    const item = list.find(x => toUpper(x[nameKey]).trim() === needle);
+    const item = list.find((x) => toUpper(x[nameKey]).trim() === needle);
     return item ? String(item.id) : null;
   };
 
@@ -222,62 +268,118 @@ export default function ContableEgresoModal({
 
       if (editRow.id_medio_pago) {
         setMedioId(String(editRow.id_medio_pago));
-        setMedioEsOtro(false); setMedioNuevo("");
+        setMedioEsOtro(false);
+        setMedioNuevo("");
       } else {
         const medioNombre = editRow.medio_pago || editRow.medio_nombre || "";
         const id = findIdByName(mediosPago, "nombre", medioNombre);
-        if (id) { setMedioId(id); setMedioEsOtro(false); setMedioNuevo(""); }
-        else if (medioNombre) { setMedioId(""); setMedioEsOtro(true); setMedioNuevo(toUpper(medioNombre)); }
-        else { setMedioId(""); setMedioEsOtro(false); setMedioNuevo(""); }
+        if (id) {
+          setMedioId(id);
+          setMedioEsOtro(false);
+          setMedioNuevo("");
+        } else if (medioNombre) {
+          setMedioId("");
+          setMedioEsOtro(true);
+          setMedioNuevo(toUpper(medioNombre));
+        } else {
+          setMedioId("");
+          setMedioEsOtro(false);
+          setMedioNuevo("");
+        }
       }
 
       if (editRow.id_cont_categoria) {
         setCategoriaId(String(editRow.id_cont_categoria));
-        setCategoriaEsOtra(false); setCategoriaNueva("");
+        setCategoriaEsOtra(false);
+        setCategoriaNueva("");
       } else {
         const catNombre = editRow.categoria || editRow.nombre_categoria || "";
         const id = findIdByName(listaCategorias, "nombre", catNombre);
-        if (id) { setCategoriaId(id); setCategoriaEsOtra(false); setCategoriaNueva(""); }
-        else if (catNombre) { setCategoriaId(""); setCategoriaEsOtra(true); setCategoriaNueva(toUpper(catNombre)); }
-        else { setCategoriaId(""); setCategoriaEsOtra(false); setCategoriaNueva(""); }
+        if (id) {
+          setCategoriaId(id);
+          setCategoriaEsOtra(false);
+          setCategoriaNueva("");
+        } else if (catNombre) {
+          setCategoriaId("");
+          setCategoriaEsOtra(true);
+          setCategoriaNueva(toUpper(catNombre));
+        } else {
+          setCategoriaId("");
+          setCategoriaEsOtra(false);
+          setCategoriaNueva("");
+        }
       }
 
       if (editRow.id_cont_descripcion) {
         setDescripcionId(String(editRow.id_cont_descripcion));
-        setDescripcionEsOtra(false); setDescripcionNueva("");
+        setDescripcionEsOtra(false);
+        setDescripcionNueva("");
       } else {
         const descNombre = editRow.descripcion || editRow.nombre_descripcion || "";
         const id = findIdByName(listaDescripciones, "texto", descNombre);
-        if (id) { setDescripcionId(id); setDescripcionEsOtra(false); setDescripcionNueva(""); }
-        else if (descNombre) { setDescripcionId(""); setDescripcionEsOtra(true); setDescripcionNueva(toUpper(descNombre)); }
-        else { setDescripcionId(""); setDescripcionEsOtra(false); setDescripcionNueva(""); }
+        if (id) {
+          setDescripcionId(id);
+          setDescripcionEsOtra(false);
+          setDescripcionNueva("");
+        } else if (descNombre) {
+          setDescripcionId("");
+          setDescripcionEsOtra(true);
+          setDescripcionNueva(toUpper(descNombre));
+        } else {
+          setDescripcionId("");
+          setDescripcionEsOtra(false);
+          setDescripcionNueva("");
+        }
       }
 
       if (editRow.id_cont_proveedor) {
         setProveedorId(String(editRow.id_cont_proveedor));
-        setProveedorEsOtro(false); setProveedorNuevo("");
+        setProveedorEsOtro(false);
+        setProveedorNuevo("");
       } else {
         const provNombre = editRow.proveedor || editRow.nombre_proveedor || "";
         const id = findIdByName(listaProveedores, "nombre", provNombre);
-        if (id) { setProveedorId(id); setProveedorEsOtro(false); setProveedorNuevo(""); }
-        else if (provNombre) { setProveedorId(""); setProveedorEsOtro(true); setProveedorNuevo(toUpper(provNombre)); }
-        else { setProveedorId(""); setProveedorEsOtro(false); setProveedorNuevo(""); }
+        if (id) {
+          setProveedorId(id);
+          setProveedorEsOtro(false);
+          setProveedorNuevo("");
+        } else if (provNombre) {
+          setProveedorId("");
+          setProveedorEsOtro(true);
+          setProveedorNuevo(toUpper(provNombre));
+        } else {
+          setProveedorId("");
+          setProveedorEsOtro(false);
+          setProveedorNuevo("");
+        }
       }
 
       setComprobante(toUpper(String(editRow.comprobante ?? editRow.numero_factura ?? "")));
-      setImporte(String(editRow.importe ?? editRow.monto ?? "").replace(/\D/g, ""));
+
+      // ✅ Prefill de importe con EXACTOS 2 decimales y coma (ej. 5000,50)
+      const rawImporte = editRow.importe ?? editRow.monto ?? "";
+      setImporte(toInputDecimal2(rawImporte));
+
       setCompURL(editRow.comprobante_url || "");
       setLocalPreview("");
       setViewerOpen(false);
       setZoom(1);
     } else {
       const d = new Date();
-      setFecha(d.toISOString().slice(0,10));
+      setFecha(d.toISOString().slice(0, 10));
 
-      setMedioId(""); setMedioEsOtro(false); setMedioNuevo("");
-      setCategoriaId(""); setCategoriaEsOtra(false); setCategoriaNueva("");
-      setDescripcionId(""); setDescripcionEsOtra(false); setDescripcionNueva("");
-      setProveedorId(""); setProveedorEsOtro(false); setProveedorNuevo("");
+      setMedioId("");
+      setMedioEsOtro(false);
+      setMedioNuevo("");
+      setCategoriaId("");
+      setCategoriaEsOtra(false);
+      setCategoriaNueva("");
+      setDescripcionId("");
+      setDescripcionEsOtra(false);
+      setDescripcionNueva("");
+      setProveedorId("");
+      setProveedorEsOtro(false);
+      setProveedorNuevo("");
 
       setComprobante("");
       setImporte("");
@@ -344,28 +446,54 @@ export default function ContableEgresoModal({
 
   const clearComprobante = (e) => {
     if (e) e.stopPropagation(); // ⛔ Evita abrir el picker
-    setCompURL(""); setLocalPreview("");
+    setCompURL("");
+    setLocalPreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
-    setViewerOpen(false); setZoom(1);
+    setViewerOpen(false);
+    setZoom(1);
     safeNotify("advertencia", "Se quitó el comprobante adjunto.");
   };
 
   // ===== Handlers selects =====
   const onChangeMedio = (val) => {
-    if (val === VALOR_OTRO) { setMedioEsOtro(true); setMedioId(""); }
-    else { setMedioEsOtro(false); setMedioId(val); setMedioNuevo(""); }
+    if (val === VALOR_OTRO) {
+      setMedioEsOtro(true);
+      setMedioId("");
+    } else {
+      setMedioEsOtro(false);
+      setMedioId(val);
+      setMedioNuevo("");
+    }
   };
   const onChangeCategoria = (val) => {
-    if (val === VALOR_OTRO) { setCategoriaEsOtra(true); setCategoriaId(""); }
-    else { setCategoriaEsOtra(false); setCategoriaId(val); setCategoriaNueva(""); }
+    if (val === VALOR_OTRO) {
+      setCategoriaEsOtra(true);
+      setCategoriaId("");
+    } else {
+      setCategoriaEsOtra(false);
+      setCategoriaId(val);
+      setCategoriaNueva("");
+    }
   };
   const onChangeDescripcion = (val) => {
-    if (val === VALOR_OTRO) { setDescripcionEsOtra(true); setDescripcionId(""); }
-    else { setDescripcionEsOtra(false); setDescripcionId(val); setDescripcionNueva(""); }
+    if (val === VALOR_OTRO) {
+      setDescripcionEsOtra(true);
+      setDescripcionId("");
+    } else {
+      setDescripcionEsOtra(false);
+      setDescripcionId(val);
+      setDescripcionNueva("");
+    }
   };
   const onChangeProveedor = (val) => {
-    if (val === VALOR_OTRO) { setProveedorEsOtro(true); setProveedorId(""); }
-    else { setProveedorEsOtro(false); setProveedorId(val); setProveedorNuevo(""); }
+    if (val === VALOR_OTRO) {
+      setProveedorEsOtro(true);
+      setProveedorId("");
+    } else {
+      setProveedorEsOtro(false);
+      setProveedorId(val);
+      setProveedorNuevo("");
+    }
   };
 
   // ====== Abrir el almanaque desde cualquier parte del campo de fecha ======
@@ -373,7 +501,9 @@ export default function ContableEgresoModal({
     const el = dateInputRef.current;
     if (!el) return;
 
-    try { el.focus({ preventScroll: true }); } catch {}
+    try {
+      el.focus({ preventScroll: true });
+    } catch {}
 
     try {
       if (typeof el.showPicker === "function") {
@@ -383,7 +513,9 @@ export default function ContableEgresoModal({
       }
     } catch {
       setTimeout(() => {
-        try { el.click(); } catch {}
+        try {
+          el.click();
+        } catch {}
       }, 0);
     }
 
@@ -399,7 +531,10 @@ export default function ContableEgresoModal({
       return;
     }
 
-    if (!fecha) { safeNotify("advertencia", "Seleccioná la fecha del egreso."); return; }
+    if (!fecha) {
+      safeNotify("advertencia", "Seleccioná la fecha del egreso.");
+      return;
+    }
 
     if (!medioEsOtro && !String(medioId || "").trim()) {
       safeNotify("advertencia", "Seleccioná un medio de pago.");
@@ -421,13 +556,17 @@ export default function ContableEgresoModal({
       return;
     }
 
-    const importeNum = Number(onlyDigits(importe) || 0);
-    if (!Number.isFinite(importeNum) || importeNum <= 0) {
-      safeNotify("advertencia", "Ingresá un importe válido (solo números, mayor a cero).");
+    // ---- Importe con decimales ----
+    const importeNumber = parseMonto2dec(importe);
+    if (!importeNumber || importeNumber <= 0) {
+      safeNotify("advertencia", "Ingresá un importe válido (podés usar coma o punto, hasta 2 decimales).");
       return;
     }
-    if (importeNum > MAX_IMPORTE_SOSPECHOSO) {
-      safeNotify("advertencia", `El importe ingresado (${new Intl.NumberFormat('es-AR').format(importeNum)}) parece inusualmente alto. Verificalo antes de guardar.`);
+    if (importeNumber > MAX_IMPORTE_SOSPECHOSO) {
+      safeNotify(
+        "advertencia",
+        `El importe ingresado (${fmtAR(importeNumber)}) parece inusualmente alto. Verificalo antes de guardar.`
+      );
       return;
     }
 
@@ -482,15 +621,15 @@ export default function ContableEgresoModal({
         safeNotify("exito", "Proveedor agregado.");
       }
 
-      // 5) payload
+      // 5) payload (importe decimal normalizado)
       const payload = {
         fecha,
         id_cont_categoria: idCat ? Number(idCat) : null,
         id_cont_proveedor: idProv ? Number(idProv) : null,
-        comprobante: (toUpper(comprobante) || null),
+        comprobante: toUpper(comprobante) || null,
         id_cont_descripcion: idDesc ? Number(idDesc) : null,
         id_medio_pago: Number(idMedio || 0),
-        importe: Number(onlyDigits(importe) || 0),
+        importe: importeNumber, // ← decimales (p.ej. 1234.56)
         comprobante_url: compURL || null,
       };
 
@@ -534,14 +673,9 @@ export default function ContableEgresoModal({
           pointerEvents: "none",
         }}
       >
-        {toasts.map(t => (
+        {toasts.map((t) => (
           <div key={t.id} style={{ pointerEvents: "auto" }}>
-            <Toast
-              tipo={t.tipo}
-              mensaje={t.mensaje}
-              duracion={t.dur}
-              onClose={() => closeToast(t.id)}
-            />
+            <Toast tipo={t.tipo} mensaje={t.mensaje} duracion={t.dur} onClose={() => closeToast(t.id)} />
           </div>
         ))}
       </div>
@@ -549,7 +683,6 @@ export default function ContableEgresoModal({
       {/* === Modal === */}
       <div className="mm_overlay" role="dialog" aria-modal="true" onClick={onClose}>
         <div className="mm_modal" onClick={(e) => e.stopPropagation()}>
-
           <header className="mm_head">
             <h3 className="mm_title">
               <FontAwesomeIcon className="mm_title_icon" icon={faFileInvoiceDollar} />
@@ -590,26 +723,30 @@ export default function ContableEgresoModal({
                   className="date-no-native"
                   type="date"
                   value={fecha}
-                  onChange={(e)=>setFecha(e.target.value)}
+                  onChange={(e) => setFecha(e.target.value)}
                   required
                 />
                 <label>Fecha</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faCalendar} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faCalendar} />
+                </span>
               </div>
 
               {/* Medio */}
               <div className="mm_field always-float has-icon">
-                <select
-                  value={medioEsOtro ? VALOR_OTRO : medioId}
-                  onChange={(e)=>onChangeMedio(e.target.value)}
-                  required={!medioEsOtro}
-                >
+                <select value={medioEsOtro ? VALOR_OTRO : medioId} onChange={(e) => onChangeMedio(e.target.value)} required={!medioEsOtro}>
                   <option value="">SELECCIONE…</option>
-                  {mediosPago.map((m)=>(<option key={m.id} value={m.id}>{m.nombre}</option>))}
+                  {mediosPago.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nombre}
+                    </option>
+                  ))}
                   <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
                 </select>
                 <label>Medio</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faCreditCard} />
+                </span>
               </div>
             </div>
 
@@ -617,14 +754,11 @@ export default function ContableEgresoModal({
             {medioEsOtro && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
-                  <input
-                    value={medioNuevo}
-                    onChange={(e)=>setMedioNuevo(onlyLetters(e.target.value))}
-                    placeholder=" "
-                    required
-                  />
+                  <input value={medioNuevo} onChange={(e) => setMedioNuevo(onlyLetters(e.target.value))} placeholder=" " required />
                   <label>Nuevo medio de pago</label>
-                  <span className="mm_iconField"><FontAwesomeIcon icon={faCreditCard} /></span>
+                  <span className="mm_iconField">
+                    <FontAwesomeIcon icon={faCreditCard} />
+                  </span>
                 </div>
               </div>
             )}
@@ -632,41 +766,38 @@ export default function ContableEgresoModal({
             {/* Row 2: Categoría + Comprobante */}
             <div className="mm_row">
               <div className="mm_field always-float has-icon">
-                <select
-                  value={categoriaEsOtra ? VALOR_OTRO : categoriaId}
-                  onChange={(e)=>onChangeCategoria(e.target.value)}
-                >
+                <select value={categoriaEsOtra ? VALOR_OTRO : categoriaId} onChange={(e) => onChangeCategoria(e.target.value)}>
                   <option value="">Seleccione...</option>
-                  {listaCategorias.map(c => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
+                  {listaCategorias.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
                   <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
                 </select>
                 <label>Categoría</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faTags} />
+                </span>
               </div>
 
               <div className="mm_field has-icon">
-                <input
-                  value={comprobante}
-                  onChange={(e)=>setComprobante(toUpper(e.target.value))}
-                  placeholder=" "
-                  maxLength={50}
-                />
+                <input value={comprobante} onChange={(e) => setComprobante(toUpper(e.target.value))} placeholder=" " maxLength={50} />
                 <label>Comprobante</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faHashtag} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faHashtag} />
+                </span>
               </div>
             </div>
 
             {categoriaEsOtra && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
-                  <input
-                    value={categoriaNueva}
-                    onChange={(e)=>setCategoriaNueva(onlyLetters(e.target.value))}
-                    placeholder=" "
-                    required
-                  />
+                  <input value={categoriaNueva} onChange={(e) => setCategoriaNueva(onlyLetters(e.target.value))} placeholder=" " required />
                   <label>Nueva categoría</label>
-                  <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+                  <span className="mm_iconField">
+                    <FontAwesomeIcon icon={faTags} />
+                  </span>
                 </div>
               </div>
             )}
@@ -675,30 +806,36 @@ export default function ContableEgresoModal({
             <div className="mm_row">
               {/* Proveedor */}
               <div className="mm_field always-float has-icon">
-                <select
-                  value={proveedorEsOtro ? VALOR_OTRO : proveedorId}
-                  onChange={(e)=>onChangeProveedor(e.target.value)}
-                >
+                <select value={proveedorEsOtro ? VALOR_OTRO : proveedorId} onChange={(e) => onChangeProveedor(e.target.value)}>
                   <option value="">Seleccione...</option>
-                  {listaProveedores.map(p => (<option key={p.id} value={p.id}>{p.nombre}</option>))}
+                  {listaProveedores.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))}
                   <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
                 </select>
                 <label>Proveedor</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faTags} />
+                </span>
               </div>
 
               {/* Descripción */}
               <div className="mm_field always-float has-icon">
-                <select
-                  value={descripcionEsOtra ? VALOR_OTRO : descripcionId}
-                  onChange={(e)=>onChangeDescripcion(e.target.value)}
-                >
+                <select value={descripcionEsOtra ? VALOR_OTRO : descripcionId} onChange={(e) => onChangeDescripcion(e.target.value)}>
                   <option value="">Seleccione...</option>
-                  {listaDescripciones.map(d => (<option key={d.id} value={d.id}>{d.texto}</option>))}
+                  {listaDescripciones.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.texto}
+                    </option>
+                  ))}
                   <option value={VALOR_OTRO}>OTRO (AGREGAR…)</option>
                 </select>
                 <label>Descripción</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faPen} />
+                </span>
               </div>
             </div>
 
@@ -706,14 +843,11 @@ export default function ContableEgresoModal({
             {proveedorEsOtro && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
-                  <input
-                    value={proveedorNuevo}
-                    onChange={(e)=>setProveedorNuevo(onlyLettersDigits(e.target.value))}  
-                    placeholder=" "
-                    required
-                  />
+                  <input value={proveedorNuevo} onChange={(e) => setProveedorNuevo(onlyLettersDigits(e.target.value))} placeholder=" " required />
                   <label>Nuevo proveedor</label>
-                  <span className="mm_iconField"><FontAwesomeIcon icon={faTags} /></span>
+                  <span className="mm_iconField">
+                    <FontAwesomeIcon icon={faTags} />
+                  </span>
                 </div>
               </div>
             )}
@@ -721,31 +855,32 @@ export default function ContableEgresoModal({
             {descripcionEsOtra && (
               <div className="mm_row">
                 <div className="mm_field grow has-icon">
-                  <input
-                    value={descripcionNueva}
-                    onChange={(e)=>setDescripcionNueva(onlyLetters(e.target.value))}
-                    placeholder=" "
-                    required
-                  />
+                  <input value={descripcionNueva} onChange={(e) => setDescripcionNueva(onlyLetters(e.target.value))} placeholder=" " required />
                   <label>Nueva descripción</label>
-                  <span className="mm_iconField"><FontAwesomeIcon icon={faPen} /></span>
+                  <span className="mm_iconField">
+                    <FontAwesomeIcon icon={faPen} />
+                  </span>
                 </div>
               </div>
             )}
 
+            {/* Importe con decimales */}
             <div className="mm_row">
               <div className="mm_field has-icon grow">
                 <input
                   type="text"
-                  inputMode="numeric"
-                  pattern="\d*"
+                  inputMode="decimal"
+                  pattern="^\d+(?:[.,]\d{0,2})?$"
+                  title="Solo números, opcionalmente con coma o punto y hasta 2 decimales"
                   value={importe}
-                  onChange={(e)=>setImporte(onlyDigits(e.target.value))}
+                  onChange={(e) => setImporte(sanitizeDecimalInput(e.target.value))}
                   placeholder=" "
                   required
                 />
                 <label>Importe</label>
-                <span className="mm_iconField"><FontAwesomeIcon icon={faDollarSign} /></span>
+                <span className="mm_iconField">
+                  <FontAwesomeIcon icon={faDollarSign} />
+                </span>
               </div>
             </div>
 
@@ -754,27 +889,42 @@ export default function ContableEgresoModal({
               <div
                 ref={dropRef}
                 className="dz_area mm_surface"
-                onClick={(e)=>{
+                onClick={(e) => {
                   // ⛔ Si ya hay archivo, NO abrir el explorador con click en la caja.
                   if (hasFile) return;
                   fileInputRef.current?.click();
                 }}
-                onDragOver={(e)=>{ e.preventDefault(); dropRef.current?.classList.add("dz_over"); }}
-                onDragLeave={()=>dropRef.current?.classList.remove("dz_over")}
-                onDrop={(e)=>{ e.preventDefault(); dropRef.current?.classList.remove("dz_over"); const f = e.dataTransfer.files?.[0]; if (f) uploadFile(f); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  dropRef.current?.classList.add("dz_over");
+                }}
+                onDragLeave={() => dropRef.current?.classList.remove("dz_over")}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  dropRef.current?.classList.remove("dz_over");
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) uploadFile(f);
+                }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e)=>{ 
+                onKeyDown={(e) => {
                   if (e.key === "Enter" && !hasFile) fileInputRef.current?.click();
                 }}
               >
                 <div className="dz_header">
-                  <div className="dz_icon dz_icon--lg"><FontAwesomeIcon icon={faUpload} /></div>
-                  <div className="dz_text">Arrastrá y soltá la imagen/PDF acá <span>o</span></div>
+                  <div className="dz_icon dz_icon--lg">
+                    <FontAwesomeIcon icon={faUpload} />
+                  </div>
+                  <div className="dz_text">
+                    Arrastrá y soltá la imagen/PDF acá <span>o</span>
+                  </div>
                   <button
                     type="button"
                     className="mm_btn"
-                    onClick={(e)=>{ e.stopPropagation(); fileInputRef.current?.click(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     disabled={uploading}
                   >
                     Elegir archivo
@@ -787,7 +937,7 @@ export default function ContableEgresoModal({
                 </p>
 
                 {(compURL || localPreview) && (
-                  <div className="dz_preview" onClick={(e)=>e.stopPropagation()}>
+                  <div className="dz_preview" onClick={(e) => e.stopPropagation()}>
                     {compURL && (
                       <div className="dz_file">
                         {(() => {
@@ -806,47 +956,46 @@ export default function ContableEgresoModal({
                         src={localPreview || compURL}
                         alt="Vista previa del comprobante"
                         className="dz_thumb"
-                        onClick={(e)=>{ e.stopPropagation(); setViewerOpen(true); setZoom(1); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewerOpen(true);
+                          setZoom(1);
+                        }}
                       />
                     ) : (
                       <div className="dz_pdf">PDF listo para ver</div>
                     )}
 
-                    <div className="dz_actions" onClick={(e)=>e.stopPropagation()}>
+                    <div className="dz_actions" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         className="mm_btn"
-                        onClick={(e)=>{ 
-                          e.stopPropagation(); 
-                          if (compURL || localPreview) { setViewerOpen(true); setZoom(1); } 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (compURL || localPreview) {
+                            setViewerOpen(true);
+                            setZoom(1);
+                          }
                         }}
                       >
                         <FontAwesomeIcon icon={faEye} /> Ver
                       </button>
-                      <button
-                        type="button"
-                        className="mm_btn danger"
-                        onClick={clearComprobante}
-                      >
+                      <button type="button" className="mm_btn danger" onClick={clearComprobante}>
                         <FontAwesomeIcon icon={faTrash} /> Quitar
                       </button>
                     </div>
                   </div>
                 )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  hidden
-                  onChange={handleFileInput}
-                />
+                <input ref={fileInputRef} type="file" accept="image/*,application/pdf" hidden onChange={handleFileInput} />
               </div>
             </div>
 
             {/* Footer */}
             <div className="mm_footer">
-              <button type="button" className="mm_btn ghost" onClick={onClose}>Cancelar</button>
+              <button type="button" className="mm_btn ghost" onClick={onClose}>
+                Cancelar
+              </button>
               <button type="submit" className="mm_btn primary" disabled={saving || uploading}>
                 <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : "Guardar"}
               </button>
@@ -854,33 +1003,55 @@ export default function ContableEgresoModal({
           </form>
 
           {viewerOpen && (
-            <div className="viewer_overlay" onClick={()=>setViewerOpen(false)} role="dialog" aria-modal="true">
-              <div className="viewer" onClick={(e)=>e.stopPropagation()}>
+            <div className="viewer_overlay" onClick={() => setViewerOpen(false)} role="dialog" aria-modal="true">
+              <div className="viewer" onClick={(e) => e.stopPropagation()}>
                 <div className="viewer_toolbar">
                   {!isPDF && (
                     <>
-                      <button className="mm_icon" onClick={()=>setZoom(z=>Math.max(0.2, Number((z-0.2).toFixed(2))))}><FontAwesomeIcon icon={faMinus} /></button>
-                      <span className="zoom_label">{Math.round(zoom*100)}%</span>
-                      <button className="mm_icon" onClick={()=>setZoom(z=>Math.min(5, Number((z+0.2).toFixed(2))))}><FontAwesomeIcon icon={faPlus} /></button>
-                      <button className="mm_icon" onClick={()=>setZoom(1)}><FontAwesomeIcon icon={faCompress} /></button>
+                      <button
+                        className="mm_icon"
+                        onClick={() => setZoom((z) => Math.max(0.2, Number((z - 0.2).toFixed(2))))}
+                      >
+                        <FontAwesomeIcon icon={faMinus} />
+                      </button>
+                      <span className="zoom_label">{Math.round(zoom * 100)}%</span>
+                      <button
+                        className="mm_icon"
+                        onClick={() => setZoom((z) => Math.min(5, Number((z + 0.2).toFixed(2))))}
+                      >
+                        <FontAwesomeIcon icon={faPlus} />
+                      </button>
+                      <button className="mm_icon" onClick={() => setZoom(1)}>
+                        <FontAwesomeIcon icon={faCompress} />
+                      </button>
                     </>
                   )}
                   {isPDF && (compURL || localPreview) && (
                     <button
                       className="mm_btn ghost"
-                      onClick={()=>{ 
-                        try{ window.open(compURL || localPreview, "_blank","noopener,noreferrer"); } 
-                        catch{ window.location.href = compURL || localPreview; } 
+                      onClick={() => {
+                        try {
+                          window.open(compURL || localPreview, "_blank", "noopener,noreferrer");
+                        } catch {
+                          window.location.href = compURL || localPreview;
+                        }
                       }}
                     >
                       Abrir en pestaña
                     </button>
                   )}
-                  <button className="mm_icon" onClick={()=>setViewerOpen(false)}><FontAwesomeIcon icon={faTimes} /></button>
+                  <button className="mm_icon" onClick={() => setViewerOpen(false)}>
+                    <FontAwesomeIcon icon={faTimes} />
+                  </button>
                 </div>
                 <div className="viewer_body">
                   {!isPDF ? (
-                    <img src={localPreview || compURL} alt="Comprobante" className="viewer_img" style={{ transform:`scale(${zoom})` }} />
+                    <img
+                      src={localPreview || compURL}
+                      alt="Comprobante"
+                      className="viewer_img"
+                      style={{ transform: `scale(${zoom})` }}
+                    />
                   ) : (
                     <iframe title="PDF comprobante" className="viewer_pdf" src={compURL || localPreview} />
                   )}

@@ -1,5 +1,5 @@
 // src/components/Contable/EgresoContable.jsx
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import BASE_URL from "../../config/config";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -21,10 +21,24 @@ const MESES = [
   "ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
   "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
 ];
+
+const STORAGE_KEYS = {
+  year: "contable_year",
+  month: "contable_month",
+};
+
 const cap1 = (s="") => s.charAt(0) + s.slice(1).toLowerCase();
 const sfx = (n)=> n===1 ? "" : "s";
 const ymd = (d) => new Date(d).toISOString().slice(0,10);
-const fmtARS = (n) => new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(Number(n||0));
+
+// ⬇️ AHORA SIEMPRE 2 DECIMALES (igual que DECIMAL(14,2) en DB)
+const fmtARS = (n) =>
+  new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(n ?? 0));
 
 /* ===== Confirm ===== */
 function ConfirmModal({
@@ -74,7 +88,9 @@ const fetchJSON = async (url, options={}) => {
 };
 const arraysIguales = (a=[], b=[]) => a.length === b.length && a.every((v,i)=> v === b[i]);
 
-/** Normaliza un row del backend a lo que usa el front */
+/** Normaliza un row del backend a lo que usa el front
+ *  ⬇️ Importante: parseFloat para no perder decimales
+ */
 const normalizeEgreso = (r = {}) => ({
   id_egreso: r.id_egreso,
   fecha: r.fecha || "",
@@ -84,7 +100,7 @@ const normalizeEgreso = (r = {}) => ({
   medio_nombre: r.medio_pago || "",
   proveedor: r.nombre_proveedor || "",
   numero_factura: r.comprobante || "",
-  monto: Number(r.importe || 0),
+  monto: Number.isFinite(parseFloat(r.importe)) ? parseFloat(r.importe) : 0,
   comprobante_url: r.comprobante_url || "",
 });
 
@@ -97,10 +113,28 @@ export default function EgresoContable(){
   const [egresosBase, setEgresosBase] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
 
-  // Filtros
-  const [anio, setAnio] = useState("ALL");
+  // Filtros (persistentes)
+  const [anio, setAnio] = useState(() => {
+    if (typeof window === "undefined") return "ALL";
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.year);
+      return saved || "ALL";
+    } catch {
+      return "ALL";
+    }
+  });
   const [anios, setAnios] = useState([Y]);
-  const [mes, setMes]   = useState("ALL");
+
+  const [mes, setMes]   = useState(() => {
+    if (typeof window === "undefined") return "ALL";
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.month);
+      return saved || "ALL";
+    } catch {
+      return "ALL";
+    }
+  });
+
   const [fCat, setFCat] = useState("");
   const [fMedio, setFMedio] = useState("");
   const [q, setQ] = useState("");
@@ -128,6 +162,19 @@ export default function EgresoContable(){
     return () => clearTimeout(t);
   }, [anio, mes, fCat, fMedio, q]);
 
+  /* 🔐 Persistir filtros en localStorage cuando cambian */
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.year, anio);
+    } catch {}
+  }, [anio]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.month, mes);
+    } catch {}
+  }, [mes]);
+
   /* -------------
     Rango fechas
   ------------- */
@@ -149,7 +196,6 @@ export default function EgresoContable(){
 
   /* -----------------
         Cargas base (una sola vez)
-        - Evita doble ejecución por StrictMode
   ------------------*/
   const didInit = useRef(false);
   useEffect(() => {
@@ -174,7 +220,6 @@ export default function EgresoContable(){
           const list = [...j1.anios_disponibles].sort((a,b)=>b-a).map(String);
           setAnios(list);
         } else {
-          // Fallback a list meta
           const j2 = await fetchJSON(`${BASE_URL}/api.php?action=contable_egresos&op=list&meta=1`);
           if (Array.isArray(j2?.anios_disponibles) && j2.anios_disponibles.length) {
             const list = [...j2.anios_disponibles].sort((a,b)=>b-a).map(String);
@@ -189,9 +234,7 @@ export default function EgresoContable(){
   }, []);
 
   /* -----------------
-        Carga de datos (tabla + base) sincronizada
-        - Un solo loader
-        - AbortController para evitar "doble carga" y race conditions
+        Carga de datos (tabla + base)
   ------------------*/
   useEffect(() => {
     const ac = new AbortController();
@@ -201,13 +244,11 @@ export default function EgresoContable(){
       try {
         setLoadingEgr(true);
 
-        // Parámetros para la TABLA (incluye filtros categoría/medio)
         const pTabla = new URLSearchParams({ op: "list" });
         if (rango.start && rango.end) { pTabla.set("start", rango.start); pTabla.set("end", rango.end); }
         if (fCat) pTabla.set("categoria", fCat);
         if (fMedio) pTabla.set("medio", fMedio);
 
-        // Parámetros para la BASE (solo rango)
         const pBase = new URLSearchParams({ op: "list" });
         if (rango.start && rango.end) { pBase.set("start", rango.start); pBase.set("end", rango.end); }
 
@@ -224,7 +265,6 @@ export default function EgresoContable(){
         setEgresos(datosTabla);
         setEgresosBase(datosBase);
 
-        // Fallback para años si vinieron con la tabla y todavía no los tenemos bien
         if (Array.isArray(rawTabla?.anios_disponibles) && rawTabla.anios_disponibles.length) {
           const list = [...rawTabla.anios_disponibles].sort((a,b)=>b-a).map(String);
           setAnios(prev => (arraysIguales(prev, list) ? prev : list));
@@ -240,7 +280,7 @@ export default function EgresoContable(){
     })();
 
     return () => ac.abort();
-  }, [rango.start, rango.end, fCat, fMedio]); // <- Ojo: NO depende de `anios` para evitar recargas innecesarias
+  }, [rango.start, rango.end, fCat, fMedio]);
 
   /* -----------------
          Derivados
@@ -261,10 +301,11 @@ export default function EgresoContable(){
     const map = new Map();
     for (const e of egresosBase){
       const k = e.categoria || "SIN CATEGORÍA";
-      const monto = Number(e.monto || 0);
+      const monto = Number.isFinite(e.monto) ? e.monto : 0;
       if (!map.has(k)) map.set(k, { label:k, total:0, count:0 });
       const obj = map.get(k);
-      obj.total += monto; obj.count += 1;
+      obj.total = Number((obj.total + monto).toFixed(2));
+      obj.count += 1;
     }
     return Array.from(map.values()).sort((a,b)=> b.total - a.total);
   },[egresosBase]);
@@ -300,18 +341,10 @@ export default function EgresoContable(){
         body: JSON.stringify({ id_egreso: toDeleteId }),
       });
       addToast("exito","Egreso eliminado correctamente.");
-      // Recargar datos una sola vez (se respeta AbortController del efecto principal)
-      // Forzamos nueva ejecución cambiando un filtro “neutro”:
-      // mejor: relanzar el efecto haciendo un pequeño truco: tocar `q` a sí misma no relanza.
-      // Así que simplemente dejamos que el efecto principal re-evalúe con mismos deps:
-      // Para asegurar, podemos reestablecer modal y listo:
     }catch{ addToast("error","No se pudo eliminar el egreso."); }
     finally{
       setConfirmOpen(false);
       setToDeleteId(null);
-      // Disparar recarga explícita cambiando el rango mínimamente es tosco,
-      // preferimos un pequeño patrón: togglear un “tick” no-dependiente (no necesario aquí).
-      // Como el backend ya cambió, el efecto seguirá igual; recargamos manualmente con un fetch rápido:
       try {
         const pTabla = new URLSearchParams({ op: "list" });
         if (rango.start && rango.end) { pTabla.set("start", rango.start); pTabla.set("end", rango.end); }
@@ -325,7 +358,6 @@ export default function EgresoContable(){
 
   const onSavedEgreso = ()=>{
     setModalOpen(false);
-    // recarga suave de tabla
     (async ()=>{
       try{
         const pTabla = new URLSearchParams({ op: "list" });
@@ -350,14 +382,14 @@ export default function EgresoContable(){
       e.descripcion || "",
       e.proveedor || "",
       e.medio_nombre || e.medio_pago || "",
-      Number(e.monto || 0)
+      Number(Number(e.monto || 0).toFixed(2)) // ⬅️ dos decimales
     ]));
 
     const aoa = [headers, ...data];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-    // Forzar "Monto" como número (col 5 -> índice 5)
+    // Forzar “Monto” como número
     for (let r = 2; r <= aoa.length; r++) {
       const addr = XLSX.utils.encode_cell({ r: r-1, c: 5 });
       if (ws[addr]) ws[addr].t = "n";
@@ -389,7 +421,7 @@ export default function EgresoContable(){
       e.descripcion || "",
       e.proveedor || "",
       e.medio_nombre || e.medio_pago || "",
-      (Number(e.monto || 0)).toString().replace(".", ","),
+      Number(Number(e.monto || 0).toFixed(2)).toString().replace(".", ","),
     ]);
     const bom = "\uFEFF";
     const lines = [ headers.map(csvEscape).join(sep), ...data.map(r=> r.map(csvEscape).join(sep)) ];
@@ -460,7 +492,9 @@ export default function EgresoContable(){
                 <div>
                   <p className="eg_stat__label">Total</p>
                   <p className="eg_stat__value">
-                    {fmtARS(egresosFiltrados.reduce((acc, e) => acc + Number(e.monto||0), 0))}
+                    {fmtARS(
+                      egresosFiltrados.reduce((acc, e) => Number((acc + (Number(e.monto||0))).toFixed(2)), 0)
+                    )}
                   </p>
                 </div>
               </div>
@@ -535,7 +569,6 @@ export default function EgresoContable(){
                 <FontAwesomeIcon icon={faFileExcel} /> Exportar Excel
               </button>
 
-              {/* Si querés CSV, descomentá: */}
               {/* <button type="button" className="eg_btn eg_btn--whitepill" onClick={exportarCSV}>
                 <FontAwesomeIcon icon={faFileExcel} /> Exportar CSV
               </button> */}
@@ -582,6 +615,7 @@ export default function EgresoContable(){
                     <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>{e.descripcion || "-"}</div>
                     <div className="gt_cell truncate" role="cell" title={e.proveedor || "-"}>{e.proveedor || "-"}</div>
                     <div className="gt_cell center" role="cell">{e.medio_nombre || e.medio_pago || "-"}</div>
+                    {/* ⬇️ Muestra EXACTAMENTE 2 decimales como en DB */}
                     <div className="gt_cell center" role="cell">{fmtARS(e.monto)}</div>
                     <div className="gt_cell" role="cell">
                       <div className="row_actions">

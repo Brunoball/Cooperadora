@@ -18,6 +18,30 @@ const onlyLettersNumbersSpaces = (v = "") => U(v).replace(/[^\p{L}\d\s]/gu, "");
 const VALOR_OTRO = "__OTRO__";
 const MAX_IMPORTE = 50_000_000;
 
+/** ====== DECIMALES: helpers ====== */
+// Permite tipear solo dígitos y un separador (coma o punto). No aplica formato, solo limpia.
+const sanitizeDecimalInput = (v = "") => {
+  v = String(v).replace(/[^0-9.,]/g, "");
+  // dejar solo un separador (el primero que aparezca)
+  const firstSep = v.search(/[.,]/);
+  if (firstSep === -1) return v.replace(/[.,]/g, "");
+  const intPart = v.slice(0, firstSep).replace(/[.,]/g, "");
+  const sep = v[firstSep];
+  const decPart = v.slice(firstSep + 1).replace(/[.,]/g, "");
+  return `${intPart}${sep}${decPart}`;
+};
+
+// Convierte texto a número JS (acepta , o .) y redondea a 2 decimales.
+const parseMonto2dec = (v = "") => {
+  const clean = String(v).replace(/,/g, ".").replace(/[^0-9.]/g, "");
+  const n = parseFloat(clean);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+};
+
+// Formatea un número para AR con 2 decimales.
+const fmtAR = (n) => new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
 /** Fetch helper */
 async function fetchJSON(url, options) {
   const sep = url.includes("?") ? "&" : "?";
@@ -58,7 +82,7 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
   /** Form base */
   const [form, setForm] = useState({
     fecha: defaultDate || new Date().toISOString().slice(0, 10),
-    importe: "",
+    importe: "",                 // <- string para permitir coma/punto mientras se tipea
     id_medio_pago: "",
   });
 
@@ -130,8 +154,11 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
   /** ===== Handlers ===== */
   const onChange = (k) => (e) => {
     let v = e.target.value;
-    if (k === "importe") v = onlyDigits(v);
-    else v = U(v);
+    if (k === "importe") {
+      v = sanitizeDecimalInput(v); // permitir decimales en el input
+    } else {
+      v = U(v);
+    }
     setForm((s) => ({ ...s, [k]: v }));
   };
 
@@ -215,10 +242,10 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
     e?.preventDefault?.();
     if (saving) return;
 
-    const importeNumber = Number(onlyDigits(form.importe) || 0);
+    const importeNumber = parseMonto2dec(form.importe); // <-- decimales
     if (!form.fecha) { safeNotify("advertencia", "Seleccioná la fecha."); return; }
-    if (!importeNumber || importeNumber <= 0) { safeNotify("advertencia", "Ingresá un importe válido (solo números)."); return; }
-    if (importeNumber > MAX_IMPORTE) { safeNotify("advertencia", `El importe (${new Intl.NumberFormat('es-AR').format(importeNumber)}) supera el máximo permitido (${new Intl.NumberFormat('es-AR').format(MAX_IMPORTE)}).`); return; }
+    if (!importeNumber || importeNumber <= 0) { safeNotify("advertencia", "Ingresá un importe válido (podés usar coma o punto)."); return; }
+    if (importeNumber > MAX_IMPORTE) { safeNotify("advertencia", `El importe (${fmtAR(importeNumber)}) supera el máximo permitido (${fmtAR(MAX_IMPORTE)}).`); return; }
     if (!medioEsOtro && !String(form.id_medio_pago || "").trim()) { safeNotify("advertencia", "Seleccioná un medio de pago."); return; }
     if (categoriaEsOtra && !onlyLetters(categoriaNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva categoría (solo letras)."); return; }
     if (imputacionEsOtra && !onlyLetters(imputacionNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva imputación (solo letras)."); return; }
@@ -271,7 +298,7 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
         id_cont_proveedor: proveedorIdFinal ? Number(proveedorIdFinal) : null,
         id_cont_descripcion: imputacionIdFinal ? Number(imputacionIdFinal) : null,
         id_medio_pago: Number(medioIdFinal),
-        importe: importeNumber,
+        importe: importeNumber, // <-- decimales al backend
       };
 
       const data = await fetchJSON(`${BASE_URL}/api.php?action=contable_ingresos&op=create`, {
@@ -376,8 +403,10 @@ export function IngresoCrearModal({ open, onClose, onSaved, defaultDate }) {
               label="Importe (ARS)"
               value={form.importe}
               onChange={(e)=>onChange("importe")(e)}
-              inputMode="numeric"
-              pattern="\d*"
+              inputMode="decimal"
+              // permite 123 o 123,45 / 123.45 (hasta 2 decimales)
+              pattern="^\d+(?:[.,]\d{0,2})?$"
+              title="Solo números, opcionalmente con coma o punto y hasta 2 decimales"
               placeholder="0"
             />
           </div>
@@ -465,7 +494,8 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
 
     setForm({
       fecha: r.fecha || new Date().toISOString().slice(0, 10),
-      importe: onlyDigits(String(r.importe ?? "")),
+      // mostrar como string; si el backend devuelve con decimales, respetar hasta 2
+      importe: typeof r.importe === "number" ? String(fmtAR(r.importe)).replace(/\./g, ",") : sanitizeDecimalInput(String(r.importe ?? "")),
       id_medio_pago: r.id_medio_pago ? String(r.id_medio_pago) : "",
     });
 
@@ -499,8 +529,11 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
 
   const onChange = (k) => (e) => {
     let v = e.target.value;
-    if (k === "importe") v = onlyDigits(v);
-    else v = U(v);
+    if (k === "importe") {
+      v = sanitizeDecimalInput(v); // permitir coma/punto en edición
+    } else {
+      v = U(v);
+    }
     setForm((s) => ({ ...s, [k]: v }));
   };
   const onChangeMedio = (val) => {
@@ -579,10 +612,10 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
     e?.preventDefault?.();
     if (saving || !editRow?.id_ingreso) return;
 
-    const importeNumber = Number(onlyDigits(form.importe) || 0);
+    const importeNumber = parseMonto2dec(form.importe); // <-- decimales
     if (!form.fecha) { safeNotify("advertencia", "Seleccioná la fecha."); return; }
-    if (!importeNumber || importeNumber <= 0) { safeNotify("advertencia", "Ingresá un importe válido (solo números)."); return; }
-    if (importeNumber > MAX_IMPORTE) { safeNotify("advertencia", `El importe (${new Intl.NumberFormat('es-AR').format(importeNumber)}) supera el máximo permitido (${new Intl.NumberFormat('es-AR').format(MAX_IMPORTE)}).`); return; }
+    if (!importeNumber || importeNumber <= 0) { safeNotify("advertencia", "Ingresá un importe válido (podés usar coma o punto)."); return; }
+    if (importeNumber > MAX_IMPORTE) { safeNotify("advertencia", `El importe (${fmtAR(importeNumber)}) supera el máximo permitido (${fmtAR(MAX_IMPORTE)}).`); return; }
     if (!medioEsOtro && !String(form.id_medio_pago || "").trim()) { safeNotify("advertencia", "Seleccioná un medio de pago."); return; }
     if (categoriaEsOtra && !onlyLetters(categoriaNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva categoría (solo letras)."); return; }
     if (imputacionEsOtra && !onlyLetters(imputacionNueva).trim()) { safeNotify("advertencia", "Ingresá la nueva imputación (solo letras)."); return; }
@@ -632,7 +665,7 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
         id_cont_proveedor: proveedorIdFinal ? Number(proveedorIdFinal) : null,
         id_cont_descripcion: imputacionIdFinal ? Number(imputacionIdFinal) : null,
         id_medio_pago: Number(medioIdFinal),
-        importe: importeNumber,
+        importe: importeNumber, // <-- decimales al backend
       };
 
       const data = await fetchJSON(`${BASE_URL}/api.php?action=contable_ingresos&op=update`, {
@@ -735,8 +768,9 @@ export function IngresoEditarModal({ open, onClose, onSaved, editRow }) {
               label="Importe (ARS)"
               value={form.importe}
               onChange={(e)=>onChange("importe")(e)}
-              inputMode="numeric"
-              pattern="\d*"
+              inputMode="decimal"
+              pattern="^\d+(?:[.,]\d{0,2})?$"
+              title="Solo números, opcionalmente con coma o punto y hasta 2 decimales"
               placeholder="0"
             />
           </div>
@@ -808,7 +842,8 @@ function SelectField({ icon, label, value, onChange, options, extraOption=false,
   );
 }
 
-function InputField({ icon, label, value, onChange, inputMode, placeholder, required, className }) {
+// Acepta ahora un prop `pattern` y lo pasa al <input>
+function InputField({ icon, label, value, onChange, inputMode, placeholder, required, className, pattern, title }) {
   return (
     <div className={`field field--icon ${className || ""}`}>
       <label>{label}</label>
@@ -820,7 +855,8 @@ function InputField({ icon, label, value, onChange, inputMode, placeholder, requ
           value={value}
           onChange={onChange}
           required={required}
-          pattern={inputMode === "numeric" ? "\\d*" : undefined}
+          pattern={pattern}
+          title={title}
         />
       </div>
     </div>

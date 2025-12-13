@@ -10,6 +10,10 @@ const hoy = new Date();
 const Y = hoy.getFullYear();
 const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
 
+const STORAGE_KEYS = {
+  year: "contable_year",
+};
+
 /* ---------- Helpers ---------- */
 // Importante: NO mandamos headers personalizados para no disparar preflight CORS.
 const fetchJSON = async (url, options = {}) => {
@@ -222,11 +226,31 @@ function LineChart({ data = [], serieName = "Ingresos", color = "#2563eb" }) {
 export default function ResumenContable() {
   const location = useLocation();
   const [resumen, setResumen] = useState([]);
-  const [anioRes, setAnioRes] = useState(Y);
+
+  // Año inicial: intenta leer el que quedó guardado en contable_year
+  const [anioRes, setAnioRes] = useState(() => {
+    if (typeof window === "undefined") return Y;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.year);
+      if (!saved) return Y;
+      const n = Number(saved);
+      return Number.isFinite(n) ? n : Y;
+    } catch {
+      return Y;
+    }
+  });
+
   const [aniosCat, setAniosCat] = useState([]);
   const [loadingRes, setLoadingRes] = useState(false);
   const [serie] = useState("ingresos"); // ingresos | egresos | saldo
   const [chartTab, setChartTab] = useState("anual"); // anual | mensual
+
+  /* 🔐 Sync año del resumen con localStorage (mismo que ingresos/egresos) */
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.year, String(anioRes));
+    } catch {}
+  }, [anioRes]);
 
   const loadAniosDisponibles = async (prefer = anioRes) => {
     try {
