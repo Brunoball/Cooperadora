@@ -655,28 +655,27 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            {/* ✅ NUEVO: filtro especial (solo alumnos) */}
-            <div className="ing-fieldrow">
-              <div className="ing-field ing-Especial">
-                <label htmlFor="especial">Especial</label>
-                <select
-                  id="especial"
-                  value={mesEspecial}
-                  onChange={(e) => setMesEspecial(e.target.value)}
-                  disabled={innerTab !== "alumnos"} // solo aplica en alumnos
-                >
-                  <option value="">TODOS</option>
-                  {mesesEspeciales.map((m) => (
-                    <option key={m.id_mes} value={String(m.id_mes)}>
-                      {String(m.nombre || "").toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-                {innerTab !== "alumnos" && (
-                  <small className="muted">Disponible solo en “Alumnos”.</small>
-                )}
-              </div>
-            </div>
+{/* ✅ filtro especial (solo alumnos) */}
+{innerTab === "alumnos" && (
+  <div className="ing-fieldrow">
+    <div className="ing-field ing-Especial">
+      <label htmlFor="especial">Especial</label>
+      <select
+        id="especial"
+        value={mesEspecial}
+        onChange={(e) => setMesEspecial(e.target.value)}
+      >
+        <option value="">TODOS</option>
+        {mesesEspeciales.map((m) => (
+          <option key={m.id_mes} value={String(m.id_mes)}>
+            {String(m.nombre || "").toUpperCase()}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+)}
+
 
             {/* KPIs */}
             <div className="ing-kpi-cards">
