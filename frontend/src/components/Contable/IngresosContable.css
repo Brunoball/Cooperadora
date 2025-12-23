@@ -615,3 +615,6 @@ small { font-size: var(--fs-small); color: var(--muted); }
   justify-self: flex-end;
   align-self: center;
 }
+.ing-Especial{
+  grid-column: 1 / 3;
+}

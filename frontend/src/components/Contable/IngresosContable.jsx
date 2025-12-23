@@ -657,7 +657,7 @@ export default function IngresosContable() {
 
             {/* ✅ NUEVO: filtro especial (solo alumnos) */}
             <div className="ing-fieldrow">
-              <div className="ing-field">
+              <div className="ing-field ing-Especial">
                 <label htmlFor="especial">Especial</label>
                 <select
                   id="especial"
