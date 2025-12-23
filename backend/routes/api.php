@@ -183,6 +183,11 @@ try {
             require_once __DIR__ . '/../modules/cuotas/obtener_info_familia.php';
             exit;
 
+        case 'buscar_pago_eliminar':
+            require_once __DIR__ . '/../modules/cuotas/buscar_pago_eliminar.php';
+            exit;
+
+
         /* ===========================
            CONTABLE (LEGADO)
         ============================ */

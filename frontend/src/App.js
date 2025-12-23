@@ -6,6 +6,8 @@ import Inicio from './components/Login/Inicio';
 import Principal from './components/Principal/Principal';
 import Registro from './components/Login/Registro';
 
+import BotPanel from "./components/BotPanel/BotPanel";
+
 // 🧑‍🎓 Alumnos
 import Alumnos from './components/Alumnos/Alumno';
 import AgregarAlumno from './components/Alumnos/AgregarAlumno';
@@ -118,6 +120,8 @@ function App() {
         {/* Panel y registro */}
         <Route path="/panel" element={<RutaProtegida componente={<Principal />} />} />
         <Route path="/registro" element={<RutaProtegida componente={<Registro />} />} />
+
+        <Route path="/bot/panel" element={<BotPanel />} />
 
         {/* Rutas de Alumnos */}
         <Route path="/alumnos" element={<RutaProtegida componente={<Alumnos />} />} />

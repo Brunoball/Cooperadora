@@ -1,17 +1,28 @@
 // src/components/Cuotas/modales/ModalMesCuotas.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faCalendarAlt, faPrint, faFilePdf } from "@fortawesome/free-solid-svg-icons";
-import { imprimirRecibos } from "../../../utils/imprimirRecibos";
-import { imprimirRecibosExternos } from "../../../utils/imprimirRecibosExternos";
+import {
+  faTimes,
+  faCalendarAlt,
+  faPrint,
+  faFilePdf,
+} from "@fortawesome/free-solid-svg-icons";
+
+// ✅ INTERNOS: usar rotado (alias porque el export real es imprimirRecibos)
+import { imprimirRecibos as imprimirRecibosRotado } from "../../../utils/imprimirRecibosRotado";
+
+// ✅ EXTERNOS: usar rotado externos (alias por si exporta imprimirRecibosExternos)
+import { imprimirRecibosExternos as imprimirRecibosExternosRotados } from "../../../utils/imprimirRecibosExternosRotados";
+
 import { generarComprobanteAlumnoPDF } from "../../../utils/ComprobanteExternoPDF.jsx";
+
 import BASE_URL from "../../../config/config";
 import Toast from "../../Global/Toast";
 import "./ModalMesCuotas.css";
 
 /**
  * Modal para seleccionar uno o varios meses y luego:
- *  - Imprimir (usa imprimirRecibos / imprimirRecibosExternos)
+ *  - Imprimir (INTERNOS => imprimirRecibosRotado / EXTERNOS => imprimirRecibosExternosRotados)
  *  - Descargar PDF (usa generarComprobanteAlumnoPDF)
  *
  * Props:
@@ -23,15 +34,15 @@ import "./ModalMesCuotas.css";
  */
 
 const FALLBACK_MESES = [
-  { id: 1,  nombre: "Enero" },
-  { id: 2,  nombre: "Febrero" },
-  { id: 3,  nombre: "Marzo" },
-  { id: 4,  nombre: "Abril" },
-  { id: 5,  nombre: "Mayo" },
-  { id: 6,  nombre: "Junio" },
-  { id: 7,  nombre: "Julio" },
-  { id: 8,  nombre: "Agosto" },
-  { id: 9,  nombre: "Septiembre" },
+  { id: 1, nombre: "Enero" },
+  { id: 2, nombre: "Febrero" },
+  { id: 3, nombre: "Marzo" },
+  { id: 4, nombre: "Abril" },
+  { id: 5, nombre: "Mayo" },
+  { id: 6, nombre: "Junio" },
+  { id: 7, nombre: "Julio" },
+  { id: 8, nombre: "Agosto" },
+  { id: 9, nombre: "Septiembre" },
   { id: 10, nombre: "Octubre" },
   { id: 11, nombre: "Noviembre" },
   { id: 12, nombre: "Diciembre" },
@@ -40,7 +51,13 @@ const FALLBACK_MESES = [
 const normalizar = (s = "") =>
   String(s).toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
 
-const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = undefined, onClose }) => {
+const ModalMesCuotas = ({
+  socio,
+  meses = [],
+  anio,
+  esExterno: esExternoProp = undefined,
+  onClose,
+}) => {
   const nowYear = new Date().getFullYear();
 
   // ===== AÑOS CON PAGOS (desde API) =====
@@ -54,11 +71,10 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
   // Util: elegir año por defecto a partir de la lista
   const pickDefaultYear = useCallback((lista, anioProp, currentYear) => {
-    const ids = (lista || []).map(a => String(a.id));
+    const ids = (lista || []).map((a) => String(a.id));
     if (anioProp && ids.includes(String(anioProp))) return Number(anioProp);
     if (ids.includes(String(currentYear))) return Number(currentYear);
     if (lista && lista.length > 0) return Number(lista[0].id);
-    // Si no hay años en la lista, caer al año actual para no romper UI (botón mostrará ese valor)
     return Number(currentYear);
   }, []);
 
@@ -69,10 +85,13 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
       setLoadingAnios(true);
       setErrorAnios(null);
       try {
-        const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`);
+        const res = await fetch(
+          `${BASE_URL}/api.php?action=cuotas&listar_anios=1`
+        );
         if (!res.ok) throw new Error(`listar_anios HTTP ${res.status}`);
         const data = await res.json().catch(() => ({}));
-        const lista = (data?.anios && Array.isArray(data.anios)) ? data.anios : [];
+        const lista =
+          data?.anios && Array.isArray(data.anios) ? data.anios : [];
         if (cancelled) return;
 
         setAniosPago(lista);
@@ -83,19 +102,21 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
         console.error("ModalMesCuotas listar_anios error:", e);
         setErrorAnios(e);
         setAniosPago([]);
-        // A falta de lista, quedar con año actual o prop
         setAnioTrabajo(Number(anio || nowYear));
       } finally {
         if (!cancelled) setLoadingAnios(false);
       }
     };
     fetchAniosPago();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [anio, nowYear, pickDefaultYear]);
 
   // ===== MESES =====
   const listaMeses = useMemo(() => {
-    const arr = Array.isArray(meses) && meses.length ? meses : FALLBACK_MESES;
+    const arr =
+      Array.isArray(meses) && meses.length ? meses : FALLBACK_MESES;
     return arr.map((m) => ({ id: Number(m.id), nombre: String(m.nombre) }));
   }, [meses]);
 
@@ -110,7 +131,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
   // ===== Precio por categoría (dinámico) =====
   const [precioMensual, setPrecioMensual] = useState(0);
-  const [nombreCategoria, setNombreCategoria] = useState(""); // p.ej. "INTERNO" | "EXTERNO"
+  const [nombreCategoria, setNombreCategoria] = useState(""); // "INTERNO" | "EXTERNO"
 
   // ID alumno tolerante
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
@@ -126,7 +147,8 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     return normalizar(raw) === "externo";
   }, [nombreCategoria, socio]);
 
-  const esExterno = esExternoProp !== undefined ? !!esExternoProp : esExternoInferido;
+  const esExterno =
+    esExternoProp !== undefined ? !!esExternoProp : esExternoInferido;
 
   // Ordenados para cálculo / salida
   const periodosOrdenados = useMemo(
@@ -134,11 +156,13 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     [seleccionados]
   );
 
-  // Texto tipo “ENE / FEB / MAR 2025”
+  // Texto tipo “Enero / Febrero 2025”
   const periodoTextoFinal = useMemo(() => {
     if (periodosOrdenados.length === 0) return "";
     const mapById = new Map(listaMeses.map((m) => [Number(m.id), m.nombre]));
-    const nombres = periodosOrdenados.map((id) => (mapById.get(id) || String(id)).trim());
+    const nombres = periodosOrdenados.map((id) =>
+      (mapById.get(id) || String(id)).trim()
+    );
     return `${nombres.join(" / ")} ${anioTrabajo}`;
   }, [periodosOrdenados, listaMeses, anioTrabajo]);
 
@@ -168,7 +192,8 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
           idAlumno
         )}`;
         const res = await fetch(url, { method: "GET" });
-        if (!res.ok) throw new Error(`obtener_monto_categoria HTTP ${res.status}`);
+        if (!res.ok)
+          throw new Error(`obtener_monto_categoria HTTP ${res.status}`);
 
         const data = await res.json().catch(() => ({}));
         if (data?.exito) {
@@ -185,6 +210,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
             data?.nombre ??
             ""
           ).toString();
+
           setPrecioMensual(Number.isFinite(monto) ? monto : 0);
           setNombreCategoria(nombre ? nombre.toUpperCase() : "");
         } else {
@@ -202,7 +228,9 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   }, [idAlumno]);
 
   // Reset selección al cambiar de año
-  useEffect(() => { setSeleccionados([]); }, [anioTrabajo]);
+  useEffect(() => {
+    setSeleccionados([]);
+  }, [anioTrabajo]);
 
   // Interacciones
   const toggleMes = (id) => {
@@ -213,8 +241,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   };
 
   const allSelected =
-    listaMeses.length > 0 &&
-    seleccionados.length === listaMeses.length;
+    listaMeses.length > 0 && seleccionados.length === listaMeses.length;
 
   const toggleSeleccionarTodos = () => {
     if (allSelected) setSeleccionados([]);
@@ -244,10 +271,17 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     }
 
     const opciones = { anioPago: anioTrabajo };
+
+    // ✅ EXTERNOS => externos rotados, INTERNOS => rotado
     if (esExterno) {
-      await imprimirRecibosExternos([alumnoParaImprimir], periodoCodigo, w, opciones);
+      await imprimirRecibosExternosRotados(
+        [alumnoParaImprimir],
+        periodoCodigo,
+        w,
+        opciones
+      );
     } else {
-      await imprimirRecibos([alumnoParaImprimir], periodoCodigo, w, opciones);
+      await imprimirRecibosRotado([alumnoParaImprimir], periodoCodigo, w, opciones);
     }
   };
 
@@ -334,9 +368,25 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
               <h2 className="modmes_title">Seleccionar Períodos</h2>
             </div>
           </div>
-          <button className="modmes_close-btn" onClick={() => onClose?.()} aria-label="Cerrar">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <button
+            className="modmes_close-btn"
+            onClick={() => onClose?.()}
+            aria-label="Cerrar"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 4L4 12M4 4L12 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>
@@ -349,26 +399,42 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
               {/* Centro: Imprimir / PDF */}
               <div className="modmes_section-center">
-                <div className="modmes_output-mode" role="tablist" aria-label="Modo de salida">
-                  <label className={`modmes_mode-option ${modoSalida === 'imprimir' ? 'active' : ''}`} role="tab" aria-selected={modoSalida === 'imprimir'}>
+                <div
+                  className="modmes_output-mode"
+                  role="tablist"
+                  aria-label="Modo de salida"
+                >
+                  <label
+                    className={`modmes_mode-option ${
+                      modoSalida === "imprimir" ? "active" : ""
+                    }`}
+                    role="tab"
+                    aria-selected={modoSalida === "imprimir"}
+                  >
                     <input
                       type="radio"
                       name="modoSalida"
                       value="imprimir"
-                      checked={modoSalida === 'imprimir'}
-                      onChange={() => setModoSalida('imprimir')}
+                      checked={modoSalida === "imprimir"}
+                      onChange={() => setModoSalida("imprimir")}
                     />
                     <span className="modmes_mode-bullet" />
                     <span>Imprimir</span>
                   </label>
 
-                  <label className={`modmes_mode-option ${modoSalida === 'pdf' ? 'active' : ''}`} role="tab" aria-selected={modoSalida === 'pdf'}>
+                  <label
+                    className={`modmes_mode-option ${
+                      modoSalida === "pdf" ? "active" : ""
+                    }`}
+                    role="tab"
+                    aria-selected={modoSalida === "pdf"}
+                  >
                     <input
                       type="radio"
                       name="modoSalida"
                       value="pdf"
-                      checked={modoSalida === 'pdf'}
-                      onChange={() => setModoSalida('pdf')}
+                      checked={modoSalida === "pdf"}
+                      onChange={() => setModoSalida("pdf")}
                     />
                     <span className="modmes_mode-bullet" />
                     <span>PDF</span>
@@ -376,7 +442,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                 </div>
               </div>
 
-              {/* Derecha: Selector de año (desde API) + botón Todos/Quitar */}
+              {/* Derecha: Selector de año + Todos/Quitar */}
               <div className="modmes_section-header-actions">
                 <div className="modmes_year-picker">
                   <button
@@ -392,16 +458,26 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                     <span>
                       {loadingAnios
                         ? "Cargando..."
-                        : (aniosPago.length > 0 ? anioTrabajo : "—")}
+                        : aniosPago.length > 0
+                        ? anioTrabajo
+                        : "—"}
                     </span>
                   </button>
 
                   {showYearPicker && !loadingAnios && (
-                    <div className="modmes_year-popover" role="listbox" aria-label="Seleccionar año">
+                    <div
+                      className="modmes_year-popover"
+                      role="listbox"
+                      aria-label="Seleccionar año"
+                    >
                       {errorAnios ? (
-                        <div className="modmes_year-empty">Error al cargar años</div>
+                        <div className="modmes_year-empty">
+                          Error al cargar años
+                        </div>
                       ) : aniosPago.length === 0 ? (
-                        <div className="modmes_year-empty">Sin años con pagos</div>
+                        <div className="modmes_year-empty">
+                          Sin años con pagos
+                        </div>
                       ) : (
                         aniosPago.map((a) => {
                           const val = String(a.id);
@@ -409,8 +485,13 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                           return (
                             <button
                               key={val}
-                              className={`modmes_year-item ${isActive ? "active" : ""}`}
-                              onClick={() => { setAnioTrabajo(Number(val)); setShowYearPicker(false); }}
+                              className={`modmes_year-item ${
+                                isActive ? "active" : ""
+                              }`}
+                              onClick={() => {
+                                setAnioTrabajo(Number(val));
+                                setShowYearPicker(false);
+                              }}
                               role="option"
                               aria-selected={isActive}
                             >
@@ -442,7 +523,9 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                   return (
                     <label
                       key={m.id}
-                      className={`modmes_periodo-card ${checked ? "modmes_seleccionado" : ""}`}
+                      className={`modmes_periodo-card ${
+                        checked ? "modmes_seleccionado" : ""
+                      }`}
                     >
                       <div className="modmes_periodo-checkbox">
                         <input
@@ -467,9 +550,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
         {/* Footer */}
         <div className="modmes_footer modmes_footer-sides">
           <div className="modmes_footer-left">
-            <div className="modmes_total-badge">
-              Total: {formatearARS(total)}
-            </div>
+            <div className="modmes_total-badge">Total: {formatearARS(total)}</div>
           </div>
 
           <div className="modmes_footer-right">
@@ -485,18 +566,28 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
             <button
               type="button"
-              className={`modmes_btn ${modoSalida === 'imprimir' ? 'modmes_btn-primary' : 'modmes_btn-primary' } modmes_action-btn`}
+              className="modmes_btn modmes_btn-primary modmes_action-btn"
               onClick={handleConfirmar}
-              disabled={periodosOrdenados.length === 0 || cargando || precioMensual <= 0 || loadingAnios || aniosPago.length === 0}
+              disabled={
+                periodosOrdenados.length === 0 ||
+                cargando ||
+                precioMensual <= 0 ||
+                loadingAnios ||
+                aniosPago.length === 0
+              }
               title={
-                loadingAnios ? "Cargando años..."
-                : aniosPago.length === 0 ? "No hay años con pagos"
-                : periodosOrdenados.length === 0
+                loadingAnios
+                  ? "Cargando años..."
+                  : aniosPago.length === 0
+                  ? "No hay años con pagos"
+                  : periodosOrdenados.length === 0
                   ? "Elegí al menos un período"
-                  : (precioMensual <= 0 ? "No hay valor mensual definido" : "")
+                  : precioMensual <= 0
+                  ? "No hay valor mensual definido"
+                  : ""
               }
             >
-              {modoSalida === 'imprimir' ? (
+              {modoSalida === "imprimir" ? (
                 <>
                   <FontAwesomeIcon icon={faPrint} />
                   <span className="btn-label">Imprimir</span>

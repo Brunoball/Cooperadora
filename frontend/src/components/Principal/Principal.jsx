@@ -9,19 +9,26 @@ import {
   faSignOutAlt,
   faIdCard,
   faLayerGroup,
+  faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import logoRH from "../../imagenes/Escudo.png";
 import "./principal.css";
 import "../Global/roots.css";
 
-/* =========== Modal cierre de sesión (clases: modalprincipal-*) ============= */
+const PANEL_API =
+  process.env.REACT_APP_BOT_PANEL_URL ||
+  "https://cooperadora.ipet50.edu.ar/api/bot_wp/funciones/Panel/endpoints";
+
+/* =========== Modal cierre de sesión ============= */
 const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
   const cancelBtnRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
     cancelBtnRef.current?.focus();
-    const onKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
@@ -82,6 +89,9 @@ const Principal = () => {
   const [isExiting, setIsExiting] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
+  // ✅ badge total
+  const [unreadTotal, setUnreadTotal] = useState(0);
+
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem("usuario"));
@@ -98,6 +108,35 @@ const Principal = () => {
       localStorage.removeItem("alumnoSeleccionado");
       localStorage.removeItem("ultimaAccion");
     } catch {}
+  }, []);
+
+  // ✅ poll unread total
+  useEffect(() => {
+    let alive = true;
+
+    const tick = async () => {
+      try {
+        const res = await fetch(`${PANEL_API}/panel_unread_total.php?_=${Date.now()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => null);
+        if (!alive) return;
+
+        if (res.ok && data?.success) {
+          setUnreadTotal(Number(data.total_unread || 0));
+        }
+      } catch {
+        // silencio
+      }
+    };
+
+    tick();
+    const t = setInterval(tick, 2000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
   }, []);
 
   const role = (usuario?.rol || "").toLowerCase();
@@ -138,10 +177,11 @@ const Principal = () => {
     }, 400);
   };
 
+  const irPanelBot = () => navigate("/bot/panel");
+
   return (
     <div className={`pagina-principal-container ${isExiting ? "slide-fade-out" : ""}`}>
       <div className="pagina-principal-card">
-        {/* ===== Header: texto izq / logo der ===== */}
         <div className="pagina-principal-header header--row">
           <div className="header-text">
             <h1 className="title">
@@ -158,7 +198,6 @@ const Principal = () => {
           </div>
         </div>
 
-        {/* ===== Tarjetas ===== */}
         <div className="menu-container">
           <div className="menu-grid flex--compact">
             {visibleItems.map((item, index) => (
@@ -199,6 +238,22 @@ const Principal = () => {
           </a>
         </footer>
       </div>
+
+      {/* ✅ BOTÓN FLOTANTE con badge */}
+      <button
+        type="button"
+        className="bot-fab"
+        onClick={irPanelBot}
+        aria-label="Abrir panel interno del bot"
+        title="Panel interno del Bot (WhatsApp)"
+      >
+        <FontAwesomeIcon icon={faRobot} />
+        {unreadTotal > 0 ? (
+          <span className="bot-fab-badge" aria-label={`Mensajes sin ver: ${unreadTotal}`}>
+            {unreadTotal > 99 ? "99+" : unreadTotal}
+          </span>
+        ) : null}
+      </button>
 
       <ConfirmLogoutModal
         open={showModal}

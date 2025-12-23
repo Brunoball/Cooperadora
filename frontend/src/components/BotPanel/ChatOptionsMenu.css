@@ -1,0 +1,64 @@
+/* src/components/BotPanel/ChatOptionsMenu.css */
+
+.chatopts {
+  position: relative;
+}
+
+.chatopts--header {
+  display: inline-flex;
+  align-items: center;
+}
+
+.chatopts-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  place-items: center;
+  opacity: 0.85;
+}
+
+.chatopts-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 1;
+}
+
+.chatopts-btn.is-open {
+  background: rgba(255, 255, 255, 0.10);
+  opacity: 1;
+}
+
+/* ✅ CLAVE: fixed porque top/left son de viewport */
+.chatopts-menu {
+  position: fixed;
+  z-index: 999999;
+  background: #1f2c33;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.chatopts-item {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: #e9edef;
+  padding: 10px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.chatopts-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chatopts-item--danger {
+  color: #ff8a8a;
+}

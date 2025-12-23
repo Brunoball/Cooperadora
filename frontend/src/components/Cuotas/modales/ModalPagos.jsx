@@ -4,12 +4,22 @@ import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes, FaInfoCircle, FaSave }
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalPagos.css';
-import "../../Global/roots.css"
+import "../../Global/roots.css";
 
-// Utils impresión
+// ================= Utils impresión =================
+
+// Normal (no rotado)
 import { imprimirRecibos } from '../../../utils/imprimirRecibos.jsx';
-import { imprimirRecibosExternos } from '../../../utils/imprimirRecibosExternos.jsx';
+
+// 🔧 ROTADO → alias porque el archivo exporta `imprimirRecibos`
+import { imprimirRecibos as imprimirRecibosRotado } from '../../../utils/imprimirRecibosRotado.jsx';
+
+// Externos rotados (CAMBIO A)
+import { imprimirRecibosExternos as imprimirRecibosExternosRotados } from '../../../utils/imprimirRecibosExternosRotados.jsx';
+
+// PDF
 import { generarComprobanteAlumnoPDF } from '../../../utils/ComprobanteExternoPDF.jsx';
+
 
 /* ====== Constantes ====== */
 const MIN_YEAR = 2025;
@@ -1010,7 +1020,7 @@ const ModalPagos = ({ socio, onClose }) => {
     return { lista, periodos, periodoCodigo, periodoTextoCustom };
   };
 
-  // Acción post-éxito
+  // Acción post-éxito (CAMBIO B - Línea de imprimir externos)
   const handleComprobante = async () => {
     const { lista, periodos, periodoCodigo, periodoTextoCustom } = buildListaCompleta();
 
@@ -1074,9 +1084,11 @@ const ModalPagos = ({ socio, onClose }) => {
     const opciones = { anioPago: anioTrabajo };
 
     if (esExterno) {
-      await imprimirRecibosExternos(lista, periodoCodigo, win, opciones);
+      // CAMBIO B - Usar impresión rotada para externos
+      await imprimirRecibosExternosRotados(lista, periodoCodigo, win, opciones);
     } else {
-      await imprimirRecibos(lista, periodoCodigo, win, opciones);
+      // MODIFICADO: usar rotado para internos
+      await imprimirRecibosRotado(lista, periodoCodigo, win, opciones);
     }
   };
 

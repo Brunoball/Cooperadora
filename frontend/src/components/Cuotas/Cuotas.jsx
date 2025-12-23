@@ -517,7 +517,8 @@ const Cuotas = () => {
   const resyncAll = useCallback(() => { fetchAniosPago(); obtenerCuotasYListas(); }, [fetchAniosPago, obtenerCuotasYListas]);
 
   return (
-<div className={`gcuotas-container gcuotas--table-fullwidth ${cascadeActive ? 'gcuotas-cascading' : ''}`}>      {toastVisible && (
+    <div className={`gcuotas-container gcuotas--table-fullwidth ${cascadeActive ? 'gcuotas-cascading' : ''}`}>
+      {toastVisible && (
         <Toast
           tipo={toastTipo}
           mensaje={toastMensaje}
@@ -553,6 +554,7 @@ const Cuotas = () => {
           socio={socioParaPagar}
           periodoId={Number(mesSeleccionado)}
           periodoNombre={getNombreMes(mesSeleccionado)}
+          anioPago={anioPagoSeleccionado}   // ✅ NUEVO
           onClose={() => setMostrarModalEliminarPago(false)}
           onEliminado={resyncAll}
         />

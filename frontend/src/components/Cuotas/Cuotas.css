@@ -1,20 +1,17 @@
+/* src/components/Cuotas/Cuotas.css */
 
+/* Variables de diseño del sistema */
 :root {
-
   --reg-primary:         var(--blue-inst-primary);
   --reg-primary-light:   var(--blue-inst-primary-light);
   --reg-primary-dark:    var(--blue-inst-primary-dark);
-
   --reg-secondary:       var(--blue-inst-secondary);
   --reg-accent:          var(--blue-inst-accent);
-
   --reg-success:         var(--blue-inst-success);
   --reg-warning:         var(--blue-inst-warning);
   --reg-danger:          var(--blue-inst-danger);
-
   --reg-light:           var(--blue-inst-light);
   --reg-dark:            var(--blue-inst-dark);
-
   --reg-gray-100:        var(--blue-inst-gray-100);
   --reg-gray-200:        var(--blue-inst-gray-200);
   --reg-gray-300:        var(--blue-inst-gray-300);
@@ -24,19 +21,15 @@
   --reg-gray-700:        var(--blue-inst-gray-700);
   --reg-gray-800:        var(--blue-inst-gray-800);
   --reg-gray-900:        var(--blue-inst-gray-900);
-
   --reg-border-radius:    var(--blue-inst-radius);
   --reg-border-radius-lg: var(--blue-inst-radius-lg);
   --reg-border-radius-xl: var(--blue-inst-radius-xl);
-
   --reg-transition:       var(--blue-inst-transition);
-
   --reg-shadow-sm:        var(--blue-inst-shadow-sm);
   --reg-shadow-md:        var(--blue-inst-shadow-md);
   --reg-shadow-lg:        var(--blue-inst-shadow-lg);
   --reg-shadow-xl:        var(--blue-inst-shadow-xl);
 }
-
 
 /* Puente a variables usadas en tu UI */
 :root {
@@ -46,24 +39,18 @@
   --primary-700: var(--reg-primary);
   --primary-800: var(--reg-primary-dark);
   --primary-900: var(--reg-primary-dark);
-
   --primary-color: var(--reg-primary);
   --primary-hover: var(--reg-primary-dark);
   --primary-light: var(--reg-primary-light);
   --primary-dark: var(--reg-primary-dark);
   --primary-accent: var(--reg-accent);
-
   --secondary-color: var(--reg-secondary);
-
   --success-500: var(--reg-success);
   --success-600: #0a9a72;
   --success-700: #077255;
-
   --warning-500: var(--reg-warning);
-
   --danger-500: var(--reg-danger);
   --danger-600: #b91c1c;
-
   --gray-100: var(--reg-gray-100);
   --gray-200: var(--reg-gray-200);
   --gray-300: var(--reg-gray-300);
@@ -73,7 +60,6 @@
   --gray-700: var(--reg-gray-700);
   --gray-800: var(--reg-gray-800);
   --gray-900: var(--reg-gray-900);
-
   --background-color: var(--reg-light);
   --surface-color: #ffffff;
   --surface-secondary: var(--reg-gray-100);
@@ -81,28 +67,22 @@
   --text-primary: var(--reg-dark);
   --text-secondary: var(--reg-gray-600);
   --text-muted: var(--reg-gray-400);
-
   --gradient-primary: linear-gradient(135deg, var(--reg-primary-light), var(--reg-primary));
   --gradient-hero: linear-gradient(135deg, var(--reg-primary-light) 0%, var(--reg-primary) 55%, var(--reg-primary-dark) 100%);
   --gradient-background: linear-gradient(135deg, var(--reg-gray-100) 30%, var(--reg-primary) 70%);
   --gradient-accent: linear-gradient(90deg, var(--reg-primary), var(--reg-primary-dark));
-
   --btn-agregar-alumno: var(--reg-primary-dark);
   --btn-exportar-excel: var(--reg-gray-400);
   --btn-dados-baja: var(--reg-accent);
-
   --border-radius: var(--reg-border-radius);
   --border-radius-lg: var(--reg-border-radius-lg);
   --border-radius-xl: var(--reg-border-radius-xl);
-
   --shadow-sm: var(--reg-shadow-sm);
   --shadow-md: var(--reg-shadow-md);
   --shadow-lg: var(--reg-shadow-lg);
   --shadow-xl: var(--reg-shadow-xl);
-
   --transition-smooth: var(--reg-transition);
   --border-focus: #93c5fd;
-
   /* Secundarios */
   --secondary-50:  #eef2ff;
   --secondary-100: #e0e7ff;
@@ -115,7 +95,6 @@
   --secondary-800: #3730a3;
   --secondary-900: #312e81;
   --secondary-hover: #163372;
-
   /* Primarios extra */
   --primary-50:  #fef2f2;
   --primary-100: #fee2e2;
@@ -123,13 +102,10 @@
   --primary-300: #fca5a5;
   --primary-800: #991b1b;
   --primary-900: #7f1d1d;
-
   --success-100: #d1fae5;
   --danger-50:  #fef2f2;
   --danger-100: #fee2e2;
-
   --text-on-primary: #ffffff;
-
   /* Timing para cascada */
   --cascade-duration: .35s;
   --cascade-ease: cubic-bezier(.24,.8,.25,1);
@@ -138,7 +114,6 @@
 /* ===========================
    Layout general
 =========================== */
-
 .gcuotas-container {
   display: flex;
   flex-direction: row;
@@ -161,7 +136,6 @@
 /* ===========================
    Izquierda: Filtros + acciones
 =========================== */
-
 .gcuotas-left-section {
   flex: 0 0 340px;
   display: flex;
@@ -369,10 +343,27 @@
 
 .gcuotas-button-loading { opacity: 0.7; cursor: not-allowed; }
 
+/* ===== Botón Imprimir deshabilitado (GRIS) ===== */
+.gcuotas-button-print-all:disabled,
+.gcuotas-mbar-btn.mbar-imprimir:disabled {
+  background: var(--gray-200) !important;
+  color: var(--gray-500) !important;
+  border: 1px solid var(--gray-300) !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+/* Evitar hover cuando está disabled */
+.gcuotas-button-print-all:disabled:hover,
+.gcuotas-mbar-btn.mbar-imprimir:disabled:hover {
+  background: var(--gray-200) !important;
+  color: var(--gray-500) !important;
+}
+
 /* ===========================
    Derecha: Tabla
 =========================== */
-
 .gcuotas-right-section {
   flex: 1;
   height: 100vh;
@@ -989,60 +980,6 @@
 .gcuotas-chip--interno { background: var(--secondary-100); color: var(--secondary-800); border-color: var(--secondary-300); text-transform: uppercase; }
 .gcuotas-chip--externo { background: var(--primary-100); color: var(--primary-800); border-color: var(--primary-300); text-transform: uppercase; }
 
-/* ===== Cascada hasta 20 filas ===== */
-@keyframes gcuotasFadeSlide {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.gcuotas-cascade { opacity: 0; animation: gcuotasFadeSlide var(--cascade-duration) var(--cascade-ease) forwards; }
-
-/* Delays 0..19 (20 filas) */
-.gcuotas-cascade-0  { animation-delay: 0.00s; }
-.gcuotas-cascade-1  { animation-delay: 0.05s; }
-.gcuotas-cascade-2  { animation-delay: 0.10s; }
-.gcuotas-cascade-3  { animation-delay: 0.15s; }
-.gcuotas-cascade-4  { animation-delay: 0.20s; }
-.gcuotas-cascade-5  { animation-delay: 0.25s; }
-.gcuotas-cascade-6  { animation-delay: 0.30s; }
-.gcuotas-cascade-7  { animation-delay: 0.35s; }
-.gcuotas-cascade-8  { animation-delay: 0.40s; }
-.gcuotas-cascade-9  { animation-delay: 0.45s; }
-.gcuotas-cascade-10 { animation-delay: 0.50s; }
-.gcuotas-cascade-11 { animation-delay: 0.55s; }
-.gcuotas-cascade-12 { animation-delay: 0.60s; }
-.gcuotas-cascade-13 { animation-delay: 0.65s; }
-.gcuotas-cascade-14 { animation-delay: 0.70s; }
-.gcuotas-cascade-15 { animation-delay: 0.75s; }
-.gcuotas-cascade-16 { animation-delay: 0.80s; }
-.gcuotas-cascade-17 { animation-delay: 0.85s; }
-.gcuotas-cascade-18 { animation-delay: 0.90s; }
-.gcuotas-cascade-19 { animation-delay: 0.95s; }
-
-/* ===== Modo tabla full-bleed manteniendo sidebar a la izquierda ===== */
-.gcuotas-container.gcuotas--table-fullwidth { flex-direction: row; }
-
-.gcuotas-container.gcuotas--table-fullwidth .gcuotas-left-section {
-  flex: 0 0 340px;
-  max-width: 340px;
-  border-right: 1px solid var(--border-color);
-  margin: 0;
-}
-
-.gcuotas-container.gcuotas--table-fullwidth .gcuotas-right-section {
-  width: calc(100vw - 340px);  /* viewport menos el panel */
-  max-width: none;
-  padding: 0;
-  margin-right: calc(50% - 50vw); /* sangra al borde derecho */
-  margin-left: 0;                 /* no sangrar sobre el panel */
-}
-
-.gcuotas-container.gcuotas--table-fullwidth .gcuotas-table-header {
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-.gcuotas-container.gcuotas--table-fullwidth .gcuotas-table-container { padding: 0; }
-.gcuotas-container.gcuotas--table-fullwidth .gcuotas-virtual-tables { width: 100%; }
 /* ===== Cascada hasta 25 filas ===== */
 @keyframes gcuotasFadeSlide {
   from { opacity: 0; transform: translateY(12px); }
@@ -1079,3 +1016,29 @@
 .gcuotas-cascade-22 { animation-delay: 1.10s; }
 .gcuotas-cascade-23 { animation-delay: 1.15s; }
 .gcuotas-cascade-24 { animation-delay: 1.20s; }
+
+/* ===== Modo tabla full-bleed manteniendo sidebar a la izquierda ===== */
+.gcuotas-container.gcuotas--table-fullwidth { flex-direction: row; }
+
+.gcuotas-container.gcuotas--table-fullwidth .gcuotas-left-section {
+  flex: 0 0 340px;
+  max-width: 340px;
+  border-right: 1px solid var(--border-color);
+  margin: 0;
+}
+
+.gcuotas-container.gcuotas--table-fullwidth .gcuotas-right-section {
+  width: calc(100vw - 340px);  /* viewport menos el panel */
+  max-width: none;
+  padding: 0;
+  margin-right: calc(50% - 50vw); /* sangra al borde derecho */
+  margin-left: 0;                 /* no sangrar sobre el panel */
+}
+
+.gcuotas-container.gcuotas--table-fullwidth .gcuotas-table-header {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.gcuotas-container.gcuotas--table-fullwidth .gcuotas-table-container { padding: 0; }
+.gcuotas-container.gcuotas--table-fullwidth .gcuotas-virtual-tables { width: 100%; }

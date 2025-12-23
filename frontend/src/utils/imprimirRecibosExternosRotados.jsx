@@ -26,8 +26,6 @@ const getNombreCompleto = (s) => {
 
 const getDni = (s) => s?.num_documento ?? s?.dni ?? s?.documento ?? s?.numDocumento ?? '';
 
-/* =============== Resolver “Curso” (Año + División) =============== */
-
 function resolverCurso(s, aniosById, divisionesById) {
   const anioId =
     s?.id_año ?? s?.id_anio ?? s?.anio_id ?? s?.id_anio_lectivo ?? s?.id_anioLectivo ?? null;
@@ -78,6 +76,7 @@ function renderCupon({
 
   return `
     <div class="cupon" style="left:${x}mm; top:${y}mm;">
+      <!-- se ocultan por CSS, no se borran para NO mover el resto -->
       <div class="enc-1">${NOMBRE_COLEGIO_1}</div>
       <div class="enc-2">${NOMBRE_COLEGIO_2}</div>
       <div class="enc-rule"></div>
@@ -145,25 +144,57 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   const w = ventana || window.open('', '', 'width=900,height=1200');
   if (!w) return;
 
-  // 4) Medidas y estilos
-  const A4_W = 210;
-  const A4_H = 297;
+  // ===== Layout =====
+  const PAGE_W = 210;
+  const PAGE_H = 297;
 
-  const FIRST_LEFT = 4;
-  const FIRST_TOP  = 20;
+  const CANVAS_W = 297;
+  const CANVAS_H = 210;
 
   const FILAS_POR_PAGINA = 4;
+
   const CUP_W = 71;
-  const CUP_H = (A4_H - FIRST_TOP) / FILAS_POR_PAGINA;
+  const CUP_H = CANVAS_H / FILAS_POR_PAGINA;
+
+  const FIRST_LEFT = 0;
+
+  // (tu centrado visual interno por filas)
+  const filasUsadas = Math.min(Math.max(alumnos.length, 1), FILAS_POR_PAGINA);
+  const altoUsado = filasUsadas * CUP_H;
+  const FIRST_TOP = Math.max(0, (CANVAS_H - altoUsado) / 2);
 
   const COLS = [FIRST_LEFT, FIRST_LEFT + CUP_W, FIRST_LEFT + CUP_W * 2];
+
+  const espejoX = (x) => (CANVAS_W - (Number(x) + CUP_W));
+
+  // ✅ centrado horizontal (y ajuste fino a la izquierda)
+  const ROT_LEFT = (PAGE_W - CANVAS_H) / 2; // normalmente 0
+  const ROT_LEFT_AJUSTE = -6; // 👈 mueve todo a la IZQUIERDA (probá -6)
 
   const css = `
     @page { size: 210mm 297mm; margin: 0mm; }
     html, body { margin: 0; padding: 0; }
     * { box-sizing: border-box; }
     body { font-family: "Courier New", Courier, monospace; color: #000; }
-    .page { position: relative; width: ${A4_W}mm; height: ${A4_H}mm; page-break-after: always; overflow: hidden; }
+
+    .page {
+      position: relative;
+      width: ${PAGE_W}mm;
+      height: ${PAGE_H}mm;
+      page-break-after: always;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .rotator {
+      position: absolute;
+      top: 0;
+      left: calc(${ROT_LEFT}mm + ${ROT_LEFT_AJUSTE}mm);
+      width: ${CANVAS_W}mm;
+      height: ${CANVAS_H}mm;
+      transform-origin: top left;
+      transform: translateY(${CANVAS_W}mm) rotate(-90deg);
+    }
 
     .cupon {
       position: absolute;
@@ -171,6 +202,9 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       height: ${CUP_H}mm;
       padding: 0mm 3mm 1.6mm 3mm;
     }
+
+    /* ocultar cabecera sin mover el resto */
+    .enc-1, .enc-2, .enc-rule { visibility: hidden; }
 
     .enc-1 { font-weight: 600; font-size: 10pt; text-transform: uppercase; letter-spacing: .2px; margin: 0; }
     .enc-2 { font-weight: 700; font-size: 10pt; margin: 0.6mm 0 0 0; }
@@ -190,29 +224,34 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   const anio = (opciones?.anioPago && String(opciones.anioPago)) || new Date().getFullYear();
   const mesTextoBase = nombreMes(periodoActual);
 
-  const filasPorPagina = FILAS_POR_PAGINA;
   let cuponesHTML = '';
   let pageHTML = '';
   let fila = 0;
 
   const pushCupon = (x, y, etiqueta, s, precio, cursoTexto, periodoTexto) => {
-    const html = renderCupon({
-      x, y,
+    pageHTML += renderCupon({
+      x: espejoX(x),
+      y,
       etiqueta,
       nombreCompleto: getNombreCompleto(s),
       dni: getDni(s),
       domicilio: s?.domicilio || '',
       barrio: s?.localidad || '',
       curso: cursoTexto || '',
-      periodoTexto, // ya viene armado (p. ej. “ENE / FEB / MAR 2025”)
+      periodoTexto,
       importe: precio
     });
-    pageHTML += html;
   };
 
   const flushPage = () => {
     if (!pageHTML) return '';
-    const out = `<div class="page">${pageHTML}</div>`;
+    const out = `
+      <div class="page">
+        <div class="rotator">
+          ${pageHTML}
+        </div>
+      </div>
+    `;
     pageHTML = '';
     fila = 0;
     return out;
@@ -221,7 +260,6 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   for (let idx = 0; idx < alumnos.length; idx++) {
     const s = alumnos[idx];
 
-    // 🔹 MONTO: priorizar total (multi-mes) > otros
     const idCat = s?.id_categoria ?? null;
     const precioListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
     const candidatos = [
@@ -238,7 +276,6 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     ].filter(v => Number.isFinite(v) && v > 0);
     const precio = candidatos.length ? candidatos[0] : 0;
 
-    // 🔹 PERÍODO: usar full si llega, si no usar “Mes Año”
     const periodoTexto =
       (s?.periodo_texto && String(s.periodo_texto).trim())
         ? String(s.periodo_texto).trim()
@@ -248,17 +285,12 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
 
     const y = FIRST_TOP + fila * CUP_H;
 
-    let x = COLS[0];
-    pushCupon(x, y, 'Cupón para el alumno', s, precio, cursoTexto, periodoTexto);
-
-    x = COLS[1];
-    pushCupon(x, y, 'Cupón para la cooperadora', s, precio, cursoTexto, periodoTexto);
-
-    x = COLS[2];
-    pushCupon(x, y, 'Cupón para el cobrador', s, precio, cursoTexto, periodoTexto);
+    pushCupon(COLS[0], y, 'Cupón para el alumno', s, precio, cursoTexto, periodoTexto);
+    pushCupon(COLS[1], y, 'Cupón para la cooperadora', s, precio, cursoTexto, periodoTexto);
+    pushCupon(COLS[2], y, 'Cupón para el cobrador', s, precio, cursoTexto, periodoTexto);
 
     fila += 1;
-    if (fila >= filasPorPagina || idx === alumnos.length - 1) {
+    if (fila >= FILAS_POR_PAGINA || idx === alumnos.length - 1) {
       cuponesHTML += flushPage();
     }
   }
@@ -281,6 +313,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       </body>
     </html>
   `;
+
   w.document.open();
   w.document.write(html);
   w.document.close();

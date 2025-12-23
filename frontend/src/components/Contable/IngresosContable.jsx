@@ -27,13 +27,13 @@ const MESES = [
 const STORAGE_KEYS = {
   year: "contable_year",
   month: "contable_month",
+  especial: "contable_especial", // ✅ nuevo
 };
 
 const cap1 = (s = "") => s.charAt(0) + s.slice(1).toLowerCase();
-const sfx = (n) => (n === 1 ? "" : "s");
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-/* 👇 CAMBIO: ahora siempre muestra 2 decimales */
+/* 👇 siempre 2 decimales */
 const fmtMonto = (n) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -76,7 +76,9 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, sheetName || "Datos");
     const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const blob = new Blob([wbout], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     safeDownload(blob, `${workbookName}.xlsx`);
     return;
   } catch {
@@ -106,7 +108,9 @@ function ConfirmModal({
   useEffect(() => {
     if (!open) return;
     cancelBtnRef.current?.focus();
-    const onKey = (e) => { if (e.key === "Escape") onCancel?.(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") onCancel?.();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onCancel]);
@@ -185,9 +189,20 @@ export default function IngresosContable() {
     }
   });
 
+  // ✅ NUEVO: filtro especial (id_mes de tabla meses pero solo > 12)
+  const [mesEspecial, setMesEspecial] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return localStorage.getItem(STORAGE_KEYS.especial) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [mesesEspeciales, setMesesEspeciales] = useState([]); // [{id_mes, nombre}]
+
   const [query, setQuery] = useState("");
 
-  const [filas, setFilas] = useState([]);                // alumnos
+  const [filas, setFilas] = useState([]); // alumnos
   const [filasIngresos, setFilasIngresos] = useState([]); // ingresos manuales
   const [cargando, setCargando] = useState(false);
 
@@ -228,6 +243,12 @@ export default function IngresosContable() {
     } catch {}
   }, [mes]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.especial, mesEspecial);
+    } catch {}
+  }, [mesEspecial]);
+
   /* ====== Rango de fechas ====== */
   const rango = useMemo(() => {
     if (anio === "ALL") return { start: null, end: null, label: "Todos los años" };
@@ -257,6 +278,43 @@ export default function IngresosContable() {
     }
     return data;
   }, []);
+
+  // ✅ NUEVO: cargar meses especiales desde DB (oculta 1..12)
+  const loadMesesEspeciales = useCallback(async () => {
+    try {
+      // 👇 Si tu acción se llama distinto, cambiá acá:
+      const data = await fetchJSON(`${BASE_URL}/api.php?action=meses_list`);
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      const especiales = items
+        .map((x) => ({
+          id_mes: Number(x.id_mes ?? x.id ?? 0),
+          nombre: String(x.nombre ?? x.Nombre ?? "").trim(),
+        }))
+        .filter((x) => x.id_mes > 12 && x.nombre);
+
+      if (especiales.length) {
+        setMesesEspeciales(especiales);
+        return;
+      }
+
+      // fallback si viene vacío
+      setMesesEspeciales([
+        { id_mes: 13, nombre: "CONTADO ANUAL" },
+        { id_mes: 14, nombre: "MATRICULA" },
+        { id_mes: 15, nombre: "1ERA MITAD" },
+        { id_mes: 16, nombre: "2DA MITAD" },
+      ]);
+    } catch {
+      // ✅ fallback si no existe endpoint
+      setMesesEspeciales([
+        { id_mes: 13, nombre: "CONTADO ANUAL" },
+        { id_mes: 14, nombre: "MATRICULA" },
+        { id_mes: 15, nombre: "1ERA MITAD" },
+        { id_mes: 16, nombre: "2DA MITAD" },
+      ]);
+    }
+  }, [fetchJSON]);
 
   const loadPagosAlumnos = useCallback(async () => {
     setCargando(true);
@@ -298,6 +356,7 @@ export default function IngresosContable() {
         categoria: r?.Categoria ?? "-",
         monto: Number(r?.Monto ?? 0),
         mesPagado: r?.Mes_pagado || MESES[(Number(r?.Mes_pagado_id || 0) - 1)] || "-",
+        mesPagadoId: Number(r?.Mes_pagado_id || r?.id_mes || 0), // ✅ NUEVO: id del mes pagado
         medio: r?.Medio || r?.medio || "—",
       }));
 
@@ -382,6 +441,11 @@ export default function IngresosContable() {
     loadAnios();
   }, [fetchJSON]);
 
+  // ✅ cargar meses especiales 1 vez
+  useEffect(() => {
+    loadMesesEspeciales();
+  }, [loadMesesEspeciales]);
+
   // Cargar datos cuando cambian los filtros
   useEffect(() => {
     loadAll();
@@ -392,17 +456,23 @@ export default function IngresosContable() {
     setCatFiltro("");
   }, [innerTab, anio, mes]);
 
+  // ✅ si cambia a "Ingresos" (manuales), no tiene sentido el filtro especial
+  useEffect(() => {
+    if (innerTab !== "alumnos") setMesEspecial("");
+  }, [innerTab]);
+
   // Animación cascada
   useEffect(() => {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
-  }, [anio, mes, query, innerTab, catFiltro]);
+  }, [anio, mes, query, innerTab, catFiltro, mesEspecial]);
 
-  /* Derivados: búsqueda + filtro categoría */
+  /* Derivados: búsqueda + filtro categoría + ✅ filtro especial */
   const filasFiltradasAlu = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = !q
+
+    let base = !q
       ? filas
       : filas.filter((f) =>
           (f.alumno || "").toLowerCase().includes(q) ||
@@ -411,8 +481,17 @@ export default function IngresosContable() {
           (f.mesPagado || "").toLowerCase().includes(q) ||
           (f.medio || "").toLowerCase().includes(q)
         );
-    return catFiltro ? base.filter((f) => (f.categoria || "-") === catFiltro) : base;
-  }, [filas, query, catFiltro]);
+
+    if (catFiltro) base = base.filter((f) => (f.categoria || "-") === catFiltro);
+
+    // ✅ SOLO SI HAY SELECCIÓN ESPECIAL (13..)
+    if (mesEspecial) {
+      const idSel = Number(mesEspecial);
+      base = base.filter((f) => Number(f.mesPagadoId || 0) === idSel);
+    }
+
+    return base;
+  }, [filas, query, catFiltro, mesEspecial]);
 
   const filasFiltradasIng = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -513,7 +592,13 @@ export default function IngresosContable() {
       {/* Toasts */}
       <div className="toast-stack">
         {toasts.map((t) => (
-          <Toast key={t.id} tipo={t.tipo} mensaje={t.mensaje} duracion={t.duracion} onClose={() => removeToast(t.id)} />
+          <Toast
+            key={t.id}
+            tipo={t.tipo}
+            mensaje={t.mensaje}
+            duracion={t.duracion}
+            onClose={() => removeToast(t.id)}
+          />
         ))}
       </div>
 
@@ -528,11 +613,12 @@ export default function IngresosContable() {
               </div>
               <div className="ing-detail-inline">
                 <small className="muted">
-                  Detalle — {
-                    anio === "ALL" ? "Todos los años"
-                    : (mes === "ALL" ? `${anio}`
-                    : `${cap1(MESES[Number(mes)])} ${anio}`)
-                  }
+                  Detalle —{" "}
+                  {anio === "ALL"
+                    ? "Todos los años"
+                    : mes === "ALL"
+                      ? `${anio}`
+                      : `${cap1(MESES[Number(mes)])} ${anio}`}
                 </small>
               </div>
             </div>
@@ -543,9 +629,14 @@ export default function IngresosContable() {
                 <label htmlFor="anio">Año</label>
                 <select id="anio" value={anio} onChange={(e) => setAnio(e.target.value)}>
                   <option value="ALL">TODOS</option>
-                  {anios.map((a) => (<option key={a} value={String(a)}>{a}</option>))}
+                  {anios.map((a) => (
+                    <option key={a} value={String(a)}>
+                      {a}
+                    </option>
+                  ))}
                 </select>
               </div>
+
               <div className="ing-field">
                 <label htmlFor="mes">Mes</label>
                 <select
@@ -556,9 +647,34 @@ export default function IngresosContable() {
                 >
                   <option value="ALL">TODOS</option>
                   {MESES.map((m, i) => (
-                    <option key={m} value={String(i)}>{m}</option>
+                    <option key={m} value={String(i)}>
+                      {m}
+                    </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* ✅ NUEVO: filtro especial (solo alumnos) */}
+            <div className="ing-fieldrow">
+              <div className="ing-field">
+                <label htmlFor="especial">Especial</label>
+                <select
+                  id="especial"
+                  value={mesEspecial}
+                  onChange={(e) => setMesEspecial(e.target.value)}
+                  disabled={innerTab !== "alumnos"} // solo aplica en alumnos
+                >
+                  <option value="">TODOS</option>
+                  {mesesEspeciales.map((m) => (
+                    <option key={m.id_mes} value={String(m.id_mes)}>
+                      {String(m.nombre || "").toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                {innerTab !== "alumnos" && (
+                  <small className="muted">Disponible solo en “Alumnos”.</small>
+                )}
               </div>
             </div>
 
@@ -625,7 +741,8 @@ export default function IngresosContable() {
           <section className="ing-stack cards">
             <div className="ing-head ing-stack__head">
               <button className="ghost-btn show-on-mobile" onClick={() => setSideOpen(true)}>
-                <FontAwesomeIcon icon={faBars} /><span>Filtros</span>
+                <FontAwesomeIcon icon={faBars} />
+                <span>Filtros</span>
               </button>
             </div>
 
@@ -663,20 +780,12 @@ export default function IngresosContable() {
                     />
                   </div>
 
-                  <button
-                    className="btn sm ghost btn-invert"
-                    onClick={onExport}
-                    title="Exportar Excel/CSV"
-                  >
+                  <button className="btn sm ghost btn-invert" onClick={onExport} title="Exportar Excel/CSV">
                     <FontAwesomeIcon icon={faFileExcel} />
                     <span>Exportar Excel</span>
                   </button>
 
-                  <button
-                    className="btn sm solid btn-invert"
-                    onClick={onClickCreate}
-                    title="Registrar ingreso"
-                  >
+                  <button className="btn sm solid btn-invert" onClick={onClickCreate} title="Registrar ingreso">
                     <FontAwesomeIcon icon={faPlus} />
                     <span>Registrar ingreso</span>
                   </button>
@@ -685,8 +794,18 @@ export default function IngresosContable() {
 
               {/* ===== TABLA: ALUMNOS ===== */}
               {innerTab === "alumnos" ? (
-                <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
-                  {cargando && <div className="ing-tableloader" role="status" aria-live="polite"><div className="ing-spinner" /><span>Cargando…</span></div>}
+                <div
+                  className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
+                  role="table"
+                  aria-label="Listado de ingresos (alumnos)"
+                >
+                  {cargando && (
+                    <div className="ing-tableloader" role="status" aria-live="polite">
+                      <div className="ing-spinner" />
+                      <span>Cargando…</span>
+                    </div>
+                  )}
+
                   <div className="ing-row h" role="row">
                     <div className="c-fecha">Fecha</div>
                     <div className="c-alumno">Alumno</div>
@@ -695,8 +814,14 @@ export default function IngresosContable() {
                     <div className="c-medio">Medio</div>
                     <div className="c-mes">Mes pagado</div>
                   </div>
+
                   {filasFiltradasAlu.map((f, idx) => (
-                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                    <div
+                      className={`ing-row data ${cascading ? "casc" : ""}`}
+                      role="row"
+                      key={f.id}
+                      style={{ "--i": idx }}
+                    >
                       <div className="c-fecha">{f.fecha}</div>
                       <div className="c-alumno">
                         <div className="ing-alumno">
@@ -705,19 +830,25 @@ export default function IngresosContable() {
                           </div>
                         </div>
                       </div>
-                      <div className="c-cat"><span className="pill">{f.categoria}</span></div>
-                      <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.monto)}</span></div>
+                      <div className="c-cat">
+                        <span className="pill">{f.categoria}</span>
+                      </div>
+                      <div className="c-monto t-right">
+                        <span className="num strong-amount">{fmtMonto(f.monto)}</span>
+                      </div>
                       <div className="c-medio">{f.medio || "—"}</div>
                       <div className="c-mes">{f.mesPagado}</div>
                     </div>
                   ))}
+
                   {!filasFiltradasAlu.length && !cargando && (
                     <div className="ing-empty big">
-                      Sin pagos para {
-                        anio === "ALL" ? "todos los años"
-                        : (mes === "ALL" ? `año ${anio}`
-                        : `${cap1(MESES[Number(mes)])} ${anio}`)
-                      }
+                      Sin pagos para{" "}
+                      {anio === "ALL"
+                        ? "todos los años"
+                        : mes === "ALL"
+                          ? `año ${anio}`
+                          : `${cap1(MESES[Number(mes)])} ${anio}`}
                     </div>
                   )}
                 </div>
@@ -730,7 +861,8 @@ export default function IngresosContable() {
                 >
                   {cargando && (
                     <div className="ing-tableloader" role="status" aria-live="polite">
-                      <div className="ing-spinner" /><span>Cargando…</span>
+                      <div className="ing-spinner" />
+                      <span>Cargando…</span>
                     </div>
                   )}
 
@@ -745,13 +877,22 @@ export default function IngresosContable() {
                   </div>
 
                   {filasFiltradasIng.map((f, idx) => (
-                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                    <div
+                      className={`ing-row data ${cascading ? "casc" : ""}`}
+                      role="row"
+                      key={f.id}
+                      style={{ "--i": idx }}
+                    >
                       <div className="c-fecha">{f.fecha}</div>
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-proveedor">{f.proveedor || "-"}</div>
-                      <div className="c-cat"><span className="pill">{f.categoria || "-"}</span></div>
+                      <div className="c-cat">
+                        <span className="pill">{f.categoria || "-"}</span>
+                      </div>
                       <div className="c-imputacion">{f.imputacion || f.descripcion || "-"}</div>
-                      <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
+                      <div className="c-importe">
+                        <span className="num strong-amount">{fmtMonto(f.importe)}</span>
+                      </div>
                       <div className="c-actions center">
                         <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
                           <FontAwesomeIcon icon={faEdit} />
@@ -762,13 +903,15 @@ export default function IngresosContable() {
                       </div>
                     </div>
                   ))}
+
                   {!filasFiltradasIng.length && !cargando && (
                     <div className="ing-empty big">
-                      Sin ingresos para {
-                        anio === "ALL" ? "todos los años"
-                        : (mes === "ALL" ? `año ${anio}`
-                        : `${cap1(MESES[Number(mes)])} ${anio}`)
-                      }
+                      Sin ingresos para{" "}
+                      {anio === "ALL"
+                        ? "todos los años"
+                        : mes === "ALL"
+                          ? `año ${anio}`
+                          : `${cap1(MESES[Number(mes)])} ${anio}`}
                     </div>
                   )}
                 </div>
@@ -778,20 +921,36 @@ export default function IngresosContable() {
         </main>
       </div>
 
-      {sideOpen && <button className="ing-layout__overlay" onClick={() => setSideOpen(false)} aria-label="Cerrar panel" />}
+      {sideOpen && (
+        <button
+          className="ing-layout__overlay"
+          onClick={() => setSideOpen(false)}
+          aria-label="Cerrar panel"
+        />
+      )}
 
       {/* === Modales === */}
       <IngresoCrearModal
         open={openCreate}
-        defaultDate={new Date().toISOString().slice(0,10)}
+        defaultDate={new Date().toISOString().slice(0, 10)}
         onClose={() => setOpenCreate(false)}
-        onSaved={async () => { addToast("exito", "Ingreso creado correctamente."); await loadIngresos(); }}
+        onSaved={async () => {
+          addToast("exito", "Ingreso creado correctamente.");
+          await loadIngresos();
+        }}
       />
+
       <IngresoEditarModal
         open={openEdit}
         editRow={editRow}
-        onClose={() => { setOpenEdit(false); setEditRow(null); }}
-        onSaved={async () => { addToast("exito", "Ingreso actualizado correctamente."); await loadIngresos(); }}
+        onClose={() => {
+          setOpenEdit(false);
+          setEditRow(null);
+        }}
+        onSaved={async () => {
+          addToast("exito", "Ingreso actualizado correctamente.");
+          await loadIngresos();
+        }}
       />
 
       <ConfirmModal
