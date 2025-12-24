@@ -10,10 +10,13 @@ const ChatOptionsMenu = ({
   open,
   onOpen,
   onClose,
+
   onEditarNombre,
-  onCambiarEtiqueta,     // ✅ NUEVO
+  onCambiarEtiqueta,
   onVaciarChat,
   onEliminarContacto,
+
+  onVerGaleria, // ✅ NUEVO
 }) => {
   const wrapRef = useRef(null);
   const btnRef = useRef(null);
@@ -31,7 +34,7 @@ const ChatOptionsMenu = ({
     if (left > maxLeft) left = maxLeft;
     if (left < 8) left = 8;
 
-    const menuH = 190; // ✅ un poco más alto por 1 item extra
+    const menuH = 230; // ✅ un poco más alto por "Ver galería"
     const maxTop = window.innerHeight - menuH - 8;
     if (top > maxTop) top = Math.max(8, r.top - menuH - GAP);
 
@@ -94,10 +97,7 @@ const ChatOptionsMenu = ({
       </button>
 
       {open ? (
-        <div
-          className="chatopts-menu"
-          style={{ top: pos.top, left: pos.left, width: MENU_W }}
-        >
+        <div className="chatopts-menu" style={{ top: pos.top, left: pos.left, width: MENU_W }}>
           <button
             type="button"
             className="chatopts-item"
@@ -109,7 +109,6 @@ const ChatOptionsMenu = ({
             Editar nombre
           </button>
 
-          {/* ✅ NUEVO */}
           <button
             type="button"
             className="chatopts-item"
@@ -119,6 +118,18 @@ const ChatOptionsMenu = ({
             }}
           >
             Cambiar etiqueta
+          </button>
+
+          {/* ✅ NUEVO */}
+          <button
+            type="button"
+            className="chatopts-item"
+            onClick={() => {
+              onClose?.();
+              onVerGaleria?.();
+            }}
+          >
+            Ver galería
           </button>
 
           <button

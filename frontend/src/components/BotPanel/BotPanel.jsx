@@ -11,12 +11,17 @@ import {
   faPaperPlane,
   faPaperclip,
   faUser,
-  faEllipsisVertical,
   faSpinner,
   faTriangleExclamation,
   faXmark,
+  faFaceSmile,
+  faFilePdf,
 } from "@fortawesome/free-solid-svg-icons";
 import "./BotPanel.css";
+
+// ✅ emoji-mart (v5)
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 
 // ✅ Menu ahora se usa SOLO en barra superior (no en lista)
 import ChatOptionsMenu from "./ChatOptionsMenu";
@@ -26,11 +31,13 @@ import EditNombreModal from "./modales/EditNombreModal";
 import EditEtiquetaModal from "./modales/EditEtiquetaModal";
 import ConfirmActionModal from "./modales/ConfirmActionModal";
 
+// ✅ NUEVO: modal galería
+import GaleriaModal from "./modales/GaleriaModal";
+
 const PANEL_API =
   process.env.REACT_APP_BOT_PANEL_URL ||
   "https://cooperadora.ipet50.edu.ar/api/bot_wp/funciones/Panel/endpoints";
 
-// ✅ carpeta nueva (acciones)
 const PANEL_PUNTOS =
   process.env.REACT_APP_BOT_PANEL_PUNTOS_URL ||
   "https://cooperadora.ipet50.edu.ar/api/bot_wp/funciones/Panel/puntos";
@@ -44,12 +51,10 @@ const fmtHora = (ts) => {
 };
 
 const toTs = (value) => {
-  if (!value) return null; // 👈 importante: null si no hay
+  if (!value) return null;
   const s = String(value).trim();
 
-  const m = s.match(
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/
-  );
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
 
   if (!m) {
     const d = new Date(s);
@@ -96,35 +101,137 @@ const mapEmisorToSide = (emisor) => {
   const e = normStr(emisor).toLowerCase();
   if (e === "usuario" || e === "user") return "left";
   if (e === "bot") return "rightbot";
-  return "right";
+  return "right"; // Admin/Panel
 };
 
-/** ==========================
- *  ✅ Ventana 24h helpers
- *  columna bot_contactos.ventana_24h = inicio (ej: último msg usuario)
- *  ventana válida hasta ventana_24h + 24hs
- *  ========================== */
 const MS_24H = 24 * 60 * 60 * 1000;
 
 function calcWindow(ventana24hTs, nowTs) {
-  // si no hay timestamp, lo tratamos como expirada (o desconocida)
   if (!ventana24hTs || !Number.isFinite(ventana24hTs)) {
-    return {
-      valid: false,
-      remainingMs: 0,
-      remainingHours: 0,
-      expireAt: null,
-    };
+    return { valid: false, remainingMs: 0, remainingHours: 0, expireAt: null };
   }
   const expireAt = ventana24hTs + MS_24H;
   const remainingMs = expireAt - nowTs;
   const valid = remainingMs > 0;
-
-  // horas enteras hacia arriba (ej: 1.2h => 2h)
   const remainingHours = valid ? Math.max(0, Math.ceil(remainingMs / 3600000)) : 0;
 
   return { valid, remainingMs: Math.max(0, remainingMs), remainingHours, expireAt };
 }
+
+const isImageMime = (mime) => /^image\//i.test(String(mime || ""));
+const isPdfMime = (mime) => String(mime || "").toLowerCase() === "application/pdf";
+
+const inferMimeFromUrl = (url) => {
+  const u = String(url || "").toLowerCase();
+  if (!u) return "";
+  if (u.includes(".pdf")) return "application/pdf";
+  if (u.includes(".png")) return "image/png";
+  if (u.includes(".webp")) return "image/webp";
+  if (u.includes(".gif")) return "image/gif";
+  if (u.includes(".jpg") || u.includes(".jpeg")) return "image/jpeg";
+  return "";
+};
+
+const inferNameFromUrl = (url) => {
+  try {
+    const u = String(url || "");
+    const clean = u.split("?")[0];
+    const parts = clean.split("/");
+    return parts[parts.length - 1] || "archivo";
+  } catch {
+    return "archivo";
+  }
+};
+
+const fmtBytes = (n) => {
+  const v = Number(n || 0);
+  if (!v) return "";
+  const u = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let x = v;
+  while (x >= 1024 && i < u.length - 1) {
+    x /= 1024;
+    i++;
+  }
+  return `${x.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+};
+
+/* =========================
+   ✅ MODAL VISOR (IMG / PDF)
+========================= */
+const MediaViewerModal = ({ open, onClose, item }) => {
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+
+    const onDown = (e) => {
+      const box = boxRef.current;
+      if (!box) return;
+      if (!box.contains(e.target)) onClose?.();
+    };
+
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [open, onClose]);
+
+  if (!open || !item?.url) return null;
+
+  const mime = item.mime || inferMimeFromUrl(item.url);
+  const isImg = isImageMime(mime);
+  const isPdf = isPdfMime(mime);
+
+  return (
+    <div className="wp-media-backdrop" role="dialog" aria-label="Visor de archivo">
+      <div className="wp-media-modal" ref={boxRef}>
+        <div className="wp-media-top">
+          <div className="wp-media-title">
+            {isPdf ? (
+              <>
+                <FontAwesomeIcon icon={faFilePdf} />{" "}
+                <span>{item.name || "Documento PDF"}</span>
+              </>
+            ) : (
+              <span>{item.name || "Imagen"}</span>
+            )}
+          </div>
+
+          <div className="wp-media-actions">
+            <a className="wp-media-open" href={item.url} target="_blank" rel="noreferrer">
+              Abrir
+            </a>
+            <button className="wp-media-close" type="button" onClick={onClose} aria-label="Cerrar">
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+        </div>
+
+        <div className="wp-media-body">
+          {isImg ? (
+            <img className="wp-media-img" src={item.url} alt={item.name || "imagen"} />
+          ) : isPdf ? (
+            <iframe className="wp-media-iframe" src={item.url} title="PDF" />
+          ) : (
+            <div className="wp-media-unknown">
+              <p>📎 {item.name || "Archivo"}</p>
+              <a href={item.url} target="_blank" rel="noreferrer">
+                Abrir archivo
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const BotPanel = () => {
   const navigate = useNavigate();
@@ -154,13 +261,11 @@ const BotPanel = () => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
-  // ✅ botón ⋮ del header (ancla para posicionar menú)
   const headerMenuBtnRef = useRef(null);
 
-  // ✅ “ahora” para refrescar el contador de ventana sin recargar
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNowTs(Date.now()), 15000); // cada 15s
+    const t = setInterval(() => setNowTs(Date.now()), 15000);
     return () => clearInterval(t);
   }, []);
 
@@ -181,14 +286,22 @@ const BotPanel = () => {
     return { res, data };
   }, []);
 
+  const postFormData = useCallback(async (url, formData) => {
+    const res = await fetch(url, {
+      method: "POST",
+      cache: "no-store",
+      body: formData,
+    });
+    const data = await res.json().catch(() => null);
+    return { res, data };
+  }, []);
+
   const markSeen = useCallback(
     async (waId) => {
       if (!waId) return;
       try {
         await fetchJSON(
-          `${PANEL_API}/panel_mark_seen.php?wa_id=${encodeURIComponent(
-            waId
-          )}&_=${Date.now()}`
+          `${PANEL_API}/panel_mark_seen.php?wa_id=${encodeURIComponent(waId)}&_=${Date.now()}`
         );
       } catch {}
     },
@@ -206,12 +319,8 @@ const BotPanel = () => {
     setLoadingEtiquetas(true);
     setErrorEtiquetas("");
     try {
-      const { res, data } = await fetchJSON(
-        `${PANEL_PUNTOS}/etiquetas_list.php?_=${Date.now()}`
-      );
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Error HTTP ${res.status}`);
-      }
+      const { res, data } = await fetchJSON(`${PANEL_PUNTOS}/etiquetas_list.php?_=${Date.now()}`);
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
       setEtiquetas(Array.isArray(data.etiquetas) ? data.etiquetas : []);
     } catch (e) {
       setErrorEtiquetas(e?.message || "No se pudieron cargar etiquetas");
@@ -229,25 +338,17 @@ const BotPanel = () => {
       setErrorChats("");
 
       try {
-        const { res, data } = await fetchJSON(
-          `${PANEL_API}/panel_chats.php?_=${Date.now()}`
-        );
-
-        if (!res.ok || !data?.success) {
-          throw new Error(data?.error || `Error HTTP ${res.status}`);
-        }
+        const { res, data } = await fetchJSON(`${PANEL_API}/panel_chats.php?_=${Date.now()}`);
+        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
 
         const rows = Array.isArray(data.chats) ? data.chats : [];
-
         const mapped = rows.map((c) => ({
           id: normStr(c.wa_id),
           nombre: pickNombre(c),
 
-          // ✅ etiqueta nombre + id (para el modal)
           etiqueta: normStr(c.etiqueta || ""),
           etiqueta_id: c?.etiqueta_id ?? c?.etiquetaId ?? null,
 
-          // ✅ ventana 24h (datetime) => timestamp
           ventana24hTs: toTs(c?.ventana_24h),
 
           online: !!c.online,
@@ -270,6 +371,23 @@ const BotPanel = () => {
     [fetchJSON]
   );
 
+  // ==========================
+  // ✅ MEDIA VISOR STATE
+  // ==========================
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerItem, setViewerItem] = useState(null);
+
+  const openViewer = (item) => {
+    if (!item?.url) return;
+    setViewerItem(item);
+    setViewerOpen(true);
+  };
+
+  const closeViewer = () => {
+    setViewerOpen(false);
+    setViewerItem(null);
+  };
+
   const fetchMensajes = useCallback(
     async (waId, { silent = false } = {}) => {
       if (!waId) return;
@@ -279,34 +397,44 @@ const BotPanel = () => {
 
       try {
         const { res, data } = await fetchJSON(
-          `${PANEL_API}/panel_mensajes.php?wa_id=${encodeURIComponent(
-            waId
-          )}&limit=600&_=${Date.now()}`
+          `${PANEL_API}/panel_mensajes.php?wa_id=${encodeURIComponent(waId)}&limit=600&_=${Date.now()}`
         );
-
-        if (!res.ok || !data?.success) {
-          throw new Error(data?.error || `Error HTTP ${res.status}`);
-        }
+        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
 
         const rows = Array.isArray(data.mensajes) ? data.mensajes : [];
 
-        const mapped = rows.map((m) => ({
-          id: Number(m.id) || m.id || `${m.fecha}-${Math.random()}`,
-          wa_id: normStr(m.wa_id),
-          text: normStr(m.mensaje),
-          emisor: normStr(m.emisor),
-          prioridad: normStr(m.prioridad || "normal"),
-          ts: toTs(m.fecha) ?? Date.now(),
-        }));
+        const mapped = rows.map((m) => {
+          // ✅ compat: nuevo (archivo_url) o viejo (media_url)
+          const url = normStr(m.archivo_url || m.media_url || "");
+          const mime = normStr(m.media_mime || "") || (url ? inferMimeFromUrl(url) : "");
+          const name = normStr(m.media_name || "") || (url ? inferNameFromUrl(url) : "");
+          const size = Number(m.media_size || 0);
+
+          // tipo para UI (si no viene)
+          const tipo =
+            normStr(m.tipo || "") ||
+            (url ? (isPdfMime(mime) ? "document" : isImageMime(mime) ? "image" : "file") : "text");
+
+          return {
+            id: Number(m.id) || m.id || `${m.fecha}-${Math.random()}`,
+            wa_id: normStr(m.wa_id),
+            text: normStr(m.mensaje),
+            emisor: normStr(m.emisor),
+            prioridad: normStr(m.prioridad || "normal"),
+            ts: toTs(m.fecha) ?? Date.now(),
+
+            tipo,
+            media_url: url,
+            media_mime: mime,
+            media_name: name,
+            media_size: size,
+          };
+        });
 
         if (selectedIdRef.current !== waId) return;
 
         setMensajes(mapped);
-
-        setTimeout(
-          () => msgEndRef.current?.scrollIntoView({ behavior: "smooth" }),
-          30
-        );
+        setTimeout(() => msgEndRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
 
         await markSeen(waId);
         await fetchChats(true);
@@ -323,9 +451,7 @@ const BotPanel = () => {
   const getHash = useCallback(
     async (waId) => {
       const { res, data } = await fetchJSON(
-        `${PANEL_API}/panel_hash.php?wa_id=${encodeURIComponent(
-          waId
-        )}&_=${Date.now()}`
+        `${PANEL_API}/panel_hash.php?wa_id=${encodeURIComponent(waId)}&_=${Date.now()}`
       );
       if (!res.ok || !data?.success) return "";
       return String(data.hash ?? "");
@@ -334,9 +460,7 @@ const BotPanel = () => {
   );
 
   const getGlobalHash = useCallback(async () => {
-    const { res, data } = await fetchJSON(
-      `${PANEL_API}/panel_global_hash.php?_=${Date.now()}`
-    );
+    const { res, data } = await fetchJSON(`${PANEL_API}/panel_global_hash.php?_=${Date.now()}`);
     if (!res.ok || !data?.success) return "";
     return String(data.hash ?? "");
   }, [fetchJSON]);
@@ -371,10 +495,7 @@ const BotPanel = () => {
 
       if (newHash && newHash !== globalHashRef.current) {
         globalHashRef.current = newHash;
-
-        if (!refreshingChats && !loadingChats) {
-          fetchChats(true);
-        }
+        if (!refreshingChats && !loadingChats) fetchChats(true);
       }
     } catch {}
   }, [fetchChats, getGlobalHash, refreshingChats, loadingChats]);
@@ -384,7 +505,6 @@ const BotPanel = () => {
       const waId = selectedIdRef.current;
 
       setMode(nextMode);
-
       if (!waId) return;
 
       try {
@@ -393,10 +513,7 @@ const BotPanel = () => {
           modo: nextMode,
         });
 
-        if (!res.ok || !data?.success) {
-          throw new Error(data?.error || `Error HTTP ${res.status}`);
-        }
-
+        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
         await fetchChats(true);
       } catch (err) {
         setMensajes((prev) => [
@@ -404,9 +521,7 @@ const BotPanel = () => {
           {
             id: `err-mode-${Date.now()}`,
             wa_id: waId,
-            text: `ERROR MODO: ${
-              err?.message || "No se pudo actualizar el modo en la DB"
-            }`,
+            text: `ERROR MODO: ${err?.message || "No se pudo actualizar el modo en la DB"}`,
             emisor: "Panel",
             prioridad: "alta",
             ts: Date.now(),
@@ -469,15 +584,12 @@ const BotPanel = () => {
     });
   }, [chats, q]);
 
-  const selected = useMemo(
-    () => chats.find((c) => c.id === selectedId) || null,
-    [chats, selectedId]
-  );
+  const selected = useMemo(() => chats.find((c) => c.id === selectedId) || null, [chats, selectedId]);
 
-  // ✅ Estado de ventana para el chat seleccionado
-  const selectedWindow = useMemo(() => {
-    return calcWindow(selected?.ventana24hTs, nowTs);
-  }, [selected?.ventana24hTs, nowTs]);
+  const selectedWindow = useMemo(
+    () => calcWindow(selected?.ventana24hTs, nowTs),
+    [selected?.ventana24hTs, nowTs]
+  );
 
   const isWindowExpired = selectedId ? !selectedWindow.valid : false;
 
@@ -487,17 +599,144 @@ const BotPanel = () => {
     setMode(c?.modo === "manual" ? "manual" : "bot");
   };
 
-  const sendManual = async () => {
-    const text = draft.trim();
-    if (!text || !selectedId) return;
+  // ==========================
+  // ✅ EMOJIS
+  // ==========================
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const emojiBtnRef = useRef(null);
+  const emojiPopRef = useRef(null);
+  const composerRef = useRef(null);
 
-    // ✅ si ventana expirada => NO enviar desde panel
+  useEffect(() => {
+    setEmojiOpen(false);
+  }, [selectedId, mode, isWindowExpired]);
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+
+    const onDown = (e) => {
+      const btn = emojiBtnRef.current;
+      const pop = emojiPopRef.current;
+      if (!btn || !pop) return;
+
+      if (btn.contains(e.target)) return;
+      if (pop.contains(e.target)) return;
+
+      setEmojiOpen(false);
+    };
+
+    const onKey = (e) => {
+      if (e.key === "Escape") setEmojiOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [emojiOpen]);
+
+  const insertAtCursor = useCallback(
+    (emoji) => {
+      const ta = composerRef.current;
+      if (!ta) {
+        setDraft((prev) => prev + emoji);
+        return;
+      }
+
+      const start = ta.selectionStart ?? draft.length;
+      const end = ta.selectionEnd ?? draft.length;
+
+      setDraft((prev) => {
+        const a = prev.slice(0, start);
+        const b = prev.slice(end);
+        return a + emoji + b;
+      });
+
+      setTimeout(() => {
+        try {
+          ta.focus();
+          const next = start + emoji.length;
+          ta.setSelectionRange(next, next);
+        } catch {}
+      }, 0);
+    },
+    [draft]
+  );
+
+  // ==========================
+  // ✅ adjuntos (imagen/pdf)
+  // ==========================
+  const fileInputRef = useRef(null);
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [sendingMedia, setSendingMedia] = useState(false);
+
+  const onAttachClick = () => {
+    if (isWindowExpired) return;
+    if (mode !== "manual") return;
+    fileInputRef.current?.click();
+  };
+
+  const onFilePicked = (e) => {
+    const f = e.target.files?.[0] || null;
+    if (!f) return;
+
+    const mime = String(f.type || "");
+    const ok = isImageMime(mime) || isPdfMime(mime);
+
+    if (!ok) {
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: `bad-file-${Date.now()}`,
+          wa_id: selectedIdRef.current || "",
+          text: "⚠️ Solo se permiten imágenes (JPG/PNG/WEBP) o PDF.",
+          emisor: "Panel",
+          prioridad: "alta",
+          ts: Date.now(),
+        },
+      ]);
+      e.target.value = "";
+      return;
+    }
+
+    if (f.size > 12 * 1024 * 1024) {
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: `big-file-${Date.now()}`,
+          wa_id: selectedIdRef.current || "",
+          text: "⚠️ Archivo demasiado grande (máx sugerido 12MB).",
+          emisor: "Panel",
+          prioridad: "alta",
+          ts: Date.now(),
+        },
+      ]);
+      e.target.value = "";
+      return;
+    }
+
+    setAttachedFile(f);
+  };
+
+  const clearAttached = () => {
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const sendManual = async () => {
+    const waId = selectedIdRef.current;
+    if (!waId) return;
+
+    const text = draft.trim();
+
     if (isWindowExpired) {
       setMensajes((prev) => [
         ...prev,
         {
           id: `win-exp-${Date.now()}`,
-          wa_id: selectedId,
+          wa_id: waId,
           text: "⛔ Ventana de 24hs expirada. No se pueden enviar mensajes desde el panel.",
           emisor: "Panel",
           prioridad: "alta",
@@ -505,38 +744,105 @@ const BotPanel = () => {
         },
       ]);
       setDraft("");
+      setEmojiOpen(false);
+      clearAttached();
       return;
     }
+
+    // ✅ si hay archivo => enviar media
+    if (attachedFile) {
+      setSendingMedia(true);
+
+      const tempId = `local-media-${Date.now()}`;
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          wa_id: waId,
+          text: text || "",
+          emisor: "Admin",
+          prioridad: "normal",
+          ts: Date.now(),
+          tipo: isPdfMime(attachedFile.type) ? "document" : "image",
+          media_url: "",
+          media_mime: attachedFile.type,
+          media_name: attachedFile.name,
+          media_size: attachedFile.size,
+        },
+      ]);
+
+      setDraft("");
+      setEmojiOpen(false);
+
+      try {
+        const fd = new FormData();
+        fd.append("wa_id", waId);
+        fd.append("caption", text);
+        fd.append("file", attachedFile);
+
+        const { res, data } = await postFormData(`${PANEL_API}/panel_send_media.php`, fd);
+        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+
+        clearAttached();
+
+        lastHashRef.current = "";
+        await fetchMensajes(waId, { silent: true });
+
+        const h = await getHash(waId);
+        lastHashRef.current = h || "";
+
+        await fetchChats(true);
+      } catch (err) {
+        setMensajes((prev) => [
+          ...prev,
+          {
+            id: `err-media-${Date.now()}`,
+            wa_id: waId,
+            text: `ERROR ENVIO ARCHIVO: ${err?.message || "No se pudo enviar"}`,
+            emisor: "Panel",
+            prioridad: "alta",
+            ts: Date.now(),
+          },
+        ]);
+      } finally {
+        setSendingMedia(false);
+      }
+
+      return;
+    }
+
+    // ✅ texto normal
+    if (!text) return;
 
     const tempId = `local-${Date.now()}`;
     setMensajes((prev) => [
       ...prev,
       {
         id: tempId,
-        wa_id: selectedId,
+        wa_id: waId,
         text,
         emisor: "Admin",
         prioridad: "normal",
         ts: Date.now(),
+        tipo: "text",
       },
     ]);
     setDraft("");
+    setEmojiOpen(false);
     setTimeout(() => msgEndRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
 
     try {
       const { res, data } = await postJSON(`${PANEL_API}/panel_send.php`, {
-        wa_id: selectedId,
+        wa_id: waId,
         texto: text,
       });
 
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Error HTTP ${res.status}`);
-      }
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
 
       lastHashRef.current = "";
-      await fetchMensajes(selectedId, { silent: true });
+      await fetchMensajes(waId, { silent: true });
 
-      const h = await getHash(selectedId);
+      const h = await getHash(waId);
       lastHashRef.current = h || "";
 
       await fetchChats(true);
@@ -545,7 +851,7 @@ const BotPanel = () => {
         ...prev,
         {
           id: `err-${Date.now()}`,
-          wa_id: selectedId,
+          wa_id: waId,
           text: `ERROR ENVIO: ${err?.message || "No se pudo enviar"}`,
           emisor: "Panel",
           prioridad: "alta",
@@ -582,11 +888,13 @@ const BotPanel = () => {
   const [modalEliminarLoading, setModalEliminarLoading] = useState(false);
   const [modalEliminarError, setModalEliminarError] = useState("");
 
-  // ✅ MODAL ETIQUETA
   const [modalTagOpen, setModalTagOpen] = useState(false);
   const [modalTagWa, setModalTagWa] = useState("");
   const [modalTagLoading, setModalTagLoading] = useState(false);
   const [modalTagError, setModalTagError] = useState("");
+
+  // ✅ NUEVO: Galería
+  const [galeriaOpen, setGaleriaOpen] = useState(false);
 
   const openEditarNombre = (waId) => {
     setModalEditError("");
@@ -616,15 +924,8 @@ const BotPanel = () => {
     setModalEditLoading(true);
     setModalEditError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/editar_nombre.php`, {
-        wa_id: waId,
-        nombre,
-      });
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Error HTTP ${res.status}`);
-      }
-
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/editar_nombre.php`, { wa_id: waId, nombre });
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
       setModalEditOpen(false);
       await fetchChats(true);
     } catch (e) {
@@ -638,15 +939,8 @@ const BotPanel = () => {
     setModalTagLoading(true);
     setModalTagError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/etiquetas_set.php`, {
-        wa_id: waId,
-        etiqueta_id: etiquetaId, // null => sin etiqueta
-      });
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Error HTTP ${res.status}`);
-      }
-
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/etiquetas_set.php`, { wa_id: waId, etiqueta_id: etiquetaId });
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
       setModalTagOpen(false);
       await fetchChats(true);
     } catch (e) {
@@ -663,13 +957,8 @@ const BotPanel = () => {
     setModalVaciarLoading(true);
     setModalVaciarError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/vaciar_chat.php`, {
-        wa_id: waId,
-      });
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Error HTTP ${res.status}`);
-      }
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/vaciar_chat.php`, { wa_id: waId });
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
 
       setModalVaciarOpen(false);
 
@@ -693,14 +982,8 @@ const BotPanel = () => {
     setModalEliminarLoading(true);
     setModalEliminarError("");
     try {
-      const { res, data } = await postJSON(
-        `${PANEL_PUNTOS}/eliminar_contacto.php`,
-        { wa_id: waId }
-      );
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Error HTTP ${res.status}`);
-      }
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/eliminar_contacto.php`, { wa_id: waId });
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
 
       setModalEliminarOpen(false);
 
@@ -715,6 +998,41 @@ const BotPanel = () => {
     } finally {
       setModalEliminarLoading(false);
     }
+  };
+
+  // ✅ NUEVO: construir items de galería desde mensajes
+  const galleryItems = useMemo(() => {
+    const arr = Array.isArray(mensajes) ? mensajes : [];
+    const files = arr
+      .filter((m) => !!m?.media_url)
+      .map((m) => {
+        const url = m.media_url;
+        const mime = m.media_mime || inferMimeFromUrl(url);
+        const kind = isPdfMime(mime) ? "pdf" : isImageMime(mime) ? "image" : "file";
+        return {
+          url,
+          mime,
+          kind,
+          name: m.media_name || inferNameFromUrl(url),
+          size: m.media_size || 0,
+          ts: m.ts || 0,
+        };
+      });
+
+    // orden: más nuevo primero
+    files.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    return files;
+  }, [mensajes]);
+
+  const openGaleria = () => {
+    setGaleriaOpen(true);
+  };
+
+  const closeGaleria = () => setGaleriaOpen(false);
+
+  const onOpenGalleryItem = (it) => {
+    // abre tu visor
+    openViewer({ url: it.url, mime: it.mime, name: it.name });
   };
 
   return (
@@ -737,20 +1055,9 @@ const BotPanel = () => {
             </span>
             <div className="wp-brand-txt">
               <div className="wp-brand-title">Panel Bot WhatsApp</div>
-              <div className="wp-brand-sub">
-                {loadingChats ? "Cargando…" : refreshingChats ? "Actualizando…" : ""}
-              </div>
+              <div className="wp-brand-sub">{loadingChats ? "Cargando…" : refreshingChats ? "Actualizando…" : ""}</div>
             </div>
           </div>
-
-          <button
-            className="wp-opts"
-            type="button"
-            aria-label="Opciones"
-            title="Opciones"
-          >
-            <FontAwesomeIcon icon={faEllipsisVertical} />
-          </button>
         </div>
 
         <div className="wp-search">
@@ -823,12 +1130,7 @@ const BotPanel = () => {
                         {c.unread > 99 ? "99+" : c.unread}
                       </span>
                     ) : (
-                      <span
-                        className={`wp-tag wp-tag--${(c.etiqueta || "sin").replace(
-                          /\s/g,
-                          ""
-                        )}`}
-                      >
+                      <span className={`wp-tag wp-tag--${(c.etiqueta || "sin").replace(/\s/g, "")}`}>
                         {c.etiqueta || "sin etiqueta"}
                       </span>
                     )}
@@ -838,9 +1140,7 @@ const BotPanel = () => {
             );
           })}
 
-          {!loadingChats && list.length === 0 ? (
-            <div className="wp-empty">No hay chats con ese filtro.</div>
-          ) : null}
+          {!loadingChats && list.length === 0 ? <div className="wp-empty">No hay chats con ese filtro.</div> : null}
         </div>
       </aside>
 
@@ -865,11 +1165,7 @@ const BotPanel = () => {
                 <div className="wp-chat-top-meta">
                   <div className="wp-chat-top-name">
                     {selected?.nombre || "Sin nombre"}
-                    {selected?.online ? (
-                      <span className="wp-status">• en línea</span>
-                    ) : (
-                      <span className="wp-status">• offline</span>
-                    )}
+                    {selected?.online ? <span className="wp-status">• en línea</span> : <span className="wp-status">• offline</span>}
                   </div>
                   <div className="wp-chat-top-id">{selectedId}</div>
                 </div>
@@ -877,14 +1173,9 @@ const BotPanel = () => {
 
               <div className="wp-chat-top-right">
                 <div className="wp-mode">
-                  {/* ✅ NUEVO: contador ventana 24hs a la izquierda */}
                   <div
                     className={`wp-window ${isWindowExpired ? "is-expired" : ""}`}
-                    title={
-                      isWindowExpired
-                        ? "Ventana de 24hs expirada"
-                        : `Quedan ${selectedWindow.remainingHours}h`
-                    }
+                    title={isWindowExpired ? "Ventana de 24hs expirada" : `Quedan ${selectedWindow.remainingHours}h`}
                     aria-label="Ventana 24 horas"
                   >
                     {isWindowExpired ? (
@@ -910,17 +1201,12 @@ const BotPanel = () => {
                     type="button"
                     className={`wp-modebtn ${mode === "manual" ? "is-active" : ""}`}
                     onClick={() => setModeDB("manual")}
-                    title={
-                      isWindowExpired
-                        ? "Modo Manual (pero ventana expirada: no se puede enviar)"
-                        : "Modo Manual (muestra barra de escribir)"
-                    }
+                    title={isWindowExpired ? "Modo Manual (pero ventana expirada: no se puede enviar)" : "Modo Manual (muestra barra de escribir)"}
                     aria-label="Modo Manual"
                   >
                     <FontAwesomeIcon icon={faHand} />
                   </button>
 
-                  {/* ✅ 3 puntitos al lado de mano/robot */}
                   <ChatOptionsMenu
                     anchorRef={headerMenuBtnRef}
                     open={openMenu}
@@ -928,14 +1214,13 @@ const BotPanel = () => {
                     onClose={() => setOpenMenu(false)}
                     onEditarNombre={() => openEditarNombre(selectedId)}
                     onCambiarEtiqueta={() => openCambiarEtiqueta(selectedId)}
+                    onVerGaleria={() => openGaleria()}   // ✅ NUEVO
                     onVaciarChat={() => openVaciarChat(selectedId)}
                     onEliminarContacto={() => openEliminarContacto(selectedId)}
                   />
                 </div>
 
-                <span className="wp-chip wp-chip--tag">
-                  {selected?.etiqueta || "sin etiqueta"}
-                </span>
+                <span className="wp-chip wp-chip--tag">{selected?.etiqueta || "sin etiqueta"}</span>
 
                 {loadingMsgs ? (
                   <span className="wp-chip">
@@ -945,7 +1230,6 @@ const BotPanel = () => {
               </div>
             </div>
 
-            {/* ✅ texto “expirada” visible en header si querés */}
             {isWindowExpired ? (
               <div className="wp-window-expiredline">
                 <FontAwesomeIcon icon={faTriangleExclamation} />
@@ -967,13 +1251,66 @@ const BotPanel = () => {
 
               {(mensajes || []).map((m) => {
                 const side = mapEmisorToSide(m.emisor);
-                const danger =
-                  String(m.text || "").startsWith("ERROR") || m.prioridad === "alta";
+                const danger = String(m.text || "").startsWith("ERROR") || m.prioridad === "alta";
+
+                const hasMedia = !!m.media_url;
+                const mime = m.media_mime || (m.media_url ? inferMimeFromUrl(m.media_url) : "");
+                const showImg = hasMedia && isImageMime(mime);
+                const showPdf = hasMedia && isPdfMime(mime);
 
                 return (
                   <div key={m.id} className={`wp-msg wp-msg--${side}`}>
                     <div className={`wp-bubble ${danger ? "wp-bubble--danger" : ""}`}>
-                      <div className="wp-bubble-text">{m.text}</div>
+                      {hasMedia ? (
+                        <div className="wp-media-inbubble">
+                          {showImg ? (
+                            <button
+                              type="button"
+                              className="wp-media-thumbbtn"
+                              onClick={() =>
+                                openViewer({
+                                  url: m.media_url,
+                                  mime,
+                                  name: m.media_name || "imagen",
+                                })
+                              }
+                              title="Ver imagen"
+                            >
+                              <img className="wp-media-thumb" src={m.media_url} alt={m.media_name || "imagen"} />
+                            </button>
+                          ) : showPdf ? (
+                            <button
+                              type="button"
+                              className="wp-doc-card"
+                              onClick={() =>
+                                openViewer({
+                                  url: m.media_url,
+                                  mime,
+                                  name: m.media_name || "documento.pdf",
+                                })
+                              }
+                              title="Ver PDF"
+                            >
+                              <div className="wp-doc-ico">
+                                <FontAwesomeIcon icon={faFilePdf} />
+                              </div>
+                              <div className="wp-doc-meta">
+                                <div className="wp-doc-name">{m.media_name || "Documento PDF"}</div>
+                                <div className="wp-doc-sub">
+                                  PDF {m.media_size ? `• ${fmtBytes(m.media_size)}` : ""}
+                                </div>
+                              </div>
+                            </button>
+                          ) : (
+                            <a href={m.media_url} target="_blank" rel="noreferrer">
+                              📎 {m.media_name || "Archivo"} {m.media_size ? `(${fmtBytes(m.media_size)})` : ""}
+                            </a>
+                          )}
+                        </div>
+                      ) : null}
+
+                      {m.text ? <div className="wp-bubble-text">{m.text}</div> : null}
+
                       <div className="wp-bubble-time">
                         {fmtHora(m.ts)} • {m.emisor}
                       </div>
@@ -987,49 +1324,122 @@ const BotPanel = () => {
 
             {mode === "manual" ? (
               <div className={`wp-composer ${isWindowExpired ? "is-disabled" : ""}`}>
-                <button
-                  type="button"
-                  className="wp-attach"
-                  title={isWindowExpired ? "Ventana expirada" : "Adjuntar (demo)"}
-                  aria-label="Adjuntar (demo)"
-                  disabled={isWindowExpired}
-                >
-                  <FontAwesomeIcon icon={faPaperclip} />
-                </button>
+                <div className="wp-composer-inner">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    style={{ display: "none" }}
+                    onChange={onFilePicked}
+                  />
 
-                <textarea
-                  className="wp-input"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={onKeyDownDraft}
-                  placeholder={
-                    isWindowExpired
-                      ? "Ventana expirada: no podés mandar mensajes desde el panel."
-                      : "Modo manual: escribir mensaje…"
-                  }
-                  rows={1}
-                  disabled={isWindowExpired}
-                />
+                  <button
+                    type="button"
+                    className="wp-attach"
+                    title={isWindowExpired ? "Ventana expirada" : "Adjuntar imagen/PDF"}
+                    aria-label="Adjuntar imagen/PDF"
+                    disabled={isWindowExpired || sendingMedia}
+                    onClick={onAttachClick}
+                  >
+                    <FontAwesomeIcon icon={faPaperclip} />
+                  </button>
 
-                <button
-                  type="button"
-                  className="wp-send"
-                  onClick={sendManual}
-                  aria-label="Enviar"
-                  title={isWindowExpired ? "Ventana expirada" : "Enviar"}
-                  disabled={isWindowExpired}
-                >
-                  <FontAwesomeIcon icon={faPaperPlane} />
-                </button>
+                  <button
+                    ref={emojiBtnRef}
+                    type="button"
+                    className={`wp-emoji-btn ${emojiOpen ? "is-open" : ""}`}
+                    title={isWindowExpired ? "Ventana expirada" : "Emojis"}
+                    aria-label="Emojis"
+                    disabled={isWindowExpired}
+                    onClick={() => setEmojiOpen((v) => !v)}
+                  >
+                    <FontAwesomeIcon icon={faFaceSmile} />
+                  </button>
+
+                  {emojiOpen && !isWindowExpired ? (
+                    <div ref={emojiPopRef} className="wp-emoji-pop" role="dialog" aria-label="Selector de emojis">
+                      <Picker
+                        data={data}
+                        previewPosition="none"
+                        navPosition="bottom"
+                        theme="dark"
+                        onEmojiSelect={(e) => {
+                          const emoji = e?.native || "";
+                          if (!emoji) return;
+                          insertAtCursor(emoji);
+                        }}
+                      />
+                    </div>
+                  ) : null}
+
+                  <textarea
+                    ref={composerRef}
+                    className="wp-input"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={onKeyDownDraft}
+                    placeholder={
+                      attachedFile
+                        ? `Adjunto: ${attachedFile.name} — escribí un texto opcional…`
+                        : isWindowExpired
+                        ? "Ventana expirada: no podés mandar mensajes desde el panel."
+                        : "Modo manual: escribir mensaje…"
+                    }
+                    rows={1}
+                    disabled={isWindowExpired || sendingMedia}
+                  />
+
+                  <button
+                    type="button"
+                    className="wp-send"
+                    onClick={sendManual}
+                    aria-label="Enviar"
+                    title={isWindowExpired ? "Ventana expirada" : attachedFile ? "Enviar archivo" : "Enviar"}
+                    disabled={isWindowExpired || sendingMedia}
+                  >
+                    {sendingMedia ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faPaperPlane} />}
+                  </button>
+                </div>
+
+                {attachedFile ? (
+                  <div style={{ padding: "6px 10px", fontSize: 12, opacity: 0.9, display: "flex", gap: 10, alignItems: "center" }}>
+                    <span>
+                      📎 <b>{attachedFile.name}</b> ({fmtBytes(attachedFile.size)})
+                    </span>
+                    <button
+                      type="button"
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        color: "inherit",
+                        textDecoration: "underline",
+                      }}
+                      onClick={clearAttached}
+                    >
+                      quitar
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </>
         )}
       </main>
 
-      {/* =======================
-          ✅ MODALES
-      ======================= */}
+      {/* ✅ VISOR */}
+      <MediaViewerModal open={viewerOpen} onClose={closeViewer} item={viewerItem} />
+
+      {/* ✅ NUEVO: GALERÍA */}
+      <GaleriaModal
+        open={galeriaOpen}
+        onClose={closeGaleria}
+        items={galleryItems}
+        title={`Galería • ${selected?.nombre || "Sin nombre"}`}
+        onOpenItem={(it) => onOpenGalleryItem(it)}
+      />
+
+      {/* ✅ MODALES */}
       <EditNombreModal
         open={modalEditOpen}
         waId={modalEditWa}
