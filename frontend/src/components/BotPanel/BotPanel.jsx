@@ -157,7 +157,7 @@ const fmtBytes = (n) => {
 };
 
 /* =========================
-   ✅ MODAL VISOR (IMG / PDF)
+   ✅ MODAL VISOR (IMG / PDF) - CORREGIDO Z-INDEX
 ========================= */
 const MediaViewerModal = ({ open, onClose, item }) => {
   const boxRef = useRef(null);
@@ -377,8 +377,11 @@ const BotPanel = () => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerItem, setViewerItem] = useState(null);
 
+  // CORRECCIÓN: Cerrar galería antes de abrir el visor
   const openViewer = (item) => {
     if (!item?.url) return;
+    // Cerrar galería primero para que no quede encima
+    setGaleriaOpen(false);
     setViewerItem(item);
     setViewerOpen(true);
   };
@@ -1030,9 +1033,14 @@ const BotPanel = () => {
 
   const closeGaleria = () => setGaleriaOpen(false);
 
+  // CORRECCIÓN: Modificado para cerrar galería antes de abrir el visor
   const onOpenGalleryItem = (it) => {
-    // abre tu visor
-    openViewer({ url: it.url, mime: it.mime, name: it.name });
+    // Cierra la galería primero
+    setGaleriaOpen(false);
+    // Luego abre el visor
+    setTimeout(() => {
+      openViewer({ url: it.url, mime: it.mime, name: it.name });
+    }, 50);
   };
 
   return (
@@ -1427,10 +1435,10 @@ const BotPanel = () => {
         )}
       </main>
 
-      {/* ✅ VISOR */}
+      {/* ✅ VISOR - CORREGIDO: Mayor z-index que la galería */}
       <MediaViewerModal open={viewerOpen} onClose={closeViewer} item={viewerItem} />
 
-      {/* ✅ NUEVO: GALERÍA */}
+      {/* ✅ NUEVO: GALERÍA - Menor z-index que el visor */}
       <GaleriaModal
         open={galeriaOpen}
         onClose={closeGaleria}

@@ -1,3 +1,4 @@
+// src/components/BotPanel/modales/GaleriaModal.jsx
 import React, { useEffect, useMemo, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faFilePdf, faImages } from "@fortawesome/free-solid-svg-icons";
