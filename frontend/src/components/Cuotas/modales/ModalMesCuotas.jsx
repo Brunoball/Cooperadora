@@ -19,6 +19,8 @@ import "./ModalMesCuotas.css";
  * - La grilla del medio muestra SOLO ENERO..DICIEMBRE (1..12).
  * - EXTRAS arriba: MATRÍCULA + CONTADO ANUAL
  * - Si se marca CONTADO ANUAL => aparecen 1ª mitad y 2ª mitad (arriba), pero NO en la grilla.
+ * - EXTRAS cuando aparece 1ª/2ª mitad: 2 arriba y 2 abajo (grid 2 columnas).
+ * - Dejar SOLO el resumen de abajo (Período/Total en texto).
  */
 
 // ====== IDs “extras” (mismos que ModalPagos) ======
@@ -101,7 +103,13 @@ function leerMontoDetalle(d) {
   return null;
 }
 
-const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = undefined, onClose }) => {
+const ModalMesCuotas = ({
+  socio,
+  meses = [],
+  anio,
+  esExterno: esExternoProp = undefined,
+  onClose,
+}) => {
   const nowYear = new Date().getFullYear();
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
 
@@ -128,15 +136,13 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   const listaMeses = useMemo(() => {
     const arr = Array.isArray(meses) && meses.length ? meses : FALLBACK_MESES;
 
-    // normaliza y filtra SOLO ids 1..12
     const normalizados = arr
       .map((m) => ({ id: Number(m.id), nombre: String(m.nombre) }))
       .filter((m) => Number.isFinite(m.id) && m.id >= 1 && m.id <= 12);
 
-    // si por algún motivo viene vacío, fallback
-    if (!normalizados.length) return FALLBACK_MESES.map((m) => ({ id: Number(m.id), nombre: String(m.nombre) }));
+    if (!normalizados.length)
+      return FALLBACK_MESES.map((m) => ({ id: Number(m.id), nombre: String(m.nombre) }));
 
-    // ordenados 1..12
     normalizados.sort((a, b) => a.id - b.id);
     return normalizados;
   }, [meses]);
@@ -213,6 +219,14 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     setSelMatricula(false);
   }, [anioTrabajo]);
 
+  // ✅ Limpieza de mitades cuando se desmarca CONTADO ANUAL
+  useEffect(() => {
+    if (!selAnual) {
+      setSelAnualH1(false);
+      setSelAnualH2(false);
+    }
+  }, [selAnual]);
+
   // ===== Cargar años con pagos =====
   useEffect(() => {
     let cancelled = false;
@@ -259,13 +273,17 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
           return;
         }
 
-        const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(idAlumno)}`;
+        const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(
+          idAlumno
+        )}`;
         const res = await fetch(url, { method: "GET" });
         if (!res.ok) throw new Error(`obtener_monto_categoria HTTP ${res.status}`);
 
         const data = await res.json().catch(() => ({}));
         if (data?.exito) {
-          const mensual = Number(data?.monto_mensual ?? data?.monto ?? data?.precio ?? data?.Precio_Categoria ?? 0);
+          const mensual = Number(
+            data?.monto_mensual ?? data?.monto ?? data?.precio ?? data?.Precio_Categoria ?? 0
+          );
           const anual = Number(data?.monto_anual ?? 0);
           const matri = Number(data?.monto_matricula ?? data?.matricula ?? 0);
 
@@ -387,7 +405,9 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
   const toggleMes = (id) => {
     const num = Number(id);
-    setSeleccionMeses((prev) => (prev.includes(num) ? prev.filter((x) => x !== num) : [...prev, num]));
+    setSeleccionMeses((prev) =>
+      prev.includes(num) ? prev.filter((x) => x !== num) : [...prev, num]
+    );
   };
 
   const allSelected = listaMeses.length > 0 && seleccionMeses.length === listaMeses.length;
@@ -405,12 +425,27 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
     if (halfCount === 1) {
       if (selAnualH1) {
-        return { tipo: "h1", idPeriodo: ID_CONTADO_ANUAL_H1, importe: Math.max(0, Math.round(base / 2)), etiqueta: "CONTADO ANUAL (1ª mitad)" };
+        return {
+          tipo: "h1",
+          idPeriodo: ID_CONTADO_ANUAL_H1,
+          importe: Math.max(0, Math.round(base / 2)),
+          etiqueta: "CONTADO ANUAL (1ª mitad)",
+        };
       }
-      return { tipo: "h2", idPeriodo: ID_CONTADO_ANUAL_H2, importe: Math.max(0, Math.round(base / 2)), etiqueta: "CONTADO ANUAL (2ª mitad)" };
+      return {
+        tipo: "h2",
+        idPeriodo: ID_CONTADO_ANUAL_H2,
+        importe: Math.max(0, Math.round(base / 2)),
+        etiqueta: "CONTADO ANUAL (2ª mitad)",
+      };
     }
 
-    return { tipo: "full", idPeriodo: ID_CONTADO_ANUAL, importe: base, etiqueta: "CONTADO ANUAL" };
+    return {
+      tipo: "full",
+      idPeriodo: ID_CONTADO_ANUAL,
+      importe: base,
+      etiqueta: "CONTADO ANUAL",
+    };
   }, [selAnual, selAnualH1, selAnualH2, montoAnualConDescuento]);
 
   const periodosSeleccionados = useMemo(() => {
@@ -465,12 +500,19 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     }
 
     return mp;
-  }, [periodosSeleccionados, periodosEstado, montosReales, precioMensualConDescuento, montoMatricula, montoAnualConDescuento]);
-
-  const total = useMemo(() => periodosSeleccionados.reduce((acc, id) => acc + Number(montosPorPeriodo[id] || 0), 0), [
+  }, [
     periodosSeleccionados,
-    montosPorPeriodo,
+    periodosEstado,
+    montosReales,
+    precioMensualConDescuento,
+    montoMatricula,
+    montoAnualConDescuento,
   ]);
+
+  const total = useMemo(
+    () => periodosSeleccionados.reduce((acc, id) => acc + Number(montosPorPeriodo[id] || 0), 0),
+    [periodosSeleccionados, montosPorPeriodo]
+  );
 
   const buildAlumnoParaImprimir = useCallback(() => {
     const periodoCodigo = periodosSeleccionados[0] || 0;
@@ -705,64 +747,92 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
               </div>
             </div>
 
-            {/* EXTRAS arriba */}
-            <div style={{ marginTop: 12, marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.85, marginBottom: 8 }}>EXTRAS</div>
+            {/* ✅ EXTRAS: 2 columnas, y si selAnual => 2x2 */}
+            <div className="modmes_extras-wrap">
+              <div className="modmes_extras-title">EXTRAS</div>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <label className="modmes_periodo-card" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" checked={selMatricula} onChange={(e) => setSelMatricula(e.target.checked)} />
-                  <span>
-                    MATRÍCULA{" "}
-                    {labelEstado(ID_MATRICULA) ? (
-                      <strong style={{ marginLeft: 6, opacity: 0.8 }}>({labelEstado(ID_MATRICULA)})</strong>
-                    ) : null}
-                    <div style={{ fontSize: 12, opacity: 0.75 }}>
+              <div className={`modmes_extras-grid ${selAnual ? "is-anual" : ""}`}>
+                {/* MATRÍCULA */}
+                <label className={`modmes_extra-card ${selMatricula ? "is-checked" : ""}`}>
+                  <span className="modmes_extra-check">
+                    <input type="checkbox" checked={selMatricula} onChange={(e) => setSelMatricula(e.target.checked)} />
+                    <span className="modmes_extra-box" aria-hidden="true" />
+                  </span>
+
+                  <span className="modmes_extra-main">
+                    <span className="modmes_extra-top">
+                      <span className="modmes_extra-name">MATRÍCULA</span>
+                      {labelEstado(ID_MATRICULA) ? <span className="modmes_extra-state">{labelEstado(ID_MATRICULA)}</span> : null}
+                    </span>
+                    <span className="modmes_extra-amount">
                       {formatearARS(montosReales?.[ID_MATRICULA] ?? montoMatricula ?? 0)}
-                    </div>
+                    </span>
                   </span>
                 </label>
 
-                <label className="modmes_periodo-card" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" checked={selAnual} onChange={(e) => setSelAnual(e.target.checked)} />
-                  <span>
-                    CONTADO ANUAL{" "}
-                    {labelEstado(ID_CONTADO_ANUAL) ? (
-                      <strong style={{ marginLeft: 6, opacity: 0.8 }}>({labelEstado(ID_CONTADO_ANUAL)})</strong>
-                    ) : null}
-                    <div style={{ fontSize: 12, opacity: 0.75 }}>
+                {/* CONTADO ANUAL */}
+                <label className={`modmes_extra-card ${selAnual ? "is-checked" : ""}`}>
+                  <span className="modmes_extra-check">
+                    <input type="checkbox" checked={selAnual} onChange={(e) => setSelAnual(e.target.checked)} />
+                    <span className="modmes_extra-box" aria-hidden="true" />
+                  </span>
+
+                  <span className="modmes_extra-main">
+                    <span className="modmes_extra-top">
+                      <span className="modmes_extra-name">CONTADO ANUAL</span>
+                      {labelEstado(ID_CONTADO_ANUAL) ? (
+                        <span className="modmes_extra-state">{labelEstado(ID_CONTADO_ANUAL)}</span>
+                      ) : null}
+                    </span>
+                    <span className="modmes_extra-amount">
                       {formatearARS(
                         montosReales?.[anualConfig?.idPeriodo || ID_CONTADO_ANUAL] ??
                           anualConfig?.importe ??
                           montoAnualConDescuento ??
                           0
                       )}
-                    </div>
+                    </span>
                   </span>
                 </label>
 
+                {/* 1ª mitad */}
                 {selAnual && (
-                  <>
-                    <label className="modmes_periodo-card" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <label className={`modmes_extra-card ${selAnualH1 ? "is-checked" : ""}`}>
+                    <span className="modmes_extra-check">
                       <input type="checkbox" checked={selAnualH1} onChange={(e) => setSelAnualH1(e.target.checked)} />
-                      <span>
-                        1ª mitad (Mar–Jul)
-                        {labelEstado(ID_CONTADO_ANUAL_H1) ? (
-                          <strong style={{ marginLeft: 6, opacity: 0.8 }}>({labelEstado(ID_CONTADO_ANUAL_H1)})</strong>
-                        ) : null}
-                      </span>
-                    </label>
+                      <span className="modmes_extra-box" aria-hidden="true" />
+                    </span>
 
-                    <label className="modmes_periodo-card" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="checkbox" checked={selAnualH2} onChange={(e) => setSelAnualH2(e.target.checked)} />
-                      <span>
-                        2ª mitad (Ago–Dic)
-                        {labelEstado(ID_CONTADO_ANUAL_H2) ? (
-                          <strong style={{ marginLeft: 6, opacity: 0.8 }}>({labelEstado(ID_CONTADO_ANUAL_H2)})</strong>
+                    <span className="modmes_extra-main">
+                      <span className="modmes_extra-top">
+                        <span className="modmes_extra-name">1ª mitad</span>
+                        {labelEstado(ID_CONTADO_ANUAL_H1) ? (
+                          <span className="modmes_extra-state">{labelEstado(ID_CONTADO_ANUAL_H1)}</span>
                         ) : null}
                       </span>
-                    </label>
-                  </>
+                      <span className="modmes_extra-sub">Mar–Jul</span>
+                    </span>
+                  </label>
+                )}
+
+                {/* 2ª mitad */}
+                {selAnual && (
+                  <label className={`modmes_extra-card ${selAnualH2 ? "is-checked" : ""}`}>
+                    <span className="modmes_extra-check">
+                      <input type="checkbox" checked={selAnualH2} onChange={(e) => setSelAnualH2(e.target.checked)} />
+                      <span className="modmes_extra-box" aria-hidden="true" />
+                    </span>
+
+                    <span className="modmes_extra-main">
+                      <span className="modmes_extra-top">
+                        <span className="modmes_extra-name">2ª mitad</span>
+                        {labelEstado(ID_CONTADO_ANUAL_H2) ? (
+                          <span className="modmes_extra-state">{labelEstado(ID_CONTADO_ANUAL_H2)}</span>
+                        ) : null}
+                      </span>
+                      <span className="modmes_extra-sub">Ago–Dic</span>
+                    </span>
+                  </label>
                 )}
               </div>
             </div>
@@ -775,7 +845,8 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                   const checked = seleccionMeses.includes(id);
                   const est = labelEstado(id);
 
-                  const montoMostrado = montosReales?.[id] !== undefined ? montosReales[id] : precioMensualConDescuento;
+                  const montoMostrado =
+                    montosReales?.[id] !== undefined ? montosReales[id] : precioMensualConDescuento;
 
                   return (
                     <label key={m.id} className={`modmes_periodo-card ${checked ? "modmes_seleccionado" : ""}`}>
@@ -802,8 +873,8 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
               </div>
             </div>
 
-            {/* Resumen */}
-            <div style={{ marginTop: 14, fontSize: 13, opacity: 0.9 }}>
+            {/* ✅ RESUMEN: dejar SOLO el de abajo */}
+            <div className="modmes_resumen_simple">
               <div>
                 <strong>Período:</strong> {periodoTextoFinal || "—"}
               </div>

@@ -16,7 +16,10 @@ import {
   faXmark,
   faFaceSmile,
   faFilePdf,
+  faSun,
+  faMoon,
 } from "@fortawesome/free-solid-svg-icons";
+
 import "./BotPanel.css";
 
 // ✅ emoji-mart (v5)
@@ -155,6 +158,13 @@ const fmtBytes = (n) => {
   }
   return `${x.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
 };
+
+
+
+
+
+
+
 
 /* =========================
    ✅ MODAL VISOR (IMG / PDF) - CORREGIDO Z-INDEX
@@ -307,6 +317,26 @@ const BotPanel = () => {
     },
     [fetchJSON]
   );
+ 
+
+
+    // ==========================
+  // ✅ TEMA CLARO / OSCURO
+  // ==========================
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("botpanel_theme");
+    return saved === "light" ? "light" : "dark";
+  });
+
+  useEffect(() => {
+    // aplica el tema a todo el documento (CSS lo lee)
+    document.documentElement.setAttribute("data-botpanel-theme", theme);
+    localStorage.setItem("botpanel_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  };
 
   // ==========================
   // ✅ ETIQUETAS (DB)
@@ -1227,6 +1257,16 @@ const BotPanel = () => {
                     onEliminarContacto={() => openEliminarContacto(selectedId)}
                   />
                 </div>
+                <button
+  type="button"
+  className="wp-themebtn"
+  onClick={toggleTheme}
+  title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+  aria-label="Cambiar tema"
+>
+  <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
+  <span className="wp-themebtn-txt">{theme === "dark" ? "Claro" : "Oscuro"}</span>
+</button>
 
                 <span className="wp-chip wp-chip--tag">{selected?.etiqueta || "sin etiqueta"}</span>
 

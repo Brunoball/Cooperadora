@@ -1,20 +1,101 @@
 /* src/components/BotPanel/BotPanel.css */
 
+/* ======================================================
+   ✅ THEME SYSTEM
+   Default: DARK (como estaba)
+   Light: Paleta Azul Institucional (usa --blue-inst-*)
+   Se activa con: <html data-botpanel-theme="light">
+====================================================== */
+
+/* ===== Variables DARK (default) ===== */
+:root{
+  --wp-bg: #0b141a;
+  --wp-text: #e9edef;
+
+  --wp-sidebar-bg: #111b21;
+  --wp-topbar-bg: rgba(17,27,33,.9);
+  --wp-composer-bg: rgba(17,27,33,.95);
+
+  --wp-card: rgba(255,255,255,.06);
+  --wp-card-2: rgba(255,255,255,.08);
+
+  --wp-border: rgba(255,255,255,.08);
+  --wp-border-soft: rgba(255,255,255,.06);
+
+  --wp-accent: rgba(45,212,191,.22);
+  --wp-accent-2: rgba(45,212,191,.12);
+  --wp-accent-3: rgba(45,212,191,.16);
+  --wp-accent-text: #bfffe2;
+
+  --wp-success: rgba(34,197,94,.18);
+  --wp-success-bg: rgba(34,197,94,.16);
+
+  --wp-online: #22c55e;
+
+  --wp-danger: rgba(255,60,60,.35);
+  --wp-danger-bg: rgba(255,60,60,.12);
+
+  --wp-shadow: 0 10px 22px rgba(0,0,0,.22);
+
+  --wp-doc-bg: rgba(0,0,0,0.20);
+  --wp-doc-border: rgba(255,255,255,0.12);
+
+  --wp-reply-bg: #1f2a36;
+  --wp-reply-border: #4ea1ff;
+}
+
+/* ===== Variables LIGHT (usa tu paleta azul) ===== */
+:root[data-botpanel-theme="light"]{
+  --wp-bg: var(--blue-inst-light);
+  --wp-text: var(--blue-inst-dark);
+
+  --wp-sidebar-bg: #ffffff;
+  --wp-topbar-bg: rgba(248,250,252,.92);     /* var(--blue-inst-light) con alpha */
+  --wp-composer-bg: rgba(255,255,255,.92);
+
+  --wp-card: rgba(29,66,138,.06);            /* primary suave */
+  --wp-card-2: rgba(29,66,138,.10);
+
+  --wp-border: rgba(15,23,42,.14);
+  --wp-border-soft: rgba(15,23,42,.10);
+
+  --wp-accent: rgba(29,66,138,.22);          /* --blue-inst-primary */
+  --wp-accent-2: rgba(29,66,138,.14);
+  --wp-accent-3: rgba(29,66,138,.18);
+  --wp-accent-text: #ffffff;
+
+  --wp-success: rgba(16,185,129,.28);
+  --wp-success-bg: rgba(16,185,129,.14);
+
+  --wp-online: var(--blue-inst-success);
+
+  --wp-danger: rgba(211,47,47,.28);
+  --wp-danger-bg: rgba(211,47,47,.10);
+
+  --wp-shadow: var(--blue-inst-shadow-md);
+
+  --wp-doc-bg: rgba(29,66,138,.06);
+  --wp-doc-border: rgba(15,23,42,.14);
+
+  --wp-reply-bg: rgba(29,66,138,.07);
+  --wp-reply-border: var(--blue-inst-secondary);
+}
+
 /* ===== Shell ===== */
 .wp-shell{
   height: 100vh;
   width: 100%;
   display: grid;
   grid-template-columns: 380px 1fr;
-  background: #0b141a;
-  color: #e9edef;
+  background: var(--wp-bg);
+  color: var(--wp-text);
   overflow: hidden;
 }
 
 /* ===== Sidebar ===== */
 .wp-sidebar{
-  border-right: 1px solid rgba(255,255,255,.08);
-  background: #111b21;
+  border-right: 1px solid var(--wp-border);
+  background: var(--wp-sidebar-bg);
   display: flex;
   flex-direction: column;
   min-width: 320px;
@@ -35,8 +116,8 @@
   border-radius: 12px;
   border: 0;
   cursor: pointer;
-  background: rgba(255,255,255,.06);
-  color: #e9edef;
+  background: var(--wp-card);
+  color: var(--wp-text);
   transition: transform .15s ease, filter .15s ease;
 }
 .wp-back:hover,
@@ -56,8 +137,8 @@
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(45,212,191,.22), rgba(34,197,94,.18));
-  color: #9ff7d3;
+  background: linear-gradient(135deg, var(--wp-accent), var(--wp-success-bg));
+  color: var(--wp-accent-text);
 }
 .wp-brand-txt{ min-width: 0; }
 .wp-brand-title{
@@ -79,8 +160,8 @@
 /* Search */
 .wp-search{
   margin: 8px 12px 10px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.06);
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border-soft);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -89,8 +170,8 @@
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 .wp-search:focus-within{
-  border-color: rgba(45,212,191,.22);
-  box-shadow: 0 0 0 3px rgba(45,212,191,.10);
+  border-color: var(--wp-accent);
+  box-shadow: 0 0 0 3px var(--wp-accent-2);
 }
 .wp-search-ico{ opacity: .8; }
 
@@ -99,7 +180,7 @@
   border: 0;
   outline: none;
   background: transparent;
-  color: #e9edef;
+  color: var(--wp-text);
   font-size: 13px;
 }
 .wp-search-input:focus,
@@ -133,10 +214,10 @@
   transition: background .14s ease, transform .12s ease;
   text-align: left;
 }
-.wp-chatitem:hover{ background: rgba(255,255,255,.05); }
+.wp-chatitem:hover{ background: var(--wp-card); }
 .wp-chatitem.is-active{
-  background: rgba(45,212,191,.12);
-  outline: 1px solid rgba(45,212,191,.18);
+  background: var(--wp-accent-2);
+  outline: 1px solid var(--wp-accent-3);
 }
 
 .wp-avatar{
@@ -145,9 +226,9 @@
   border-radius: 16px;
   display: grid;
   place-items: center;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.06);
-  color: rgba(233, 237, 239, .9);
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border-soft);
+  color: var(--wp-text);
 }
 .wp-avatar--sm{
   height: 40px;
@@ -183,7 +264,7 @@
 
 .wp-online{
   font-size: 10px;
-  color: #22c55e;
+  color: var(--wp-online);
   opacity: .9;
 }
 
@@ -213,13 +294,13 @@
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.06);
-  opacity: .9;
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border-soft);
+  opacity: .95;
 }
-.wp-tag--socio{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.18); }
-.wp-tag--prospecto{ background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.18); }
-.wp-tag--sin{ background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.06); }
+.wp-tag--socio{ background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.22); }
+.wp-tag--prospecto{ background: rgba(11,94,215,.10); border-color: rgba(11,94,215,.20); }
+.wp-tag--sin{ background: var(--wp-card); border-color: var(--wp-border-soft); }
 
 .wp-empty{
   padding: 16px 10px;
@@ -230,9 +311,9 @@
 /* ===== Main ===== */
 .wp-main{
   background:
-    radial-gradient(900px 500px at 20% 10%, rgba(45,212,191,.06), transparent 55%),
-    radial-gradient(900px 500px at 90% 80%, rgba(34,197,94,.06), transparent 55%),
-    #0b141a;
+    radial-gradient(900px 500px at 20% 10%, var(--wp-accent-2), transparent 55%),
+    radial-gradient(900px 500px at 90% 80%, rgba(16,185,129,.06), transparent 55%),
+    var(--wp-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -247,11 +328,14 @@
 .wp-main-empty-card{
   width: min(520px, 92%);
   border-radius: 18px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border);
   padding: 18px;
   text-align: center;
-  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  box-shadow: 0 18px 40px rgba(0,0,0,.20);
+}
+:root[data-botpanel-theme="light"] .wp-main-empty-card{
+  box-shadow: var(--wp-shadow);
 }
 .wp-main-empty-ico{
   height: 54px;
@@ -260,8 +344,8 @@
   display: grid;
   place-items: center;
   margin: 0 auto 10px;
-  background: linear-gradient(135deg, rgba(45,212,191,.18), rgba(34,197,94,.14));
-  color: #9ff7d3;
+  background: linear-gradient(135deg, var(--wp-accent-2), rgba(16,185,129,.12));
+  color: var(--wp-text);
   font-size: 22px;
 }
 .wp-main-empty-card h2{ margin: 8px 0 6px; font-size: 18px; }
@@ -274,8 +358,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(17,27,33,.9);
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: var(--wp-topbar-bg);
+  border-bottom: 1px solid var(--wp-border);
 }
 
 .wp-chat-top-left{
@@ -314,8 +398,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border);
   border-radius: 999px;
   padding: 4px;
 }
@@ -327,7 +411,7 @@
   cursor: pointer;
   border-radius: 999px;
   background: transparent;
-  color: rgba(233,237,239,.9);
+  color: var(--wp-text);
   display: grid;
   place-items: center;
   transition: transform .15s ease, filter .15s ease, background .15s ease;
@@ -335,30 +419,62 @@
 .wp-modebtn:hover{
   transform: translateY(-1px);
   filter: brightness(1.05);
-  background: rgba(255,255,255,.06);
+  background: var(--wp-card);
 }
 .wp-modebtn:active{
   transform: translateY(0px) scale(.98);
 }
 .wp-modebtn.is-active{
-  background: rgba(45,212,191,.16);
-  border: 1px solid rgba(45,212,191,.18);
-  color: #bfffe2;
+  background: var(--wp-accent-3);
+  border: 1px solid var(--wp-accent);
+  color: var(--wp-accent-text);
 }
 
 .wp-chip{
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border);
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--wp-text);
 }
 .wp-chip--tag{
-  background: rgba(45,212,191,.12);
-  border-color: rgba(45,212,191,.18);
+  background: var(--wp-accent-2);
+  border-color: var(--wp-accent);
+}
+
+/* =========================
+   ✅ BOTÓN TEMA (Claro/Oscuro)
+   (lo vas a usar en wp-chat-top-right)
+========================= */
+.wp-themebtn{
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--wp-border);
+  background: var(--wp-card);
+  color: var(--wp-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform .15s ease, filter .15s ease, background .15s ease;
+}
+.wp-themebtn:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  background: var(--wp-card-2);
+}
+.wp-themebtn:active{
+  transform: translateY(0px) scale(.98);
+}
+.wp-themebtn-txt{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .2px;
 }
 
 /* Messages */
@@ -376,8 +492,8 @@
 .wp-day span{
   font-size: 12px;
   opacity: .85;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--wp-card);
+  border: 1px solid var(--wp-border);
   padding: 6px 12px;
   border-radius: 999px;
 }
@@ -403,24 +519,24 @@
   border-radius: 16px;
   padding: 10px 10px 8px;
   position: relative;
-  box-shadow: 0 10px 22px rgba(0,0,0,.22);
-  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: var(--wp-shadow);
+  border: 1px solid var(--wp-border-soft);
   backdrop-filter: blur(6px);
 }
 
 /* Usuario */
-.wp-msg--left .wp-bubble{ background: rgba(255,255,255,.06); }
+.wp-msg--left .wp-bubble{ background: var(--wp-card); }
 
 /* Bot */
 .wp-msg--rightbot .wp-bubble{
-  background: rgba(45,212,191,.10);
-  border-color: rgba(45,212,191,.16);
+  background: var(--wp-accent-2);
+  border-color: var(--wp-accent-3);
 }
 
 /* Admin/Panel */
 .wp-msg--right .wp-bubble{
-  background: rgba(34,197,94,.16);
-  border-color: rgba(34,197,94,.18);
+  background: var(--wp-success-bg);
+  border-color: var(--wp-success);
 }
 
 .wp-bubble-text{
@@ -438,25 +554,20 @@
 
 /* ==========================
    ✅ COMPOSER (ARREGLADO)
-   El bug venía por el wrapper .wp-composer-inner:
-   el grid estaba en .wp-composer pero ahora los botones están adentro,
-   entonces se rompía y quedaba “apilado”.
 ========================== */
 
-/* ahora el contenedor exterior solo pone fondo/borde */
 .wp-composer{
   padding: 10px 12px;
-  background: rgba(17,27,33,.95);
-  border-top: 1px solid rgba(255,255,255,.08);
+  background: var(--wp-composer-bg);
+  border-top: 1px solid var(--wp-border);
 }
 
-/* ✅ el layout real vuelve a estar acá */
 .wp-composer-inner{
   display: grid;
   grid-template-columns: 44px 44px 1fr 44px; /* clip + emoji + input + send */
   gap: 10px;
   align-items: center;
-  position: relative; /* ✅ popover relativo a esta barra */
+  position: relative; /* popover relativo a esta barra */
 }
 
 .wp-attach,
@@ -467,8 +578,8 @@
   border-radius: 14px;
   border: 0;
   cursor: pointer;
-  background: rgba(255,255,255,.06);
-  color: #e9edef;
+  background: var(--wp-card);
+  color: var(--wp-text);
   transition: transform .15s ease, filter .15s ease;
 }
 .wp-attach:hover,
@@ -479,24 +590,24 @@
 .wp-emoji-btn:active{ transform: translateY(0px) scale(.98); }
 
 .wp-emoji-btn.is-open{
-  background: rgba(45,212,191,.12);
-  border: 1px solid rgba(45,212,191,.18);
-  color: #bfffe2;
+  background: var(--wp-accent-2);
+  border: 1px solid var(--wp-accent);
+  color: var(--wp-accent-text);
 }
 
 .wp-send{
-  background: linear-gradient(135deg, rgba(45,212,191,.22), rgba(34,197,94,.18));
-  color: #bfffe2;
-  border: 1px solid rgba(45,212,191,.18);
+  background: linear-gradient(135deg, var(--wp-accent), var(--wp-success-bg));
+  color: var(--wp-accent-text);
+  border: 1px solid var(--wp-accent);
 }
 
 .wp-input{
   width: 100%;
   resize: none;
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.06);
-  color: #e9edef;
+  border: 1px solid var(--wp-border);
+  background: var(--wp-card);
+  color: var(--wp-text);
   outline: none;
   padding: 10px 12px;
   font-size: 13px;
@@ -504,16 +615,16 @@
   max-height: 120px;
 }
 
-/* ✅ Emoji popover (anclado arriba de la barra, alineado cerca del botón emoji) */
+/* Emoji popover */
 .wp-emoji-pop{
   position: absolute;
-  bottom: 54px;                /* arriba de la barra */
-  left: 54px;                  /* justo después del clip (44) + gap aprox */
+  bottom: 54px;
+  left: 54px;
   z-index: 9999;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 50px rgba(0,0,0,.40);
-  border: 1px solid rgba(255,255,255,.10);
+  border: 1px solid var(--wp-border);
 }
 
 /* Responsive */
@@ -525,7 +636,7 @@
   .wp-sidebar{
     height: 48vh;
     border-right: 0;
-    border-bottom: 1px solid rgba(255,255,255,.08);
+    border-bottom: 1px solid var(--wp-border);
   }
   .wp-main{ height: 52vh; }
 }
@@ -557,17 +668,17 @@
   margin-right: 10px;
   font-weight: 700;
   font-size: 13px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: var(--wp-card-2);
+  border: 1px solid var(--wp-border);
+  color: var(--wp-text);
   box-shadow: 0 6px 16px rgba(0,0,0,.18);
   user-select: none;
 }
 .wp-window .wp-window-h { letter-spacing: .2px; }
 .wp-window.is-expired {
-  background: rgba(255, 60, 60, 0.12);
-  border: 1px solid rgba(255, 60, 60, 0.35);
-  color: rgba(255, 255, 255, 0.95);
+  background: var(--wp-danger-bg);
+  border: 1px solid var(--wp-danger);
+  color: var(--wp-text);
 }
 .wp-window .wp-window-x svg { font-size: 18px; }
 
@@ -578,9 +689,9 @@
   padding: 8px 12px;
   margin: 8px 12px 0 12px;
   border-radius: 12px;
-  background: rgba(255, 60, 60, 0.10);
-  border: 1px solid rgba(255, 60, 60, 0.20);
-  color: rgba(255, 255, 255, 0.92);
+  background: var(--wp-danger-bg);
+  border: 1px solid var(--wp-danger);
+  color: var(--wp-text);
   font-size: 13px;
 }
 
@@ -593,7 +704,7 @@
 .wp-composer.is-disabled .wp-input { cursor: not-allowed; }
 
 /* =========================
-   ✅ MEDIA EN BURBUJA
+   MEDIA EN BURBUJA
 ========================= */
 .wp-media-inbubble {
   margin-bottom: 6px;
@@ -620,8 +731,8 @@
   gap: 10px;
   width: 320px;
   max-width: 100%;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.20);
+  border: 1px solid var(--wp-doc-border);
+  background: var(--wp-doc-bg);
   border-radius: 12px;
   padding: 10px;
   cursor: pointer;
@@ -635,7 +746,7 @@
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(255,255,255,0.08);
+  background: var(--wp-card);
   font-size: 18px;
 }
 
@@ -657,16 +768,17 @@
 }
 
 /* =========================
-   ✅ MODAL VISOR
+   MODAL VISOR
 ========================= */
 .wp-media-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
-  display: grid;
-  place-items: center;
-  z-index: 9999;
-  padding: 16px;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 18px;
 }
 
 .wp-media-modal {
@@ -679,6 +791,10 @@
   display: flex;
   flex-direction: column;
 }
+:root[data-botpanel-theme="light"] .wp-media-modal{
+  background: #ffffff;
+  border: 1px solid var(--wp-border);
+}
 
 .wp-media-top {
   display: flex;
@@ -686,6 +802,9 @@
   justify-content: space-between;
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+:root[data-botpanel-theme="light"] .wp-media-top{
+  border-bottom: 1px solid var(--wp-border);
 }
 
 .wp-media-title {
@@ -714,7 +833,7 @@
 
 .wp-media-close {
   border: none;
-  background: rgba(255,255,255,0.08);
+  background: var(--wp-card);
   color: inherit;
   border-radius: 10px;
   padding: 8px 10px;
@@ -746,22 +865,7 @@
   text-align: center;
 }
 
-
-/* =========================
-   ✅ CORRECCIÓN Z-INDEX PARA MODALES ANIDADOS
-========================= */
-
-.wp-media-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999999; /* Mayor que la galería */
-  padding: 18px;
-}
-
+/* Galería (backdrop) */
 .wp-gal-backdrop {
   position: fixed;
   inset: 0;
@@ -769,21 +873,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999; /* Menor que el visor */
+  z-index: 99999;
   padding: 18px;
 }
 
-/* ✅ PEGAR ESTO EN: src/components/BotPanel/BotPanel.css */
-
-/* ===== Reply Preview (arriba del textarea) ===== */
+/* =========================
+   REPLY PREVIEW
+========================= */
 .wp-reply-preview{
   display:flex;
   align-items:center;
   gap:10px;
-  background:#1f2a36;
+  background: var(--wp-reply-bg);
   border-radius:10px;
   padding:8px 10px;
-  border-left:4px solid #4ea1ff;
+  border-left:4px solid var(--wp-reply-border);
   width:100%;
 }
 
@@ -822,11 +926,11 @@
   border-radius:8px;
 }
 
-.wp-reply-close:hover{ opacity:1; background:rgba(255,255,255,0.06); }
+.wp-reply-close:hover{ opacity:1; background: var(--wp-card); }
 
-/* ===== Reply dentro del bubble ===== */
+/* Reply dentro del bubble */
 .wp-reply-inbubble{
-  border-left:3px solid #4ea1ff;
+  border-left:3px solid var(--wp-reply-border);
   padding-left:8px;
   margin-bottom:6px;
   font-size:12px;

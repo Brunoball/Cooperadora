@@ -464,3 +464,343 @@
     justify-content: center;
   }
 }
+/* ✅ PEGAR AL FINAL de ModalMesCuotas.css
+   Estilos EXTRA + Resumen (Período / Total) — tema rojo (REG)
+   (Sin tocar tu grilla ni botones)
+*/
+
+/* ====== EXTRAS ====== */
+.modmes_extras-wrap{
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.modmes_extras-title{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--reg-gray-700);
+  opacity: .9;
+  margin-bottom: 8px;
+}
+
+.modmes_extras-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: .75rem;
+}
+
+.modmes_extra-card{
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .75rem;
+  border-radius: var(--reg-border-radius);
+  border: 1px solid var(--reg-gray-200);
+  background: #fff;
+  transition: var(--reg-transition);
+  cursor: pointer;
+  min-height: 56px;
+}
+
+.modmes_extra-card:hover{
+  border-color: var(--reg-primary);
+  box-shadow: var(--reg-shadow-sm);
+}
+
+.modmes_extra-card.is-checked{
+  background: var(--reg-gray-100);
+  border-color: var(--reg-primary);
+  box-shadow: 0 0 0 3px rgba(183,28,28,.10);
+}
+
+.modmes_extra-check{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.modmes_extra-check input{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modmes_extra-box{
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 4px;
+  border: 1px solid var(--reg-gray-300);
+  background: #fff;
+  transition: var(--reg-transition);
+  position: relative;
+}
+
+.modmes_extra-card:hover .modmes_extra-box{
+  border-color: var(--reg-primary);
+}
+
+.modmes_extra-card.is-checked .modmes_extra-box{
+  background: var(--reg-primary);
+  border-color: var(--reg-primary);
+}
+
+.modmes_extra-box::after{
+  content: "";
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.modmes_extra-card.is-checked .modmes_extra-box::after{
+  display: block;
+}
+
+.modmes_extra-main{
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.modmes_extra-top{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  min-width: 0;
+}
+
+.modmes_extra-name{
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--reg-gray-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modmes_extra-state{
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--reg-primary);
+  background: rgba(183,28,28,.10);
+  border: 1px solid rgba(183,28,28,.18);
+  padding: .15rem .45rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.modmes_extra-amount{
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--reg-gray-600);
+  opacity: .9;
+}
+
+.modmes_extra-sub{
+  font-size: .75rem;
+  color: var(--reg-gray-500);
+  opacity: .95;
+}
+
+/* Mitades (chips) */
+.modmes_extra-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--reg-gray-700);
+  background: var(--reg-gray-100);
+  border: 1px solid var(--reg-gray-200);
+  padding: .25rem .5rem;
+  border-radius: 999px;
+  user-select: none;
+}
+
+/* ====== RESUMEN (PERÍODO / TOTAL) ====== */
+.modmes_resumen{
+  margin-top: 14px;
+  border: 1px solid var(--reg-gray-200);
+  border-radius: var(--reg-border-radius);
+  background: var(--reg-gray-100);
+  padding: .85rem;
+  display: grid;
+  gap: .5rem;
+}
+
+.modmes_resumen-row{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.modmes_resumen-label{
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--reg-gray-700);
+  opacity: .95;
+  flex: 0 0 auto;
+}
+
+.modmes_resumen-value{
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--reg-gray-900);
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modmes_resumen-total{
+  border-top: 1px dashed var(--reg-gray-300);
+  padding-top: .6rem;
+  margin-top: .1rem;
+}
+
+.modmes_resumen-total .modmes_resumen-value{
+  color: var(--reg-primary);
+  font-size: 1rem;
+}
+
+/* Mobile tweaks */
+@media (max-width: 480px){
+  .modmes_extras-grid{
+    grid-template-columns: 1fr;
+    gap: .55rem;
+  }
+  .modmes_resumen{
+    padding: .75rem;
+  }
+}/* ===== EXTRAS: layout 2 arriba / 2 abajo cuando selAnual = true ===== */
+
+.modmes_extras-wrap{
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.modmes_extras-title{
+  font-size: 12px;
+  font-weight: 700;
+  opacity: .85;
+  margin-bottom: 8px;
+}
+
+/* Por defecto: 2 columnas (así ya queda prolijo) */
+.modmes_extras-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+/* Si está el anual, igual 2 columnas -> queda 2x2 */
+.modmes_extras-grid.is-anual{
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* En mobile: 1 columna */
+@media (max-width: 520px){
+  .modmes_extras-grid,
+  .modmes_extras-grid.is-anual{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Resumen simple (solo el de abajo) */
+.modmes_resumen_simple{
+  margin-top: 14px;
+  font-size: 13px;
+  opacity: .9;
+}/* ===== Resumen simple (Período / Total) ===== */
+.modmes_resumen_simple{
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--reg-gray-200);
+  border-radius: var(--reg-border-radius);
+  background: var(--reg-gray-100);
+  box-shadow: var(--reg-shadow-sm);
+  display: grid;
+  gap: 8px;
+}
+
+.modmes_resumen_simple > div{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.modmes_resumen_simple strong{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--reg-gray-700);
+  opacity: .95;
+  flex: 0 0 auto;
+}
+
+/* Valor (texto del período) */
+.modmes_resumen_simple > div:first-child{
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--reg-gray-300);
+}
+
+.modmes_resumen_simple > div:first-child strong{
+  color: var(--reg-gray-700);
+}
+
+.modmes_resumen_simple > div:first-child{
+  font-size: 14px;
+  color: var(--reg-gray-900);
+}
+
+/* Total */
+.modmes_resumen_simple > div:last-child{
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--reg-primary);
+}
+
+/* Si el período es largo, que no rompa */
+.modmes_resumen_simple > div:first-child{
+  flex-wrap: wrap;
+}
+.modmes_resumen_simple > div:first-child > :last-child{
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile */
+@media (max-width: 520px){
+  .modmes_resumen_simple{
+    padding: 10px 12px;
+  }
+  .modmes_resumen_simple > div{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .modmes_resumen_simple > div:first-child > :last-child{
+    white-space: normal;
+  }
+}
