@@ -3,7 +3,16 @@
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json; charset=utf-8');
 
-const ID_MES_ANUAL = 13;
+const ID_MES_ANUAL        = 13; // CONTADO ANUAL
+const ID_MES_MATRICULA    = 14; // MATRÍCULA
+const ID_MES_1ER_MITAD    = 15; // 1ER MITAD
+const ID_MES_2DA_MITAD    = 16; // 2DA MITAD
+
+// Rangos de meses cubiertos por mitades
+const MITAD1_DESDE = 3;  // MARZO
+const MITAD1_HASTA = 7;  // JULIO
+const MITAD2_DESDE = 8;  // AGOSTO
+const MITAD2_HASTA = 12; // DICIEMBRE
 
 /**
  * ✅ Regla corregida:
@@ -79,9 +88,24 @@ try {
   foreach ($mesesRows as $m) {
     $meses[(int)$m['id_mes']] = (string)$m['nombre'];
   }
-  if (!isset($meses[ID_MES_ANUAL])) $meses[ID_MES_ANUAL] = 'CONTADO ANUAL';
 
-  // ¿Incluimos inactivos? solo si pedís pagados/condonados y filtrás por un mes concreto
+  // fallback por si faltan en tabla (seguridad)
+  if (!isset($meses[ID_MES_ANUAL]))     $meses[ID_MES_ANUAL]     = 'CONTADO ANUAL';
+  if (!isset($meses[ID_MES_MATRICULA])) $meses[ID_MES_MATRICULA] = 'MATRICULA';
+  if (!isset($meses[ID_MES_1ER_MITAD])) $meses[ID_MES_1ER_MITAD] = '1ER MITAD';
+  if (!isset($meses[ID_MES_2DA_MITAD])) $meses[ID_MES_2DA_MITAD] = '2DA MITAD';
+
+  // ✅ Si el mes filtrado es un mes 3..7 => considerar 1ER MITAD como "cobertura"
+  // ✅ Si es un mes 8..12 => considerar 2DA MITAD como "cobertura"
+  // ✅ Si el filtro es 15/16 => ese mismo es el "mes consulta"
+  $mesMitadConsulta = 0;
+  if ($idMesFiltro >= MITAD1_DESDE && $idMesFiltro <= MITAD1_HASTA) $mesMitadConsulta = ID_MES_1ER_MITAD;
+  if ($idMesFiltro >= MITAD2_DESDE && $idMesFiltro <= MITAD2_HASTA) $mesMitadConsulta = ID_MES_2DA_MITAD;
+  if ($idMesFiltro === ID_MES_1ER_MITAD) $mesMitadConsulta = ID_MES_1ER_MITAD;
+  if ($idMesFiltro === ID_MES_2DA_MITAD) $mesMitadConsulta = ID_MES_2DA_MITAD;
+
+  // ✅ ¿Incluimos inactivos?
+  // solo si pedís pagados/condonados y filtrás por un mes concreto (incluye matrícula/mitades/anual también)
   $incluirInactivos = ($idMesFiltro > 0) && ($soloPagados || $soloCondon);
 
   // == Alumnos ==
@@ -94,12 +118,17 @@ try {
   ";
 
   if ($incluirInactivos) {
+    // ✅ EXISTS contempla:
+    // - mes consultado
+    // - ANUAL (13)
+    // - MITAD correspondiente (15/16) si aplica
+    // - MATRÍCULA (14)
     $sqlAlu .= "
       WHERE a.activo = 1
          OR EXISTS (
               SELECT 1 FROM pagos p
                WHERE p.id_alumno = a.id_alumno
-                 AND p.id_mes IN (:mes_consulta, :mes_anual)
+                 AND p.id_mes IN (:mes_consulta, :mes_anual, :mes_mitad, :mes_matricula)
                  AND p.fecha_pago IS NOT NULL
                  AND YEAR(p.fecha_pago) = :anio_pagos
          )
@@ -115,6 +144,8 @@ try {
   if ($incluirInactivos) {
     $stAlu->bindValue(':mes_consulta', $idMesFiltro ?: 0, PDO::PARAM_INT);
     $stAlu->bindValue(':mes_anual', ID_MES_ANUAL, PDO::PARAM_INT);
+    $stAlu->bindValue(':mes_mitad', $mesMitadConsulta ?: 0, PDO::PARAM_INT);
+    $stAlu->bindValue(':mes_matricula', ID_MES_MATRICULA, PDO::PARAM_INT);
     $stAlu->bindValue(':anio_pagos', $anioFiltro, PDO::PARAM_INT);
   }
 
@@ -124,23 +155,46 @@ try {
   // == Pagos del año ==
   $paramsPagos = [':anio' => $anioFiltro];
 
-  if ($idMesFiltro > 0 && $idMesFiltro !== ID_MES_ANUAL) {
+  // ✅ Si filtrás por un mes mensual (1..12) => traemos ese mes + anual + mitad correspondiente
+  // ✅ Si filtrás por 15/16 => traemos ese + anual
+  // ✅ Si filtrás por 14 (matrícula) => traemos SOLO matrícula
+  // ✅ Si filtrás por anual (13) => traemos todo
+  $mostrarSoloAnual      = ($idMesFiltro === ID_MES_ANUAL);
+  $mostrarSoloMatricula  = ($idMesFiltro === ID_MES_MATRICULA);
+  $mostrarSoloMitad1     = ($idMesFiltro === ID_MES_1ER_MITAD);
+  $mostrarSoloMitad2     = ($idMesFiltro === ID_MES_2DA_MITAD);
+
+  if ($mostrarSoloMatricula) {
     $sqlPag = "
       SELECT id_alumno, id_mes, estado
         FROM pagos
        WHERE fecha_pago IS NOT NULL
          AND YEAR(fecha_pago) = :anio
-         AND id_mes IN (:mes, :anual)
+         AND id_mes = :matricula
     ";
-    $paramsPagos[':mes']   = $idMesFiltro;
-    $paramsPagos[':anual'] = ID_MES_ANUAL;
+    $paramsPagos[':matricula'] = ID_MES_MATRICULA;
   } else {
-    $sqlPag = "
-      SELECT id_alumno, id_mes, estado
-        FROM pagos
-       WHERE fecha_pago IS NOT NULL
-         AND YEAR(fecha_pago) = :anio
-    ";
+    $debeFiltrarPorMes = ($idMesFiltro > 0 && $idMesFiltro !== ID_MES_ANUAL);
+
+    if ($debeFiltrarPorMes) {
+      $sqlPag = "
+        SELECT id_alumno, id_mes, estado
+          FROM pagos
+         WHERE fecha_pago IS NOT NULL
+           AND YEAR(fecha_pago) = :anio
+           AND id_mes IN (:mes, :anual, :mitad)
+      ";
+      $paramsPagos[':mes']   = $idMesFiltro;
+      $paramsPagos[':anual'] = ID_MES_ANUAL;
+      $paramsPagos[':mitad'] = $mesMitadConsulta ?: 0; // 0 no matchea nada
+    } else {
+      $sqlPag = "
+        SELECT id_alumno, id_mes, estado
+          FROM pagos
+         WHERE fecha_pago IS NOT NULL
+           AND YEAR(fecha_pago) = :anio
+      ";
+    }
   }
 
   $stPag = $pdo->prepare($sqlPag);
@@ -151,27 +205,37 @@ try {
   $pagos = $stPag->fetchAll(PDO::FETCH_ASSOC);
 
   // Indexación de pagos
-  $pagoDirecto = []; // [id_alumno][id_mes] = 'pagado'|'condonado'
-  $pagoAnual   = []; // [id_alumno]        = 'pagado'|'condonado'
+  $pagoDirecto   = []; // [id_alumno][id_mes] = 'pagado'|'condonado'
+  $pagoAnual     = []; // [id_alumno]        = 'pagado'|'condonado'
+  $pagoMatricula = []; // [id_alumno]        = 'pagado'|'condonado'
+  $pagoMitad1    = []; // [id_alumno]        = 'pagado'|'condonado'
+  $pagoMitad2    = []; // [id_alumno]        = 'pagado'|'condonado'
 
   foreach ($pagos as $p) {
     $ida = (int)$p['id_alumno'];
     $idm = (int)$p['id_mes'];
     $est = ($p['estado'] === 'condonado') ? 'condonado' : 'pagado';
 
-    if ($idm === ID_MES_ANUAL) $pagoAnual[$ida] = $est;
-    else $pagoDirecto[$ida][$idm] = $est;
+    if ($idm === ID_MES_ANUAL) {
+      $pagoAnual[$ida] = $est;
+      continue;
+    }
+    if ($idm === ID_MES_MATRICULA) {
+      $pagoMatricula[$ida] = $est;
+      continue;
+    }
+    if ($idm === ID_MES_1ER_MITAD) {
+      $pagoMitad1[$ida] = $est;
+      continue;
+    }
+    if ($idm === ID_MES_2DA_MITAD) {
+      $pagoMitad2[$ida] = $est;
+      continue;
+    }
+
+    // pagos mensuales normales
+    $pagoDirecto[$ida][$idm] = $est;
   }
-
-  // Meses a producir
-  $listaMeses = array_keys($meses);
-  $listaMeses = array_values(array_filter($listaMeses, fn($m) => (int)$m !== ID_MES_ANUAL)); // 1..12
-
-  if ($idMesFiltro > 0 && $idMesFiltro !== ID_MES_ANUAL) {
-    $listaMeses = [$idMesFiltro];
-  }
-
-  $mostrarSoloAnual = ($idMesFiltro === ID_MES_ANUAL);
 
   $cuotas = [];
 
@@ -182,9 +246,40 @@ try {
     $nombre   = trim((string)($a['nombre'] ?? ''));
     $nombreCompleto = trim($apellido . ', ' . $nombre, ', ');
 
-    // ANUAL (si piden id_mes 13)
+    // ==========================
+    // ✅ MATRÍCULA (id_mes = 14)
+    // ==========================
+    if ($mostrarSoloMatricula) {
+      // referencia suave: enero del año de pago
+      if (!alumnoElegible($a, 1, $anioFiltro)) continue;
+
+      $estado = isset($pagoMatricula[$idAlu]) ? $pagoMatricula[$idAlu] : 'deudor';
+      if ($soloPagados && $estado !== 'pagado') continue;
+      if ($soloCondon  && $estado !== 'condonado') continue;
+
+      $cuotas[] = [
+        'id_alumno'    => $idAlu,
+        'nombre'       => $nombreCompleto,
+        'dni'          => (string)($a['num_documento'] ?? ''),
+        'domicilio'    => (string)($a['domicilio'] ?? ''),
+        'estado'       => ((int)($a['activo'] ?? 0) === 1 ? 'ACTIVO' : 'INACTIVO'),
+        'medio_pago'   => '',
+        'mes'          => $meses[ID_MES_MATRICULA],
+        'id_mes'       => ID_MES_MATRICULA,
+        'id_año'       => (int)($a['id_año'] ?? 0),
+        'id_anio'      => (int)($a['id_año'] ?? 0),
+        'id_division'  => (int)($a['id_division'] ?? 0),
+        'id_categoria' => (int)($a['id_categoria'] ?? 0),
+        'estado_pago'  => $estado,
+        'origen_anual' => 0,
+      ];
+      continue;
+    }
+
+    // ==========================
+    // ✅ ANUAL (id_mes = 13)
+    // ==========================
     if ($mostrarSoloAnual) {
-      // ✅ elegible: activo siempre entra, inactivo entra si elegible por ingreso (suave)
       if (!alumnoElegible($a, 12, $anioFiltro)) continue;
 
       $estado = isset($pagoAnual[$idAlu]) ? $pagoAnual[$idAlu] : 'deudor';
@@ -210,20 +305,96 @@ try {
       continue;
     }
 
-    // Meses 1..12
+    // ==========================
+    // ✅ 1ER MITAD (id_mes = 15)
+    // ==========================
+    if ($mostrarSoloMitad1) {
+      if (!alumnoElegible($a, MITAD1_HASTA, $anioFiltro)) continue;
+
+      $estado = isset($pagoMitad1[$idAlu]) ? $pagoMitad1[$idAlu] : 'deudor';
+      if ($soloPagados && $estado !== 'pagado') continue;
+      if ($soloCondon  && $estado !== 'condonado') continue;
+
+      $cuotas[] = [
+        'id_alumno'    => $idAlu,
+        'nombre'       => $nombreCompleto,
+        'dni'          => (string)($a['num_documento'] ?? ''),
+        'domicilio'    => (string)($a['domicilio'] ?? ''),
+        'estado'       => ((int)($a['activo'] ?? 0) === 1 ? 'ACTIVO' : 'INACTIVO'),
+        'medio_pago'   => '',
+        'mes'          => $meses[ID_MES_1ER_MITAD],
+        'id_mes'       => ID_MES_1ER_MITAD,
+        'id_año'       => (int)($a['id_año'] ?? 0),
+        'id_anio'      => (int)($a['id_año'] ?? 0),
+        'id_division'  => (int)($a['id_division'] ?? 0),
+        'id_categoria' => (int)($a['id_categoria'] ?? 0),
+        'estado_pago'  => $estado,
+        'origen_anual' => 0,
+      ];
+      continue;
+    }
+
+    // ==========================
+    // ✅ 2DA MITAD (id_mes = 16)
+    // ==========================
+    if ($mostrarSoloMitad2) {
+      if (!alumnoElegible($a, MITAD2_HASTA, $anioFiltro)) continue;
+
+      $estado = isset($pagoMitad2[$idAlu]) ? $pagoMitad2[$idAlu] : 'deudor';
+      if ($soloPagados && $estado !== 'pagado') continue;
+      if ($soloCondon  && $estado !== 'condonado') continue;
+
+      $cuotas[] = [
+        'id_alumno'    => $idAlu,
+        'nombre'       => $nombreCompleto,
+        'dni'          => (string)($a['num_documento'] ?? ''),
+        'domicilio'    => (string)($a['domicilio'] ?? ''),
+        'estado'       => ((int)($a['activo'] ?? 0) === 1 ? 'ACTIVO' : 'INACTIVO'),
+        'medio_pago'   => '',
+        'mes'          => $meses[ID_MES_2DA_MITAD],
+        'id_mes'       => ID_MES_2DA_MITAD,
+        'id_año'       => (int)($a['id_año'] ?? 0),
+        'id_anio'      => (int)($a['id_año'] ?? 0),
+        'id_division'  => (int)($a['id_division'] ?? 0),
+        'id_categoria' => (int)($a['id_categoria'] ?? 0),
+        'estado_pago'  => $estado,
+        'origen_anual' => 0,
+      ];
+      continue;
+    }
+
+    // ==========================
+    // ✅ Meses 1..12 (normal)
+    // ==========================
+    $listaMeses = range(1, 12);
+    if ($idMesFiltro > 0 && $idMesFiltro !== ID_MES_ANUAL) {
+      // si filtran un mes específico (1..12), devolvemos solo ese
+      $listaMeses = [$idMesFiltro];
+    }
+
     foreach ($listaMeses as $idm) {
       $idm = (int)$idm;
+      if ($idm < 1 || $idm > 12) continue;
 
-      // ✅ CORREGIDO: no excluir activos por ingreso
       if (!alumnoElegible($a, $idm, $anioFiltro)) continue;
 
-      // Estado
+      // Estado (prioridad):
+      // 1) pago directo del mes
+      // 2) pago anual (cubre todo)
+      // 3) pago 1er mitad si el mes está en 3..7
+      // 4) pago 2da mitad si el mes está en 8..12
       if (isset($pagoDirecto[$idAlu][$idm])) {
         $estado = $pagoDirecto[$idAlu][$idm];
         $fromAnual = 0;
       } elseif (isset($pagoAnual[$idAlu])) {
         $estado = $pagoAnual[$idAlu];
         $fromAnual = 1;
+      } elseif ($idm >= MITAD1_DESDE && $idm <= MITAD1_HASTA && isset($pagoMitad1[$idAlu])) {
+        $estado = $pagoMitad1[$idAlu];
+        $fromAnual = 0;
+      } elseif ($idm >= MITAD2_DESDE && $idm <= MITAD2_HASTA && isset($pagoMitad2[$idAlu])) {
+        $estado = $pagoMitad2[$idAlu];
+        $fromAnual = 0;
       } else {
         $estado = 'deudor';
         $fromAnual = 0;

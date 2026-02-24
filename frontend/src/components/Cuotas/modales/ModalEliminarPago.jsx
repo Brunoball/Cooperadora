@@ -34,29 +34,27 @@ const ModalEliminarPago = ({
     return Number.isFinite(n) && n > 0 ? n : new Date().getFullYear();
   }, [anioPago]);
 
-  // ✅ Al abrir modal: detectar qué pago corresponde eliminar (silencioso)
+  // ✅ Al abrir modal: detectar qué pago corresponde eliminar (mensual vs anual/mitad)
   useEffect(() => {
     if (!socio) return;
+    if (!idAlumno || !idMesSeleccionado || !anio) return;
 
     const run = async () => {
       setChecking(true);
       setInfo(null);
       try {
-        const res = await fetch(
-          `${BASE_URL}/api.php?action=buscar_pago_eliminar`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id_alumno: idAlumno,
-              id_mes: Number(idMesSeleccionado),
-              anio,
-            }),
-          }
-        );
+        const res = await fetch(`${BASE_URL}/api.php?action=buscar_pago_eliminar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id_alumno: idAlumno,
+            id_mes: Number(idMesSeleccionado),
+            anio,
+          }),
+        });
 
         const data = await res.json().catch(() => ({}));
-        if (data?.exito) setInfo(data);
+        if (data && typeof data === "object") setInfo(data);
         else setInfo(null);
       } catch (e) {
         console.error(e);
@@ -72,7 +70,7 @@ const ModalEliminarPago = ({
   const handleEliminar = async () => {
     setCargando(true);
     try {
-      // ✅ Si el backend detectó contado, usamos id_mes_real
+      // ✅ Si el backend detectó anual/mitad, usamos id_mes_real
       const id_mes_real = info?.exito ? Number(info.id_mes_real || 0) : 0;
 
       const res = await fetch(`${BASE_URL}/api.php?action=eliminar_pago`, {
@@ -80,7 +78,7 @@ const ModalEliminarPago = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id_alumno: idAlumno,
-          id_mes: Number(idMesSeleccionado), // mes seleccionado (ej: enero)
+          id_mes: Number(idMesSeleccionado), // mes seleccionado (ej: marzo)
           anio,
           id_mes_real: id_mes_real > 0 ? id_mes_real : undefined, // 🔥 clave
         }),
@@ -94,10 +92,7 @@ const ModalEliminarPago = ({
           onClose?.();
         }, 650);
       } else {
-        mostrarToast(
-          "error",
-          "Error: " + (data?.mensaje || "No se pudo eliminar")
-        );
+        mostrarToast("error", "Error: " + (data?.mensaje || "No se pudo eliminar"));
       }
     } catch (err) {
       console.error(err);
@@ -109,6 +104,7 @@ const ModalEliminarPago = ({
 
   if (!socio) return null;
 
+  const exito = info?.exito === true;
   const warning = info?.warning === true;
   const textoWarning = info?.warning_text || "";
 
@@ -133,7 +129,7 @@ const ModalEliminarPago = ({
 
           <h3 className="soc-modal-titulo-eliminar">Eliminar Pago</h3>
 
-          {/* ✅ CARTEL ROJO si es contado anual/H1/H2 */}
+          {/* ✅ CARTEL ROJO si corresponde (anual / 1er mitad / 2da mitad) */}
           {warning && (
             <div
               style={{
@@ -144,12 +140,12 @@ const ModalEliminarPago = ({
                 borderRadius: 10,
                 marginTop: 10,
                 marginBottom: 8,
-                fontWeight: 600,
-                lineHeight: 1.2,
+                fontWeight: 700,
+                lineHeight: 1.25,
               }}
             >
               {textoWarning ||
-                "⚠️ Este pago es de contado anual/periodo. Si lo eliminás, eliminás el registro de contado."}
+                "⚠️ Este pago corresponde a un período (anual/mitad). Si lo eliminás, eliminás el registro del período completo."}
             </div>
           )}
 
@@ -159,9 +155,9 @@ const ModalEliminarPago = ({
             <strong>{periodoNombre ?? periodoId}</strong> ({anio})?
           </p>
 
-          {/* ✅ Si no se encontró nada, avisar (sin “Pago detectado…”) */}
-          {!checking && !(info?.exito) && (
-            <div style={{ marginTop: 8, color: "#b91c1c", fontWeight: 600 }}>
+          {/* ✅ Si no se encontró nada, avisar */}
+          {!checking && !exito && (
+            <div style={{ marginTop: 8, color: "#b91c1c", fontWeight: 700 }}>
               No se encontró un pago para eliminar en {anio}.
             </div>
           )}
@@ -178,8 +174,8 @@ const ModalEliminarPago = ({
             <button
               className="soc-boton-confirmar-eliminar"
               onClick={handleEliminar}
-              disabled={cargando || checking || !(info?.exito)}
-              title={!info?.exito ? "No hay un pago detectado para eliminar" : ""}
+              disabled={cargando || checking || !exito}
+              title={!exito ? "No hay un pago detectado para eliminar" : ""}
             >
               {cargando ? "Eliminando..." : "Eliminar"}
             </button>

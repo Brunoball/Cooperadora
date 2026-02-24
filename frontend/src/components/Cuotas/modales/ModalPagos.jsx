@@ -1,4 +1,6 @@
+// ✅ REEMPLAZAR COMPLETO
 // src/components/Cuotas/modales/ModalPagos.jsx
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaCoins, FaCalendarAlt, FaPen, FaCheck, FaTimes, FaInfoCircle, FaSave } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
@@ -14,19 +16,18 @@ import { imprimirRecibos } from '../../../utils/imprimirRecibos.jsx';
 // 🔧 ROTADO → alias porque el archivo exporta `imprimirRecibos`
 import { imprimirRecibos as imprimirRecibosRotado } from '../../../utils/imprimirRecibosRotado.jsx';
 
-// Externos rotados (CAMBIO A)
+// Externos rotados
 import { imprimirRecibosExternos as imprimirRecibosExternosRotados } from '../../../utils/imprimirRecibosExternosRotados.jsx';
 
 // PDF
 import { generarComprobanteAlumnoPDF } from '../../../utils/ComprobanteExternoPDF.jsx';
 
-
 /* ====== Constantes ====== */
 const MIN_YEAR = 2025;
 const ID_CONTADO_ANUAL = 13;
 const ID_MATRICULA = 14;
-// NUEVOS: Mitades de contado anual
-const ID_CONTADO_ANUAL_H1 = 15; // Ene–Jul
+// Mitades de contado anual
+const ID_CONTADO_ANUAL_H1 = 15; // Mar–Jul
 const ID_CONTADO_ANUAL_H2 = 16; // Ago–Dic
 
 /* ====== Helpers ====== */
@@ -91,15 +92,6 @@ function getPorcDescuentoDerivado(categoriaNombre = '', familyCount = 1) {
   return Math.max(0, Math.min(descuento, 0.95));
 }
 
-/* ============================================================
-   DESCUENTOS ANUALES
-   - EXTERNO: totales anuales por grupo (2: 70000, 3: 80000)
-   - INTERNO: usar % de hermanos derivado (sobre el anual base de la DB)
-   ============================================================ */
-const ANUAL_REFERENCIAS = {
-  EXTERNO: { totals: { 2: 70000, 3: 80000 } },
-};
-
 // Redondeo a centenas
 const roundToHundreds = (n) => {
   const v = Math.round((Number(n) || 0) / 100) * 100;
@@ -142,7 +134,7 @@ const ModalPagos = ({ socio, onClose }) => {
   const [montoMatricula, setMontoMatricula] = useState(15000);
   const [guardandoMatricula, setGuardandoMatricula] = useState(false);
 
-  // ===== NUEVO: Anual editable (monto manual solo para esta operación) =====
+  // ===== Anual editable (monto manual solo para esta operación) =====
   const [anualEditando, setAnualEditando] = useState(false);
   const [anualManualActivo, setAnualManualActivo] = useState(false);
   const [montoAnualManual, setMontoAnualManual] = useState('');
@@ -152,7 +144,7 @@ const ModalPagos = ({ socio, onClose }) => {
   const [libreValor, setLibreValor] = useState('');
 
   // ===== Estado para controlar modo activo =====
-  const [modoActivo, setModoActivo] = useState('meses'); // 'meses' | 'anual' | 'matricula'
+  const [modoActivo, setModoActivo] = useState('meses'); // 'meses' | 'anual' | 'matricula' | 'combinado'
 
   // ===== Info de familia =====
   const [familiaInfo, setFamiliaInfo] = useState({
@@ -165,31 +157,21 @@ const ModalPagos = ({ socio, onClose }) => {
   });
   const [mostrarMiembros, setMostrarMiembros] = useState(false);
 
-  // NUEVO: aplicar a grupo familiar
+  // aplicar a grupo familiar
   const [aplicarFamilia, setAplicarFamilia] = useState(false);
 
-  // NUEVOS: mitades de anual
-  const [anualH1, setAnualH1] = useState(false); // Ene–Jul
+  // mitades de anual
+  const [anualH1, setAnualH1] = useState(false); // Mar–Jul
   const [anualH2, setAnualH2] = useState(false); // Ago–Dic
 
-  // ====== NUEVO: medios de pago ======
+  // ===== medios de pago =====
   const [mediosPago, setMediosPago] = useState([]);          // [{id, nombre}]
   const [medioSeleccionado, setMedioSeleccionado] = useState(''); // id como string
 
-  // ====== NUEVO: Estados para matrícula manual ======
+  // ===== Estados para matrícula manual =====
   const [matriculaManualActiva, setMatriculaManualActiva] = useState(false);
   const [montoMatriculaManual, setMontoMatriculaManual] = useState('');
   const [editandoMatriculaManual, setEditandoMatriculaManual] = useState(false);
-
-  // ===== NUEVO: Validación para habilitar el botón de confirmar pago =====
-  const puedeConfirmarPago = useMemo(() => {
-    const tienePeriodosSeleccionados = 
-      seleccionados.length > 0 || anualSeleccionado || matriculaSeleccionada;
-    
-    const tieneMedioPagoSeleccionado = !!medioSeleccionado;
-    
-    return tienePeriodosSeleccionados && tieneMedioPagoSeleccionado && !cargando;
-  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, cargando]);
 
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
@@ -246,45 +228,37 @@ const ModalPagos = ({ socio, onClose }) => {
     return Math.max(0, ajustado);
   }, [condonar, libreActivo, libreValor, precioMensual, porcDescHermanos]);
 
-  // ====== ANUAL con descuento (valor base de la DB; NO manual) ======
+  // ✅✅✅ FIX CLAVE (EXTERNOS + INTERNOS):
+  // ====== ANUAL con descuento: SIEMPRE aplicar el % derivado sobre el ANUAL BASE que viene de la DB ======
+  // Ejemplo: anual DB=100000 y desc=33.3% => 66667 (no 35000)
+  // Ejemplo: anual DB=100000 y desc=44.4% => 55600 (no 26667)
   const montoAnualConDescuento = useMemo(() => {
     if (condonar) return 0;
     const base = Number(montoAnual || 0);
     if (!base) return 0;
 
-    const N = Math.max(1, Number(familyCount) || 1);
-
-    if (esExterno && N > 1 && ANUAL_REFERENCIAS?.EXTERNO?.totals) {
-      const totals = ANUAL_REFERENCIAS.EXTERNO.totals;
-      let Nref = totals[N] ? N : undefined;
-      if (!Nref && N >= 3 && totals[3]) Nref = 3;
-      if (!Nref && totals[2]) Nref = 2;
-
-      if (Nref) {
-        const totalGrupoRef = Number(totals[Nref] || 0);
-        if (totalGrupoRef > 0) {
-          const perCapita = Math.round(totalGrupoRef / Nref);
-          return Math.max(0, perCapita);
-        }
-      }
-    }
-
     const porc = Number(porcDescHermanos || 0);
-    return Math.max(0, Math.round(esExterno ? base * (1 - porc) : base));
-  }, [condonar, montoAnual, familyCount, esExterno, porcDescHermanos]);
+    const ajustado = Math.round(base * (1 - porc));
+    return Math.max(0, ajustado);
+  }, [condonar, montoAnual, porcDescHermanos]);
 
   // ====== AUX: estados ya registrados para extras ======
-  const estadoAnualFull = periodosEstado[ID_CONTADO_ANUAL];   // 13
-  const estadoAnualH1   = periodosEstado[ID_CONTADO_ANUAL_H1]; // 15
-  const estadoAnualH2   = periodosEstado[ID_CONTADO_ANUAL_H2]; // 16
-  const estadoMatricula = periodosEstado[ID_MATRICULA];        // 14
+  const estadoAnualFull = periodosEstado[ID_CONTADO_ANUAL];      // 13
+  const estadoAnualH1   = periodosEstado[ID_CONTADO_ANUAL_H1];   // 15
+  const estadoAnualH2   = periodosEstado[ID_CONTADO_ANUAL_H2];   // 16
+  const estadoMatricula = periodosEstado[ID_MATRICULA];          // 14
 
-  // ====== NUEVO: cálculo de anual considerando monto manual, mitades y lo YA pagado ======
+  // ✅ BLOQUEO ANUAL:
+  // - bloquea el "switch" anual solo si ya está cubierto todo el año (full o ambas mitades)
+  const bloqueadoAnual = !!(estadoAnualFull || (estadoAnualH1 && estadoAnualH2));
+  const bloqueadoMatricula = !!estadoMatricula;
+
+  // ====== cálculo de anual considerando monto manual, mitades y lo YA pagado ======
   const anualConfig = useMemo(() => {
     // Devuelve { tipo: 'full'|'h1'|'h2', idPeriodo, importe, etiqueta }
     if (!anualSeleccionado) return { tipo: null, idPeriodo: null, importe: 0, etiqueta: '' };
 
-    // Base del anual: manual (si activo) o calculado
+    // Base del anual: manual (si activo) o calculado (YA con descuento aplicado si corresponde)
     const baseAnual = Math.max(
       0,
       Math.round(
@@ -294,8 +268,7 @@ const ModalPagos = ({ socio, onClose }) => {
       )
     );
 
-    // 🚨 Regla nueva: si ya hay una mitad registrada, siempre cobrar la otra mitad,
-    // aunque los checkboxes de mitad no estén seleccionados.
+    // Regla: si ya hay una mitad registrada, siempre cobrar la otra mitad
     if (!estadoAnualFull) {
       if (estadoAnualH1 && !estadoAnualH2) {
         return {
@@ -315,7 +288,7 @@ const ModalPagos = ({ socio, onClose }) => {
       }
     }
 
-    // Comportamiento normal: si no hay mitades ya pagadas,
+    // Normal:
     // - 0 o 2 checks => FULL
     // - 1 check => mitad correspondiente
     const halfSelectedCount = (anualH1 ? 1 : 0) + (anualH2 ? 1 : 0);
@@ -353,7 +326,43 @@ const ModalPagos = ({ socio, onClose }) => {
     estadoAnualFull
   ]);
 
-  // ====== NUEVO: Monto de matrícula a usar (manual o global) ======
+  // ✅ rangos de meses que cubre el contado anual (según tu regla)
+  const RANGO_H1 = useMemo(() => new Set([3, 4, 5, 6, 7]), []);
+  const RANGO_H2 = useMemo(() => new Set([8, 9, 10, 11, 12]), []);
+
+  // ✅ meses bloqueados por anual (por registros existentes y/o por selección actual)
+  const mesesBloqueadosPorAnual = useMemo(() => {
+    const blocked = new Set();
+
+    // Si existe anual FULL registrado -> bloquea Mar–Dic
+    if (estadoAnualFull) {
+      for (const m of RANGO_H1) blocked.add(m);
+      for (const m of RANGO_H2) blocked.add(m);
+      return blocked;
+    }
+
+    // Si existe mitad registrada -> bloquea su rango
+    if (estadoAnualH1) for (const m of RANGO_H1) blocked.add(m);
+    if (estadoAnualH2) for (const m of RANGO_H2) blocked.add(m);
+
+    // Si en ESTA operación se está registrando anual, también bloquea lo que corresponda
+    if (anualSeleccionado) {
+      if (anualConfig?.tipo === 'full') {
+        for (const m of RANGO_H1) blocked.add(m);
+        for (const m of RANGO_H2) blocked.add(m);
+      } else if (anualConfig?.tipo === 'h1') {
+        for (const m of RANGO_H1) blocked.add(m);
+      } else if (anualConfig?.tipo === 'h2') {
+        for (const m of RANGO_H2) blocked.add(m);
+      }
+    }
+
+    return blocked;
+  }, [estadoAnualFull, estadoAnualH1, estadoAnualH2, anualSeleccionado, anualConfig?.tipo, RANGO_H1, RANGO_H2]);
+
+  const isMesBloqueado = (idMes) => mesesBloqueadosPorAnual.has(Number(idMes));
+
+  // ====== Monto de matrícula a usar (manual o global) ======
   const montoMatriculaFinal = useMemo(() => {
     if (matriculaManualActiva) {
       return Math.max(0, Math.round(Number(montoMatriculaManual) || 0));
@@ -380,7 +389,6 @@ const ModalPagos = ({ socio, onClose }) => {
   const total = totalMeses + totalExtras; // POR persona
 
   const periodoTextoFinal = useMemo(() => {
-    // Si es anual, priorizar etiqueta especial
     if (anualSeleccionado && anualConfig?.etiqueta) {
       const base = anualConfig.etiqueta;
       const partes = [base];
@@ -418,11 +426,23 @@ const ModalPagos = ({ socio, onClose }) => {
     });
   }, [familiaInfo.miembros, idAlumno]);
 
-  // NUEVO: solo bloquea cuando YA está todo el año cubierto (full o ambas mitades)
-  const bloqueadoAnual =
-    !!(estadoAnualFull || (estadoAnualH1 && estadoAnualH2));
+  // ✅ si por anual se bloquean meses, y estaban seleccionados, los sacamos
+  useEffect(() => {
+    if (!seleccionados.length) return;
+    const next = seleccionados.filter((id) => !isMesBloqueado(id));
+    if (next.length !== seleccionados.length) setSeleccionados(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesesBloqueadosPorAnual]);
 
-  const bloqueadoMatricula = !!estadoMatricula;
+  // ===== Validación para habilitar el botón de confirmar pago =====
+  const puedeConfirmarPago = useMemo(() => {
+    const tienePeriodosSeleccionados =
+      seleccionados.length > 0 || anualSeleccionado || matriculaSeleccionada;
+
+    const tieneMedioPagoSeleccionado = !!medioSeleccionado;
+
+    return tienePeriodosSeleccionados && tieneMedioPagoSeleccionado && !cargando;
+  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, cargando]);
 
   /* ================= Efectos ================= */
 
@@ -536,9 +556,10 @@ const ModalPagos = ({ socio, onClose }) => {
       }
     };
     cargarFamilia();
-  }, [idAlumno, BASE_URL]);
+  }, [idAlumno]);
 
-  // Limpiar selección al cambiar alumno o año
+  // ✅ al cambiar alumno NO borrar medio de pago “porque sí”.
+  const prevIdAlumnoKey = useMemo(() => String(idAlumno ?? ''), [idAlumno]);
   useEffect(() => {
     setSeleccionados([]);
     setAnualSeleccionado(false);
@@ -546,17 +567,17 @@ const ModalPagos = ({ socio, onClose }) => {
     setAnualH2(false);
     setMatriculaSeleccionada(false);
     setModoActivo('meses');
-    // Resetear anual manual al cambiar de alumno/año
     setAnualEditando(false);
     setAnualManualActivo(false);
     setMontoAnualManual('');
-    // Resetear matrícula manual
     setMatriculaManualActiva(false);
     setMontoMatriculaManual('');
     setEditandoMatriculaManual(false);
-  }, [idAlumno, anioTrabajo]);
+    // ⚠️ NO tocamos medioSeleccionado acá.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevIdAlumnoKey]);
 
-  // Sincronizar modoActivo con estados (ahora permite combinaciones)
+  // Sincronizar modoActivo con estados (permite combinaciones)
   useEffect(() => {
     if (anualSeleccionado && matriculaSeleccionada) {
       setModoActivo('combinado');
@@ -576,15 +597,19 @@ const ModalPagos = ({ socio, onClose }) => {
     const idsDisponibles = mesesGrid
       .map((m) => Number(m.id))
       .filter((id) => {
+        if (id < 1 || id > 12) return false;
         if (periodosEstado[id]) return false;
-        return !periodosPagados.includes(Number(id));
+        if (periodosPagados.includes(Number(id))) return false;
+        if (isMesBloqueado(id)) return false;
+        return true;
       });
 
     const all = idsDisponibles.length > 0 && idsDisponibles.every((id) => seleccionados.includes(Number(id)));
     setTodosSeleccionados(all);
-  }, [seleccionados, mesesGrid, periodosPagados, periodosEstado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seleccionados, mesesGrid, periodosPagados, periodosEstado, mesesBloqueadosPorAnual]);
 
-  // Cargar meses/estado + NUEVO: medios de pago
+  // Cargar meses/estado + medios de pago
   useEffect(() => {
     const cargar = async () => {
       if (!idAlumno) {
@@ -615,7 +640,7 @@ const ModalPagos = ({ socio, onClose }) => {
             .sort((a, b) => a.id - b.id);
           setMeses(norm);
 
-          // ===== MEDIOS DE PAGO (sin autoseleccionar el primero) =====
+          // MEDIOS DE PAGO (sin autoseleccionar)
           const arrMedios = Array.isArray(dataListas?.listas?.medios_pago) ? dataListas.listas.medios_pago : [];
           const med = arrMedios
             .map(m => ({ id: Number(m.id), nombre: String(m.nombre) }))
@@ -630,7 +655,7 @@ const ModalPagos = ({ socio, onClose }) => {
         } else {
           setMeses([]);
           setMediosPago([]);
-          setMedioSeleccionado(''); // placeholder "Seleccionar..."
+          setMedioSeleccionado('');
           mostrarToast('advertencia', dataListas?.mensaje || 'No se pudieron cargar las listas.');
         }
 
@@ -682,6 +707,10 @@ const ModalPagos = ({ socio, onClose }) => {
   const togglePeriodo = (id) => {
     const idNum = Number(id);
     if (idNum < 1 || idNum > 12) return;
+
+    // ✅ si el mes está cubierto por anual (full/mitad), no se permite
+    if (isMesBloqueado(idNum)) return;
+
     if (periodosEstado[idNum] || periodosPagados.includes(idNum)) return;
 
     setSeleccionados((prev) =>
@@ -692,7 +721,13 @@ const ModalPagos = ({ socio, onClose }) => {
   const toggleSeleccionarTodos = () => {
     const idsDisponibles = mesesGrid
       .map((m) => Number(m.id))
-      .filter((id) => !periodosEstado[id] && !periodosPagados.includes(id));
+      .filter((id) => {
+        if (id < 1 || id > 12) return false;
+        if (periodosEstado[id]) return false;
+        if (periodosPagados.includes(id)) return false;
+        if (isMesBloqueado(id)) return false;
+        return true;
+      });
 
     if (todosSeleccionados) setSeleccionados([]);
     else setSeleccionados(idsDisponibles);
@@ -701,9 +736,6 @@ const ModalPagos = ({ socio, onClose }) => {
   const toggleAnual = (checked) => {
     if (checked) {
       // Autoselección inteligente:
-      // - Si H1 ya está pagada y H2 NO, marcamos H2 (queda "2ª mitad")
-      // - Si H2 ya está pagada y H1 NO, marcamos H1 (queda "1ª mitad")
-      // - Si ninguna mitad está pagada, NO marcamos mitades (queda FULL)
       if (estadoAnualH1 && !estadoAnualH2) {
         setAnualH1(false);
         setAnualH2(true);
@@ -737,9 +769,7 @@ const ModalPagos = ({ socio, onClose }) => {
   const onToggleLibre = (checked) => {
     setLibreActivo(checked);
     if (!checked) setLibreValor('');
-    if (checked) {
-      setCondonar(false);
-    }
+    if (checked) setCondonar(false);
   };
 
   const handleLibreChange = (e) => {
@@ -781,7 +811,7 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-  // ====== NUEVO: Guardar matrícula manual (solo para esta operación) ======
+  // Guardar matrícula manual (solo para esta operación)
   const guardarMatriculaManual = () => {
     let v = Math.max(0, Math.round(Number(montoMatriculaManual) || 0));
     if (!Number.isFinite(v)) v = 0;
@@ -791,14 +821,13 @@ const ModalPagos = ({ socio, onClose }) => {
     mostrarToast('exito', 'Monto manual de matrícula guardado para este pago.');
   };
 
-  // ====== NUEVO: Cancelar matrícula manual ======
   const cancelarMatriculaManual = () => {
     setMatriculaManualActiva(false);
     setMontoMatriculaManual('');
     setEditandoMatriculaManual(false);
   };
 
-  // === NUEVO: ids de familia activos (excluye al actual para evitar duplicar) ===
+  // ids de familia activos (excluye al actual para evitar duplicar)
   const idsFamiliaActivos = useMemo(() => {
     if (!familiaInfo?.tieneFamilia) return [];
     const activos = (familiaInfo.miembros || [])
@@ -814,7 +843,7 @@ const ModalPagos = ({ socio, onClose }) => {
     return arr;
   }, [familiaInfo]);
 
-  // === NUEVO: construir SIEMPRE la misma lista base de personas a operar (para impresión / conteo) ===
+  // construir SIEMPRE la misma lista base de personas a operar
   const listaParaOperar = useMemo(() => {
     const alumnoBaseMin = {
       id_alumno: Number(idAlumno),
@@ -841,26 +870,21 @@ const ModalPagos = ({ socio, onClose }) => {
     return lista;
   }, [aplicarFamilia, personasFamiliaActivas, idAlumno, socio?.apellido_nombre, socio?.nombre, nombreCategoria]);
 
-  // ====== NUEVO: totales de grupo para mostrar en UI ======
+  // totales de grupo para mostrar en UI
   const esPagoGrupo = aplicarFamilia && listaParaOperar.length > 1;
   const cantidadRegistrosLista = listaParaOperar.length;
 
-  // Total FINAL que se muestra (si es grupo => total por persona * N)
   const totalParaMostrar = useMemo(() => {
     const totalPersona = Number(total) || 0;
     const n = esPagoGrupo ? cantidadRegistrosLista : 1;
-    // Redondea a centenas para evitar mostrar 9.999 (quedará 10.000)
     return roundToHundreds(totalPersona * n);
   }, [total, esPagoGrupo, cantidadRegistrosLista]);
 
-  const etiquetaTotal = esPagoGrupo
-    ? `Total grupo (${cantidadRegistrosLista})`
-    : 'Total';
+  const etiquetaTotal = esPagoGrupo ? `Total grupo (${cantidadRegistrosLista})` : 'Total';
 
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
 
-    // ===== NUEVO: Validación obligatoria de medio de pago =====
     if (!medioSeleccionado) {
       return mostrarToast('error', 'Debés seleccionar un medio de pago antes de continuar.');
     }
@@ -901,16 +925,13 @@ const ModalPagos = ({ socio, onClose }) => {
         },
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
         ids_familia: idsFamiliaActivos,
-        // NUEVO → medio de pago seleccionado (ahora es obligatorio)
         id_medio_pago: Number(medioSeleccionado),
-        // meta de anual para auditoría
         meta_anual: anualSeleccionado ? {
-          tipo: anualConfig.tipo, // 'full' | 'h1' | 'h2'
+          tipo: anualConfig.tipo,
           id_periodo: anualConfig.idPeriodo,
           importe: anualConfig.importe,
           manual: anualManualActivo ? 1 : 0
         } : null,
-        // NUEVO: meta de matrícula manual
         meta_matricula: matriculaSeleccionada ? {
           manual: matriculaManualActiva ? 1 : 0,
           monto_manual: matriculaManualActiva ? Number(montoMatriculaFinal) : null,
@@ -933,7 +954,6 @@ const ModalPagos = ({ socio, onClose }) => {
       const data = await res.json().catch(() => ({}));
       if (data?.exito) {
         setPagoExitoso(true);
-        // Actualizamos estado local del actual
         setPeriodosPagados(prev => {
           const set = new Set(prev);
           periodosMesesOrdenados.forEach(id => set.add(Number(id)));
@@ -957,7 +977,7 @@ const ModalPagos = ({ socio, onClose }) => {
     }
   };
 
-  // === NUEVO: helper para armar la lista completa con montos y periodos (para imprimir/pdf) ===
+  // helper para armar la lista completa (impresión/pdf)
   const buildListaCompleta = () => {
     const periodos = [
       ...periodosMesesOrdenados,
@@ -966,14 +986,12 @@ const ModalPagos = ({ socio, onClose }) => {
     ];
     const periodoCodigo = periodos[0] || 0;
 
-    // Montos por periodo del alumno actual (plantilla)
     const montosBase = {
       ...Object.fromEntries(periodosMesesOrdenados.map(id => [id, Math.round(condonar ? 0 : Number(precioMensualConDescuento || 0))])),
       ...(anualSeleccionado && anualConfig?.idPeriodo ? { [anualConfig.idPeriodo]: Math.round(Number(anualConfig.importe || 0)) } : {}),
       ...(matriculaSeleccionada ? { [ID_MATRICULA]: Math.round(Number(montoMatriculaFinal || 0)) } : {}),
     };
 
-    // Etiqueta periodo texto: anual usa su etiqueta especial
     const periodoTextoCustom = (anualSeleccionado && anualConfig?.etiqueta)
       ? `${anualConfig.etiqueta}${matriculaSeleccionada ? ' / MATRÍCULA' : ''}${periodosMesesOrdenados.length > 0 ? ' / ' + periodosMesesOrdenados.map(id => {
           const mapById = new Map(meses.map(m => [Number(m.id), String(m.nombre).trim()]));
@@ -990,7 +1008,6 @@ const ModalPagos = ({ socio, onClose }) => {
         })()
       );
 
-    // Para cada persona usar los mismos periodos/montos (por ahora), ya que es pago conjunto
     const lista = listaParaOperar.map(p => ({
       ...socio,
       id_alumno: Number(p.id_alumno),
@@ -1010,7 +1027,6 @@ const ModalPagos = ({ socio, onClose }) => {
         categoria: nombreCategoria,
         porcentaje: porcDescHermanos
       },
-      // NUEVO: info de matrícula manual
       meta_matricula: matriculaSeleccionada ? {
         manual: matriculaManualActiva,
         monto_manual: matriculaManualActiva ? Number(montoMatriculaFinal) : null
@@ -1020,7 +1036,6 @@ const ModalPagos = ({ socio, onClose }) => {
     return { lista, periodos, periodoCodigo, periodoTextoCustom };
   };
 
-  // Acción post-éxito (CAMBIO B - Línea de imprimir externos)
   const handleComprobante = async () => {
     const { lista, periodos, periodoCodigo, periodoTextoCustom } = buildListaCompleta();
 
@@ -1077,17 +1092,14 @@ const ModalPagos = ({ socio, onClose }) => {
       return;
     }
 
-    // IMPRESIÓN
     const win = window.open('', '_blank');
     if (!win) return alert('Habilitá ventanas emergentes para imprimir los comprobantes.');
 
     const opciones = { anioPago: anioTrabajo };
 
     if (esExterno) {
-      // CAMBIO B - Usar impresión rotada para externos
       await imprimirRecibosExternosRotados(lista, periodoCodigo, win, opciones);
     } else {
-      // MODIFICADO: usar rotado para internos
       await imprimirRecibosRotado(lista, periodoCodigo, win, opciones);
     }
   };
@@ -1114,7 +1126,6 @@ const ModalPagos = ({ socio, onClose }) => {
       ? anualConfig.etiqueta
       : null;
 
-    // Helper para mostrar nombre del medio
     const medioNombre = mediosPago.find(m => String(m.id) === String(medioSeleccionado))?.nombre || '—';
 
     return (
@@ -1233,18 +1244,6 @@ const ModalPagos = ({ socio, onClose }) => {
       ? `Desc. hermanos: ${(porcDescHermanos * 100).toFixed(1)}%`
       : null;
 
-  // Helper UI medio pago
-  const medioNombreActual = mediosPago.find(m => String(m.id) === String(medioSeleccionado))?.nombre;
-
-  // Helper: guardar / cancelar anual manual (local, no toca backend)
-  const guardarAnualManual = () => {
-    let v = Math.max(0, Math.round(Number(montoAnualManual) || 0));
-    if (!Number.isFinite(v)) v = 0;
-    setMontoAnualManual(v);
-    setAnualManualActivo(true);
-    setAnualEditando(false);
-  };
-
   return (
     <>
       {toast && (
@@ -1350,9 +1349,7 @@ const ModalPagos = ({ socio, onClose }) => {
                                   <span className="member-name">
                                     {etiqueta}{esActual ? ' (actual)' : ''}
                                   </span>
-                                  <span
-                                    className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}
-                                  >
+                                  <span className={`chip ${m.activo ? 'chip-success' : 'chip-muted'}`}>
                                     {m.activo ? 'Activo' : 'Inactivo'}
                                   </span>
                                 </li>
@@ -1374,7 +1371,7 @@ const ModalPagos = ({ socio, onClose }) => {
                   <input
                     type="checkbox"
                     checked={condonar}
-                    onChange={(e) => onToggleCondonar(e.target.checked)}
+                    onChange={(e) => setCondonar(e.target.checked)}
                     disabled={cargando}
                   />
                   <span className="switch"><span className="switch-thumb" /></span>
@@ -1417,7 +1414,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     onChange={(e) => onToggleLibre(e.target.checked)}
                     disabled={cargando}
                   />
-                <span className="switch"><span className="switch-thumb" /></span>
+                  <span className="switch"><span className="switch-thumb" /></span>
                   <span className="switch-label">Usar <strong>monto libre por mes</strong></span>
                 </label>
 
@@ -1455,7 +1452,6 @@ const ModalPagos = ({ socio, onClose }) => {
                   <div className='dis-newedit'>
                     <span className="switch-label">
                       <span className="sitch-labes">
-                        {/* Título + subline: cambian de fila a columna según el estado */}
                         <span className={`anual-text ${anualSeleccionado ? 'stack' : 'row'}`}>
                           <strong>CONTADO ANUAL</strong>
                           <span className="subline">
@@ -1465,39 +1461,13 @@ const ModalPagos = ({ socio, onClose }) => {
                                 : Number(montoAnualConDescuento || 0);
                               const txtBase = formatearARS(Math.max(0, Math.round(base)));
                               if (anualManualActivo) return `(${txtBase} • monto manual)`;
-                              return `(${txtBase}${(esExterno && familyCount > 1) || (porcDescHermanos > 0) ? ' con desc.' : ''})`;
+                              return `(${txtBase}${(familyCount > 1 && porcDescHermanos > 0) ? ' con desc.' : ''})`;
                             })()}
                           </span>
                         </span>
-
-                        {/* Chips SOLO cuando NO está activo el anual */}
-                        {!anualSeleccionado && (
-                          <>
-                            {estadoAnualFull && (
-                              <span className={`chip ${estadoAnualFull === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-                                Año: {capitalizar(estadoAnualFull)}
-                              </span>
-                            )}
-                            {!estadoAnualFull && (estadoAnualH1 || estadoAnualH2) && (
-                              <>
-                                {estadoAnualH1 && (
-                                  <span className={`chip ${estadoAnualH1 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-                                    1ª mitad: {capitalizar(estadoAnualH1)}
-                                  </span>
-                                )}
-                                {estadoAnualH2 && (
-                                  <span className={`chip ${estadoAnualH2 === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
-                                    2ª mitad: {capitalizar(estadoAnualH2)}
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </>
-                        )}
                       </span>
                     </span>
 
-                    {/* Botones editar/quitar (solo si NO está bloqueado por pago previo total) */}
                     {!bloqueadoAnual && !anualEditando && (
                       <>
                         <button
@@ -1538,7 +1508,6 @@ const ModalPagos = ({ socio, onClose }) => {
                   </div>
                 </label>
 
-                {/* Controles de mitades + editor de monto anual (solo si NO está bloqueado totalmente) */}
                 {anualSeleccionado && !bloqueadoAnual && (
                   <>
                     {anualEditando && (
@@ -1641,7 +1610,6 @@ const ModalPagos = ({ socio, onClose }) => {
                   </>
                 )}
 
-                {/* Si ya está bloqueado por pago previo full o ambas mitades, mostrar aviso */}
                 {bloqueadoAnual && (
                   <div className="hint" style={{marginTop:8}}>
                     Ya existe un registro de contado anual completo (o ambas mitades) para este año.
@@ -1662,11 +1630,6 @@ const ModalPagos = ({ socio, onClose }) => {
                 <span className="switch"><span className="switch-thumb" /></span>
                 <span className="switch-label matricula-label">
                   <strong>MATRÍCULA</strong>
-                  {estadoMatricula && (
-                    <span className={`chip ${estadoMatricula === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:8}}>
-                      {capitalizar(estadoMatricula)}
-                    </span>
-                  )}
 
                   {!bloqueadoMatricula && !matriculaEditando && !editandoMatriculaManual && (
                     <>
@@ -1675,7 +1638,6 @@ const ModalPagos = ({ socio, onClose }) => {
                         {matriculaManualActiva && ' (manual)'}
                       </span>
 
-                      {/* Botón: editar monto global (NO togglea el checkbox) */}
                       <button
                         type="button"
                         className="btn btn-ghost"
@@ -1686,7 +1648,6 @@ const ModalPagos = ({ socio, onClose }) => {
                         <FaSave />
                       </button>
 
-                      {/* Botón: ingresar monto manual (NO togglea el checkbox) */}
                       <button
                         type="button"
                         className="btn btn-ghost"
@@ -1697,7 +1658,6 @@ const ModalPagos = ({ socio, onClose }) => {
                         <FaPen />
                       </button>
 
-                      {/* Botón: quitar monto manual (NO togglea el checkbox) */}
                       {matriculaManualActiva && (
                         <button
                           type="button"
@@ -1714,7 +1674,6 @@ const ModalPagos = ({ socio, onClose }) => {
                 </span>
               </label>
 
-              {/* Edición de matrícula: sólo si NO está ya pagada/condonada */}
               {!bloqueadoMatricula && (
                 <>
                   {matriculaEditando && (
@@ -1812,12 +1771,6 @@ const ModalPagos = ({ socio, onClose }) => {
                   )}
                 </div>
               </div>
-
-              {bloqueadoMatricula && (
-                <div className="hint" style={{marginTop:8}}>
-                  Ya existe un registro de matrícula para este año.
-                </div>
-              )}
             </div>
 
             {/* Selección de meses */}
@@ -1847,8 +1800,15 @@ const ModalPagos = ({ socio, onClose }) => {
                     {mesesGrid.map((m) => {
                       const idMes = Number(m.id);
                       const estado = periodosEstado[idMes];
-                      const yaOcupado = !!estado || periodosPagados.includes(idMes);
+
+                      const bloqueadoPorAnual = isMesBloqueado(idMes);
+                      const yaOcupado = !!estado || periodosPagados.includes(idMes) || bloqueadoPorAnual;
+
                       const sel = seleccionados.includes(idMes);
+
+                      const statusTxt = estado
+                        ? capitalizar(estado)
+                        : (periodosPagados.includes(idMes) ? 'Pagado' : (bloqueadoPorAnual ? 'Cubierto por anual' : ''));
 
                       return (
                         <div
@@ -1874,7 +1834,7 @@ const ModalPagos = ({ socio, onClose }) => {
                               id={`periodo-${idMes}`}
                               checked={sel}
                               onChange={() => togglePeriodo(idMes)}
-                              disabled={cargando}
+                              disabled={cargando || yaOcupado}
                             />
                             <span className="checkmark"></span>
                           </div>
@@ -1889,7 +1849,7 @@ const ModalPagos = ({ socio, onClose }) => {
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                                   <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
-                                {estado ? capitalizar(estado) : 'Pagado'}
+                                {statusTxt}
                               </span>
                             )}
                           </label>

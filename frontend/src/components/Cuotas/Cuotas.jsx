@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faDollarSign,
   faPrint,
-  faBarcode,
   faSearch,
   faCalendarAlt,
   faFilter,
@@ -22,17 +21,18 @@ import {
   faMoneyCheckAlt,
   faList
 } from '@fortawesome/free-solid-svg-icons';
+
 import BASE_URL from '../../config/config';
 import ModalPagos from './modales/ModalPagos';
 import ModalCodigoBarras from './modales/ModalCodigoBarras';
 import ModalEliminarPago from './modales/ModalEliminarPago';
 import ModalEliminarCondonacion from './modales/ModalEliminarCondonacion';
-import ModalMesCuotas from './modales/ModalMesCuotas'; // ⬅️ selector de meses
+import ModalMesCuotas from './modales/ModalMesCuotas';
 import { imprimirRecibos } from '../../utils/imprimirRecibos';
 import { imprimirRecibosExternos } from '../../utils/imprimirRecibosExternos';
 import Toast from '../Global/Toast';
 import './Cuotas.css';
-import "../Global/roots.css"
+import "../Global/roots.css";
 
 const normalizar = (s = '') =>
   String(s).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
@@ -87,6 +87,9 @@ const Cuotas = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [selectedRow, setSelectedRow] = useState(null);
 
+  // ===== abort controllers (evitar respuestas viejas) =====
+  const abortRef = useRef({ cuotas: null, listas: null, anios: null });
+
   // Animación cascada
   const [cascadeActive, setCascadeActive] = useState(false);
   const [cascadeRunId, setCascadeRunId] = useState(0);
@@ -123,24 +126,38 @@ const Cuotas = () => {
   const getNombreCategoria = (id) => (categorias.find(c => String(c.id) === String(id))?.nombre) || '';
   const getNombreMes = (id) => (meses.find(m => String(m.id) === String(id))?.nombre) || id;
 
-  // === Años con pagos ===
+  // ✅ regla UI: imprimir SOLO en pestaña "pagado"
+  const canPrint = estadoPagoSeleccionado === 'pagado';
+
+  /* =========================================================
+     ✅ FIX: no cambiar el año seleccionado automáticamente
+  ========================================================= */
   const fetchAniosPago = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`);
+      if (abortRef.current.anios) abortRef.current.anios.abort();
+      abortRef.current.anios = new AbortController();
+
+      const res = await fetch(`${BASE_URL}/api.php?action=cuotas&listar_anios=1`, {
+        signal: abortRef.current.anios.signal
+      });
       const data = await res.json().catch(() => ({}));
       const lista = (data?.anios && Array.isArray(data.anios)) ? data.anios : [];
       setAniosPago(lista);
+
+      const seleccionado = String(anioPagoSeleccionado || '');
+      const existeSeleccionado = seleccionado && lista.some(a => String(a.id) === seleccionado);
+      if (existeSeleccionado) return;
 
       const hasCurrent = lista.some(a => String(a.id) === String(CURRENT_YEAR));
       if (hasCurrent) setAnioPagoSeleccionado(String(CURRENT_YEAR));
       else if (lista.length > 0) setAnioPagoSeleccionado(String(lista[0].id));
       else setAnioPagoSeleccionado('');
     } catch (e) {
+      if (e?.name === 'AbortError') return;
       console.error('Error al obtener años de pago:', e);
       setAniosPago([]);
-      setAnioPagoSeleccionado('');
     }
-  }, []);
+  }, [anioPagoSeleccionado]);
 
   // === Obtener cuotas + listas ===
   const obtenerCuotasYListas = useCallback(async () => {
@@ -152,9 +169,14 @@ const Cuotas = () => {
       if (mesSeleccionado) params.set('id_mes', String(mesSeleccionado));
       if (anioPagoSeleccionado) params.set('anio', String(anioPagoSeleccionado));
 
+      if (abortRef.current.cuotas) abortRef.current.cuotas.abort();
+      if (abortRef.current.listas) abortRef.current.listas.abort();
+      abortRef.current.cuotas = new AbortController();
+      abortRef.current.listas = new AbortController();
+
       const [resCuotas, resListas] = await Promise.all([
-        fetch(`${BASE_URL}/api.php?${params.toString()}`),
-        fetch(`${BASE_URL}/api.php?action=obtener_listas`)
+        fetch(`${BASE_URL}/api.php?${params.toString()}`, { signal: abortRef.current.cuotas.signal }),
+        fetch(`${BASE_URL}/api.php?action=obtener_listas`, { signal: abortRef.current.listas.signal })
       ]);
 
       const dataCuotas = await resCuotas.json().catch(() => ({}));
@@ -172,6 +194,7 @@ const Cuotas = () => {
         setCategorias([]); setDivisiones([]); setMeses([]); setAniosLectivos([]);
       }
     } catch (e) {
+      if (e?.name === 'AbortError') return;
       console.error('Error al conectar con el servidor:', e);
       setCuotas([]); setCategorias([]); setDivisiones([]); setMeses([]); setAniosLectivos([]);
     } finally {
@@ -183,15 +206,17 @@ const Cuotas = () => {
   useEffect(() => { fetchAniosPago(); }, [fetchAniosPago]);
   useEffect(() => { obtenerCuotasYListas(); /* eslint-disable-next-line */ }, [mesSeleccionado, anioPagoSeleccionado]);
 
-  // ===== Patch optimista tras pagar/condonar =====
-  const patchCuotasAfterPago = useCallback(({ idAlumno, periodos, estado }) => {
+  // ===== Patch optimista tras pagar/condonar/eliminar =====
+  const patchCuotasAfterAccion = useCallback(({ idAlumno, periodos, estado }) => {
     if (!idAlumno || !Array.isArray(periodos) || periodos.length === 0) return;
 
     setCuotas(prev =>
       prev.map((c) => {
         const sameAlumno = String(getIdAlumnoFromCuota(c)) === String(idAlumno);
         const mes = Number(getIdMesFromCuota(c));
-        if (sameAlumno && periodos.includes(mes)) {
+        if (!sameAlumno) return c;
+
+        if (periodos.includes(mes)) {
           return { ...c, estado_pago: estado };
         }
         return c;
@@ -275,8 +300,15 @@ const Cuotas = () => {
     triggerCascade();
   }, [triggerCascade]);
 
-  // Imprimir TODOS: separar internos/externos
+  // Imprimir TODOS: separar internos/externos (✅ SOLO en pagados)
   const handleImprimirTodos = async () => {
+    if (!canPrint) {
+      setToastTipo('advertencia');
+      setToastMensaje('La impresión está disponible únicamente en la pestaña de Pagados.');
+      setToastVisible(true);
+      return;
+    }
+
     if (!categoriaSeleccionada) {
       setToastTipo('advertencia');
       setToastMensaje('Seleccioná una categoría (Interno o Externo) para habilitar la impresión.');
@@ -285,6 +317,7 @@ const Cuotas = () => {
     }
 
     if (!mesSeleccionado || cuotasFiltradas.length === 0) return;
+
     setLoadingPrint(true);
     try {
       const getCatNombreDeCuota = (c) => (categorias.find(x => String(x.id) === String(c?.id_categoria))?.nombre) || '';
@@ -326,11 +359,17 @@ const Cuotas = () => {
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
 
-  // Imprimir UNO → ModalMesCuotas
+  // Imprimir UNO → ModalMesCuotas (✅ SOLO en pagados)
   const handlePrintClick = useCallback((item) => {
+    if (!canPrint) {
+      setToastTipo('advertencia');
+      setToastMensaje('La impresión está disponible únicamente en la pestaña de Pagados.');
+      setToastVisible(true);
+      return;
+    }
     setSocioParaImprimir(item);
     setMostrarModalMesCuotas(true);
-  }, []);
+  }, [canPrint]);
 
   const handleExportExcel = useCallback(() => {
     if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione mes'); setToastVisible(true); return; }
@@ -361,13 +400,17 @@ const Cuotas = () => {
 
     const actionButtons = (
       <div className="gcuotas-actions-inline">
-        <button
-          className="gcuotas-action-button gcuotas-print-button"
-          onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
-          title="Seleccionar meses e imprimir/descargar"
-        >
-          <FontAwesomeIcon icon={faPrint} />
-        </button>
+        {/* ✅ Mostrar botón imprimir SOLO en pagados */}
+        {canPrint && (
+          <button
+            className="gcuotas-action-button gcuotas-print-button"
+            onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+            title="Seleccionar meses e imprimir/descargar"
+          >
+            <FontAwesomeIcon icon={faPrint} />
+          </button>
+        )}
+
         {estadoPagoSeleccionado === 'deudor' ? (
           <button
             className="gcuotas-action-button gcuotas-payment-button"
@@ -435,12 +478,16 @@ const Cuotas = () => {
           </div>
 
           <div className="gcuotas-mobile-actions">
-            <button
-              className="gcuotas-mobile-print-button"
-              onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
-            >
-              <FontAwesomeIcon icon={faPrint} /><span>Meses / Comprobante</span>
-            </button>
+            {/* ✅ Mostrar botón imprimir SOLO en pagados */}
+            {canPrint && (
+              <button
+                className="gcuotas-mobile-print-button"
+                onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+              >
+                <FontAwesomeIcon icon={faPrint} /><span>Meses / Comprobante</span>
+              </button>
+            )}
+
             {estadoPagoSeleccionado === 'deudor' ? (
               <button
                 className="gcuotas-mobile-payment-button"
@@ -513,8 +560,11 @@ const Cuotas = () => {
     </div>
   );
 
-  // Tras cerrar modales, refrescar
-  const resyncAll = useCallback(() => { fetchAniosPago(); obtenerCuotasYListas(); }, [fetchAniosPago, obtenerCuotasYListas]);
+  // ✅ RESYNC FUERTE (ordenado y esperado)
+  const resyncAll = useCallback(async () => {
+    await fetchAniosPago();
+    await obtenerCuotasYListas();
+  }, [fetchAniosPago, obtenerCuotasYListas]);
 
   return (
     <div className={`gcuotas-container gcuotas--table-fullwidth ${cascadeActive ? 'gcuotas-cascading' : ''}`}>
@@ -530,19 +580,26 @@ const Cuotas = () => {
       {mostrarModalPagos && (
         <ModalPagos
           socio={socioParaPagar}
-          onClose={(ok, payload) => {
+          onClose={async (ok, payload) => {
             setMostrarModalPagos(false);
-            if (ok && payload) {
-              patchCuotasAfterPago(payload);
+
+            // ✅ 1) patch instantáneo
+            if (ok && payload?.idAlumno && Array.isArray(payload?.periodos) && payload?.estado) {
+              patchCuotasAfterAccion(payload);
             }
-            resyncAll();
+
+            // ✅ 2) resync garantizado SIEMPRE
+            await resyncAll();
           }}
         />
       )}
 
       {mostrarModalCodigoBarras && (
         <ModalCodigoBarras
-          onClose={() => setMostrarModalCodigoBarras(false)}
+          onClose={async () => {
+            setMostrarModalCodigoBarras(false);
+            await resyncAll();
+          }}
           periodo={getNombreMes(mesSeleccionado)}
           periodoId={mesSeleccionado}
           onPagoRealizado={resyncAll}
@@ -554,9 +611,15 @@ const Cuotas = () => {
           socio={socioParaPagar}
           periodoId={Number(mesSeleccionado)}
           periodoNombre={getNombreMes(mesSeleccionado)}
-          anioPago={anioPagoSeleccionado}   // ✅ NUEVO
+          anioPago={anioPagoSeleccionado}
           onClose={() => setMostrarModalEliminarPago(false)}
-          onEliminado={resyncAll}
+          onEliminado={async () => {
+            const idAlumno = socioParaPagar?.id_alumno ?? socioParaPagar?.id_socio ?? socioParaPagar?.id;
+            const mes = Number(mesSeleccionado);
+            if (idAlumno && mes) patchCuotasAfterAccion({ idAlumno, periodos: [mes], estado: 'deudor' });
+
+            await resyncAll();
+          }}
         />
       )}
 
@@ -566,12 +629,18 @@ const Cuotas = () => {
           periodo={Number(mesSeleccionado)}
           periodoTexto={getNombreMes(mesSeleccionado)}
           onClose={() => setMostrarModalEliminarCond(false)}
-          onEliminado={resyncAll}
+          onEliminado={async () => {
+            const idAlumno = socioParaPagar?.id_alumno ?? socioParaPagar?.id_socio ?? socioParaPagar?.id;
+            const mes = Number(mesSeleccionado);
+            if (idAlumno && mes) patchCuotasAfterAccion({ idAlumno, periodos: [mes], estado: 'deudor' });
+
+            await resyncAll();
+          }}
         />
       )}
 
-      {/* Modal para seleccionar meses e Imprimir/PDF */}
-      {mostrarModalMesCuotas && socioParaImprimir && (
+      {/* ✅ Modal de impresión SOLO si canPrint */}
+      {canPrint && mostrarModalMesCuotas && socioParaImprimir && (
         <ModalMesCuotas
           socio={socioParaImprimir}
           meses={meses}
@@ -581,7 +650,6 @@ const Cuotas = () => {
         />
       )}
 
-      {/* ----------- UI izquierda (filtros + acciones) ----------- */}
       <div className="gcuotas-left-section gcuotas-box">
         <div className="gcuotas-header-section">
           <h2 className="gcuotas-title">
@@ -600,10 +668,7 @@ const Cuotas = () => {
                 </div>
               </div>
 
-              {/* === FILTROS EN BLOQUES PROFESIONALES === */}
               <div className="gcuotas-select-container">
-
-                {/* Bloque 1: Año de pago + Mes (dos columnas en desktop) */}
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">
                     <label htmlFor="anioPago" className="gcuotas-input-label">
@@ -645,7 +710,6 @@ const Cuotas = () => {
                   </div>
                 </div>
 
-                {/* Bloque 2: Categoría (full) */}
                 <div className="gcuotas-input-row gcuotas-input-row--single">
                   <div className="gcuotas-input-group">
                     <label htmlFor="categoria" className="gcuotas-input-label">
@@ -666,7 +730,6 @@ const Cuotas = () => {
                   </div>
                 </div>
 
-                {/* Bloque 3: Año lectivo + División (⟵ pedido: lado a lado) */}
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">
                     <label htmlFor="anioLectivo" className="gcuotas-input-label">
@@ -765,17 +828,24 @@ const Cuotas = () => {
               >
                 <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
               </button>
+
+              {/* ✅ Botón imprimir: SOLO habilitado en "pagado" */}
               <button
                 className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
                 onClick={handleImprimirTodos}
                 disabled={
+                  !canPrint ||
                   loadingPrint ||
                   !mesSeleccionado ||
                   cuotasFiltradas.length === 0 ||
                   loading ||
                   !categoriaSeleccionada
                 }
-                title={categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo'}
+                title={
+                  !canPrint
+                    ? 'Disponible solo en Pagados'
+                    : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo')
+                }
               >
                 <FontAwesomeIcon icon={faPrint} /><span>{loadingPrint ? 'Generando...' : 'Imprimir'}</span>
               </button>
@@ -784,7 +854,6 @@ const Cuotas = () => {
         </div>
       </div>
 
-      {/* ----------- UI derecha (tabla) ----------- */}
       <div className={`gcuotas-right-section gcuotas-box ${isMobile ? 'gcuotas-has-bottombar' : ''}`}>
         <div className="gcuotas-table-header">
           <h3>
@@ -882,17 +951,23 @@ const Cuotas = () => {
             <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
           </button>
 
+          {/* ✅ Botón imprimir: SOLO habilitado en "pagado" */}
           <button
             className="gcuotas-mbar-btn mbar-imprimir"
             onClick={handleImprimirTodos}
             disabled={
+              !canPrint ||
               loadingPrint ||
               !mesSeleccionado ||
               cuotasFiltradas.length === 0 ||
               loading ||
               !categoriaSeleccionada
             }
-            title={categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo'}
+            title={
+              !canPrint
+                ? 'Disponible solo en Pagados'
+                : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo')
+            }
           >
             <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
           </button>
