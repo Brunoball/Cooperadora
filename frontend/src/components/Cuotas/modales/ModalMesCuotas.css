@@ -273,7 +273,6 @@
   min-height: auto; 
   margin-bottom: 0; 
   padding-bottom: 0; 
-  max-height: calc(60px * 3 + 0.75rem * 2);
   overflow-y: auto;
 }
 .modmes_periodos-grid {
@@ -802,5 +801,91 @@
   }
   .modmes_resumen_simple > div:first-child > :last-child{
     white-space: normal;
+  }
+}/* ✅ Resumen simple: ahora SOLO Período */
+.modmes_resumen_simple{
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--reg-gray-200);
+  border-radius: var(--reg-border-radius);
+  background: var(--reg-gray-100);
+  box-shadow: var(--reg-shadow-sm);
+  display: grid;
+  gap: 8px;
+}
+
+.modmes_resumen_linea{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.modmes_resumen_simple strong{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--reg-gray-700);
+  opacity: .95;
+  flex: 0 0 auto;
+}
+
+.modmes_resumen_val{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--reg-gray-900);
+}
+
+/* ✅ Badge footer: Período + Total juntos (sin romper) */
+.modmes_total-badge--wide{
+  max-width: min(560px, 92vw);
+  padding: .55rem .9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.modmes_badge_periodo{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: .85rem;
+  opacity: .95;
+}
+
+.modmes_badge_sep{
+  opacity: .75;
+  font-weight: 800;
+}
+
+.modmes_badge_total{
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-size: .95rem;
+}
+
+/* Mobile: que el badge pueda bajar a 2 líneas (periodo arriba, total abajo) */
+@media (max-width: 520px){
+  .modmes_total-badge--wide{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25rem;
+  }
+  .modmes_badge_sep{ display:none; }
+  .modmes_badge_periodo{
+    white-space: normal; /* permite 2 líneas */
+    display: -webkit-box;
+
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }

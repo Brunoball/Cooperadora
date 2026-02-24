@@ -20,7 +20,8 @@ import "./ModalMesCuotas.css";
  * - EXTRAS arriba: MATRÍCULA + CONTADO ANUAL
  * - Si se marca CONTADO ANUAL => aparecen 1ª mitad y 2ª mitad (arriba), pero NO en la grilla.
  * - EXTRAS cuando aparece 1ª/2ª mitad: 2 arriba y 2 abajo (grid 2 columnas).
- * - Dejar SOLO el resumen de abajo (Período/Total en texto).
+ * - Dejar SOLO el resumen de abajo (Período en texto) (✅ total eliminado del resumen).
+ * - En el footer: el badge muestra Período + Total juntos (badge grande pero controlado).
  */
 
 // ====== IDs “extras” (mismos que ModalPagos) ======
@@ -103,13 +104,51 @@ function leerMontoDetalle(d) {
   return null;
 }
 
-const ModalMesCuotas = ({
-  socio,
-  meses = [],
-  anio,
-  esExterno: esExternoProp = undefined,
-  onClose,
-}) => {
+/* ✅ Helper: acortar el texto del período para el badge (no infinito) */
+function buildPeriodoCorto(periodos, mapMesNombre, anioTrabajo) {
+  const ids = (periodos || []).map(Number).filter(Boolean);
+  if (!ids.length) return "—";
+
+  const meses = ids.filter((x) => x >= 1 && x <= 12);
+  const extras = ids.filter((x) => x < 1 || x > 12);
+
+  meses.sort((a, b) => a - b);
+
+  const labels = [];
+
+  // extras primero para que sea claro
+  for (const id of extras) {
+    if (id === ID_MATRICULA) labels.push("Matrícula");
+    else if (id === ID_CONTADO_ANUAL) labels.push("Anual");
+    else if (id === ID_CONTADO_ANUAL_H1) labels.push("Anual 1ª");
+    else if (id === ID_CONTADO_ANUAL_H2) labels.push("Anual 2ª");
+    else labels.push(String(id));
+  }
+
+  if (meses.length) {
+    const first = meses[0];
+    const last = meses[meses.length - 1];
+
+    // si es un rango continuo tipo Mar–Jun, mostramos "Mar–Jun"
+    const esConsecutivo = meses.every((m, i) => i === 0 || m === meses[i - 1] + 1);
+
+    if (meses.length === 1) {
+      labels.push(mapMesNombre.get(first) || String(first));
+    } else if (esConsecutivo) {
+      const a = mapMesNombre.get(first) || String(first);
+      const b = mapMesNombre.get(last) || String(last);
+      labels.push(`${a}–${b}`);
+    } else {
+      // no consecutivo -> mostramos "3 meses" para no llenar
+      labels.push(`${meses.length} meses`);
+    }
+  }
+
+  const txt = labels.join(" · ");
+  return `${txt} ${anioTrabajo}`;
+}
+
+const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = undefined, onClose }) => {
   const nowYear = new Date().getFullYear();
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
 
@@ -273,9 +312,7 @@ const ModalMesCuotas = ({
           return;
         }
 
-        const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(
-          idAlumno
-        )}`;
+        const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(idAlumno)}`;
         const res = await fetch(url, { method: "GET" });
         if (!res.ok) throw new Error(`obtener_monto_categoria HTTP ${res.status}`);
 
@@ -405,9 +442,7 @@ const ModalMesCuotas = ({
 
   const toggleMes = (id) => {
     const num = Number(id);
-    setSeleccionMeses((prev) =>
-      prev.includes(num) ? prev.filter((x) => x !== num) : [...prev, num]
-    );
+    setSeleccionMeses((prev) => (prev.includes(num) ? prev.filter((x) => x !== num) : [...prev, num]));
   };
 
   const allSelected = listaMeses.length > 0 && seleccionMeses.length === listaMeses.length;
@@ -472,6 +507,12 @@ const ModalMesCuotas = ({
     }
     return `${labels.join(" / ")} ${anioTrabajo}`;
   }, [periodosSeleccionados, anioTrabajo, mapMesNombre]);
+
+  // ✅ Nuevo: versión corta para badge del footer
+  const periodoTextoCorto = useMemo(
+    () => buildPeriodoCorto(periodosSeleccionados, mapMesNombre, anioTrabajo),
+    [periodosSeleccionados, mapMesNombre, anioTrabajo]
+  );
 
   const montosPorPeriodo = useMemo(() => {
     const mp = {};
@@ -762,7 +803,9 @@ const ModalMesCuotas = ({
                   <span className="modmes_extra-main">
                     <span className="modmes_extra-top">
                       <span className="modmes_extra-name">MATRÍCULA</span>
-                      {labelEstado(ID_MATRICULA) ? <span className="modmes_extra-state">{labelEstado(ID_MATRICULA)}</span> : null}
+                      {labelEstado(ID_MATRICULA) ? (
+                        <span className="modmes_extra-state">{labelEstado(ID_MATRICULA)}</span>
+                      ) : null}
                     </span>
                     <span className="modmes_extra-amount">
                       {formatearARS(montosReales?.[ID_MATRICULA] ?? montoMatricula ?? 0)}
@@ -845,8 +888,7 @@ const ModalMesCuotas = ({
                   const checked = seleccionMeses.includes(id);
                   const est = labelEstado(id);
 
-                  const montoMostrado =
-                    montosReales?.[id] !== undefined ? montosReales[id] : precioMensualConDescuento;
+                  const montoMostrado = montosReales?.[id] !== undefined ? montosReales[id] : precioMensualConDescuento;
 
                   return (
                     <label key={m.id} className={`modmes_periodo-card ${checked ? "modmes_seleccionado" : ""}`}>
@@ -873,13 +915,10 @@ const ModalMesCuotas = ({
               </div>
             </div>
 
-            {/* ✅ RESUMEN: dejar SOLO el de abajo */}
+            {/* ✅ RESUMEN: SOLO PERÍODO (total eliminado) */}
             <div className="modmes_resumen_simple">
-              <div>
-                <strong>Período:</strong> {periodoTextoFinal || "—"}
-              </div>
-              <div>
-                <strong>Total:</strong> {formatearARS(total)}
+              <div className="modmes_resumen_linea">
+                <strong>Período:</strong> <span className="modmes_resumen_val">{periodoTextoFinal || "—"}</span>
               </div>
             </div>
           </div>
@@ -888,7 +927,12 @@ const ModalMesCuotas = ({
         {/* Footer */}
         <div className="modmes_footer modmes_footer-sides">
           <div className="modmes_footer-left">
-            <div className="modmes_total-badge">Total: {formatearARS(total)}</div>
+            {/* ✅ Badge: Período + Total juntos, controlado */}
+            <div className="modmes_total-badge modmes_total-badge--wide" title={periodoTextoFinal || ""}>
+              <span className="modmes_badge_periodo">{periodoTextoCorto}</span>
+              <span className="modmes_badge_sep">•</span>
+              <span className="modmes_badge_total">{formatearARS(total)}</span>
+            </div>
           </div>
 
           <div className="modmes_footer-right">
