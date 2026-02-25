@@ -91,6 +91,10 @@ try {
             require_once __DIR__ . '/../modules/alumnos/eliminar_bajas.php';
             exit;
 
+        case 'toggle_cobrador':
+            require_once __DIR__ . '/../modules/alumnos/toggle_cobrador.php';
+            exit;
+
         /* =========================
            FAMILIAS (usa ALUMNOS)
         ========================= */

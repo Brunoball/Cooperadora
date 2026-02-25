@@ -1,0 +1,71 @@
+.mcob-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.mcob-modal{
+  width: min(520px, 100%);
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+
+.mcob-title{
+  padding: 14px 16px;
+  font-weight: 700;
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.mcob-body{
+  padding: 14px 16px;
+  color: rgba(255,255,255,.9);
+  font-size: 14px;
+}
+
+.mcob-name{
+  margin: 10px 0 6px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: .2px;
+}
+
+.mcob-hint{
+  margin-top: 10px;
+  color: rgba(255,255,255,.65);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.mcob-actions{
+  padding: 12px 16px 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.mcob-btn{
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mcob-cancel{
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.mcob-ok{
+  background: #22c55e;
+  color: #0b1220;
+}

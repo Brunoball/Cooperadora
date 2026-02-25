@@ -1,4 +1,6 @@
+// ✅ REEMPLAZAR COMPLETO
 // src/components/Alumnos/Alumnos.jsx
+
 import React, {
   useEffect,
   useState,
@@ -25,7 +27,9 @@ import {
   FaTimes,
   FaUsers,
   FaFilter,
-  FaChevronDown
+  FaChevronDown,
+  FaMoneyBillWave,
+  FaCheckCircle,
 } from 'react-icons/fa';
 import './Alumno.css';
 
@@ -33,6 +37,7 @@ import './Alumno.css';
 import ModalEliminarAlumno from './modales/ModalEliminarAlumno';
 import ModalInfoAlumno from './modales/ModalInfoAlumno';
 import ModalDarBajaAlumno from './modales/ModalDarBajaAlumno';
+import ModalCobradorAlumno from './modales/ModalCobradorAlumno';
 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -64,7 +69,6 @@ const combinarNombre = (a) => {
   return partes || (a?.nombre ?? '');
 };
 
-// Extrae el número de año desde "anio_nombre"
 const extraerAnioNum = (valor) => {
   if (valor == null) return null;
   if (typeof valor === 'number' && Number.isFinite(valor)) return valor;
@@ -84,7 +88,6 @@ const formatearFechaISO = (v) => {
   return `${m[3]}/${m[2]}/${m[1]}`;
 };
 
-// Hook simple para detectar mobile
 function useIsMobile(breakpoint = 768) {
   const getMatch = () =>
     (typeof window !== 'undefined'
@@ -125,6 +128,11 @@ const Alumnos = () => {
   const [mostrarModalDarBaja, setMostrarModalDarBaja] = useState(false);
   const [alumnoDarBaja, setAlumnoDarBaja] = useState(null);
 
+  // ✅ NUEVO: modal cobrador
+  const [mostrarModalCobrador, setMostrarModalCobrador] = useState(false);
+  const [alumnoCobrador, setAlumnoCobrador] = useState(null);
+  const [nuevoValorCobrador, setNuevoValorCobrador] = useState(0);
+
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [bloquearInteraccion, setBloquearInteraccion] = useState(true);
 
@@ -143,10 +151,10 @@ const Alumnos = () => {
     mensaje: ''
   });
 
-  // 🔽 NUEVO: categorías disponibles (desde obtener_listas)
+  // categorías disponibles
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
-  // ⚠️ Estructura con categoría incluida
+  // ✅ NUEVO: filtro cobrador
   const [filtros, setFiltros] = useState(() => {
     const saved = localStorage.getItem('filtros_alumnos');
     if (saved) {
@@ -157,6 +165,7 @@ const Alumnos = () => {
           divisionSeleccionada: parsed.divisionSeleccionada ?? '',
           anioSeleccionado: parsed.anioSeleccionado ?? null,
           categoriaSeleccionada: parsed.categoriaSeleccionada ?? '',
+          cobradorSeleccionado: parsed.cobradorSeleccionado ?? '', // '' | '1'
           filtroActivo: parsed.filtroActivo ?? null,
         };
       } catch {}
@@ -166,6 +175,7 @@ const Alumnos = () => {
       divisionSeleccionada: '',
       anioSeleccionado: null,
       categoriaSeleccionada: '',
+      cobradorSeleccionado: '',
       filtroActivo: null,
     };
   });
@@ -174,21 +184,30 @@ const Alumnos = () => {
   const [openSecciones, setOpenSecciones] = useState({
     division: false,
     anio: false,
-    categoria: false, // 👈 nuevo acordeón
+    categoria: false,
+    cobrador: false, // ✅ nuevo acordeón
   });
-  const [verMasAnio] = useState(false);
 
-  const { busqueda, divisionSeleccionada, filtroActivo, anioSeleccionado, categoriaSeleccionada } = filtros;
+  const {
+    busqueda,
+    divisionSeleccionada,
+    filtroActivo,
+    anioSeleccionado,
+    categoriaSeleccionada,
+    cobradorSeleccionado
+  } = filtros;
+
   const busquedaDefer = useDeferredValue(busqueda);
 
   const hayFiltros = !!(
     (busquedaDefer && busquedaDefer.trim() !== '') ||
     (divisionSeleccionada && divisionSeleccionada !== '') ||
     (anioSeleccionado !== null) ||
-    (categoriaSeleccionada && categoriaSeleccionada !== '')
+    (categoriaSeleccionada && categoriaSeleccionada !== '') ||
+    (cobradorSeleccionado && cobradorSeleccionado !== '')
   );
 
-  // 🔐 Rol del usuario para ocultar botones en rol "vista"
+  // Rol
   const [isVista, setIsVista] = useState(false);
   useEffect(() => {
     try {
@@ -200,7 +219,6 @@ const Alumnos = () => {
     }
   }, []);
 
-  // Lista de divisiones disponibles (únicas) deducidas de los datos cargados
   const divisionesDisponibles = useMemo(() => {
     const set = new Set(
       (alumnosDB || [])
@@ -237,10 +255,14 @@ const Alumnos = () => {
       resultados = resultados.filter((a) => a._anioNum === anioSeleccionado);
     }
 
-    // 👇 Nuevo: filtro por categoría (usa nombre de la categoría)
     if (categoriaSeleccionada && categoriaSeleccionada !== '') {
       const catNorm = normalizar(categoriaSeleccionada);
       resultados = resultados.filter((a) => normalizar(a?.categoria_nombre ?? '') === catNorm);
+    }
+
+    // ✅ NUEVO: solo cobrador
+    if (cobradorSeleccionado === '1') {
+      resultados = resultados.filter((a) => String(a?.es_cobrador ?? 0) === '1');
     }
 
     if (filtroActivo === 'todos') {
@@ -248,21 +270,25 @@ const Alumnos = () => {
     }
 
     return resultados;
-  }, [alumnos, busquedaDefer, divisionSeleccionada, anioSeleccionado, categoriaSeleccionada, filtroActivo]);
+  }, [
+    alumnos,
+    busquedaDefer,
+    divisionSeleccionada,
+    anioSeleccionado,
+    categoriaSeleccionada,
+    cobradorSeleccionado,
+    filtroActivo
+  ]);
 
   const puedeExportar = useMemo(() => {
     return (hayFiltros || filtroActivo === 'todos') && alumnosFiltrados.length > 0 && !cargando;
   }, [hayFiltros, filtroActivo, alumnosFiltrados.length, cargando]);
 
-  // 🔑 Loader visible SOLO si el usuario pidió resultados (hay filtros o "todos")
   const mostrarLoader = useMemo(
     () => cargando && (hayFiltros || filtroActivo === 'todos'),
     [cargando, hayFiltros, filtroActivo]
   );
 
-  /* ================================
-     Animación en cascada (helper)
-  ================================= */
   const dispararCascadaUnaVez = useCallback((duracionMs) => {
     const safeMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
     const total = typeof duracionMs === 'number' ? duracionMs : safeMs;
@@ -281,9 +307,6 @@ const Alumnos = () => {
     });
   }, [dispararCascadaUnaVez]);
 
-  /* ================================
-     Efectos
-  ================================= */
   useEffect(() => {
     if (alumnosFiltrados.length > 0) {
       const timer = setTimeout(() => setBloquearInteraccion(false), 300);
@@ -316,13 +339,11 @@ const Alumnos = () => {
     setToast({ mostrar: true, tipo, mensaje });
   }, []);
 
-  // ✅ Carga inicial (alumnos + listas para categorías)
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
         setCargando(true);
 
-        // 1) Alumnos
         const response = await fetch(`${BASE_URL}/api.php?action=alumnos`);
         const data = await response.json();
 
@@ -331,6 +352,7 @@ const Alumnos = () => {
             const _anioNum = extraerAnioNum(a?.anio_nombre);
             return {
               ...a,
+              es_cobrador: Number(a?.es_cobrador ?? 0),
               _n: normalizar(combinarNombre(a)),
               _nSolo: normalizar(a?.nombre ?? ''),
               _ap: normalizar(a?.apellido ?? ''),
@@ -346,19 +368,17 @@ const Alumnos = () => {
           mostrarToast(`Error al obtener alumnos: ${data.mensaje}`, 'error');
         }
 
-        // 2) Listas (para categorías)
+        // Listas (categorías)
         try {
           const resListas = await fetch(`${BASE_URL}/api.php?action=obtener_listas`);
           const dataListas = await resListas.json();
           if (dataListas?.exito && dataListas?.listas?.categorias) {
-            // Mapeo a solo nombres, ordenados alfabéticamente
             const cats = (dataListas.listas.categorias || [])
               .map(c => (c?.nombre ?? '').toString().trim())
               .filter(Boolean)
               .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
             setCategoriasDisponibles(cats);
           } else {
-            // Si falla, intento derivarlas de los alumnos (fallback)
             const setCats = new Set(
               (data?.alumnos || [])
                 .map(a => (a?.categoria_nombre ?? '').toString().trim())
@@ -367,7 +387,6 @@ const Alumnos = () => {
             setCategoriasDisponibles(Array.from(setCats).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })));
           }
         } catch {
-          // Fallback a partir de alumnos si obtener_listas falla
           const setCats = new Set(
             (data?.alumnos || [])
               .map(a => (a?.categoria_nombre ?? '').toString().trim())
@@ -392,6 +411,7 @@ const Alumnos = () => {
           divisionSeleccionada: '',
           anioSeleccionado: null,
           categoriaSeleccionada: '',
+          cobradorSeleccionado: '',
           filtroActivo: null,
         });
         localStorage.removeItem('filtros_alumnos');
@@ -406,7 +426,6 @@ const Alumnos = () => {
     localStorage.setItem('filtros_alumnos', JSON.stringify(filtros));
   }, [filtros]);
 
-  // Dispara cascada SOLO cuando el buscador pasa de '' a no ''
   useEffect(() => {
     const prev = prevBusquedaRef.current || '';
     const ahora = (busquedaDefer || '').trim();
@@ -416,9 +435,6 @@ const Alumnos = () => {
     prevBusquedaRef.current = ahora;
   }, [busquedaDefer, triggerCascadaConPreMask]);
 
-  /* ================================
-     Handlers
-  ================================= */
   const manejarSeleccion = useCallback(
     (alumno) => {
       if (bloquearInteraccion || animacionActiva) return;
@@ -485,7 +501,6 @@ const Alumnos = () => {
 
   const construirDomicilio = useCallback((domicilio) => (domicilio || '').trim(), []);
 
-  // Exporta SOLO lo visible pero con TODOS los campos de Editar
   const exportarExcel = useCallback(() => {
     if (!puedeExportar) {
       mostrarToast('No hay filas visibles para exportar.', 'error');
@@ -507,18 +522,19 @@ const Alumnos = () => {
       'Año': a?.anio_nombre ?? '',
       'División': a?.division_nombre ?? '',
       'Categoría': a?.categoria_nombre ?? '',
+      'Cobrador': Number(a?.es_cobrador ?? 0) === 1 ? 'SI' : 'NO',
     }));
 
     const headers = [
       'ID Alumno','Apellido','Nombre','Tipo de documento','Sigla','Nº Documento',
-      'Sexo','Teléfono','Fecha de ingreso','Domicilio','Localidad','Año','División','Categoría',
+      'Sexo','Teléfono','Fecha de ingreso','Domicilio','Localidad','Año','División','Categoría','Cobrador'
     ];
 
     const ws = XLSX.utils.json_to_sheet(filas, { header: headers });
 
     ws['!cols'] = [
       { wch: 10 },{ wch: 18 },{ wch: 18 },{ wch: 22 },{ wch: 8  },{ wch: 14 },
-      { wch: 10 },{ wch: 14 },{ wch: 14 },{ wch: 28 },{ wch: 20 },{ wch: 10 },{ wch: 10 },{ wch: 16 },
+      { wch: 10 },{ wch: 14 },{ wch: 14 },{ wch: 28 },{ wch: 20 },{ wch: 10 },{ wch: 10 },{ wch: 16 },{ wch: 10 },
     ];
 
     const wb = XLSX.utils.book_new();
@@ -537,24 +553,23 @@ const Alumnos = () => {
     saveAs(blob, `Alumnos_${sufijo}_${fechaStr}(${filas.length}).xlsx`);
   }, [puedeExportar, alumnosFiltrados, filtroActivo, mostrarToast, construirDomicilio]);
 
-  // Mostrar todos — con pre-mask para evitar parpadeo
   const handleMostrarTodos = useCallback(() => {
     setFiltros({
       busqueda: '',
       divisionSeleccionada: '',
       anioSeleccionado: null,
       categoriaSeleccionada: '',
+      cobradorSeleccionado: '',
       filtroActivo: 'todos',
     });
     triggerCascadaConPreMask();
   }, [triggerCascadaConPreMask]);
 
-  // Handlers filtros
   const handleBuscarChange = useCallback((valor) => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: valor };
       next.filtroActivo =
-        (valor?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
+        (valor?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
@@ -565,7 +580,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, divisionSeleccionada: division };
       next.filtroActivo =
-        (prev.busqueda?.trim() || division || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
+        (prev.busqueda?.trim() || division || prev.anioSeleccionado !== null || prev.categoriaSeleccionada || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
@@ -578,7 +593,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: anio };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.divisionSeleccionada || anio !== null || prev.categoriaSeleccionada)
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || anio !== null || prev.categoriaSeleccionada || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
@@ -587,12 +602,11 @@ const Alumnos = () => {
     triggerCascadaConPreMask();
   }, [triggerCascadaConPreMask]);
 
-  // 👇 Nuevo handler: Categoría
   const handleFiltrarPorCategoria = useCallback((categoria) => {
     setFiltros((prev) => {
       const next = { ...prev, categoriaSeleccionada: categoria };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || categoria)
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || categoria || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
@@ -601,12 +615,25 @@ const Alumnos = () => {
     triggerCascadaConPreMask();
   }, [triggerCascadaConPreMask]);
 
-  // Quitar chips individuales
+  // ✅ NUEVO: filtro cobrador
+  const handleFiltrarCobrador = useCallback((valor) => {
+    setFiltros((prev) => {
+      const next = { ...prev, cobradorSeleccionado: valor ? '1' : '' };
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada || next.cobradorSeleccionado)
+          ? 'filtros'
+          : null;
+      return next;
+    });
+    setMostrarFiltros(false);
+    triggerCascadaConPreMask();
+  }, [triggerCascadaConPreMask]);
+
   const quitarBusqueda = useCallback(() => {
     setFiltros((prev) => {
       const next = { ...prev, busqueda: '' };
       next.filtroActivo =
-        (prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
+        (prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
@@ -617,7 +644,7 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, divisionSeleccionada: '' };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
+        (prev.busqueda?.trim() || prev.anioSeleccionado !== null || prev.categoriaSeleccionada || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
@@ -628,26 +655,35 @@ const Alumnos = () => {
     setFiltros((prev) => {
       const next = { ...prev, anioSeleccionado: null };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.categoriaSeleccionada)
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.categoriaSeleccionada || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
     });
   }, []);
 
-  // 👇 Nuevo: quitar categoría
   const quitarCategoria = useCallback(() => {
     setFiltros((prev) => {
       const next = { ...prev, categoriaSeleccionada: '' };
       next.filtroActivo =
-        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null)
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.cobradorSeleccionado)
           ? 'filtros'
           : null;
       return next;
     });
   }, []);
 
-  // Limpieza total de chips activos
+  const quitarCobrador = useCallback(() => {
+    setFiltros((prev) => {
+      const next = { ...prev, cobradorSeleccionado: '' };
+      next.filtroActivo =
+        (prev.busqueda?.trim() || prev.divisionSeleccionada || prev.anioSeleccionado !== null || prev.categoriaSeleccionada)
+          ? 'filtros'
+          : null;
+      return next;
+    });
+  }, []);
+
   const limpiarTodosLosChips = useCallback(() => {
     setFiltros((prev) => ({
       ...prev,
@@ -655,6 +691,7 @@ const Alumnos = () => {
       divisionSeleccionada: '',
       anioSeleccionado: null,
       categoriaSeleccionada: '',
+      cobradorSeleccionado: '',
       filtroActivo: null,
     }));
   }, []);
@@ -678,15 +715,59 @@ const Alumnos = () => {
     }
   }, []);
 
-  /* ================================
-     Fila virtualizada (desktop)
-  ================================= */
+  // ✅ NUEVO: abrir modal cobrador
+  const abrirModalCobrador = useCallback((alumno) => {
+    const actual = Number(alumno?.es_cobrador ?? 0) === 1 ? 1 : 0;
+    const nuevo = actual === 1 ? 0 : 1;
+    setAlumnoCobrador(alumno);
+    setNuevoValorCobrador(nuevo);
+    setMostrarModalCobrador(true);
+  }, []);
+
+  // ✅ NUEVO: confirmar cambio en backend + update local
+  const confirmarToggleCobrador = useCallback(async () => {
+    const a = alumnoCobrador;
+    if (!a?.id_alumno) {
+      setMostrarModalCobrador(false);
+      setAlumnoCobrador(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BASE_URL}/api.php?action=toggle_cobrador`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_alumno: a.id_alumno, valor: nuevoValorCobrador }),
+      });
+      const data = await res.json();
+
+      if (!data?.exito) {
+        mostrarToast(data?.mensaje || 'No se pudo actualizar cobrador', 'error');
+        return;
+      }
+
+      const nuevo = Number(data.es_cobrador ?? nuevoValorCobrador);
+
+      setAlumnos((prev) => prev.map(x => x.id_alumno === a.id_alumno ? { ...x, es_cobrador: nuevo } : x));
+      setAlumnosDB((prev) => prev.map(x => x.id_alumno === a.id_alumno ? { ...x, es_cobrador: nuevo } : x));
+
+      mostrarToast(nuevo === 1 ? 'Marcado como COBRADOR' : 'Quitado de COBRADOR', 'exito');
+    } catch (e) {
+      mostrarToast('Error de red al actualizar cobrador', 'error');
+    } finally {
+      setMostrarModalCobrador(false);
+      setAlumnoCobrador(null);
+    }
+  }, [alumnoCobrador, nuevoValorCobrador, mostrarToast]);
+
   const Row = React.memo(({ index, style, data }) => {
     const alumno = data[index];
     const esFilaPar = index % 2 === 0;
     const navigateRow = useNavigate();
     const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
     const preMask = preCascada && index < MAX_CASCADE_ITEMS;
+
+    const esCobrador = Number(alumno?.es_cobrador ?? 0) === 1;
 
     return (
       <div
@@ -701,7 +782,14 @@ const Alumnos = () => {
       >
         <div className="alu-column alu-column-nombre" title={combinarNombre(alumno)}>
           {combinarNombre(alumno)}
+          {esCobrador ? (
+            <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.85 }}>
+              <FaCheckCircle style={{ marginRight: 6 }} />
+              COBRADOR
+            </span>
+          ) : null}
         </div>
+
         <div className="alu-column alu-column-dni" title={alumno.num_documento ?? alumno.dni}>
           {alumno.num_documento ?? alumno.dni}
         </div>
@@ -717,10 +805,11 @@ const Alumnos = () => {
         <div className="alu-column alu-column-division" title={alumno.division_nombre}>
           {alumno.division_nombre}
         </div>
+
         <div className="alu-column alu-icons-column">
           {alumnoSeleccionado?.id_alumno === alumno.id_alumno && (
             <div className="alu-icons-container">
-              {/* SIEMPRE mostrar INFO */}
+              {/* INFO */}
               <button
                 className="alu-iconchip is-info"
                 title="Ver información"
@@ -733,7 +822,22 @@ const Alumnos = () => {
                 <FaInfoCircle />
               </button>
 
-              {/* SOLO Admin: Editar / Eliminar / Dar de baja */}
+              {/* ✅ NUEVO: COBRADOR (admin) */}
+              {!isVista && (
+                <button
+                  className={`alu-iconchip ${esCobrador ? 'is-success' : 'is-warning'}`}
+                  title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    abrirModalCobrador(alumno);
+                  }}
+                  aria-label="Cobrador"
+                >
+                  <FaMoneyBillWave />
+                </button>
+              )}
+
+              {/* Admin: editar / eliminar / baja */}
               {!isVista && (
                 <>
                   <button
@@ -782,10 +886,7 @@ const Alumnos = () => {
     );
   });
 
-  /* ================================
-     Render
-  ================================= */
-  const hayChips = !!(busqueda || divisionSeleccionada || anioSeleccionado !== null || categoriaSeleccionada);
+  const hayChips = !!(busqueda || divisionSeleccionada || anioSeleccionado !== null || categoriaSeleccionada || cobradorSeleccionado);
 
   return (
     <div className="alu-alumno-container">
@@ -799,11 +900,9 @@ const Alumnos = () => {
           />
         )}
 
-        {/* Header superior */}
         <div className="alu-front-row-alu">
           <span className="alu-alumno-title">Gestión de Alumnos</span>
 
-          {/* Búsqueda */}
           <div className="alu-search-input-container">
             <input
               type="text"
@@ -821,14 +920,12 @@ const Alumnos = () => {
             </button>
           </div>
 
-          {/* Filtros */}
           <div className="alu-filtros-container" ref={filtrosRef}>
             <button
               className="alu-filtros-button"
               onClick={() => {
                 setMostrarFiltros((prev) => {
                   const next = !prev;
-                  if (next) setOpenSecciones((s) => ({ ...s, division: false }));
                   return next;
                 });
               }}
@@ -841,6 +938,7 @@ const Alumnos = () => {
 
             {mostrarFiltros && (
               <div className="alu-filtros-menu" role="menu">
+
                 {/* AÑO */}
                 <div className="alu-filtros-group">
                   <button
@@ -901,7 +999,7 @@ const Alumnos = () => {
                   </div>
                 </div>
 
-                {/* CATEGORÍA (NUEVO) */}
+                {/* CATEGORÍA */}
                 <div className="alu-filtros-group">
                   <button
                     type="button"
@@ -933,6 +1031,39 @@ const Alumnos = () => {
                   </div>
                 </div>
 
+                {/* ✅ NUEVO: COBRADOR */}
+                <div className="alu-filtros-group">
+                  <button
+                    type="button"
+                    className={`alu-filtros-group-header ${openSecciones.cobrador ? 'is-open' : ''}`}
+                    onClick={() => setOpenSecciones((s) => ({ ...s, cobrador: !s.cobrador }))}
+                    aria-expanded={openSecciones.cobrador}
+                  >
+                    <span className="alu-filtros-group-title">Filtrar por cobrador</span>
+                    <FaChevronDown className="alu-accordion-caret" />
+                  </button>
+
+                  <div className={`alu-filtros-group-body ${openSecciones.cobrador ? 'is-open' : 'is-collapsed'}`}>
+                    <div className="alu-alfabeto-filtros">
+                      <button
+                        className={`alu-letra-filtro ${filtros.cobradorSeleccionado === '1' ? 'alu-active' : ''}`}
+                        onClick={() => handleFiltrarCobrador(true)}
+                        title="Solo alumnos marcados como cobrador"
+                      >
+                        SOLO COBRADOR
+                      </button>
+
+                      <button
+                        className={`alu-letra-filtro ${filtros.cobradorSeleccionado === '' ? 'alu-active' : ''}`}
+                        onClick={() => handleFiltrarCobrador(false)}
+                        title="Quitar filtro cobrador"
+                      >
+                        TODOS
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Mostrar Todos */}
                 <div
                   className="alu-filtros-menu-item alu-mostrar-todas"
@@ -949,10 +1080,8 @@ const Alumnos = () => {
           </div>
         </div>
 
-        {/* CONTADOR + CHIPS + LISTADO */}
         <div className="alu-alumnos-list">
           <div className="alu-contenedor-list-items">
-            {/* Contador */}
             <div className="alu-left-inline">
               <div className="alu-contador-container">
                 <span className="alu-alumnos-desktop">
@@ -964,7 +1093,6 @@ const Alumnos = () => {
                 <FaUsers className="alu-icono-alumno" />
               </div>
 
-              {/* Chips */}
               {hayChips && (
                 <div className="alu-chips-container">
                   {busqueda && (
@@ -973,14 +1101,7 @@ const Alumnos = () => {
                       <span className="alu-chip-mini-text alu-alumnos-mobile">
                         {busqueda.length > 3 ? `${busqueda.substring(0, 3)}...` : busqueda}
                       </span>
-                      <button
-                        className="alu-chip-mini-close"
-                        onClick={quitarBusqueda}
-                        aria-label="Quitar filtro"
-                        title="Quitar este filtro"
-                      >
-                        ×
-                      </button>
+                      <button className="alu-chip-mini-close" onClick={quitarBusqueda} aria-label="Quitar filtro">×</button>
                     </div>
                   )}
 
@@ -988,14 +1109,7 @@ const Alumnos = () => {
                     <div className="alu-chip-mini" title="Filtro activo">
                       <span className="alu-chip-mini-text alu-alumnos-desktop">División: {divisionSeleccionada}</span>
                       <span className="alu-chip-mini-text alu-alumnos-mobile">{divisionSeleccionada}</span>
-                      <button
-                        className="alu-chip-mini-close"
-                        onClick={quitarDivision}
-                        aria-label="Quitar filtro"
-                        title="Quitar este filtro"
-                      >
-                        ×
-                      </button>
+                      <button className="alu-chip-mini-close" onClick={quitarDivision} aria-label="Quitar filtro">×</button>
                     </div>
                   )}
 
@@ -1003,14 +1117,7 @@ const Alumnos = () => {
                     <div className="alu-chip-mini" title="Filtro activo">
                       <span className="alu-chip-mini-text alu-alumnos-desktop">Año: {anioSeleccionado}</span>
                       <span className="alu-chip-mini-text alu-alumnos-mobile">{anioSeleccionado}</span>
-                      <button
-                        className="alu-chip-mini-close"
-                        onClick={quitarAnio}
-                        aria-label="Quitar filtro"
-                        title="Quitar este filtro"
-                      >
-                        ×
-                      </button>
+                      <button className="alu-chip-mini-close" onClick={quitarAnio} aria-label="Quitar filtro">×</button>
                     </div>
                   )}
 
@@ -1018,22 +1125,19 @@ const Alumnos = () => {
                     <div className="alu-chip-mini" title="Filtro activo">
                       <span className="alu-chip-mini-text alu-alumnos-desktop">Categoría: {categoriaSeleccionada}</span>
                       <span className="alu-chip-mini-text alu-alumnos-mobile">{categoriaSeleccionada}</span>
-                      <button
-                        className="alu-chip-mini-close"
-                        onClick={quitarCategoria}
-                        aria-label="Quitar filtro"
-                        title="Quitar este filtro"
-                      >
-                        ×
-                      </button>
+                      <button className="alu-chip-mini-close" onClick={quitarCategoria} aria-label="Quitar filtro">×</button>
                     </div>
                   )}
 
-                  <button
-                    className="alu-chip-mini alu-chip-clear-all"
-                    onClick={limpiarTodosLosChips}
-                    title="Quitar todos los filtros"
-                  >
+                  {cobradorSeleccionado === '1' && (
+                    <div className="alu-chip-mini" title="Filtro activo">
+                      <span className="alu-chip-mini-text alu-alumnos-desktop">Cobrador: SI</span>
+                      <span className="alu-chip-mini-text alu-alumnos-mobile">COBRADOR</span>
+                      <button className="alu-chip-mini-close" onClick={quitarCobrador} aria-label="Quitar filtro">×</button>
+                    </div>
+                  )}
+
+                  <button className="alu-chip-mini alu-chip-clear-all" onClick={limpiarTodosLosChips} title="Quitar todos los filtros">
                     Limpiar
                   </button>
                 </div>
@@ -1041,7 +1145,7 @@ const Alumnos = () => {
             </div>
           </div>
 
-          {/* TABLA (solo desktop) */}
+          {/* TABLA (desktop) */}
           {!isMobile && (
             <div className="alu-box-table">
               <div className="alu-header">
@@ -1103,13 +1207,9 @@ const Alumnos = () => {
             </div>
           )}
 
-          {/* TARJETAS (solo mobile) */}
+          {/* MOBILE */}
           {isMobile && (
-            <div
-              className={`alu-cards-wrapper ${
-                animacionActiva && alumnosFiltrados.length <= MAX_CASCADE_ITEMS ? 'alu-cascade-animation' : ''
-              }`}
-            >
+            <div className={`alu-cards-wrapper ${animacionActiva && alumnosFiltrados.length <= MAX_CASCADE_ITEMS ? 'alu-cascade-animation' : ''}`}>
               {!hayFiltros && filtroActivo !== 'todos' ? (
                 <div className="alu-no-data-message alu-no-data-mobile">
                   <div className="alu-message-content">
@@ -1141,6 +1241,8 @@ const Alumnos = () => {
                 alumnosFiltrados.map((alumno, index) => {
                   const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
                   const preMask = preCascada && index < MAX_CASCADE_ITEMS;
+                  const esCobrador = Number(alumno?.es_cobrador ?? 0) === 1;
+
                   return (
                     <div
                       key={alumno.id_alumno || `card-${index}`}
@@ -1153,7 +1255,10 @@ const Alumnos = () => {
                       onClick={() => manejarSeleccion(alumno)}
                     >
                       <div className="alu-card-header">
-                        <h3 className="alu-card-title">{combinarNombre(alumno)}</h3>
+                        <h3 className="alu-card-title">
+                          {combinarNombre(alumno)}
+                          {esCobrador ? <span style={{ marginLeft: 10, fontSize: 12, opacity: 0.85 }}>COBRADOR</span> : null}
+                        </h3>
                       </div>
 
                       <div className="alu-card-body">
@@ -1180,7 +1285,6 @@ const Alumnos = () => {
                       </div>
 
                       <div className="alu-card-actions">
-                        {/* SIEMPRE Info */}
                         <button
                           className="alu-action-btn alu-iconchip is-info"
                           title="Información"
@@ -1193,9 +1297,20 @@ const Alumnos = () => {
                           <FaInfoCircle />
                         </button>
 
-                        {/* SOLO Admin: Editar / Eliminar / Dar de baja */}
                         {!isVista && (
                           <>
+                            <button
+                              className={`alu-action-btn alu-iconchip ${esCobrador ? 'is-success' : 'is-warning'}`}
+                              title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                abrirModalCobrador(alumno);
+                              }}
+                              aria-label="Cobrador"
+                            >
+                              <FaMoneyBillWave />
+                            </button>
+
                             <button
                               className="alu-action-btn alu-iconchip is-edit"
                               title="Editar"
@@ -1242,7 +1357,7 @@ const Alumnos = () => {
           )}
         </div>
 
-        {/* BOTONERA INFERIOR */}
+        {/* BOTONERA */}
         <div className="alu-down-container">
           <button
             className="alu-alumno-button alu-hover-effect alu-volver-atras"
@@ -1252,6 +1367,7 @@ const Alumnos = () => {
                 divisionSeleccionada: '',
                 anioSeleccionado: null,
                 categoriaSeleccionada: '',
+                cobradorSeleccionado: '',
                 filtroActivo: null,
               });
               localStorage.removeItem('filtros_alumnos');
@@ -1265,7 +1381,6 @@ const Alumnos = () => {
           </button>
 
           <div className="alu-botones-container">
-            {/* SOLO Admin: Agregar Alumno */}
             {!isVista && (
               <button
                 className="alu-alumno-button alu-hover-effect"
@@ -1278,7 +1393,6 @@ const Alumnos = () => {
               </button>
             )}
 
-            {/* Exportar Excel: bloqueado si no hay filas visibles */}
             <button
               className="alu-alumno-button alu-hover-effect"
               onClick={exportarExcel}
@@ -1290,7 +1404,6 @@ const Alumnos = () => {
               <p>Exportar a Excel</p>
             </button>
 
-            {/* ➕ Botón Familias */}
             <button
               className="alu-alumno-button alu-hover-effect alu-btn-familias"
               onClick={() => navigate('/familias')}
@@ -1300,7 +1413,6 @@ const Alumnos = () => {
               <FaUsers className="alu-alumno-icon-button" />
               <p>Familias</p>
             </button>
-
 
             <button
               className="alu-alumno-button alu-hover-effect alu-btn-baja-nav"
@@ -1349,6 +1461,21 @@ const Alumnos = () => {
             setAlumnoDarBaja(null);
           }}
           onDarBaja={darDeBajaAlumno}
+        />,
+        document.body
+      )}
+
+      {/* ✅ NUEVO */}
+      {ReactDOM.createPortal(
+        <ModalCobradorAlumno
+          mostrar={mostrarModalCobrador}
+          alumno={alumnoCobrador}
+          nuevoValor={nuevoValorCobrador}
+          onClose={() => {
+            setMostrarModalCobrador(false);
+            setAlumnoCobrador(null);
+          }}
+          onConfirm={confirmarToggleCobrador}
         />,
         document.body
       )}

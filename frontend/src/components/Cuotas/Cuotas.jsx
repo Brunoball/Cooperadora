@@ -1,4 +1,6 @@
+// ✅ REEMPLAZAR COMPLETO
 // src/components/Cuotas/Cuotas.jsx
+
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FixedSizeList as List } from 'react-window';
@@ -59,6 +61,9 @@ const Cuotas = () => {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
   const [divisionSeleccionada, setDivisionSeleccionada] = useState('');
   const [mesSeleccionado, setMesSeleccionado] = useState('');
+
+  // ✅ NUEVO: filtro cobrador
+  const [soloCobrador, setSoloCobrador] = useState(false);
 
   // Listas
   const [aniosPago, setAniosPago] = useState([]);
@@ -126,8 +131,10 @@ const Cuotas = () => {
   const getNombreCategoria = (id) => (categorias.find(c => String(c.id) === String(id))?.nombre) || '';
   const getNombreMes = (id) => (meses.find(m => String(m.id) === String(id))?.nombre) || id;
 
-  // ✅ regla UI: imprimir SOLO en pestaña "pagado"
-  const canPrint = estadoPagoSeleccionado === 'pagado';
+  // ✅ Regla:
+  // - imprimir normal SOLO en pagados
+  // - PERO si "Solo cobrador" está activo, habilitamos imprimir también en deudores
+  const canPrint = (estadoPagoSeleccionado === 'pagado') || (soloCobrador && estadoPagoSeleccionado === 'deudor');
 
   /* =========================================================
      ✅ FIX: no cambiar el año seleccionado automáticamente
@@ -169,6 +176,9 @@ const Cuotas = () => {
       if (mesSeleccionado) params.set('id_mes', String(mesSeleccionado));
       if (anioPagoSeleccionado) params.set('anio', String(anioPagoSeleccionado));
 
+      // ✅ NUEVO: filtro cobrador al backend
+      if (soloCobrador) params.set('solo_cobrador', '1');
+
       if (abortRef.current.cuotas) abortRef.current.cuotas.abort();
       if (abortRef.current.listas) abortRef.current.listas.abort();
       abortRef.current.cuotas = new AbortController();
@@ -200,17 +210,16 @@ const Cuotas = () => {
     } finally {
       setLoading(false);
     }
-  }, [mesSeleccionado, anioPagoSeleccionado]);
+  }, [mesSeleccionado, anioPagoSeleccionado, soloCobrador]);
 
   // Cargar años de pago y luego datos
   useEffect(() => { fetchAniosPago(); }, [fetchAniosPago]);
-  useEffect(() => { obtenerCuotasYListas(); /* eslint-disable-next-line */ }, [mesSeleccionado, anioPagoSeleccionado]);
+  useEffect(() => { obtenerCuotasYListas(); /* eslint-disable-next-line */ }, [mesSeleccionado, anioPagoSeleccionado, soloCobrador]);
 
   // ===== Patch optimista tras pagar/condonar/eliminar =====
   const patchCuotasAfterAccion = useCallback(({ idAlumno, periodos, estado }) => {
     if (!idAlumno || !Array.isArray(periodos) || periodos.length === 0) return;
 
-    // ✅ FIX CLAVE: normalizar periodos a números (MATRÍCULA suele venir como "14")
     const periodosNum = periodos
       .map(p => Number(String(p).trim()))
       .filter(n => Number.isFinite(n));
@@ -314,11 +323,13 @@ const Cuotas = () => {
     triggerCascade();
   }, [triggerCascade]);
 
-  // Imprimir TODOS: separar internos/externos (✅ SOLO en pagados)
+  // Imprimir TODOS: separar internos/externos
   const handleImprimirTodos = async () => {
     if (!canPrint) {
       setToastTipo('advertencia');
-      setToastMensaje('La impresión está disponible únicamente en la pestaña de Pagados.');
+      setToastMensaje(soloCobrador
+        ? 'Activá la pestaña "Deudores" para imprimir en modo cobrador.'
+        : 'La impresión está disponible únicamente en la pestaña de Pagados.');
       setToastVisible(true);
       return;
     }
@@ -373,17 +384,19 @@ const Cuotas = () => {
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
 
-  // Imprimir UNO → ModalMesCuotas (✅ SOLO en pagados)
+  // Imprimir UNO → ModalMesCuotas
   const handlePrintClick = useCallback((item) => {
     if (!canPrint) {
       setToastTipo('advertencia');
-      setToastMensaje('La impresión está disponible únicamente en la pestaña de Pagados.');
+      setToastMensaje(soloCobrador
+        ? 'Activá la pestaña "Deudores" para imprimir en modo cobrador.'
+        : 'La impresión está disponible únicamente en la pestaña de Pagados.');
       setToastVisible(true);
       return;
     }
     setSocioParaImprimir(item);
     setMostrarModalMesCuotas(true);
-  }, [canPrint]);
+  }, [canPrint, soloCobrador]);
 
   const handleExportExcel = useCallback(() => {
     if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione mes'); setToastVisible(true); return; }
@@ -398,6 +411,14 @@ const Cuotas = () => {
   const onChangeDivision   = (e) => { setDivisionSeleccionada(e.target.value); triggerCascade(); };
   const onChangeAnioLect   = (e) => { setAnioLectivoSeleccionado(e.target.value); triggerCascade(); };
   const onChangeBusqueda   = (e) => { setBusqueda(e.target.value); triggerCascade(); };
+
+  // ✅ toggle cobrador
+  const onToggleSoloCobrador = () => {
+    setSoloCobrador(prev => !prev);
+    triggerCascade();
+    // Si activo cobrador, lo lógico es ir a deudores (para cobrar)
+    setEstadoPagoSeleccionado(prev => (prev === 'pagado' ? 'deudor' : prev));
+  };
 
   const Row = ({ index, style, data }) => {
     const cuota = data[index];
@@ -414,7 +435,6 @@ const Cuotas = () => {
 
     const actionButtons = (
       <div className="gcuotas-actions-inline">
-        {/* ✅ Mostrar botón imprimir SOLO en pagados */}
         {canPrint && (
           <button
             className="gcuotas-action-button gcuotas-print-button"
@@ -492,7 +512,6 @@ const Cuotas = () => {
           </div>
 
           <div className="gcuotas-mobile-actions">
-            {/* ✅ Mostrar botón imprimir SOLO en pagados */}
             {canPrint && (
               <button
                 className="gcuotas-mobile-print-button"
@@ -599,12 +618,10 @@ const Cuotas = () => {
           onClose={async (ok, payload) => {
             setMostrarModalPagos(false);
 
-            // ✅ 1) patch instantáneo (ahora robusto para periodos string/number)
             if (ok && payload?.idAlumno && Array.isArray(payload?.periodos) && payload?.estado) {
               patchCuotasAfterAccion(payload);
             }
 
-            // ✅ 2) resync garantizado SIEMPRE
             await resyncAll();
           }}
         />
@@ -655,7 +672,6 @@ const Cuotas = () => {
         />
       )}
 
-      {/* ✅ Modal de impresión SOLO si canPrint */}
       {canPrint && mostrarModalMesCuotas && socioParaImprimir && (
         <ModalMesCuotas
           socio={socioParaImprimir}
@@ -685,6 +701,26 @@ const Cuotas = () => {
               </div>
 
               <div className="gcuotas-select-container">
+
+                {/* ✅ NUEVO: SOLO COBRADOR */}
+                <div className="gcuotas-input-row gcuotas-input-row--single">
+                  <div className="gcuotas-input-group">
+                    <label className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> Cobrador
+                    </label>
+                    <button
+                      type="button"
+                      onClick={onToggleSoloCobrador}
+                      className={`gcuotas-button ${soloCobrador ? 'gcuotas-button-print-all' : 'gcuotas-button-export'}`}
+                      disabled={loading}
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      title="Filtrar alumnos con es_cobrador=1"
+                    >
+                      {soloCobrador ? 'Solo cobrador: ACTIVADO' : 'Solo cobrador: desactivado'}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">
                     <label htmlFor="anioPago" className="gcuotas-input-label">
@@ -845,7 +881,6 @@ const Cuotas = () => {
                 <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
               </button>
 
-              {/* ✅ Botón imprimir: SOLO habilitado en "pagado" */}
               <button
                 className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
                 onClick={handleImprimirTodos}
@@ -859,7 +894,7 @@ const Cuotas = () => {
                 }
                 title={
                   !canPrint
-                    ? 'Disponible solo en Pagados'
+                    ? (soloCobrador ? 'Disponible en Deudores (modo cobrador)' : 'Disponible solo en Pagados')
                     : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo')
                 }
               >
@@ -967,7 +1002,6 @@ const Cuotas = () => {
             <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
           </button>
 
-          {/* ✅ Botón imprimir: SOLO habilitado en "pagado" */}
           <button
             className="gcuotas-mbar-btn mbar-imprimir"
             onClick={handleImprimirTodos}
@@ -981,7 +1015,7 @@ const Cuotas = () => {
             }
             title={
               !canPrint
-                ? 'Disponible solo en Pagados'
+                ? (soloCobrador ? 'Disponible en Deudores (modo cobrador)' : 'Disponible solo en Pagados')
                 : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo')
             }
           >
