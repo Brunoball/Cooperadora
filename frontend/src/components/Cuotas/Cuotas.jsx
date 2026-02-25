@@ -210,14 +210,26 @@ const Cuotas = () => {
   const patchCuotasAfterAccion = useCallback(({ idAlumno, periodos, estado }) => {
     if (!idAlumno || !Array.isArray(periodos) || periodos.length === 0) return;
 
+    // ✅ FIX CLAVE: normalizar periodos a números (MATRÍCULA suele venir como "14")
+    const periodosNum = periodos
+      .map(p => Number(String(p).trim()))
+      .filter(n => Number.isFinite(n));
+
+    if (periodosNum.length === 0) return;
+
+    const estadoNorm = String(estado || '').toLowerCase().trim();
+    if (!estadoNorm) return;
+
     setCuotas(prev =>
       prev.map((c) => {
         const sameAlumno = String(getIdAlumnoFromCuota(c)) === String(idAlumno);
-        const mes = Number(getIdMesFromCuota(c));
         if (!sameAlumno) return c;
 
-        if (periodos.includes(mes)) {
-          return { ...c, estado_pago: estado };
+        const mes = Number(String(getIdMesFromCuota(c)).trim());
+        if (!Number.isFinite(mes)) return c;
+
+        if (periodosNum.includes(mes)) {
+          return { ...c, estado_pago: estadoNorm };
         }
         return c;
       })
@@ -240,8 +252,10 @@ const Cuotas = () => {
     !divisionSeleccionada || String(c?.id_division ?? '') === String(divisionSeleccionada);
   const coincideMes = (c) =>
     !mesSeleccionado || String(getIdMesFromCuota(c)) === String(mesSeleccionado);
+
   const coincideEstadoPago = (c) =>
-    !estadoPagoSeleccionado || String(c?.estado_pago ?? '').toLowerCase() === estadoPagoSeleccionado;
+    !estadoPagoSeleccionado ||
+    String(c?.estado_pago ?? '').toLowerCase().trim() === String(estadoPagoSeleccionado).toLowerCase().trim();
 
   // Año lectivo
   const coincideAnioLectivo = (c) => {
@@ -288,7 +302,7 @@ const Cuotas = () => {
       coincideCategoria(c) &&
       coincideDivision(c) &&
       coincideAnioLectivo(c) &&
-      (String(c?.estado_pago ?? '').toLowerCase() === estadoPago)
+      (String(c?.estado_pago ?? '').toLowerCase().trim() === String(estadoPago).toLowerCase().trim())
     ).length;
 
   const cantidadFiltradaDeudores   = useMemo(() => mesSeleccionado ? contarConFiltros('deudor')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
@@ -562,9 +576,11 @@ const Cuotas = () => {
 
   // ✅ RESYNC FUERTE (ordenado y esperado)
   const resyncAll = useCallback(async () => {
+    setSelectedRow(null);
     await fetchAniosPago();
     await obtenerCuotasYListas();
-  }, [fetchAniosPago, obtenerCuotasYListas]);
+    triggerCascade();
+  }, [fetchAniosPago, obtenerCuotasYListas, triggerCascade]);
 
   return (
     <div className={`gcuotas-container gcuotas--table-fullwidth ${cascadeActive ? 'gcuotas-cascading' : ''}`}>
@@ -583,7 +599,7 @@ const Cuotas = () => {
           onClose={async (ok, payload) => {
             setMostrarModalPagos(false);
 
-            // ✅ 1) patch instantáneo
+            // ✅ 1) patch instantáneo (ahora robusto para periodos string/number)
             if (ok && payload?.idAlumno && Array.isArray(payload?.periodos) && payload?.estado) {
               patchCuotasAfterAccion(payload);
             }

@@ -1631,6 +1631,13 @@ const ModalPagos = ({ socio, onClose }) => {
                 <span className="switch-label matricula-label">
                   <strong>MATRÍCULA</strong>
 
+                  {/* Mostrar estado pagado/condonado si existe */}
+                  {bloqueadoMatricula && (
+                    <span className={`chip ${estadoMatricula === 'condonado' ? 'chip-muted' : 'chip-success'}`} style={{marginLeft:6}}>
+                      {capitalizar(estadoMatricula)}
+                    </span>
+                  )}
+
                   {!bloqueadoMatricula && !matriculaEditando && !editandoMatriculaManual && (
                     <>
                       <span className="matricula-monto">

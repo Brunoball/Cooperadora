@@ -15,16 +15,17 @@ import Toast from "../../Global/Toast";
 import "./ModalMesCuotas.css";
 
 /**
- * ✅ UI FIX (pedido):
- * - La grilla del medio muestra SOLO ENERO..DICIEMBRE (1..12).
- * - EXTRAS arriba: MATRÍCULA + CONTADO ANUAL
- * - Si se marca CONTADO ANUAL => aparecen 1ª mitad y 2ª mitad (arriba), pero NO en la grilla.
- * - EXTRAS cuando aparece 1ª/2ª mitad: 2 arriba y 2 abajo (grid 2 columnas).
- * - Dejar SOLO el resumen de abajo (Período en texto) (✅ total eliminado del resumen).
- * - En el footer: el badge muestra Período + Total juntos (badge grande pero controlado).
+ * ✅ FIXES (pedido):
+ * 1) "4 meses + matrícula" ya NO se muestra como "5 meses"
+ *    - periodos => SOLO meses 1..12
+ *    - extras_periodos => matrícula/anual por separado
+ *    - cantidad_meses => SOLO meses reales
+ *
+ * 2) Al imprimir / PDF NO se cierra el modal automáticamente.
+ *    - Se cierra solo con la X o Cancelar
  */
 
-// ====== IDs “extras” (mismos que ModalPagos) ======
+// ====== IDs “extras” ======
 const ID_CONTADO_ANUAL = 13;
 const ID_MATRICULA = 14;
 const ID_CONTADO_ANUAL_H1 = 15; // Mar–Jul
@@ -104,48 +105,41 @@ function leerMontoDetalle(d) {
   return null;
 }
 
-/* ✅ Helper: acortar el texto del período para el badge (no infinito) */
-function buildPeriodoCorto(periodos, mapMesNombre, anioTrabajo) {
-  const ids = (periodos || []).map(Number).filter(Boolean);
-  if (!ids.length) return "—";
-
-  const meses = ids.filter((x) => x >= 1 && x <= 12);
-  const extras = ids.filter((x) => x < 1 || x > 12);
-
+// ✅ Badge corto: NO contar extras como “meses”
+function buildPeriodoCorto(mesesSolo, extras, mapMesNombre, anioTrabajo) {
+  const meses = (mesesSolo || []).map(Number).filter((x) => x >= 1 && x <= 12);
   meses.sort((a, b) => a - b);
 
-  const labels = [];
-
-  // extras primero para que sea claro
-  for (const id of extras) {
-    if (id === ID_MATRICULA) labels.push("Matrícula");
-    else if (id === ID_CONTADO_ANUAL) labels.push("Anual");
-    else if (id === ID_CONTADO_ANUAL_H1) labels.push("Anual 1ª");
-    else if (id === ID_CONTADO_ANUAL_H2) labels.push("Anual 2ª");
-    else labels.push(String(id));
+  const extrasLabels = [];
+  for (const id of (extras || [])) {
+    if (id === ID_MATRICULA) extrasLabels.push("Matrícula");
+    else if (id === ID_CONTADO_ANUAL) extrasLabels.push("Anual");
+    else if (id === ID_CONTADO_ANUAL_H1) extrasLabels.push("Anual 1ª");
+    else if (id === ID_CONTADO_ANUAL_H2) extrasLabels.push("Anual 2ª");
+    else extrasLabels.push(String(id));
   }
 
+  let mesesLabel = "";
   if (meses.length) {
     const first = meses[0];
     const last = meses[meses.length - 1];
-
-    // si es un rango continuo tipo Mar–Jun, mostramos "Mar–Jun"
     const esConsecutivo = meses.every((m, i) => i === 0 || m === meses[i - 1] + 1);
 
-    if (meses.length === 1) {
-      labels.push(mapMesNombre.get(first) || String(first));
-    } else if (esConsecutivo) {
+    if (meses.length === 1) mesesLabel = mapMesNombre.get(first) || String(first);
+    else if (esConsecutivo) {
       const a = mapMesNombre.get(first) || String(first);
       const b = mapMesNombre.get(last) || String(last);
-      labels.push(`${a}–${b}`);
+      mesesLabel = `${a}–${b}`;
     } else {
-      // no consecutivo -> mostramos "3 meses" para no llenar
-      labels.push(`${meses.length} meses`);
+      mesesLabel = `${meses.length} meses`;
     }
   }
 
-  const txt = labels.join(" · ");
-  return `${txt} ${anioTrabajo}`;
+  const parts = [];
+  if (extrasLabels.length) parts.push(extrasLabels.join(" · "));
+  if (mesesLabel) parts.push(mesesLabel);
+
+  return `${parts.length ? parts.join(" + ") : "—"} ${anioTrabajo}`;
 }
 
 const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = undefined, onClose }) => {
@@ -171,7 +165,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     return Number(currentYear);
   }, []);
 
-  // ✅ FIX CLAVE: la grilla solo debe tener 1..12
+  // ✅ grilla: solo meses 1..12
   const listaMeses = useMemo(() => {
     const arr = Array.isArray(meses) && meses.length ? meses : FALLBACK_MESES;
 
@@ -258,7 +252,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     setSelMatricula(false);
   }, [anioTrabajo]);
 
-  // ✅ Limpieza de mitades cuando se desmarca CONTADO ANUAL
+  // ✅ Si se desmarca anual => reset mitades
   useEffect(() => {
     if (!selAnual) {
       setSelAnualH1(false);
@@ -483,22 +477,34 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     };
   }, [selAnual, selAnualH1, selAnualH2, montoAnualConDescuento]);
 
-  const periodosSeleccionados = useMemo(() => {
+  // ✅ SOLO meses (para que NO cuente matrícula como mes)
+  const mesesSeleccionadosSolo = useMemo(() => {
     const mesesSel = [...seleccionMeses].map(Number).filter((x) => x >= 1 && x <= 12);
     mesesSel.sort((a, b) => a - b);
+    return mesesSel;
+  }, [seleccionMeses]);
 
+  // ✅ Extras por separado
+  const extrasSeleccionados = useMemo(() => {
     const extras = [];
     if (selMatricula) extras.push(ID_MATRICULA);
     if (selAnual && anualConfig?.idPeriodo) extras.push(anualConfig.idPeriodo);
+    return extras;
+  }, [selMatricula, selAnual, anualConfig?.idPeriodo]);
 
-    return [...mesesSel, ...extras];
-  }, [seleccionMeses, selMatricula, selAnual, anualConfig?.idPeriodo]);
+  // ✅ Completo (por si lo querés mostrar o usar para montos)
+  const periodosCompletos = useMemo(
+    () => [...mesesSeleccionadosSolo, ...extrasSeleccionados],
+    [mesesSeleccionadosSolo, extrasSeleccionados]
+  );
+
+  const cantidadMesesReales = mesesSeleccionadosSolo.length;
 
   const periodoTextoFinal = useMemo(() => {
-    if (periodosSeleccionados.length === 0) return "";
+    if (periodosCompletos.length === 0) return "";
 
     const labels = [];
-    for (const id of periodosSeleccionados) {
+    for (const id of periodosCompletos) {
       if (id === ID_MATRICULA) labels.push("MATRÍCULA");
       else if (id === ID_CONTADO_ANUAL) labels.push("CONTADO ANUAL");
       else if (id === ID_CONTADO_ANUAL_H1) labels.push("CONTADO ANUAL (1ª mitad)");
@@ -506,18 +512,17 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
       else labels.push((mapMesNombre.get(Number(id)) || String(id)).trim());
     }
     return `${labels.join(" / ")} ${anioTrabajo}`;
-  }, [periodosSeleccionados, anioTrabajo, mapMesNombre]);
+  }, [periodosCompletos, anioTrabajo, mapMesNombre]);
 
-  // ✅ Nuevo: versión corta para badge del footer
   const periodoTextoCorto = useMemo(
-    () => buildPeriodoCorto(periodosSeleccionados, mapMesNombre, anioTrabajo),
-    [periodosSeleccionados, mapMesNombre, anioTrabajo]
+    () => buildPeriodoCorto(mesesSeleccionadosSolo, extrasSeleccionados, mapMesNombre, anioTrabajo),
+    [mesesSeleccionadosSolo, extrasSeleccionados, mapMesNombre, anioTrabajo]
   );
 
   const montosPorPeriodo = useMemo(() => {
     const mp = {};
 
-    for (const id of periodosSeleccionados) {
+    for (const id of periodosCompletos) {
       const estado = String(periodosEstado[id] || "").toLowerCase();
       const real = montosReales?.[id];
 
@@ -542,7 +547,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
 
     return mp;
   }, [
-    periodosSeleccionados,
+    periodosCompletos,
     periodosEstado,
     montosReales,
     precioMensualConDescuento,
@@ -551,30 +556,56 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   ]);
 
   const total = useMemo(
-    () => periodosSeleccionados.reduce((acc, id) => acc + Number(montosPorPeriodo[id] || 0), 0),
-    [periodosSeleccionados, montosPorPeriodo]
+    () => periodosCompletos.reduce((acc, id) => acc + Number(montosPorPeriodo[id] || 0), 0),
+    [periodosCompletos, montosPorPeriodo]
   );
 
   const buildAlumnoParaImprimir = useCallback(() => {
-    const periodoCodigo = periodosSeleccionados[0] || 0;
+    // ✅ id_periodo: si hay meses, el primero; si no, el primer extra; si no, 0
+    const idPeriodoParaImpresion = mesesSeleccionadosSolo[0] ?? extrasSeleccionados[0] ?? 0;
 
     return {
       ...socio,
-      id_periodo: periodoCodigo,
-      periodos: periodosSeleccionados,
+
+      // ✅ IMPORTANTÍSIMO:
+      // periodos => SOLO meses (así periodos.length = cantidad real de meses)
+      periodos: [...mesesSeleccionadosSolo],
+
+      // ✅ extras separados (matrícula/anual)
+      extras_periodos: [...extrasSeleccionados],
+
+      // ✅ completo por si tu impresión lo necesita
+      periodos_completos: [...periodosCompletos],
+
+      // ✅ contador real de meses (sin extras)
+      cantidad_meses: cantidadMesesReales,
+
+      // Para compatibilidad con código existente:
+      id_periodo: idPeriodoParaImpresion,
       periodo_texto: periodoTextoFinal,
+
       precio_unitario: Math.max(0, Math.round(Number(precioMensualConDescuento || 0))),
       importe_total: total,
       precio_total: total,
+
       anio: anioTrabajo,
       categoria_nombre: nombreCategoria || "",
+
       montos_por_periodo: { ...montosPorPeriodo },
-      meta_descuento_hermanos: { familia: familyCount, categoria: nombreCategoria, porcentaje: porcDescHermanos },
+
+      meta_descuento_hermanos: {
+        familia: familyCount,
+        categoria: nombreCategoria,
+        porcentaje: porcDescHermanos,
+      },
       meta_estado_periodos: { ...periodosEstado },
     };
   }, [
     socio,
-    periodosSeleccionados,
+    mesesSeleccionadosSolo,
+    extrasSeleccionados,
+    periodosCompletos,
+    cantidadMesesReales,
     periodoTextoFinal,
     precioMensualConDescuento,
     total,
@@ -611,10 +642,16 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
         periodoTexto: alumnoParaImprimir.periodo_texto,
         importeTotal: total,
         precioUnitario: Number(precioMensualConDescuento || 0),
-        periodos: alumnoParaImprimir.periodos,
+
+        // ✅ le pasamos ambos por las dudas
+        periodos: alumnoParaImprimir.periodos, // solo meses
+        extras: alumnoParaImprimir.extras_periodos, // extras
+        periodosCompletos: alumnoParaImprimir.periodos_completos,
+
         montosPorPeriodo: alumnoParaImprimir.montos_por_periodo,
+        cantidadMeses: alumnoParaImprimir.cantidad_meses,
       });
-      showToast("exito", "PDF descargado correctamente");
+      showToast("exito", "PDF generado correctamente");
       return true;
     } catch (e) {
       console.error("Error al generar PDF:", e);
@@ -623,16 +660,18 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
     }
   };
 
+  // ✅ NO cerrar modal automáticamente
   const handleConfirmar = async () => {
-    if (periodosSeleccionados.length === 0) return;
+    if (periodosCompletos.length === 0) return;
     try {
       setCargando(true);
+
       if (modoSalida === "imprimir") {
         await abrirImpresion();
-        onClose?.();
+        showToast("exito", "Impresión preparada (el modal queda abierto)");
       } else {
         const ok = await descargarPDF();
-        if (ok) setTimeout(() => onClose?.(), 900);
+        if (ok) showToast("exito", "PDF generado (el modal queda abierto)");
       }
     } finally {
       setCargando(false);
@@ -659,7 +698,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
   };
 
   const deshabilitarConfirmar =
-    periodosSeleccionados.length === 0 || cargando || loadingAnios || aniosPago.length === 0;
+    periodosCompletos.length === 0 || cargando || loadingAnios || aniosPago.length === 0;
 
   return (
     <div className="modmes_overlay">
@@ -788,7 +827,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
               </div>
             </div>
 
-            {/* ✅ EXTRAS: 2 columnas, y si selAnual => 2x2 */}
+            {/* EXTRAS */}
             <div className="modmes_extras-wrap">
               <div className="modmes_extras-title">EXTRAS</div>
 
@@ -880,7 +919,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
               </div>
             </div>
 
-            {/* ✅ GRILLA SOLO MESES (1..12) */}
+            {/* MESES */}
             <div className="modmes_periodos-grid-container">
               <div className="modmes_periodos-grid">
                 {listaMeses.map((m) => {
@@ -888,7 +927,8 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                   const checked = seleccionMeses.includes(id);
                   const est = labelEstado(id);
 
-                  const montoMostrado = montosReales?.[id] !== undefined ? montosReales[id] : precioMensualConDescuento;
+                  const montoMostrado =
+                    montosReales?.[id] !== undefined ? montosReales[id] : precioMensualConDescuento;
 
                   return (
                     <label key={m.id} className={`modmes_periodo-card ${checked ? "modmes_seleccionado" : ""}`}>
@@ -907,18 +947,13 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                       <span className="modmes_periodo-label">
                         {m.nombre}
                         {est ? <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.8 }}>({est})</span> : null}
-                        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{formatearARS(montoMostrado)}</div>
+                        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>
+                          {formatearARS(montoMostrado)}
+                        </div>
                       </span>
                     </label>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* ✅ RESUMEN: SOLO PERÍODO (total eliminado) */}
-            <div className="modmes_resumen_simple">
-              <div className="modmes_resumen_linea">
-                <strong>Período:</strong> <span className="modmes_resumen_val">{periodoTextoFinal || "—"}</span>
               </div>
             </div>
           </div>
@@ -927,7 +962,6 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
         {/* Footer */}
         <div className="modmes_footer modmes_footer-sides">
           <div className="modmes_footer-left">
-            {/* ✅ Badge: Período + Total juntos, controlado */}
             <div className="modmes_total-badge modmes_total-badge--wide" title={periodoTextoFinal || ""}>
               <span className="modmes_badge_periodo">{periodoTextoCorto}</span>
               <span className="modmes_badge_sep">•</span>
@@ -956,7 +990,7 @@ const ModalMesCuotas = ({ socio, meses = [], anio, esExterno: esExternoProp = un
                   ? "Cargando años..."
                   : aniosPago.length === 0
                   ? "No hay años con pagos"
-                  : periodosSeleccionados.length === 0
+                  : periodosCompletos.length === 0
                   ? "Elegí al menos un período"
                   : ""
               }
