@@ -520,6 +520,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 
 /* Variantes de color */
 .alu-iconchip.is-info  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
+.alu-iconchip.is-cobrador  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
 .alu-iconchip.is-edit  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
 .alu-iconchip.is-delete{ --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
 .alu-iconchip.is-baja  { --chip-bg:#feecf0; --chip-border:#f8cfd6; --chip-icon:var(--blue-inst-primary); }
@@ -537,6 +538,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-iconchip.is-info:hover,
 .alu-iconchip.is-edit:hover,
 .alu-iconchip.is-delete:hover,
+.alu-iconchip.is-cobrador:hover,
 .alu-iconchip.is-baja:hover {
   background: var(--chip-icon);
   border-color: var(--chip-icon);
@@ -996,4 +998,11 @@ input:-webkit-autofill { background-color: transparent !important; }
   .alu-botones-container .alu-alumno-button.alu-btn-familias:hover {
     background: #4a148c;
   }
+}
+.Cobrador-btn{
+  grid-column: 1/ 4;
+
+}
+.TodosCobra-btn{
+  grid-column: 4/5;
 }

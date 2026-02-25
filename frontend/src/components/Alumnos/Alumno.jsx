@@ -825,7 +825,7 @@ const Alumnos = () => {
               {/* ✅ NUEVO: COBRADOR (admin) */}
               {!isVista && (
                 <button
-                  className={`alu-iconchip ${esCobrador ? 'is-success' : 'is-warning'}`}
+                  className={`alu-iconchip is-cobrador ${esCobrador ? 'is-success' : 'is-warning'}`}
                   title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1046,7 +1046,7 @@ const Alumnos = () => {
                   <div className={`alu-filtros-group-body ${openSecciones.cobrador ? 'is-open' : 'is-collapsed'}`}>
                     <div className="alu-alfabeto-filtros">
                       <button
-                        className={`alu-letra-filtro ${filtros.cobradorSeleccionado === '1' ? 'alu-active' : ''}`}
+                        className={`Cobrador-btn alu-letra-filtro ${filtros.cobradorSeleccionado === '1' ? 'alu-active' : ''}`}
                         onClick={() => handleFiltrarCobrador(true)}
                         title="Solo alumnos marcados como cobrador"
                       >
@@ -1054,7 +1054,7 @@ const Alumnos = () => {
                       </button>
 
                       <button
-                        className={`alu-letra-filtro ${filtros.cobradorSeleccionado === '' ? 'alu-active' : ''}`}
+                        className={`TodosCobra-btn alu-letra-filtro ${filtros.cobradorSeleccionado === '' ? 'alu-active' : ''}`}
                         onClick={() => handleFiltrarCobrador(false)}
                         title="Quitar filtro cobrador"
                       >

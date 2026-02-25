@@ -623,47 +623,53 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            {/* Año / Mes */}
-            <div className="ing-fieldrow">
-              <div className="ing-field">
-                <label htmlFor="anio">Año</label>
-                <select id="anio" value={anio} onChange={(e) => setAnio(e.target.value)}>
-                  <option value="ALL">TODOS</option>
-                  {anios.map((a) => (
-                    <option key={a} value={String(a)}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </div>
+{/* Año / Mes */}
+<div className="ing-fieldrow">
+  <div className={`ing-field fl ${anio !== "ALL" ? "has-value" : ""}`}>
+    <select
+      id="anio"
+      value={anio}
+      onChange={(e) => setAnio(e.target.value)}
+      aria-label="Año"
+    >
+      <option value="ALL">TODOS</option>
+      {anios.map((a) => (
+        <option key={a} value={String(a)}>
+          {a}
+        </option>
+      ))}
+    </select>
+    <label htmlFor="anio">Año</label>
+  </div>
 
-              <div className="ing-field">
-                <label htmlFor="mes">Mes</label>
-                <select
-                  id="mes"
-                  value={mes}
-                  onChange={(e) => setMes(e.target.value)}
-                  disabled={anio === "ALL"}
-                >
-                  <option value="ALL">TODOS</option>
-                  {MESES.map((m, i) => (
-                    <option key={m} value={String(i)}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+  <div className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${anio === "ALL" ? "is-disabled" : ""}`}>
+    <select
+      id="mes"
+      value={mes}
+      onChange={(e) => setMes(e.target.value)}
+      disabled={anio === "ALL"}
+      aria-label="Mes"
+    >
+      <option value="ALL">TODOS</option>
+      {MESES.map((m, i) => (
+        <option key={m} value={String(i)}>
+          {m}
+        </option>
+      ))}
+    </select>
+    <label htmlFor="mes">Mes</label>
+  </div>
+</div>
 
 {/* ✅ filtro especial (solo alumnos) */}
 {innerTab === "alumnos" && (
   <div className="ing-fieldrow">
-    <div className="ing-field ing-Especial">
-      <label htmlFor="especial">Especial</label>
+    <div className={`ing-field ing-Especial fl ${mesEspecial ? "has-value" : ""}`}>
       <select
         id="especial"
         value={mesEspecial}
         onChange={(e) => setMesEspecial(e.target.value)}
+        aria-label="Especial"
       >
         <option value="">TODOS</option>
         {mesesEspeciales.map((m) => (
@@ -672,10 +678,10 @@ export default function IngresosContable() {
           </option>
         ))}
       </select>
+      <label htmlFor="especial">Especial</label>
     </div>
   </div>
 )}
-
 
             {/* KPIs */}
             <div className="ing-kpi-cards">

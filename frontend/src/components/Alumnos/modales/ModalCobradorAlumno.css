@@ -1,71 +1,206 @@
-.mcob-overlay{
+/* ✅ REEMPLAZAR COMPLETO
+   src/components/Alumnos/ModalCobradorAlumno.css
+
+   Estética MUY inspirada en ModalInfoAlumno:
+   - usa mismas clases mi-modal__*
+   - respeta variables --mi-* (si ya las definís globalmente, joya)
+*/
+
+
+/* Overlay (mismo que InfoAlumno) */
+.mi-modal__overlay.mi-modal__overlay--cobrador {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.55);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 1000;
   padding: 16px;
+  animation: mi-fade 0.15s ease-out;
 }
 
-.mcob-modal{
-  width: min(520px, 100%);
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+/* Container más chico */
+.mi-modal__container.mi-modal__container--cobrador {
+  width:1020px;
+  max-height: 90vh;
+  background: var(--mi-bg);
+  border-radius: var(--mi-radius-lg);
+  box-shadow: var(--mi-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: mi-slide 0.22s ease-out;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Header rojo igual */
+.mi-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background: var(--mi-primary);
+  color: #fff;
+}
+
+.mi-modal__head-left { flex: 1; }
+
+.mi-modal__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.mi-modal__subtitle {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.mi-modal__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.mi-modal__close:hover { background: rgba(255, 255, 255, 0.12); transform: rotate(90deg); }
+
+/* Content */
+.mi-modal__content.mi-modal__content--cobrador {
+  flex: 1;
+  background: var(--mi-bg-soft);
   overflow: hidden;
 }
 
-.mcob-title{
-  padding: 14px 16px;
-  font-weight: 700;
-  color: #fff;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+/* Panel scrollable (como InfoAlumno) */
+.mi-tabpanel.mi-tabpanel--cobrador {
+  height: 100%;
+  overflow: auto;
+  padding: 18px;
+  background: linear-gradient(180deg, #fff 0%, #fbfcff 100%);
 }
 
-.mcob-body{
-  padding: 14px 16px;
-  color: rgba(255,255,255,.9);
-  font-size: 14px;
+/* Grid / Cards */
+.mi-grid.mi-grid--cobrador {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
 }
 
-.mcob-name{
-  margin: 10px 0 6px;
+.mi-card {
+  grid-column: span 12;
+  background: #fff;
+  border: 1px solid var(--mi-border);
+  border-radius: var(--mi-radius-md);
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+}
+
+.mi-card__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
   font-weight: 800;
-  color: #fff;
-  letter-spacing: .2px;
+  color: var(--mi-text);
+  letter-spacing: -0.01em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mi-border);
 }
 
-.mcob-hint{
-  margin-top: 10px;
-  color: rgba(255,255,255,.65);
-  font-size: 12.5px;
-  line-height: 1.35;
+/* Rows */
+.mi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+  gap: 16px;
+}
+.mi-row:last-child { border-bottom: 0; }
+
+.mi-label {
+  color: var(--mi-muted);
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
-.mcob-actions{
-  padding: 12px 16px 16px;
+.mi-value {
+  color: var(--mi-text);
+  font-weight: 600;
+  text-align: right;
+  max-width: 65%;
+  word-break: break-word;
+  font-size: 0.95rem;
+}
+
+.mi-row--block { align-items: flex-start; }
+.mi-value--multiline { white-space: pre-wrap; text-align: left; max-width: 100%; }
+
+.mi-sep {
+  height: 1px;
+  background: var(--mi-border);
+  margin: 10px 0;
+}
+
+/* Footer actions */
+.mi-modal__actions {
+  padding: 14px 16px;
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  background: #fff;
+  border-top: 1px solid var(--mi-border);
 }
 
-.mcob-btn{
+.mi-btn {
   border: 0;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-weight: 700;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
   cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
 }
 
-.mcob-cancel{
-  background: rgba(255,255,255,.08);
+.mi-btn:active { transform: translateY(1px); }
+
+.mi-btn--ghost {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--mi-text);
+}
+.mi-btn--ghost:hover { filter: brightness(0.98); }
+
+.mi-btn--primary {
+  background: var(--mi-primary-600);
   color: #fff;
 }
+.mi-btn--primary:hover { filter: brightness(0.98); }
 
-.mcob-ok{
-  background: #22c55e;
-  color: #0b1220;
+.mi-btn--primary.is-danger {
+  background: var(--mi-primary-700);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .mi-modal__container.mi-modal__container--cobrador { width: 96vw; max-height: 88vh; }
+  .mi-modal__title { font-size: 1.05rem; }
+  .mi-modal__subtitle { font-size: 0.82rem; }
+  .mi-row { flex-direction: column; align-items: flex-start; }
+  .mi-value { text-align: left; max-width: 100%; }
+}
+
+/* Animaciones */
+@keyframes mi-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mi-slide {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
 }

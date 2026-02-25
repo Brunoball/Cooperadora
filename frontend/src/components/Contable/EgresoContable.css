@@ -647,3 +647,59 @@ html, body, #root { height:100%; }
   justify-self: flex-end;
   align-self: center;
 }
+/* =====================================
+   EGRESOS — Floating label OUTLINED (siempre activo)
+   ===================================== */
+.eg_field.eg-fl{
+  position: relative;
+}
+
+/* Select con espacio arriba para el label */
+.eg_field.eg-fl select{
+
+  padding:  12px 10px 12px; /* top para dejar lugar al label */
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+/* Focus */
+.eg_field.eg-fl select:focus{
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+/* Label “cortando” el borde (SIEMPRE flotando) */
+.eg_field.eg-fl label{
+  position: absolute;
+  left: 14px;
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 2;
+
+  background: var(--surface);       /* 👈 corta el borde */
+  padding: 0 6px;
+  border-radius: 999px;
+}
+
+/* En foco cambia el color del label */
+.eg_field.eg-fl:focus-within label{
+  color: var(--primary);
+}
+
+/* Disabled (Mes cuando año = ALL) */
+.eg_field.eg-fl select:disabled{
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+.eg_field.eg-fl select:disabled + label{
+  opacity: .65;
+}

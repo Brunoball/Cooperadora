@@ -464,27 +464,28 @@ export default function EgresoContable(){
           </div>
 
           <div className="paddingcenter">
-            <div className="eg_row">
-              <div className="eg_field">
-                <label>Año</label>
-                <select value={anio} onChange={e=> setAnio(e.target.value)}>
-                  <option value="ALL">TODOS</option>
-                  {anios.map(a=> <option key={a} value={String(a)}>{a}</option>)}
-                </select>
-              </div>
+<div className="eg_row">
+  <div className="eg_field eg-fl">
+    <select value={anio} onChange={e=> setAnio(e.target.value)} aria-label="Año">
+      <option value="ALL">TODOS</option>
+      {anios.map(a=> <option key={a} value={String(a)}>{a}</option>)}
+    </select>
+    <label>Año</label>
+  </div>
 
-              <div className="eg_field">
-                <label>Mes</label>
-                <select
-                  value={mes}
-                  onChange={e=>setMes(e.target.value)}
-                  disabled={anio === "ALL"}
-                >
-                  <option value="ALL">TODOS</option>
-                  {MESES.map((m,i)=> <option key={m} value={String(i)}>{m}</option>)}
-                </select>
-              </div>
-            </div>
+  <div className="eg_field eg-fl">
+    <select
+      value={mes}
+      onChange={e=>setMes(e.target.value)}
+      disabled={anio === "ALL"}
+      aria-label="Mes"
+    >
+      <option value="ALL">TODOS</option>
+      {MESES.map((m,i)=> <option key={m} value={String(i)}>{m}</option>)}
+    </select>
+    <label>Mes</label>
+  </div>
+</div>
 
             <div className="eg_stats">
               <div className="eg_stat">
@@ -500,13 +501,13 @@ export default function EgresoContable(){
               </div>
             </div>
 
-            <div className="eg_field" style={{ marginTop: 8 }}>
-              <label>Medio de pago</label>
-              <select value={fMedio} onChange={e=>setFMedio(e.target.value)}>
-                <option value="">(todas)</option>
-                {mediosPago.map(m=> <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
-              </select>
-            </div>
+<div className="eg_field eg-fl" style={{ marginTop: 8 }}>
+  <select value={fMedio} onChange={e=>setFMedio(e.target.value)} aria-label="Medio de pago">
+    <option value="">(todas)</option>
+    {mediosPago.map(m=> <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+  </select>
+  <label>Medio de pago</label>
+</div>
 
             {fMedio && (
               <div className="ing-filterchip" style={{ marginTop: 8 }}>
