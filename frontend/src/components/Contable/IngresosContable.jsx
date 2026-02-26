@@ -1,3 +1,4 @@
+// ✅ REEMPLAZAR COMPLETO
 // src/components/Contable/IngresosContable.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -32,6 +33,32 @@ const STORAGE_KEYS = {
 
 const cap1 = (s = "") => s.charAt(0) + s.slice(1).toLowerCase();
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
+
+/* ✅ NUEVO: dd/mm/YYYY para mostrar y exportar */
+const formatFechaDMY = (v) => {
+  const s = String(v ?? "").trim();
+  if (!s) return "-";
+
+  // Soporta "YYYY-MM-DD" o "YYYY-MM-DDTHH:mm:ss..."
+  const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const yyyy = m[1];
+    const mm = String(Number(m[2])).padStart(2, "0");
+    const dd = String(Number(m[3])).padStart(2, "0");
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  // fallback si viene parseable
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  return s;
+};
 
 /* 👇 siempre 2 decimales */
 const fmtMonto = (n) =>
@@ -282,7 +309,6 @@ export default function IngresosContable() {
   // ✅ NUEVO: cargar meses especiales desde DB (oculta 1..12)
   const loadMesesEspeciales = useCallback(async () => {
     try {
-      // 👇 Si tu acción se llama distinto, cambiá acá:
       const data = await fetchJSON(`${BASE_URL}/api.php?action=meses_list`);
       const items = Array.isArray(data?.items) ? data.items : [];
 
@@ -298,7 +324,6 @@ export default function IngresosContable() {
         return;
       }
 
-      // fallback si viene vacío
       setMesesEspeciales([
         { id_mes: 13, nombre: "CONTADO ANUAL" },
         { id_mes: 14, nombre: "MATRICULA" },
@@ -306,7 +331,6 @@ export default function IngresosContable() {
         { id_mes: 16, nombre: "2DA MITAD" },
       ]);
     } catch {
-      // ✅ fallback si no existe endpoint
       setMesesEspeciales([
         { id_mes: 13, nombre: "CONTADO ANUAL" },
         { id_mes: 14, nombre: "MATRICULA" },
@@ -356,7 +380,7 @@ export default function IngresosContable() {
         categoria: r?.Categoria ?? "-",
         monto: Number(r?.Monto ?? 0),
         mesPagado: r?.Mes_pagado || MESES[(Number(r?.Mes_pagado_id || 0) - 1)] || "-",
-        mesPagadoId: Number(r?.Mes_pagado_id || r?.id_mes || 0), // ✅ NUEVO: id del mes pagado
+        mesPagadoId: Number(r?.Mes_pagado_id || r?.id_mes || 0),
         medio: r?.Medio || r?.medio || "—",
       }));
 
@@ -484,7 +508,6 @@ export default function IngresosContable() {
 
     if (catFiltro) base = base.filter((f) => (f.categoria || "-") === catFiltro);
 
-    // ✅ SOLO SI HAY SELECCIÓN ESPECIAL (13..)
     if (mesEspecial) {
       const idSel = Number(mesEspecial);
       base = base.filter((f) => Number(f.mesPagadoId || 0) === idSel);
@@ -538,10 +561,11 @@ export default function IngresosContable() {
       addToast("advertencia", "No hay datos para exportar.");
       return;
     }
+
     let rows;
     if (isAlu) {
       rows = base.map((r) => ({
-        Fecha: r.fecha,
+        Fecha: formatFechaDMY(r.fecha),
         Alumno: r.alumno,
         Categoría: r.categoria,
         Monto: r.monto,
@@ -550,24 +574,41 @@ export default function IngresosContable() {
       }));
     } else {
       rows = base.map((r) => ({
-        Fecha: r.fecha,
+        Fecha: formatFechaDMY(r.fecha),
         Proveedor: r.proveedor || "",
         Imputación: r.imputacion || r.descripcion || "",
         Importe: r.importe,
         Medio: r.medio,
       }));
     }
-    const wbName = `Ingresos_${anio === "ALL" ? "Todos_los_años" : (mes === "ALL" ? `Año_${anio}` : `${cap1(MESES[Number(mes)])}_${anio}`)}_${isAlu ? "Alumnos" : "Ingresos"}`;
+
+    const wbName = `Ingresos_${
+      anio === "ALL"
+        ? "Todos_los_años"
+        : mes === "ALL"
+          ? `Año_${anio}`
+          : `${cap1(MESES[Number(mes)])}_${anio}`
+    }_${isAlu ? "Alumnos" : "Ingresos"}`;
+
     await exportToExcelLike({ workbookName: wbName, sheetName: "Datos", rows });
     addToast("exito", "Exportado exitosamente.");
   };
 
   /* ===== Acciones ===== */
   const onClickCreate = () => setOpenCreate(true);
-  const onEdit = (row) => { setEditRow(row); setOpenEdit(true); };
+  const onEdit = (row) => {
+    setEditRow(row);
+    setOpenEdit(true);
+  };
 
-  const askDelete = (row) => { setToDelete(row); setConfirmOpen(true); };
-  const cancelDelete = () => { setConfirmOpen(false); setToDelete(null); };
+  const askDelete = (row) => {
+    setToDelete(row);
+    setConfirmOpen(true);
+  };
+  const cancelDelete = () => {
+    setConfirmOpen(false);
+    setToDelete(null);
+  };
   const confirmDelete = async () => {
     if (!toDelete?.id_ingreso) return;
     try {
@@ -623,70 +664,76 @@ export default function IngresosContable() {
               </div>
             </div>
 
-{/* Año / Mes */}
-<div className="ing-fieldrow">
-  <div className={`ing-field fl ${anio !== "ALL" ? "has-value" : ""}`}>
-    <select
-      id="anio"
-      value={anio}
-      onChange={(e) => setAnio(e.target.value)}
-      aria-label="Año"
-    >
-      <option value="ALL">TODOS</option>
-      {anios.map((a) => (
-        <option key={a} value={String(a)}>
-          {a}
-        </option>
-      ))}
-    </select>
-    <label htmlFor="anio">Año</label>
-  </div>
+            {/* Año / Mes */}
+            <div className="ing-fieldrow">
+              <div className={`ing-field fl ${anio !== "ALL" ? "has-value" : ""}`}>
+                <select
+                  id="anio"
+                  value={anio}
+                  onChange={(e) => setAnio(e.target.value)}
+                  aria-label="Año"
+                >
+                  <option value="ALL">TODOS</option>
+                  {anios.map((a) => (
+                    <option key={a} value={String(a)}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="anio">Año</label>
+              </div>
 
-  <div className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${anio === "ALL" ? "is-disabled" : ""}`}>
-    <select
-      id="mes"
-      value={mes}
-      onChange={(e) => setMes(e.target.value)}
-      disabled={anio === "ALL"}
-      aria-label="Mes"
-    >
-      <option value="ALL">TODOS</option>
-      {MESES.map((m, i) => (
-        <option key={m} value={String(i)}>
-          {m}
-        </option>
-      ))}
-    </select>
-    <label htmlFor="mes">Mes</label>
-  </div>
-</div>
+              <div
+                className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${
+                  anio === "ALL" ? "is-disabled" : ""
+                }`}
+              >
+                <select
+                  id="mes"
+                  value={mes}
+                  onChange={(e) => setMes(e.target.value)}
+                  disabled={anio === "ALL"}
+                  aria-label="Mes"
+                >
+                  <option value="ALL">TODOS</option>
+                  {MESES.map((m, i) => (
+                    <option key={m} value={String(i)}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="mes">Mes</label>
+              </div>
+            </div>
 
-{/* ✅ filtro especial (solo alumnos) */}
-{innerTab === "alumnos" && (
-  <div className="ing-fieldrow">
-    <div className={`ing-field ing-Especial fl ${mesEspecial ? "has-value" : ""}`}>
-      <select
-        id="especial"
-        value={mesEspecial}
-        onChange={(e) => setMesEspecial(e.target.value)}
-        aria-label="Especial"
-      >
-        <option value="">TODOS</option>
-        {mesesEspeciales.map((m) => (
-          <option key={m.id_mes} value={String(m.id_mes)}>
-            {String(m.nombre || "").toUpperCase()}
-          </option>
-        ))}
-      </select>
-      <label htmlFor="especial">Especial</label>
-    </div>
-  </div>
-)}
+            {/* ✅ filtro especial (solo alumnos) */}
+            {innerTab === "alumnos" && (
+              <div className="ing-fieldrow">
+                <div className={`ing-field ing-Especial fl ${mesEspecial ? "has-value" : ""}`}>
+                  <select
+                    id="especial"
+                    value={mesEspecial}
+                    onChange={(e) => setMesEspecial(e.target.value)}
+                    aria-label="Especial"
+                  >
+                    <option value="">TODOS</option>
+                    {mesesEspeciales.map((m) => (
+                      <option key={m.id_mes} value={String(m.id_mes)}>
+                        {String(m.nombre || "").toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                  <label htmlFor="especial">Especial</label>
+                </div>
+              </div>
+            )}
 
             {/* KPIs */}
             <div className="ing-kpi-cards">
               <div className="kpi-card">
-                <div className="kpi-card__icon" aria-hidden>$</div>
+                <div className="kpi-card__icon" aria-hidden>
+                  $
+                </div>
                 <div className="kpi-card__text">
                   <div className="kpi-card__label">Total</div>
                   <div className="kpi-card__value num">{fmtMonto(resumen.total)}</div>
@@ -694,7 +741,9 @@ export default function IngresosContable() {
               </div>
 
               <div className="kpi-card">
-                <div className="kpi-card__icon" aria-hidden>#</div>
+                <div className="kpi-card__icon" aria-hidden>
+                  #
+                </div>
                 <div className="kpi-card__text">
                   <div className="kpi-card__label">Registros</div>
                   <div className="kpi-card__value num">{resumen.cantidad}</div>
@@ -827,7 +876,9 @@ export default function IngresosContable() {
                       key={f.id}
                       style={{ "--i": idx }}
                     >
-                      <div className="c-fecha">{f.fecha}</div>
+                      {/* ✅ dd/mm/YYYY */}
+                      <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
+
                       <div className="c-alumno">
                         <div className="ing-alumno">
                           <div className="ing-alumno__text">
@@ -888,7 +939,9 @@ export default function IngresosContable() {
                       key={f.id}
                       style={{ "--i": idx }}
                     >
-                      <div className="c-fecha">{f.fecha}</div>
+                      {/* ✅ dd/mm/YYYY */}
+                      <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
+
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-proveedor">{f.proveedor || "-"}</div>
                       <div className="c-cat">
@@ -927,11 +980,7 @@ export default function IngresosContable() {
       </div>
 
       {sideOpen && (
-        <button
-          className="ing-layout__overlay"
-          onClick={() => setSideOpen(false)}
-          aria-label="Cerrar panel"
-        />
+        <button className="ing-layout__overlay" onClick={() => setSideOpen(false)} aria-label="Cerrar panel" />
       )}
 
       {/* === Modales === */}

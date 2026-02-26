@@ -546,6 +546,7 @@ input:-webkit-autofill { background-color: transparent !important; }
 .alu-iconchip.is-info:hover   svg,
 .alu-iconchip.is-edit:hover   svg,
 .alu-iconchip.is-delete:hover svg,
+.alu-iconchip.is-cobrador:hover svg,
 .alu-iconchip.is-baja:hover   svg {
   color: var(--chip-bg);
 }

@@ -702,4 +702,34 @@ html, body, #root { height:100%; }
 }
 .eg_field.eg-fl select:disabled + label{
   opacity: .65;
+}/* Contenido como columna */
+.eg_content{
+  display:flex;
+  flex-direction:column;
+  min-height:100%;
+  padding:0;
+}
+
+/* ✅ Barra superior (ya no comparte caja con la tabla) */
+.eg_topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 16px;
+  background: var(--reg-primary);
+}
+
+/* ✅ Caja exclusiva de la tabla */
+.eg_tableCard{
+  flex: 1 1 auto;
+  min-height: 0;      /* clave para que el overflow funcione bien en flex */
+}
+
+/* ✅ Scroll SOLO dentro de la tabla */
+.ec_table__wrap{
+  height: 100%;
+  overflow: auto;
+  position: relative;
+  max-height: calc(100% - 50px);
 }

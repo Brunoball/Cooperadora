@@ -910,24 +910,7 @@ const Cuotas = () => {
 
               <div className="gcuotas-select-container">
 
-                {/* ✅ NUEVO: SOLO COBRADOR */}
-                <div className="gcuotas-input-row gcuotas-input-row--single">
-                  <div className="gcuotas-input-group">
-                    <label className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faFilter} /> Cobrador
-                    </label>
-                    <button
-                      type="button"
-                      onClick={onToggleSoloCobrador}
-                      className={`gcuotas-button ${soloCobrador ? 'gcuotas-button-print-all' : 'gcuotas-button-export'}`}
-                      disabled={loading}
-                      style={{ width: '100%', justifyContent: 'center' }}
-                      title="Filtrar alumnos con es_cobrador=1"
-                    >
-                      {soloCobrador ? 'Solo cobrador: ACTIVADO' : 'Solo cobrador: desactivado'}
-                    </button>
-                  </div>
-                </div>
+
 
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">
@@ -970,25 +953,43 @@ const Cuotas = () => {
                   </div>
                 </div>
 
-                <div className="gcuotas-input-row gcuotas-input-row--single">
-                  <div className="gcuotas-input-group">
-                    <label htmlFor="categoria" className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faFilter} /> Categoría
-                    </label>
-                    <select
-                      id="categoria"
-                      value={categoriaSeleccionada}
-                      onChange={onChangeCategoria}
-                      className="gcuotas-dropdown"
-                      disabled={loading}
-                    >
-                      <option value="">Todas</option>
-                      {categorias.map((c, idx) => (
-                        <option key={idx} value={c.id}>{c.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+{/* ✅ CATEGORÍA + COBRADOR (MISMA FILA) */}
+<div className="gcuotas-input-row">
+  <div className="gcuotas-input-group">
+    <label htmlFor="categoria" className="gcuotas-input-label">
+      <FontAwesomeIcon icon={faFilter} /> Categoría
+    </label>
+    <select
+      id="categoria"
+      value={categoriaSeleccionada}
+      onChange={onChangeCategoria}
+      className="gcuotas-dropdown"
+      disabled={loading}
+    >
+      <option value="">Todas</option>
+      {categorias.map((c, idx) => (
+        <option key={idx} value={c.id}>{c.nombre}</option>
+      ))}
+    </select>
+  </div>
+
+  <div className="gcuotas-input-group">
+    <label className="gcuotas-input-label">
+      <FontAwesomeIcon icon={faFilter} /> Cobrador
+    </label>
+    <button
+      type="button"
+      onClick={onToggleSoloCobrador}
+      className={`gcuotas-button gcuotas-button-cobrador ${
+        soloCobrador ? "gcuotas-button-print-all" : "gcuotas-button-export"
+      }`}
+      disabled={loading}
+      title="Filtrar alumnos con es_cobrador=1"
+    >
+      {soloCobrador ? "ACTIVADO" : "Desactivado"}
+    </button>
+  </div>
+</div>
 
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">

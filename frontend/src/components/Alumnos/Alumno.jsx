@@ -780,15 +780,9 @@ const Alumnos = () => {
         className={`alu-row ${esFilaPar ? 'alu-even-row' : 'alu-odd-row'} ${alumnoSeleccionado?.id_alumno === alumno.id_alumno ? 'alu-selected-row' : ''} ${willAnimate ? 'alu-cascade' : ''}`}
         onClick={() => manejarSeleccion(alumno)}
       >
-        <div className="alu-column alu-column-nombre" title={combinarNombre(alumno)}>
-          {combinarNombre(alumno)}
-          {esCobrador ? (
-            <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.85 }}>
-              <FaCheckCircle style={{ marginRight: 6 }} />
-              COBRADOR
-            </span>
-          ) : null}
-        </div>
+<div className="alu-column alu-column-nombre" title={combinarNombre(alumno)}>
+  {combinarNombre(alumno)}
+</div>
 
         <div className="alu-column alu-column-dni" title={alumno.num_documento ?? alumno.dni}>
           {alumno.num_documento ?? alumno.dni}

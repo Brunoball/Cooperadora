@@ -1042,3 +1042,12 @@
 
 .gcuotas-container.gcuotas--table-fullwidth .gcuotas-table-container { padding: 0; }
 .gcuotas-container.gcuotas--table-fullwidth .gcuotas-virtual-tables { width: 100%; }
+/* Botón cobrador dentro de fila de filtros */
+.gcuotas-button-cobrador{
+  width: 100%;
+  justify-content: center;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 10px;
+}
