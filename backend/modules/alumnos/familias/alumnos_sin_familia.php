@@ -1,81 +1,91 @@
 <?php
-require_once __DIR__ . '/_common.php';
+// backend/modules/alumnos/familias/alumnos_sin_familia.php
+// Lista alumnos activos sin familia (id_familia NULL)
 
-$pdo = fam_pdo();
+declare(strict_types=1);
 
-$all    = isset($_GET['all']) ? (int)$_GET['all'] : 0;
-$q      = fam_str($_GET['q'] ?? '');
-$limit  = (int)($_GET['limit'] ?? 200);
-$offset = (int)($_GET['offset'] ?? 0);
+header('Content-Type: application/json; charset=utf-8');
 
-if ($limit <= 0)   $limit = 200;
-if ($limit > 5000) $limit = 5000; // tope alto por si querés usarlo sin all=1
-if ($offset < 0)   $offset = 0;
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header("Access-Control-Allow-Origin: $origin");
+header('Vary: Origin');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Session');
 
-/* Campos mínimos necesarios para el modal (ligero) */
-$baseSelect = "
-    SELECT 
-        a.id_alumno,
-        a.apellido,
-        a.nombre,
-        a.num_documento AS dni,
-        a.domicilio,
-        a.localidad,
-        a.activo,
-        CONCAT(a.apellido, ', ', IFNULL(a.nombre, '')) AS nombre_completo
-    FROM alumnos a
-    WHERE a.id_familia IS NULL
-      AND a.activo = 1
-";
-
-/* ====== MODO ALL: traer TODO (sin limit/offset), ordenado ====== */
-if ($all === 1) {
-    $sql = $baseSelect . " ORDER BY a.apellido ASC, a.nombre ASC";
-    $st  = $pdo->prepare($sql);
-    $st->execute();
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-    fam_json([
-        'exito'     => true,
-        'alumnos'   => $rows,
-        'total'     => count($rows),
-        'has_more'  => false,
-    ]);
-    // exit acá evita seguir con el modo paginado
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+  http_response_code(204);
+  exit;
 }
 
-/* ====== MODO PAGINADO + BÚSQUEDA (compat/otros usos) ====== */
-$params = [];
-$sql = $baseSelect;
-
-if ($q !== '') {
-    // prefijo para favorecer índices en LIKE (siempre que existan)
-    $sql .= " AND (a.apellido LIKE :q OR a.nombre LIKE :q OR a.num_documento LIKE :qdoc)";
-    $params[':q']    = $q . '%';
-    $params[':qdoc'] = $q . '%';
+function fam_json(array $arr, int $code = 200): void {
+  http_response_code($code);
+  echo json_encode($arr, JSON_UNESCAPED_UNICODE);
+  exit;
 }
 
-$sqlCount = "SELECT COUNT(*) FROM (" . $sql . ") AS t";
-$stCount = $pdo->prepare($sqlCount);
-$stCount->execute($params);
-$total = (int)$stCount->fetchColumn();
+require_once __DIR__ . '/../../../config/db.php';
 
-$sql .= " ORDER BY a.apellido ASC, a.nombre ASC
-          LIMIT :lim OFFSET :off";
+try {
+  if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+    fam_json(['exito' => false, 'mensaje' => 'Método no permitido. Usá GET.'], 405);
+  }
 
-$st = $pdo->prepare($sql);
-foreach ($params as $k => $v) $st->bindValue($k, $v);
-$st->bindValue(':lim', $limit, PDO::PARAM_INT);
-$st->bindValue(':off', $offset, PDO::PARAM_INT);
+  if (!isset($pdo) || !($pdo instanceof PDO)) {
+    fam_json(['exito' => false, 'mensaje' => 'Conexión PDO no disponible. Revisá backend/config/db.php'], 500);
+  }
 
-$st->execute();
-$rows = $st->fetchAll(PDO::FETCH_ASSOC);
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$hasMore = ($offset + $limit) < $total;
+  // all=1 => incluir activos e inactivos (por si lo querés usar)
+  $all = isset($_GET['all']) ? (int)$_GET['all'] : 0;
 
-fam_json([
-    'exito'     => true,
-    'alumnos'   => $rows,
-    'total'     => $total,
-    'has_more'  => $hasMore,
-]);
+  // ✅ SQL limpio (sin "\")
+  // Nota: uso (id_familia IS NULL OR id_familia=0) por si en tu tabla quedó 0 en vez de NULL.
+  $sql = "
+    SELECT
+      id_alumno,
+      apellido,
+      nombre,
+      num_documento,
+      localidad,
+      activo
+    FROM alumnos
+    WHERE (id_familia IS NULL OR id_familia = 0)
+      AND (:all = 1 OR activo = 1)
+    ORDER BY apellido ASC, nombre ASC
+  ";
+
+  $st = $pdo->prepare($sql);
+  $st->execute([':all' => $all]);
+  $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+  // Normalizamos para que el front tenga nombre_completo y dni
+  $out = [];
+  foreach ($rows as $r) {
+    $apellido = (string)($r['apellido'] ?? '');
+    $nombre   = (string)($r['nombre'] ?? '');
+    $dni      = (string)($r['num_documento'] ?? '');
+
+    $out[] = [
+      'id_alumno' => (int)($r['id_alumno'] ?? 0),
+      'apellido' => $apellido,
+      'nombre' => $nombre,
+      'nombre_completo' => trim($apellido . ' ' . $nombre),
+      'dni' => $dni,
+      'num_documento' => $dni,
+      'localidad' => (string)($r['localidad'] ?? ''),
+      'activo' => (int)($r['activo'] ?? 0),
+    ];
+  }
+
+  fam_json(['exito' => true, 'alumnos' => $out]);
+
+} catch (Throwable $e) {
+  // 🔎 para ver el motivo exacto en la consola del php -S
+  error_log("alumnos_sin_familia ERROR: " . $e->getMessage());
+  fam_json([
+    'exito' => false,
+    'mensaje' => 'Error al listar alumnos sin familia',
+    'error' => $e->getMessage(),
+  ], 500);
+}

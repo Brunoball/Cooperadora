@@ -1,15 +1,20 @@
 // src/components/Categorias/CategoriaEditar.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faSave } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSave, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import './CategoriaEditar.css';
 
 const CategoriaEditar = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const params = useParams();
+
+  // ✅ FIX: aseguramos id numérico válido
+  const idStr = params?.id ?? '';
+  const idNum = Number(idStr);
+  const idValido = Number.isFinite(idNum) && idNum > 0;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,42 +23,104 @@ const CategoriaEditar = () => {
   const [mMensual, setMMensual] = useState('');
   const [mAnual, setMAnual] = useState('');
 
-  // valores originales para saber si hubo cambio (dirty)
-  const original = useRef({ mensual: null, anual: null });
+  // Hermanos dinámico: [{id_cat_hermanos?, cantidad_hermanos, monto_mensual, monto_anual}]
+  const [hermanos, setHermanos] = useState([]);
+  const [nuevoCant, setNuevoCant] = useState('2');
+
+  const original = useRef({
+    mensual: null,
+    anual: null,
+    hermanos: [],
+  });
+
   const mensualRef = useRef(null);
 
   const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '', duracion: 3000 });
-  const showToast = (tipo, mensaje, duracion = 3000) => setToast({ show: true, tipo, mensaje, duracion });
+  const showToast = (tipo, mensaje, duracion = 3000) =>
+    setToast({ show: true, tipo, mensaje, duracion });
   const closeToast = () => setToast((t) => ({ ...t, show: false }));
 
   const fetchJSON = async (url, options = {}) => {
     const res = await fetch(url, options);
+
+    // si backend devolvió HTML por warning/error, esto explota => atrapamos con texto
+    const text = await res.text();
     let data = null;
-    try { data = await res.json(); } catch { throw new Error(`Error HTTP ${res.status}`); }
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      throw new Error(`Respuesta no JSON (HTTP ${res.status})`);
+    }
+
     if (!res.ok) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
     return data;
   };
+
+  const numOrNull = (v) => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    if (s === '') return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const sortByCant = (arr) =>
+    [...arr].sort((a, b) => Number(a.cantidad_hermanos) - Number(b.cantidad_hermanos));
 
   useEffect(() => {
     const cargar = async () => {
       try {
         setLoading(true);
+
+        // ✅ FIX: si no hay id válido, no pedimos nada
+        if (!idValido) {
+          throw new Error('ID inválido en la URL. Revisá la ruta: /categorias/editar/:id');
+        }
+
+        // 1) base
         const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_listar`);
-        const filas = Array.isArray(json) ? json
+        const filas = Array.isArray(json)
+          ? json
           : (json?.categorias ?? json?.data ?? json?.rows ?? json?.result ?? json?.resultados ?? []);
+
         const lista = filas.map((r) => ({
           id: r.id ?? r.id_cat_monto ?? r.id_categoria,
           descripcion: String(r.descripcion ?? r.nombre_categoria ?? ''),
           monto_mensual: Number(r.monto ?? r.monto_mensual ?? 0),
           monto_anual: Number(r.monto_anual ?? 0),
         }));
-        const cat = lista.find((x) => String(x.id) === String(id));
+
+        const cat = lista.find((x) => String(x.id) === String(idNum));
         if (!cat) throw new Error('Categoría no encontrada');
 
         setNombre(cat.descripcion);
         setMMensual(String(cat.monto_mensual ?? ''));
         setMAnual(String(cat.monto_anual ?? ''));
-        original.current = { mensual: cat.monto_mensual, anual: cat.monto_anual };
+
+        // 2) hermanos (✅ ahora id seguro)
+        const urlH = `${BASE_URL}/api.php?action=cat_hermanos_listar&id_cat_monto=${encodeURIComponent(String(idNum))}`;
+        const hjson = await fetchJSON(urlH);
+        const items = Array.isArray(hjson?.items) ? hjson.items : [];
+
+        const mapped = items.map((x) => ({
+          id_cat_hermanos: x.id_cat_hermanos ?? null,
+          cantidad_hermanos: Number(x.cantidad_hermanos),
+          monto_mensual: String(Number(x.monto_mensual ?? 0)),
+          monto_anual: String(Number(x.monto_anual ?? 0)),
+        }));
+
+        setHermanos(sortByCant(mapped));
+
+        original.current = {
+          mensual: cat.monto_mensual,
+          anual: cat.monto_anual,
+          hermanos: mapped.map((h) => ({
+            id_cat_hermanos: h.id_cat_hermanos,
+            cantidad_hermanos: Number(h.cantidad_hermanos),
+            monto_mensual: Number(h.monto_mensual),
+            monto_anual: Number(h.monto_anual),
+          })),
+        };
 
         setTimeout(() => mensualRef.current?.focus(), 0);
       } catch (e) {
@@ -62,52 +129,165 @@ const CategoriaEditar = () => {
         setLoading(false);
       }
     };
+
     cargar();
-  }, [id]);
+  }, [idStr]); // ✅ depende del string de params
+
+  const hermanosCants = useMemo(
+    () => new Set(hermanos.map((h) => Number(h.cantidad_hermanos))),
+    [hermanos]
+  );
+
+  const agregarFila = () => {
+    const cant = Number(nuevoCant);
+    if (!Number.isFinite(cant) || cant < 2) {
+      showToast('error', 'Cantidad de hermanos inválida (mínimo 2)', 2600);
+      return;
+    }
+    if (hermanosCants.has(cant)) {
+      showToast('info', `Ya existe la fila para ${cant} hermanos.`, 2200);
+      return;
+    }
+    setHermanos(
+      sortByCant([
+        ...hermanos,
+        { id_cat_hermanos: null, cantidad_hermanos: cant, monto_mensual: '', monto_anual: '' },
+      ])
+    );
+  };
+
+  const cambiarFila = (idx, key, value) => {
+    setHermanos((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [key]: value };
+      return next;
+    });
+  };
+
+  // opcional: borrar en DB si ya existía
+  const borrarFilaDB = async (fila) => {
+    if (!fila?.id_cat_hermanos) {
+      setHermanos((prev) => prev.filter((h) => h !== fila));
+      return;
+    }
+    try {
+      const body = new FormData();
+      body.append('id_cat_hermanos', String(fila.id_cat_hermanos));
+      const j = await fetchJSON(`${BASE_URL}/api.php?action=cat_hermanos_eliminar`, {
+        method: 'POST',
+        body,
+      });
+      if (!j?.exito) throw new Error(j?.mensaje || 'No se pudo eliminar');
+      showToast('exito', 'Fila eliminada.', 1800);
+      setHermanos((prev) => prev.filter((h) => h.id_cat_hermanos !== fila.id_cat_hermanos));
+    } catch (e) {
+      showToast('error', e.message || 'Error al eliminar', 3200);
+    }
+  };
+
+  const normalizarHermanosParaGuardar = () => {
+    const out = [];
+    for (const h of hermanos) {
+      const cant = Number(h.cantidad_hermanos);
+      if (!Number.isFinite(cant) || cant < 2) continue;
+
+      const mm = numOrNull(h.monto_mensual);
+      const ma = numOrNull(h.monto_anual);
+
+      if (mm === null && ma === null) continue;
+      if ((mm !== null && mm < 0) || (ma !== null && ma < 0)) {
+        throw new Error(`Montos inválidos en ${cant} hermanos (>= 0).`);
+      }
+      out.push({ cantidad_hermanos: cant, monto_mensual: mm, monto_anual: ma });
+    }
+    return out;
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (saving) return;
 
-    const mens = mMensual === '' ? null : Number(mMensual);
-    const anu  = mAnual === '' ? null : Number(mAnual);
+    if (!idValido) {
+      showToast('error', 'ID inválido en la URL. No se puede guardar.', 3200);
+      return;
+    }
 
-    if (mens !== null && (isNaN(mens) || mens < 0)) {
+    const mens = numOrNull(mMensual);
+    const anu = numOrNull(mAnual);
+
+    const chk = (n) => n === null || (!Number.isNaN(n) && n >= 0);
+    if (!chk(mens)) {
       showToast('error', 'Monto mensual inválido (>= 0)', 2800);
       mensualRef.current?.focus();
       return;
     }
-    if (anu !== null && (isNaN(anu) || anu < 0)) {
+    if (!chk(anu)) {
       showToast('error', 'Monto anual inválido (>= 0)', 2800);
       return;
     }
 
-    // Enviar SOLO lo que cambió
-    const body = new FormData();
-    body.append('id', String(id));
+    let hermanosPayload = [];
+    try {
+      hermanosPayload = normalizarHermanosParaGuardar();
+    } catch (err) {
+      showToast('error', err.message || 'Error en montos por hermanos', 3200);
+      return;
+    }
 
-    const changedMensual = (mens !== null) && (mens !== original.current.mensual);
-    const changedAnual   = (anu  !== null) && (anu  !== original.current.anual);
+    const changedBaseMens = mens !== null && mens !== original.current.mensual;
+    const changedBaseAnu = anu !== null && anu !== original.current.anual;
 
-    if (!changedMensual && !changedAnual) {
+    const origMap = new Map(
+      original.current.hermanos.map((h) => [
+        Number(h.cantidad_hermanos),
+        { m: Number(h.monto_mensual), a: Number(h.monto_anual) },
+      ])
+    );
+
+    let changedH = false;
+    for (const hp of hermanosPayload) {
+      const o = origMap.get(Number(hp.cantidad_hermanos));
+      if (!o) {
+        changedH = true;
+        break;
+      }
+      if (
+        (hp.monto_mensual !== null && Number(hp.monto_mensual) !== Number(o.m)) ||
+        (hp.monto_anual !== null && Number(hp.monto_anual) !== Number(o.a))
+      ) {
+        changedH = true;
+        break;
+      }
+    }
+    if (original.current.hermanos.length > 0 && hermanosPayload.length === 0) changedH = true;
+
+    if (!changedBaseMens && !changedBaseAnu && !changedH) {
       showToast('info', 'No hay cambios para guardar.', 2200);
       return;
     }
-    if (changedMensual) body.append('monto', String(mens));           // mensual
-    if (changedAnual)   body.append('monto_anual', String(anu));      // anual
-    // compat
-    if (changedMensual) body.append('precio', String(mens));
+
+    const body = new FormData();
+    body.append('id', String(idNum));
+
+    if (changedBaseMens) body.append('monto', String(mens));
+    if (changedBaseAnu) body.append('monto_anual', String(anu));
+    if (changedBaseMens) body.append('precio', String(mens)); // compat
+
+    if (changedH) body.append('hermanos', JSON.stringify(hermanosPayload));
 
     try {
       setSaving(true);
-      const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_actualizar`, { method: 'POST', body });
+      const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_actualizar`, {
+        method: 'POST',
+        body,
+      });
       if (!json?.exito) throw new Error(json?.mensaje || 'No se pudo actualizar');
 
-      const dur = 1800;
+      const dur = 1600;
       showToast('exito', 'Cambios guardados.', dur);
       setTimeout(() => navigate('/categorias', { replace: true }), dur);
-    } catch (e) {
-      showToast('error', e.message || 'Error al actualizar la categoría', 3200);
+    } catch (e2) {
+      showToast('error', e2.message || 'Error al actualizar la categoría', 3200);
     } finally {
       setSaving(false);
     }
@@ -116,7 +296,9 @@ const CategoriaEditar = () => {
   return (
     <div className="cat_edi_page">
       <div className="cat_edi_card">
-        <header className="cat_edi_header"><h2 className="cat_edi_title">Editar categoría</h2></header>
+        <header className="cat_edi_header">
+          <h2 className="cat_edi_title">Editar categoría</h2>
+        </header>
 
         {loading ? (
           <div className="cat_edi_loading">Cargando…</div>
@@ -127,7 +309,6 @@ const CategoriaEditar = () => {
               <input className="cat_edi_input" value={nombre} disabled style={{ textTransform: 'uppercase' }} />
             </div>
 
-            {/* === NUEVO: fila de dos columnas === */}
             <div className="cat_edi_two_col">
               <div className="cat_edi_form_row">
                 <label className="cat_edi_label">Monto mensual</label>
@@ -160,7 +341,81 @@ const CategoriaEditar = () => {
                 />
               </div>
             </div>
-            {/* === /NUEVO === */}
+
+            <div className="cat_edi_sep" />
+
+            <div className="cat_edi_subtitle">Montos por hermanos (grupo familiar)</div>
+
+            <div className="cat_edi_add_row">
+              <div className="cat_edi_form_row" style={{ marginBottom: 0 }}>
+                <label className="cat_edi_label">Cantidad de hermanos</label>
+                <input
+                  className="cat_edi_input"
+                  type="number"
+                  min="2"
+                  step="1"
+                  value={nuevoCant}
+                  onChange={(e) => setNuevoCant(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+
+              <button type="button" className="cat_edi_btn cat_edi_btn_small" onClick={agregarFila} disabled={saving}>
+                <FontAwesomeIcon icon={faPlus} /> Agregar
+              </button>
+            </div>
+
+            {hermanos.length === 0 ? (
+              <div className="cat_edi_hint">No hay montos por hermanos configurados para esta categoría.</div>
+            ) : (
+              <div className="cat_edi_hermanos_list">
+                {hermanos.map((h, idx) => (
+                  <div key={`${h.id_cat_hermanos ?? 'new'}_${h.cantidad_hermanos}`} className="cat_edi_hermano_card">
+                    <div className="cat_edi_hermano_head">
+                      <div className="cat_edi_hermano_title">{h.cantidad_hermanos} hermanos</div>
+
+                      <button
+                        type="button"
+                        className="cat_edi_btn_icon"
+                        onClick={() => borrarFilaDB(h)}
+                        disabled={saving}
+                        title="Eliminar"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+
+                    <div className="cat_edi_two_col">
+                      <div className="cat_edi_form_row">
+                        <label className="cat_edi_label">Mensual</label>
+                        <input
+                          className="cat_edi_input"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={h.monto_mensual}
+                          onChange={(e) => cambiarFila(idx, 'monto_mensual', e.target.value)}
+                          disabled={saving}
+                        />
+                      </div>
+
+                      <div className="cat_edi_form_row">
+                        <label className="cat_edi_label">Anual</label>
+                        <input
+                          className="cat_edi_input"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={h.monto_anual}
+                          onChange={(e) => cambiarFila(idx, 'monto_anual', e.target.value)}
+                          disabled={saving}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="cat_edi_form_actions">
               <button type="button" className="cat_edi_btn cat_edi_btn_back" onClick={() => navigate('/categorias')} disabled={saving}>
@@ -174,6 +429,7 @@ const CategoriaEditar = () => {
           </form>
         )}
       </div>
+
       {toast.show && <Toast tipo={toast.tipo} mensaje={toast.mensaje} duracion={toast.duracion} onClose={closeToast} />}
     </div>
   );

@@ -268,3 +268,24 @@
     gap: 12px;
   }
 }
+
+.cat_edi_sep{
+  height: 1px;
+  background: rgba(0,0,0,0.06);
+  margin: 18px 0;
+  border-radius: 999px;
+}
+
+.cat_edi_subtitle{
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  opacity: .9;
+}
+
+.cat_edi_three_rows .cat_edi_row_title{
+  margin-top: 10px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  opacity: .85;
+}

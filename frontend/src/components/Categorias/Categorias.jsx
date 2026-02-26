@@ -1,4 +1,6 @@
+// ✅ REEMPLAZAR COMPLETO
 // src/components/Categorias/Categorias.jsx
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BASE_URL from '../../config/config';
@@ -9,43 +11,12 @@ import {
   faPlus,
   faTrash,
   faEdit,
-  faTimes,
   faClockRotateLeft,
-  faArrowTrendUp,
-  faArrowTrendDown,
 } from '@fortawesome/free-solid-svg-icons';
 import './Categorias.css';
 
-/* ===========================
-   Modal base (accesible)
-=========================== */
-const Modal = ({ open, title, onClose, children, width = 720 }) => {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === 'Escape' && onClose?.();
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-  return (
-    <div className="cat_modal" role="dialog" aria-modal="true" aria-labelledby="cat_modal_title" onClick={onClose}>
-      <div
-        className="cat_modal_card"
-        style={{ maxWidth: width }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="cat_modal_head">
-          <h3 id="cat_modal_title" className="cat_modal_title">{title}</h3>
-          <button onClick={onClose} className="cat_modal_close" aria-label="Cerrar">
-            <FontAwesomeIcon icon={faTimes} />
-          </button>
-        </div>
-        <div className="cat_modal_body">{children}</div>
-      </div>
-    </div>
-  );
-};
+// ✅ Modal historial aparte
+import ModalHistorialCategorias from './modales/ModalHistorialCategorias';
 
 /* ===========================
    Modal Confirmar Eliminación
@@ -120,13 +91,6 @@ const fmtARS = (n) =>
     ? '—'
     : Number(n).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 
-const formatDate = (iso) => {
-  if (!iso) return '—';
-  const s = iso.toString().slice(0, 10);
-  const [y, m, d] = s.split('-');
-  return (y && m && d) ? `${d}/${m}/${y}` : s;
-};
-
 /* ===========================
    Componente principal
 =========================== */
@@ -141,34 +105,31 @@ const Categorias = () => {
   const showToast = (tipo, mensaje, duracion = 3000) => setToast({ show: true, tipo, mensaje, duracion });
   const closeToast = () => setToast((t) => ({ ...t, show: false }));
 
-  // Historial
-  const [modalHistOpen, setModalHistOpen] = useState(false);
-  const [histLoading, setHistLoading] = useState(false);
-  const [hist, setHist] = useState([]); // [{precio_anterior, precio_nuevo, fecha, tipo}]
-  const [histCategoria, setHistCategoria] = useState({ id: null, nombre: '' });
-
   // Eliminar
   const [delState, setDelState] = useState({ open: false, cat: null, loading: false });
+
+  // ✅ Historial modal state
+  const [histState, setHistState] = useState({ open: false, cat: null });
 
   // Helpers API
   const fetchJSON = async (url, options = {}) => {
     const res = await fetch(url, options);
+    const text = await res.text();
     let data = null;
-    try { data = await res.json(); }
-    catch { throw new Error(`Error HTTP ${res.status}`); }
+    try { data = text ? JSON.parse(text) : null; }
+    catch { throw new Error(`Respuesta no JSON (HTTP ${res.status})`); }
     if (!res.ok) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
     return data;
   };
 
-  // ⬇⬇⬇ Normalizamos para tener mensual y anual por separado
+  // Normalización
   const normalizarFilas = (arr) =>
     [...(arr || [])]
       .map((r) => ({
         id: r.id ?? r.id_cat_monto ?? r.id_categoria ?? r.ID ?? null,
         descripcion: (r.descripcion ?? r.nombre_categoria ?? r.nombre ?? '').toString(),
         monto_mensual: r.monto ?? r.monto_mensual ?? null,
-        monto_anual:   r.monto_anual ?? null,
-        historialCount: r.historial_count ?? r.cant_historial ?? r.tiene_historial ?? 0,
+        monto_anual: r.monto_anual ?? null,
       }))
       .sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
 
@@ -199,15 +160,13 @@ const Categorias = () => {
 
   const filtradas = useMemo(() => lista, [lista]);
 
-  // Abrir modal de confirmación
-  const pedirConfirmacionEliminar = (cat) => {
-    setDelState({ open: true, cat, loading: false });
-  };
+  // Eliminar
+  const pedirConfirmacionEliminar = (cat) => setDelState({ open: true, cat, loading: false });
 
-  // Confirmar eliminación
   const confirmarEliminar = async () => {
     const cat = delState.cat;
     if (!cat) return setDelState({ open: false, cat: null, loading: false });
+
     try {
       setDelState((s) => ({ ...s, loading: true }));
       const body = new FormData();
@@ -224,77 +183,18 @@ const Categorias = () => {
     }
   };
 
-  // Historial por categoría
-  const abrirHistorial = async (cat) => {
-    try {
-      setHistCategoria({ id: cat.id, nombre: cat.descripcion || '' });
-      setHist([]);
-      setHistLoading(true);
-      setModalHistOpen(false);
-
-      const json = await fetchJSON(`${BASE_URL}/api.php?action=cat_historial&id=${encodeURIComponent(cat.id)}`);
-      let filas = [];
-      if (Array.isArray(json)) filas = json;
-      else if (json?.historial) {
-        if (json.exito === false) throw new Error(json.mensaje || 'Error al obtener historial');
-        filas = json.historial;
-      } else if (json?.exito && Array.isArray(json?.data)) filas = json.data;
-      else if (json?.exito && Array.isArray(json?.rows)) filas = json.rows;
-      else filas = json?.resultados || [];
-
-      const norm = filas.map((r) => ({
-        precio_anterior: Number(r.precio_anterior ?? r.anterior ?? r.old ?? 0),
-        precio_nuevo:   Number(r.precio_nuevo   ?? r.nuevo   ?? r.new ?? 0),
-        fecha:          (r.fecha_cambio ?? r.fecha ?? '').toString(),
-        tipo:           (r.tipo ?? 'MENSUAL').toString(),
-      }));
-
-      // Si no hay historial, avisar y no abrir modal
-      if (!norm.length) {
-        showToast('info', 'No hay historial para esta categoría.');
-        setModalHistOpen(false);
-        setHist([]);
-      } else {
-        setHist(norm);
-        setModalHistOpen(true);
-      }
-    } catch (e) {
-      console.error(e);
-      setModalHistOpen(false);
-      showToast('error', `No se pudo cargar el historial: ${e.message}`);
-    } finally {
-      setHistLoading(false);
-    }
-  };
-
-  const renderCambio = (viejo, nuevo) => {
-    const pv = Number(viejo);
-    const pn = Number(nuevo);
-    if (!(pv > 0)) return <span className="cat_change_dash">—</span>;
-
-    const diff = pn - pv;
-    const pct = (diff / pv) * 100;
-    const sign = diff >= 0 ? '+' : '';
-    const isUp = diff > 0;
-    const isDown = diff < 0;
-
-    return (
-      <span className={`cat_change ${isUp ? 'cat_change_up' : ''} ${isDown ? 'cat_change_down' : ''}`}>
-        <FontAwesomeIcon icon={isUp ? faArrowTrendUp : faArrowTrendDown} className="cat_change_icon" />
-        {sign}{pct.toFixed(1)}%
-      </span>
-    );
+  // ✅ Abrir historial modal
+  const abrirHistorial = (cat) => {
+    setHistState({ open: true, cat });
   };
 
   return (
     <div className="cat_page">
       <div className="cat_card">
-        {/* Header */}
         <header className="cat_header">
           <h2 className="cat_title">Categorías</h2>
         </header>
 
-        {/* Lista / Tabla */}
         <div className="cat_list">
           <div className="cat_list_head">
             <div className="cat_col cat_col_name cat_head_cell">Nombre</div>
@@ -336,7 +236,6 @@ const Categorias = () => {
                 </div>
 
                 <div className="cat_cell cat_col_actions cat_right" data-label="Acciones">
-                  {/* Historial */}
                   <button
                     className="cat_icon_btn cat_icon_btn_history"
                     onClick={() => abrirHistorial(c)}
@@ -369,7 +268,6 @@ const Categorias = () => {
           )}
         </div>
 
-        {/* Toolbar */}
         <section className="cat_toolbar">
           <button
             className="cat_btn cat_btn_primary cat_btn_back"
@@ -393,45 +291,14 @@ const Categorias = () => {
         </section>
       </div>
 
-      {/* Modal Historial */}
-      <Modal
-        open={delState.open === false ? modalHistOpen : false}
-        onClose={() => setModalHistOpen(false)}
-        title={`Historial · ${histCategoria.nombre || ''}`}
-      >
-        {histLoading ? (
-          <div className="cat_hist_loading">Cargando historial…</div>
-        ) : (
-          <div className="cat_hist_table_wrap">
-            <table className="cat_hist_table">
-              <thead>
-                <tr>
-                  <th className="cat_th_center">#</th>
-                  <th className="cat_th_center">Tipo</th>
-                  <th className="cat_th_right">Monto anterior</th>
-                  <th className="cat_th_right">Monto nuevo</th>
-                  <th className="cat_th_center">Cambio</th>
-                  <th className="cat_th_center">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hist.map((h, i) => (
-                  <tr key={i}>
-                    <td className="cat_td_center" data-label="#"> {i + 1} </td>
-                    <td className="cat_td_center" data-label="Tipo">{h.tipo}</td>
-                    <td className="cat_td_right" data-label="Monto anterior">{fmtARS(h.precio_anterior)}</td>
-                    <td className="cat_td_right" data-label="Monto nuevo">{fmtARS(h.precio_nuevo)}</td>
-                    <td className="cat_td_center" data-label="Cambio">
-                      {renderCambio(h.precio_anterior, h.precio_nuevo)}
-                    </td>
-                    <td className="cat_td_center" data-label="Fecha">{formatDate(h.fecha)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Modal>
+      {/* ✅ Modal Historial (APARTE) */}
+      <ModalHistorialCategorias
+        open={histState.open}
+        onClose={() => setHistState({ open: false, cat: null })}
+        categoria={histState.cat}
+        BASE_URL={BASE_URL}
+        notify={(tipo, mensaje) => showToast(tipo, mensaje, 3200)}
+      />
 
       {/* Modal Confirmar Eliminación */}
       <ConfirmDeleteModal
@@ -445,7 +312,7 @@ const Categorias = () => {
       {/* TOAST */}
       {toast.show && (
         <Toast
-          tipo={toast.tipo}     // 'exito' | 'error' | 'info'
+          tipo={toast.tipo}
           mensaje={toast.mensaje}
           duracion={toast.duracion}
           onClose={closeToast}

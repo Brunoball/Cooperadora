@@ -45,10 +45,15 @@ if (isset($_GET['listar_anios'])) {
     if (!($pdo instanceof PDO)) throw new RuntimeException('Conexión PDO no disponible.');
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    // ✅ Nuevo: años por anio_aplicado (y fallback por si quedaron 0 viejos)
     $st = $pdo->query("
-      SELECT DISTINCT YEAR(fecha_pago) AS anio
+      SELECT DISTINCT
+        CASE
+          WHEN anio_aplicado IS NOT NULL AND anio_aplicado > 0 THEN anio_aplicado
+          ELSE YEAR(fecha_pago)
+        END AS anio
       FROM pagos
-      WHERE fecha_pago IS NOT NULL
+      WHERE estado IN ('pagado','condonado')
       ORDER BY anio DESC
     ");
     $rows = $st->fetchAll(PDO::FETCH_COLUMN);
@@ -72,14 +77,14 @@ try {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   // == Parámetros ==
-  $anioFiltro  = isset($_GET['anio']) ? max(1900, (int)$_GET['anio']) : (int)date('Y'); // año de pago
+  // ✅ ahora "anio" es AÑO APLICADO (no fecha_pago)
+  $anioFiltro  = isset($_GET['anio']) ? max(1900, (int)$_GET['anio']) : (int)date('Y');
   $idMesFiltro = isset($_GET['id_mes']) ? (int)$_GET['id_mes'] : 0;
 
   $soloPagados = isset($_GET['pagados']);
   $soloCondon  = isset($_GET['condonados']);
 
-  // ✅ NUEVO: filtro "solo cobrador"
-  // el frontend manda: solo_cobrador=1
+  // ✅ filtro "solo cobrador"
   $soloCobrador = (isset($_GET['solo_cobrador']) && (int)$_GET['solo_cobrador'] === 1);
 
   // == Meses ==
@@ -117,18 +122,15 @@ try {
     FROM alumnos a
   ";
 
-  // WHERE dinámico con AND (sin romper tu lógica)
   $where = [];
   $bind  = [];
 
-  // ✅ Si solo cobrador: filtrar es_cobrador=1
   if ($soloCobrador) {
     $where[] = "a.es_cobrador = 1";
   }
 
   if ($incluirInactivos) {
-    // ✅ Ojo: este bloque mantiene EXACTAMENTE tu regla:
-    // activos siempre + inactivos SOLO si tienen pagos del año en meses relevantes
+    // ✅ ahora busca pagos por anio_aplicado y estado, no por fecha_pago
     $where[] = "
       (
         a.activo = 1
@@ -137,16 +139,16 @@ try {
             FROM pagos p
            WHERE p.id_alumno = a.id_alumno
              AND p.id_mes IN (:mes_consulta, :mes_anual, :mes_mitad, :mes_matricula)
-             AND p.fecha_pago IS NOT NULL
-             AND YEAR(p.fecha_pago) = :anio_pagos
+             AND p.estado IN ('pagado','condonado')
+             AND p.anio_aplicado = :anio_aplicado
         )
       )
     ";
-    $bind[':mes_consulta']  = (int)($idMesFiltro ?: 0);
-    $bind[':mes_anual']     = (int)ID_MES_ANUAL;
-    $bind[':mes_mitad']     = (int)($mesMitadConsulta ?: 0);
-    $bind[':mes_matricula'] = (int)ID_MES_MATRICULA;
-    $bind[':anio_pagos']    = (int)$anioFiltro;
+    $bind[':mes_consulta']   = (int)($idMesFiltro ?: 0);
+    $bind[':mes_anual']      = (int)ID_MES_ANUAL;
+    $bind[':mes_mitad']      = (int)($mesMitadConsulta ?: 0);
+    $bind[':mes_matricula']  = (int)ID_MES_MATRICULA;
+    $bind[':anio_aplicado']  = (int)$anioFiltro;
   } else {
     $where[] = "a.activo = 1";
   }
@@ -158,15 +160,13 @@ try {
   $sqlAlu .= " ORDER BY a.apellido ASC, a.nombre ASC ";
 
   $stAlu = $pdo->prepare($sqlAlu);
-
   foreach ($bind as $k => $v) {
     $stAlu->bindValue($k, $v, PDO::PARAM_INT);
   }
-
   $stAlu->execute();
   $alumnos = $stAlu->fetchAll(PDO::FETCH_ASSOC);
 
-  // == Pagos del año ==
+  // == Pagos del año aplicado ==
   $paramsPagos = [':anio' => (int)$anioFiltro];
 
   $mostrarSoloAnual      = ($idMesFiltro === ID_MES_ANUAL);
@@ -178,8 +178,8 @@ try {
     $sqlPag = "
       SELECT id_alumno, id_mes, estado
         FROM pagos
-       WHERE fecha_pago IS NOT NULL
-         AND YEAR(fecha_pago) = :anio
+       WHERE estado IN ('pagado','condonado')
+         AND anio_aplicado = :anio
          AND id_mes = :matricula
     ";
     $paramsPagos[':matricula'] = (int)ID_MES_MATRICULA;
@@ -190,8 +190,8 @@ try {
       $sqlPag = "
         SELECT id_alumno, id_mes, estado
           FROM pagos
-         WHERE fecha_pago IS NOT NULL
-           AND YEAR(fecha_pago) = :anio
+         WHERE estado IN ('pagado','condonado')
+           AND anio_aplicado = :anio
            AND id_mes IN (:mes, :anual, :mitad)
       ";
       $paramsPagos[':mes']   = (int)$idMesFiltro;
@@ -201,8 +201,8 @@ try {
       $sqlPag = "
         SELECT id_alumno, id_mes, estado
           FROM pagos
-         WHERE fecha_pago IS NOT NULL
-           AND YEAR(fecha_pago) = :anio
+         WHERE estado IN ('pagado','condonado')
+           AND anio_aplicado = :anio
       ";
     }
   }
@@ -269,6 +269,7 @@ try {
         'estado_pago'  => $estado,
         'origen_anual' => 0,
         'es_cobrador'  => (int)($a['es_cobrador'] ?? 0),
+        'anio_aplicado'=> (int)$anioFiltro,
       ];
       continue;
     }
@@ -299,6 +300,7 @@ try {
         'estado_pago'  => $estado,
         'origen_anual' => isset($pagoAnual[$idAlu]) ? 1 : 0,
         'es_cobrador'  => (int)($a['es_cobrador'] ?? 0),
+        'anio_aplicado'=> (int)$anioFiltro,
       ];
       continue;
     }
@@ -329,6 +331,7 @@ try {
         'estado_pago'  => $estado,
         'origen_anual' => 0,
         'es_cobrador'  => (int)($a['es_cobrador'] ?? 0),
+        'anio_aplicado'=> (int)$anioFiltro,
       ];
       continue;
     }
@@ -359,6 +362,7 @@ try {
         'estado_pago'  => $estado,
         'origen_anual' => 0,
         'es_cobrador'  => (int)($a['es_cobrador'] ?? 0),
+        'anio_aplicado'=> (int)$anioFiltro,
       ];
       continue;
     }
@@ -413,6 +417,7 @@ try {
         'estado_pago'  => $estado,
         'origen_anual' => $fromAnual,
         'es_cobrador'  => (int)($a['es_cobrador'] ?? 0),
+        'anio_aplicado'=> (int)$anioFiltro,
       ];
     }
   }

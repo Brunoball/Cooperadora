@@ -28,18 +28,17 @@ const MESES = [
 const STORAGE_KEYS = {
   year: "contable_year",
   month: "contable_month",
-  especial: "contable_especial", // ✅ nuevo
+  especial: "contable_especial",
 };
 
 const cap1 = (s = "") => s.charAt(0) + s.slice(1).toLowerCase();
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-/* ✅ NUEVO: dd/mm/YYYY para mostrar y exportar */
+/* ✅ dd/mm/YYYY */
 const formatFechaDMY = (v) => {
   const s = String(v ?? "").trim();
   if (!s) return "-";
 
-  // Soporta "YYYY-MM-DD" o "YYYY-MM-DDTHH:mm:ss..."
   const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) {
     const yyyy = m[1];
@@ -48,7 +47,6 @@ const formatFechaDMY = (v) => {
     return `${dd}/${mm}/${yyyy}`;
   }
 
-  // fallback si viene parseable
   const d = new Date(s);
   if (!Number.isNaN(d.getTime())) {
     const dd = String(d.getDate()).padStart(2, "0");
@@ -60,7 +58,6 @@ const formatFechaDMY = (v) => {
   return s;
 };
 
-/* 👇 siempre 2 decimales */
 const fmtMonto = (n) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -119,7 +116,7 @@ async function exportToExcelLike({ workbookName, sheetName, rows }) {
 }
 
 /* ===========================================================
-   ConfirmModal (reutiliza estilo de tu logout/confirm)
+   ConfirmModal
    =========================================================== */
 function ConfirmModal({
   open,
@@ -193,9 +190,7 @@ function ConfirmModal({
 
 /* ========= Componente principal ========= */
 export default function IngresosContable() {
-  // Filtros (leemos de localStorage)
   const [anio, setAnio] = useState(() => {
-    if (typeof window === "undefined") return "ALL";
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.year);
       return saved || "ALL";
@@ -207,7 +202,6 @@ export default function IngresosContable() {
   const [anios, setAnios] = useState([Y]);
 
   const [mes, setMes] = useState(() => {
-    if (typeof window === "undefined") return "ALL";
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.month);
       return saved || "ALL";
@@ -216,16 +210,17 @@ export default function IngresosContable() {
     }
   });
 
-  // ✅ NUEVO: filtro especial (id_mes de tabla meses pero solo > 12)
+  // ✅ filtro especial (id_mes > 12)
   const [mesEspecial, setMesEspecial] = useState(() => {
-    if (typeof window === "undefined") return "";
     try {
       return localStorage.getItem(STORAGE_KEYS.especial) || "";
     } catch {
       return "";
     }
   });
-  const [mesesEspeciales, setMesesEspeciales] = useState([]); // [{id_mes, nombre}]
+
+  // ✅ IMPORTANTÍSIMO: acá dejamos fijo, sin pegar a meses_list (evita 404)
+  const [mesesEspeciales, setMesesEspeciales] = useState([]);
 
   const [query, setQuery] = useState("");
 
@@ -237,15 +232,12 @@ export default function IngresosContable() {
   const [cascading, setCascading] = useState(false);
   const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
 
-  // Filtro por categoría
   const [catFiltro, setCatFiltro] = useState("");
 
-  // Modales
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editRow, setEditRow] = useState(null);
 
-  // Toasts
   const [toasts, setToasts] = useState([]);
   const toastSeq = useRef(0);
   const addToast = (tipo, mensaje, duracion = 3000) => {
@@ -257,23 +249,16 @@ export default function IngresosContable() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
-  /* 🔐 Persistir filtros en localStorage cuando cambian */
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.year, anio);
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEYS.year, anio); } catch {}
   }, [anio]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.month, mes);
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEYS.month, mes); } catch {}
   }, [mes]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.especial, mesEspecial);
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEYS.especial, mesEspecial); } catch {}
   }, [mesEspecial]);
 
   /* ====== Rango de fechas ====== */
@@ -293,7 +278,7 @@ export default function IngresosContable() {
     return { start: ymd(first), end: ymd(last), label: `${cap1(MESES[m])} ${y}` };
   }, [anio, mes]);
 
-  /* ====== CARGA API ====== */
+  /* ====== fetch helper ====== */
   const fetchJSON = useCallback(async (url, options = {}) => {
     const sep = url.includes("?") ? "&" : "?";
     const finalUrl = `${url}${sep}ts=${Date.now()}`;
@@ -306,39 +291,16 @@ export default function IngresosContable() {
     return data;
   }, []);
 
-  // ✅ NUEVO: cargar meses especiales desde DB (oculta 1..12)
-  const loadMesesEspeciales = useCallback(async () => {
-    try {
-      const data = await fetchJSON(`${BASE_URL}/api.php?action=meses_list`);
-      const items = Array.isArray(data?.items) ? data.items : [];
-
-      const especiales = items
-        .map((x) => ({
-          id_mes: Number(x.id_mes ?? x.id ?? 0),
-          nombre: String(x.nombre ?? x.Nombre ?? "").trim(),
-        }))
-        .filter((x) => x.id_mes > 12 && x.nombre);
-
-      if (especiales.length) {
-        setMesesEspeciales(especiales);
-        return;
-      }
-
-      setMesesEspeciales([
-        { id_mes: 13, nombre: "CONTADO ANUAL" },
-        { id_mes: 14, nombre: "MATRICULA" },
-        { id_mes: 15, nombre: "1ERA MITAD" },
-        { id_mes: 16, nombre: "2DA MITAD" },
-      ]);
-    } catch {
-      setMesesEspeciales([
-        { id_mes: 13, nombre: "CONTADO ANUAL" },
-        { id_mes: 14, nombre: "MATRICULA" },
-        { id_mes: 15, nombre: "1ERA MITAD" },
-        { id_mes: 16, nombre: "2DA MITAD" },
-      ]);
-    }
-  }, [fetchJSON]);
+  /* ✅ Cargar meses especiales (FIJO, sin backend) */
+  const loadMesesEspeciales = useCallback(() => {
+    // Esto evita el 404 de /api.php?action=meses_list y mantiene Contable estable.
+    setMesesEspeciales([
+      { id_mes: 13, nombre: "CONTADO ANUAL" },
+      { id_mes: 14, nombre: "MATRICULA" },
+      { id_mes: 15, nombre: "1ERA MITAD" },
+      { id_mes: 16, nombre: "2DA MITAD" },
+    ]);
+  }, []);
 
   const loadPagosAlumnos = useCallback(async () => {
     setCargando(true);
@@ -411,7 +373,7 @@ export default function IngresosContable() {
           if (!item.fecha) return false;
           const fecha = new Date(item.fecha);
           const itemAnio = fecha.getFullYear();
-          const itemMes = fecha.getMonth(); // 0-11
+          const itemMes = fecha.getMonth();
           return itemAnio === Number(anio) && itemMes === Number(mes);
         });
       }
@@ -449,7 +411,6 @@ export default function IngresosContable() {
     await Promise.all([loadPagosAlumnos(), loadIngresos()]);
   }, [loadPagosAlumnos, loadIngresos]);
 
-  // Cargar años disponibles al inicio
   useEffect(() => {
     const loadAnios = async () => {
       try {
@@ -465,34 +426,29 @@ export default function IngresosContable() {
     loadAnios();
   }, [fetchJSON]);
 
-  // ✅ cargar meses especiales 1 vez
+  // ✅ cargar meses especiales 1 vez (sin backend)
   useEffect(() => {
     loadMesesEspeciales();
   }, [loadMesesEspeciales]);
 
-  // Cargar datos cuando cambian los filtros
   useEffect(() => {
     loadAll();
   }, [anio, mes, loadAll]);
 
-  // Reset filtro categoría al cambiar contexto
   useEffect(() => {
     setCatFiltro("");
   }, [innerTab, anio, mes]);
 
-  // ✅ si cambia a "Ingresos" (manuales), no tiene sentido el filtro especial
   useEffect(() => {
     if (innerTab !== "alumnos") setMesEspecial("");
   }, [innerTab]);
 
-  // Animación cascada
   useEffect(() => {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
   }, [anio, mes, query, innerTab, catFiltro, mesEspecial]);
 
-  /* Derivados: búsqueda + filtro categoría + ✅ filtro especial */
   const filasFiltradasAlu = useMemo(() => {
     const q = query.trim().toLowerCase();
 
@@ -537,7 +493,6 @@ export default function IngresosContable() {
     return { total, cantidad: base.length };
   }, [filasFiltradasAlu, filasFiltradasIng, innerTab]);
 
-  // AGRUPA POR CATEGORÍA
   const categoriasMes = useMemo(() => {
     const base = innerTab === "alumnos" ? filas : filasIngresos;
     const map = new Map();
@@ -553,7 +508,6 @@ export default function IngresosContable() {
 
   const sideClass = ["ing-side", sideOpen ? "is-open" : "is-closed"].join(" ");
 
-  /* ===== Export handler ===== */
   const onExport = async () => {
     const isAlu = innerTab === "alumnos";
     const base = isAlu ? filasFiltradasAlu : filasFiltradasIng;
@@ -594,7 +548,6 @@ export default function IngresosContable() {
     addToast("exito", "Exportado exitosamente.");
   };
 
-  /* ===== Acciones ===== */
   const onClickCreate = () => setOpenCreate(true);
   const onEdit = (row) => {
     setEditRow(row);
@@ -605,10 +558,12 @@ export default function IngresosContable() {
     setToDelete(row);
     setConfirmOpen(true);
   };
+
   const cancelDelete = () => {
     setConfirmOpen(false);
     setToDelete(null);
   };
+
   const confirmDelete = async () => {
     if (!toDelete?.id_ingreso) return;
     try {
@@ -630,7 +585,6 @@ export default function IngresosContable() {
 
   return (
     <div className="ing-wrap">
-      {/* Toasts */}
       <div className="toast-stack">
         {toasts.map((t) => (
           <Toast
@@ -644,7 +598,6 @@ export default function IngresosContable() {
       </div>
 
       <div className="ing-layout">
-        {/* Sidebar */}
         <aside className={sideClass} aria-label="Barra lateral">
           <div className="ing-side__inner">
             <div className="ing-side__row ing-side__row--top gradient--brand-red">
@@ -664,30 +617,18 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            {/* Año / Mes */}
             <div className="ing-fieldrow">
               <div className={`ing-field fl ${anio !== "ALL" ? "has-value" : ""}`}>
-                <select
-                  id="anio"
-                  value={anio}
-                  onChange={(e) => setAnio(e.target.value)}
-                  aria-label="Año"
-                >
+                <select id="anio" value={anio} onChange={(e) => setAnio(e.target.value)} aria-label="Año">
                   <option value="ALL">TODOS</option>
                   {anios.map((a) => (
-                    <option key={a} value={String(a)}>
-                      {a}
-                    </option>
+                    <option key={a} value={String(a)}>{a}</option>
                   ))}
                 </select>
                 <label htmlFor="anio">Año</label>
               </div>
 
-              <div
-                className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${
-                  anio === "ALL" ? "is-disabled" : ""
-                }`}
-              >
+              <div className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${anio === "ALL" ? "is-disabled" : ""}`}>
                 <select
                   id="mes"
                   value={mes}
@@ -697,16 +638,13 @@ export default function IngresosContable() {
                 >
                   <option value="ALL">TODOS</option>
                   {MESES.map((m, i) => (
-                    <option key={m} value={String(i)}>
-                      {m}
-                    </option>
+                    <option key={m} value={String(i)}>{m}</option>
                   ))}
                 </select>
                 <label htmlFor="mes">Mes</label>
               </div>
             </div>
 
-            {/* ✅ filtro especial (solo alumnos) */}
             {innerTab === "alumnos" && (
               <div className="ing-fieldrow">
                 <div className={`ing-field ing-Especial fl ${mesEspecial ? "has-value" : ""}`}>
@@ -728,12 +666,9 @@ export default function IngresosContable() {
               </div>
             )}
 
-            {/* KPIs */}
             <div className="ing-kpi-cards">
               <div className="kpi-card">
-                <div className="kpi-card__icon" aria-hidden>
-                  $
-                </div>
+                <div className="kpi-card__icon" aria-hidden>$</div>
                 <div className="kpi-card__text">
                   <div className="kpi-card__label">Total</div>
                   <div className="kpi-card__value num">{fmtMonto(resumen.total)}</div>
@@ -741,9 +676,7 @@ export default function IngresosContable() {
               </div>
 
               <div className="kpi-card">
-                <div className="kpi-card__icon" aria-hidden>
-                  #
-                </div>
+                <div className="kpi-card__icon" aria-hidden>#</div>
                 <div className="kpi-card__text">
                   <div className="kpi-card__label">Registros</div>
                   <div className="kpi-card__value num">{resumen.cantidad}</div>
@@ -753,7 +686,6 @@ export default function IngresosContable() {
 
             <div className="ing-divider" />
 
-            {/* Lista de categorías clickeable */}
             <div className="ing-sectiontitle">
               <FontAwesomeIcon icon={faChartPie} />
               <span>{innerTab === "alumnos" ? "Categorías (alumnos)" : "Categorías (ingresos)"}</span>
@@ -790,7 +722,6 @@ export default function IngresosContable() {
           </div>
         </aside>
 
-        {/* ======== CONTENIDO ======== */}
         <main className="ing-main">
           <section className="ing-stack cards">
             <div className="ing-head ing-stack__head">
@@ -801,7 +732,6 @@ export default function IngresosContable() {
             </div>
 
             <div className="ing-page ing-stack__body">
-              {/* Tabs + acciones */}
               <div className="seg-tabs gradient--brand-red" role="tablist" aria-label="Vista de tabla">
                 <div className="seg-tabs-left">
                   <button
@@ -846,13 +776,8 @@ export default function IngresosContable() {
                 </div>
               </div>
 
-              {/* ===== TABLA: ALUMNOS ===== */}
               {innerTab === "alumnos" ? (
-                <div
-                  className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
-                  role="table"
-                  aria-label="Listado de ingresos (alumnos)"
-                >
+                <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
                   {cargando && (
                     <div className="ing-tableloader" role="status" aria-live="polite">
                       <div className="ing-spinner" />
@@ -870,15 +795,8 @@ export default function IngresosContable() {
                   </div>
 
                   {filasFiltradasAlu.map((f, idx) => (
-                    <div
-                      className={`ing-row data ${cascading ? "casc" : ""}`}
-                      role="row"
-                      key={f.id}
-                      style={{ "--i": idx }}
-                    >
-                      {/* ✅ dd/mm/YYYY */}
+                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
-
                       <div className="c-alumno">
                         <div className="ing-alumno">
                           <div className="ing-alumno__text">
@@ -886,12 +804,8 @@ export default function IngresosContable() {
                           </div>
                         </div>
                       </div>
-                      <div className="c-cat">
-                        <span className="pill">{f.categoria}</span>
-                      </div>
-                      <div className="c-monto t-right">
-                        <span className="num strong-amount">{fmtMonto(f.monto)}</span>
-                      </div>
+                      <div className="c-cat"><span className="pill">{f.categoria}</span></div>
+                      <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.monto)}</span></div>
                       <div className="c-medio">{f.medio || "—"}</div>
                       <div className="c-mes">{f.mesPagado}</div>
                     </div>
@@ -909,12 +823,7 @@ export default function IngresosContable() {
                   )}
                 </div>
               ) : (
-                /* ===== TABLA: MANUALES ===== */
-                <div
-                  className={`ing-tablewrap is-manuales ${cargando ? "is-loading" : ""}`}
-                  role="table"
-                  aria-label="Listado de ingresos (tabla ingresos)"
-                >
+                <div className={`ing-tablewrap is-manuales ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (tabla ingresos)">
                   {cargando && (
                     <div className="ing-tableloader" role="status" aria-live="polite">
                       <div className="ing-spinner" />
@@ -933,24 +842,13 @@ export default function IngresosContable() {
                   </div>
 
                   {filasFiltradasIng.map((f, idx) => (
-                    <div
-                      className={`ing-row data ${cascading ? "casc" : ""}`}
-                      role="row"
-                      key={f.id}
-                      style={{ "--i": idx }}
-                    >
-                      {/* ✅ dd/mm/YYYY */}
+                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
-
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-proveedor">{f.proveedor || "-"}</div>
-                      <div className="c-cat">
-                        <span className="pill">{f.categoria || "-"}</span>
-                      </div>
+                      <div className="c-cat"><span className="pill">{f.categoria || "-"}</span></div>
                       <div className="c-imputacion">{f.imputacion || f.descripcion || "-"}</div>
-                      <div className="c-importe">
-                        <span className="num strong-amount">{fmtMonto(f.importe)}</span>
-                      </div>
+                      <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
                       <div className="c-actions center">
                         <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
                           <FontAwesomeIcon icon={faEdit} />
@@ -983,7 +881,6 @@ export default function IngresosContable() {
         <button className="ing-layout__overlay" onClick={() => setSideOpen(false)} aria-label="Cerrar panel" />
       )}
 
-      {/* === Modales === */}
       <IngresoCrearModal
         open={openCreate}
         defaultDate={new Date().toISOString().slice(0, 10)}

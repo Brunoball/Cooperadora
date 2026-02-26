@@ -42,6 +42,14 @@ const normalizar = (s = '') =>
 const CURRENT_YEAR = new Date().getFullYear();
 
 /* =========================
+   ✅ IDs especiales (del backend)
+========================= */
+const ID_MES_ANUAL     = 13; // CONTADO ANUAL
+const ID_MES_MATRICULA = 14; // MATRÍCULA
+const ID_MES_1ER_MITAD = 15; // 1ER MITAD
+const ID_MES_2DA_MITAD = 16; // 2DA MITAD
+
+/* =========================
    ✅ DESCUENTO HERMANOS (mismo que ModalMesCuotas)
 ========================= */
 const REFERENCIAS = {
@@ -92,6 +100,20 @@ async function asyncPool(limit, array, iteratorFn) {
   }
   return Promise.all(ret);
 }
+
+/* =========================
+   ✅ Parser de montos (tolera formato AR)
+========================= */
+const parseMonto = (v) => {
+  if (typeof v === 'number') return v;
+  if (v == null) return 0;
+  const s = String(v).replace(/[^\d,.-]/g, '');
+  const normalized = s.includes(',')
+    ? s.replace(/\./g, '').replace(',', '.')
+    : s.replace(/,/g, '');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+};
 
 const Cuotas = () => {
   const [cuotas, setCuotas] = useState([]);
@@ -147,8 +169,8 @@ const Cuotas = () => {
   // ===== abort controllers (evitar respuestas viejas) =====
   const abortRef = useRef({ cuotas: null, listas: null, anios: null });
 
-  // ✅ caches para imprimir todos (no repetir fetches)
-  const cacheMontoCategoriaRef = useRef(new Map()); // id_alumno -> data
+  // ✅ caches para imprimir todos (no repetir fetches) - incluye familyCount en key
+  const cacheMontoCategoriaRef = useRef(new Map()); // id_alumno::familyCount -> data
   const cacheFamiliaRef = useRef(new Map());        // id_alumno -> data
 
   // Animación cascada
@@ -187,9 +209,15 @@ const Cuotas = () => {
   const getNombreCategoria = (id) => (categorias.find(c => String(c.id) === String(id))?.nombre) || '';
   const getNombreMes = (id) => (meses.find(m => String(m.id) === String(id))?.nombre) || id;
 
-  // ✅ REGLA NUEVA (pedido):
+  // ✅ NUEVO helper: obtener ID de categoría "EXTERNO"
+  const getCategoriaExternoId = useCallback(() => {
+    const cat = categorias.find(c => normalizar(c?.nombre) === 'externo');
+    return cat ? String(cat.id) : '';
+  }, [categorias]);
+
+  // ✅ REGLA:
   // - Imprimir normal SOLO en pagados
-  // - PERO si "Solo cobrador" está activo => habilitar imprimir (incluye botón móvil de abajo)
+  // - PERO si "Solo cobrador" está activo => habilitar imprimir
   const canPrint = (estadoPagoSeleccionado === 'pagado') || (soloCobrador === true);
 
   /* =========================================================
@@ -232,7 +260,7 @@ const Cuotas = () => {
       if (mesSeleccionado) params.set('id_mes', String(mesSeleccionado));
       if (anioPagoSeleccionado) params.set('anio', String(anioPagoSeleccionado));
 
-      // ✅ NUEVO: filtro cobrador al backend
+      // ✅ filtro cobrador al backend
       if (soloCobrador) params.set('solo_cobrador', '1');
 
       if (abortRef.current.cuotas) abortRef.current.cuotas.abort();
@@ -380,32 +408,25 @@ const Cuotas = () => {
   }, [triggerCascade]);
 
   /* =========================================================
-     ✅ FETCH helpers: monto_categoria + familia (con cache)
-     - usa los mismos endpoints que ModalMesCuotas
+     ✅ FETCH helpers: monto_categoria (con familyCount + parse)
   ========================================================= */
-  const fetchMontoCategoria = useCallback(async (idAlumno) => {
-    const key = String(idAlumno);
-    if (!key) return null;
+  const fetchMontoCategoria = useCallback(async (idAlumno, familyCount = 1) => {
+    const key = `${idAlumno}::${familyCount}`;
+    if (!idAlumno) return null;
     if (cacheMontoCategoriaRef.current.has(key)) return cacheMontoCategoriaRef.current.get(key);
 
     try {
-      const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(key)}`;
+      const url = `${BASE_URL}/api.php?action=obtener_monto_categoria&id_alumno=${encodeURIComponent(String(idAlumno))}&family_count=${encodeURIComponent(String(familyCount))}`;
       const res = await fetch(url, { method: 'GET' });
       if (!res.ok) throw new Error(`obtener_monto_categoria HTTP ${res.status}`);
       const data = await res.json().catch(() => ({}));
 
-      // normalizo como hace ModalMesCuotas
-      const mensual = Number(data?.monto_mensual ?? data?.monto ?? data?.precio ?? data?.Precio_Categoria ?? 0);
-      const anual   = Number(data?.monto_anual ?? 0);
-      const matri   = Number(data?.monto_matricula ?? data?.matricula ?? 0);
-      const nombre  = String(data?.categoria_nombre ?? data?.nombre_categoria ?? data?.nombre ?? '').toUpperCase();
-
       const out = {
         exito: !!data?.exito,
-        monto_mensual: Number.isFinite(mensual) ? mensual : 0,
-        monto_anual: Number.isFinite(anual) ? anual : 0,
-        monto_matricula: Number.isFinite(matri) ? matri : 0,
-        categoria_nombre: nombre || '',
+        monto_mensual: parseMonto(data?.monto_mensual ?? data?.monto ?? data?.precio ?? data?.Precio_Categoria),
+        monto_anual: parseMonto(data?.monto_anual),
+        monto_matricula: parseMonto(data?.monto_matricula ?? data?.matricula),
+        categoria_nombre: String(data?.categoria_nombre ?? data?.nombre_categoria ?? data?.nombre ?? '').toUpperCase(),
       };
 
       cacheMontoCategoriaRef.current.set(key, out);
@@ -447,56 +468,102 @@ const Cuotas = () => {
   }, []);
 
   /* =========================================================
-     ✅ Armar “alumno para imprimir” (1 mes) igual al modal:
-     - precio_unitario: mensual con descuento por hermanos
-     - importe_total: precio_unitario (1 mes)
-     - periodos: [mesSeleccionado]
+     ✅ Determinar "período real a imprimir"
+     - Si la fila viene con id_mes especial (13/14/15/16) => se imprime eso
+     - Si es un mes normal pero origen_anual=1 => se imprime CONTADO ANUAL (13)
+     - Si no => se imprime el mes del selector (o el id_mes normal)
   ========================================================= */
-  const buildAlumnoParaImprimirBatch = useCallback(async (cuota) => {
-    const idAlumno = getIdAlumnoFromCuota(cuota);
-    const idMes = Number(mesSeleccionado);
+  const getPeriodoImpresion = useCallback((cuota) => {
     const anio = Number(anioPagoSeleccionado) || CURRENT_YEAR;
 
-    // fallback de categoría (por si el endpoint no la manda)
+    const idMesCuota = Number(getIdMesFromCuota(cuota));
+    const idMesSel = Number(mesSeleccionado);
+
+    const esEspecial = [ID_MES_ANUAL, ID_MES_MATRICULA, ID_MES_1ER_MITAD, ID_MES_2DA_MITAD].includes(idMesCuota);
+    const origenAnual = Number(cuota?.origen_anual || 0) === 1;
+
+    let idMesImprimir = idMesSel || idMesCuota || 0;
+
+    if (esEspecial) {
+      idMesImprimir = idMesCuota;
+    } else if (origenAnual) {
+      idMesImprimir = ID_MES_ANUAL;
+    } else if (idMesCuota > 0) {
+      idMesImprimir = idMesCuota;
+    }
+
+    let periodoTexto = `${getNombreMes(idMesImprimir)} ${anio}`;
+
+    if (idMesImprimir === ID_MES_ANUAL) periodoTexto = `CONTADO ANUAL ${anio}`;
+    if (idMesImprimir === ID_MES_MATRICULA) periodoTexto = `MATRÍCULA ${anio}`;
+    if (idMesImprimir === ID_MES_1ER_MITAD) periodoTexto = `1ER MITAD ${anio}`;
+    if (idMesImprimir === ID_MES_2DA_MITAD) periodoTexto = `2DA MITAD ${anio}`;
+
+    return { idMesImprimir, periodoTexto, anio };
+  }, [anioPagoSeleccionado, mesSeleccionado, getNombreMes]);
+
+  /* =========================================================
+     ✅ Armar “alumno para imprimir” (1 ítem)
+     - mensual con descuento por hermanos
+     - ANUAL: usa monto_anual si existe, sino mensual*12
+  ========================================================= */
+  const buildAlumnoParaImprimir = useCallback(async (cuota) => {
+    const idAlumno = getIdAlumnoFromCuota(cuota);
+    const { idMesImprimir, periodoTexto, anio } = getPeriodoImpresion(cuota);
+
     const catFallback = (getNombreCategoria(cuota?.id_categoria) || '').toUpperCase();
 
-    const [mCat, fam] = await Promise.all([
-      fetchMontoCategoria(idAlumno),
-      fetchFamilia(idAlumno),
-    ]);
-
-    const categoriaNombre = (mCat?.categoria_nombre || catFallback || '').toUpperCase();
-
+    // 1) familia => familyCount
+    const fam = await fetchFamilia(idAlumno);
     const mA = Number(fam?.miembros_activos || 0);
     const mT = Number(fam?.miembros_total || 0);
     const baseFam = Math.max(mA, mT, 0);
     const familyCount = (fam?.tiene_familia) ? Math.max(1, baseFam) : 1;
 
+    // 2) monto_categoria con familyCount
+    const mCat = await fetchMontoCategoria(idAlumno, familyCount);
+    const categoriaNombre = (mCat?.categoria_nombre || catFallback || '').toUpperCase();
+
     const porc = getPorcDescuentoDerivado(categoriaNombre, familyCount);
 
     const mensualBase = Number(mCat?.monto_mensual || 0);
-    const mensualConDesc = Math.max(0, Math.round(mensualBase * (1 - porc)));
+    const anualBase   = Number(mCat?.monto_anual || 0);
+    const matricBase  = Number(mCat?.monto_matricula || 0);
 
-    // ✅ alumno ya listo para imprimir
+    let precio = 0;
+
+    if (idMesImprimir === ID_MES_ANUAL) {
+      const base = anualBase > 0 ? anualBase : (mensualBase * 12);
+      precio = Math.max(0, Math.round(base * (1 - porc)));
+    } else if (idMesImprimir === ID_MES_MATRICULA) {
+      // matrícula: normalmente NO aplica descuento de hermanos (si querés, lo activamos)
+      precio = Math.max(0, Math.round(matricBase));
+    } else if (idMesImprimir === ID_MES_1ER_MITAD || idMesImprimir === ID_MES_2DA_MITAD) {
+      // mitades: si el backend te devuelve monto especial lo usamos, sino aproximamos mensual*5
+      const base = mensualBase * 5;
+      precio = Math.max(0, Math.round(base * (1 - porc)));
+    } else {
+      // mes normal
+      precio = Math.max(0, Math.round(mensualBase * (1 - porc)));
+    }
+
     return {
       ...cuota,
       id_alumno: idAlumno,
 
-      // para que tus utils entiendan “un mes”
-      periodos: [idMes],
+      periodos: [idMesImprimir],
       extras_periodos: [],
-      periodos_completos: [idMes],
+      periodos_completos: [idMesImprimir],
       cantidad_meses: 1,
-      id_periodo: idMes,
-      periodo_texto: `${getNombreMes(idMes)} ${anio}`,
+      id_periodo: idMesImprimir,
+      periodo_texto: periodoTexto,
 
       anio,
       categoria_nombre: categoriaNombre,
 
-      // ✅ lo importante:
-      precio_unitario: mensualConDesc,
-      importe_total: mensualConDesc,
-      precio_total: mensualConDesc,
+      precio_unitario: precio,
+      importe_total: precio,
+      precio_total: precio,
 
       meta_descuento_hermanos: {
         familia: familyCount,
@@ -505,12 +572,51 @@ const Cuotas = () => {
       },
     };
   }, [
-    anioPagoSeleccionado,
-    mesSeleccionado,
-    fetchMontoCategoria,
     fetchFamilia,
-    getNombreMes,
+    fetchMontoCategoria,
     getNombreCategoria,
+    getPeriodoImpresion,
+  ]);
+
+  /* =========================================================
+     ✅ IMPRESIÓN DIRECTA (sin modal) SOLO EN PAGADOS
+  ========================================================= */
+  const imprimirUnoDirecto = useCallback(async (cuota) => {
+    try {
+      if (!cuota) return;
+      if (!mesSeleccionado) return;
+
+      setLoadingPrint(true);
+
+      const alumno = await buildAlumnoParaImprimir(cuota);
+
+      const nombreCat = getNombreCategoria(cuota?.id_categoria);
+      const isExterno = normalizar(nombreCat) === 'externo';
+
+      const { idMesImprimir } = getPeriodoImpresion(cuota);
+
+      const w = window.open('', '_blank');
+      if (!w) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+
+      if (isExterno) {
+        await imprimirRecibosExternos([alumno], idMesImprimir, w, { anioPago: anioPagoSeleccionado });
+      } else {
+        await imprimirRecibos([alumno], idMesImprimir, w, { anioPago: anioPagoSeleccionado });
+      }
+    } catch (e) {
+      console.error('imprimirUnoDirecto error:', e);
+      setToastTipo('error');
+      setToastMensaje('Error al imprimir. Revisá consola.');
+      setToastVisible(true);
+    } finally {
+      setLoadingPrint(false);
+    }
+  }, [
+    mesSeleccionado,
+    anioPagoSeleccionado,
+    buildAlumnoParaImprimir,
+    getNombreCategoria,
+    getPeriodoImpresion,
   ]);
 
   // Imprimir TODOS: separar internos/externos
@@ -545,17 +651,15 @@ const Cuotas = () => {
         else internosRaw.push(c);
       }
 
-      // ✅ 1) Enriquecer con montos reales por alumno (como ModalMesCuotas)
-      // pool para no saturar backend
       const CONCURRENCY = 8;
 
-      const internos = await asyncPool(CONCURRENCY, internosRaw, buildAlumnoParaImprimirBatch);
-      const externos = await asyncPool(CONCURRENCY, externosRaw, buildAlumnoParaImprimirBatch);
+      const internos = await asyncPool(CONCURRENCY, internosRaw, buildAlumnoParaImprimir);
+      const externos = await asyncPool(CONCURRENCY, externosRaw, buildAlumnoParaImprimir);
 
-      // ✅ 2) Imprimir
       if (internos.length) {
         const w1 = window.open('', '_blank');
         if (!w1) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+        // ⚠️ Para imprimir TODOS seguimos pasando el mes seleccionado como "contexto" (puede incluir anuales)
         await imprimirRecibos(internos, mesSeleccionado, w1, { anioPago: anioPagoSeleccionado });
       }
       if (externos.length) {
@@ -589,8 +693,10 @@ const Cuotas = () => {
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
 
-  // Imprimir UNO → ModalMesCuotas
-  const handlePrintClick = useCallback((item) => {
+  // ✅ Imprimir UNO:
+  // - En PAGADOS => imprime DIRECTO (sin modal)
+  // - En otros casos => mantiene ModalMesCuotas (si querés también directo ahí, te lo dejo igual)
+  const handlePrintClick = useCallback(async (item) => {
     if (!canPrint) {
       setToastTipo('advertencia');
       setToastMensaje(soloCobrador
@@ -599,9 +705,16 @@ const Cuotas = () => {
       setToastVisible(true);
       return;
     }
+
+    if (estadoPagoSeleccionado === 'pagado') {
+      await imprimirUnoDirecto(item);
+      return;
+    }
+
+    // fallback (por si imprimís desde otras pestañas usando "solo cobrador")
     setSocioParaImprimir(item);
     setMostrarModalMesCuotas(true);
-  }, [canPrint, soloCobrador]);
+  }, [canPrint, soloCobrador, estadoPagoSeleccionado, imprimirUnoDirecto]);
 
   const handleExportExcel = useCallback(() => {
     if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione mes'); setToastVisible(true); return; }
@@ -618,13 +731,24 @@ const Cuotas = () => {
   const onChangeBusqueda   = (e) => { setBusqueda(e.target.value); triggerCascade(); };
 
   // ✅ toggle cobrador
-  // - Si lo ACTIVO => fuerzo pestaña "deudor" (siempre), así es coherente con cobrar
+  // - Si lo ACTIVO => fuerzo pestaña "deudor" (siempre)
+  // - ✅ PEDIDO: al ACTIVAR => setear categoría automáticamente a EXTERNO (si existe)
   const onToggleSoloCobrador = () => {
     setSoloCobrador(prev => {
       const next = !prev;
-      if (next) setEstadoPagoSeleccionado('deudor');
+
+      if (next) {
+        setEstadoPagoSeleccionado('deudor');
+
+        const externoId = getCategoriaExternoId();
+        if (externoId) {
+          setCategoriaSeleccionada(externoId);
+        }
+      }
+
       return next;
     });
+
     triggerCascade();
   };
 
@@ -647,7 +771,8 @@ const Cuotas = () => {
           <button
             className="gcuotas-action-button gcuotas-print-button"
             onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
-            title="Seleccionar meses e imprimir/descargar"
+            title="Imprimir"
+            disabled={loadingPrint}
           >
             <FontAwesomeIcon icon={faPrint} />
           </button>
@@ -724,8 +849,9 @@ const Cuotas = () => {
               <button
                 className="gcuotas-mobile-print-button"
                 onClick={(e) => { e.stopPropagation(); handlePrintClick(cuota); }}
+                disabled={loadingPrint}
               >
-                <FontAwesomeIcon icon={faPrint} /><span>Meses / Comprobante</span>
+                <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
               </button>
             )}
 
@@ -880,6 +1006,7 @@ const Cuotas = () => {
         />
       )}
 
+      {/* ModalMesCuotas queda SOLO para casos no-pagados (ej: solo cobrador) */}
       {canPrint && mostrarModalMesCuotas && socioParaImprimir && (
         <ModalMesCuotas
           socio={socioParaImprimir}
@@ -909,9 +1036,6 @@ const Cuotas = () => {
               </div>
 
               <div className="gcuotas-select-container">
-
-
-
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">
                     <label htmlFor="anioPago" className="gcuotas-input-label">
@@ -953,43 +1077,43 @@ const Cuotas = () => {
                   </div>
                 </div>
 
-{/* ✅ CATEGORÍA + COBRADOR (MISMA FILA) */}
-<div className="gcuotas-input-row">
-  <div className="gcuotas-input-group">
-    <label htmlFor="categoria" className="gcuotas-input-label">
-      <FontAwesomeIcon icon={faFilter} /> Categoría
-    </label>
-    <select
-      id="categoria"
-      value={categoriaSeleccionada}
-      onChange={onChangeCategoria}
-      className="gcuotas-dropdown"
-      disabled={loading}
-    >
-      <option value="">Todas</option>
-      {categorias.map((c, idx) => (
-        <option key={idx} value={c.id}>{c.nombre}</option>
-      ))}
-    </select>
-  </div>
+                {/* ✅ CATEGORÍA + COBRADOR */}
+                <div className="gcuotas-input-row">
+                  <div className="gcuotas-input-group">
+                    <label htmlFor="categoria" className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> Categoría
+                    </label>
+                    <select
+                      id="categoria"
+                      value={categoriaSeleccionada}
+                      onChange={onChangeCategoria}
+                      className="gcuotas-dropdown"
+                      disabled={loading}
+                    >
+                      <option value="">Todas</option>
+                      {categorias.map((c, idx) => (
+                        <option key={idx} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
 
-  <div className="gcuotas-input-group">
-    <label className="gcuotas-input-label">
-      <FontAwesomeIcon icon={faFilter} /> Cobrador
-    </label>
-    <button
-      type="button"
-      onClick={onToggleSoloCobrador}
-      className={`gcuotas-button gcuotas-button-cobrador ${
-        soloCobrador ? "gcuotas-button-print-all" : "gcuotas-button-export"
-      }`}
-      disabled={loading}
-      title="Filtrar alumnos con es_cobrador=1"
-    >
-      {soloCobrador ? "ACTIVADO" : "Desactivado"}
-    </button>
-  </div>
-</div>
+                  <div className="gcuotas-input-group">
+                    <label className="gcuotas-input-label">
+                      <FontAwesomeIcon icon={faFilter} /> Cobrador
+                    </label>
+                    <button
+                      type="button"
+                      onClick={onToggleSoloCobrador}
+                      className={`gcuotas-button gcuotas-button-cobrador ${
+                        soloCobrador ? "gcuotas-button-print-all" : "gcuotas-button-export"
+                      }`}
+                      disabled={loading}
+                      title="Filtrar alumnos con es_cobrador=1"
+                    >
+                      {soloCobrador ? "ACTIVADO" : "Desactivado"}
+                    </button>
+                  </div>
+                </div>
 
                 <div className="gcuotas-input-row">
                   <div className="gcuotas-input-group">
@@ -1211,7 +1335,6 @@ const Cuotas = () => {
             <FontAwesomeIcon icon={faFileExcel} /><span>Excel</span>
           </button>
 
-          {/* ✅ ESTE ES EL QUE PEDISTE: al activar Solo Cobrador, queda habilitado (si cumple el resto) */}
           <button
             className="gcuotas-mbar-btn mbar-imprimir"
             onClick={handleImprimirTodos}
