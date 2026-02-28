@@ -297,7 +297,6 @@ const Categorias = () => {
         onClose={() => setHistState({ open: false, cat: null })}
         categoria={histState.cat}
         BASE_URL={BASE_URL}
-        notify={(tipo, mensaje) => showToast(tipo, mensaje, 3200)}
       />
 
       {/* Modal Confirmar Eliminación */}

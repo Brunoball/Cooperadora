@@ -18,7 +18,9 @@ try {
         json_out(['exito' => false, 'mensaje' => 'Método no permitido (usar POST).'], 405);
     }
 
-    // ✅ id compatible con distintos frontends
+    /* =========================
+       ID compatible
+    ========================= */
     $id = 0;
     if (isset($_POST['id'])) $id = (int)$_POST['id'];
     elseif (isset($_POST['id_cat_monto'])) $id = (int)$_POST['id_cat_monto'];
@@ -28,7 +30,9 @@ try {
         json_out(['exito' => false, 'mensaje' => 'Falta id de categoría (id).'], 400);
     }
 
-    // Helpers locales (NO declarar json_out)
+    /* =========================
+       Helpers locales
+    ========================= */
     $toIntOrNull = function($v): ?int {
         if ($v === null) return null;
         $s = trim((string)$v);
@@ -42,6 +46,7 @@ try {
         if ($v === null) return null;
         $s = trim((string)$v);
         if ($s === '') return null;
+
         // admite "1.234,56" y "1234.56"
         $s = preg_replace('/[^\d.,-]/', '', $s);
         if (strpos($s, ',') !== false && strpos($s, '.') !== false) {
@@ -51,11 +56,15 @@ try {
             $s = str_replace(',', '.', $s);
         }
         if ($s === '' || !is_numeric($s)) return null;
+
         $n = (float)$s;
         return $n >= 0 ? $n : null;
     };
 
-    // ✅ En categoria_monto tus montos son INT UNSIGNED
+    /* =========================
+       Inputs (base)
+    ========================= */
+    // En categoria_monto tus montos son INT UNSIGNED
     $montoMensual = null;
     if (isset($_POST['monto'])) $montoMensual = $toIntOrNull($_POST['monto']);
     elseif (isset($_POST['precio'])) $montoMensual = $toIntOrNull($_POST['precio']); // compat
@@ -63,6 +72,9 @@ try {
     $montoAnual = null;
     if (isset($_POST['monto_anual'])) $montoAnual = $toIntOrNull($_POST['monto_anual']);
 
+    /* =========================
+       Inputs (hermanos)
+    ========================= */
     $hermanosRaw = isset($_POST['hermanos']) ? (string)$_POST['hermanos'] : null;
     $hermanos = null;
 
@@ -74,18 +86,50 @@ try {
         $hermanos = $decoded; // array de {cantidad_hermanos, monto_mensual, monto_anual}
     }
 
-    // ✅ Validar que exista la categoría
-    $stChk = $pdo->prepare("SELECT id_cat_monto FROM cooperadora.categoria_monto WHERE id_cat_monto = :id LIMIT 1");
-    $stChk->execute([':id' => $id]);
-    if (!$stChk->fetchColumn()) {
+    /* =========================
+       Validar que exista + snapshot base ANTES
+    ========================= */
+    $stBase = $pdo->prepare("
+        SELECT id_cat_monto, monto_mensual, monto_anual
+        FROM cooperadora.categoria_monto
+        WHERE id_cat_monto = :id
+        LIMIT 1
+    ");
+    $stBase->execute([':id' => $id]);
+    $baseRow = $stBase->fetch(PDO::FETCH_ASSOC);
+
+    if (!$baseRow) {
         json_out(['exito' => false, 'mensaje' => 'Categoría no encontrada.'], 404);
+    }
+
+    $prevBaseMM = ($baseRow['monto_mensual'] !== null) ? (int)$baseRow['monto_mensual'] : null;
+    $prevBaseMA = ($baseRow['monto_anual']   !== null) ? (int)$baseRow['monto_anual']   : null;
+
+    // Flags de cambio (solo si vino el campo)
+    $changedBaseMens = ($montoMensual !== null) && ($prevBaseMM === null || (int)$montoMensual !== (int)$prevBaseMM);
+    $changedBaseAnu  = ($montoAnual   !== null) && ($prevBaseMA === null || (int)$montoAnual   !== (int)$prevBaseMA);
+
+    /* =========================
+       Prepared historial base (precios_historicos)
+       Si la tabla no existe en algún entorno, NO rompemos.
+    ========================= */
+    $stPrecioHist = null;
+    try {
+        $stPrecioHist = $pdo->prepare("
+            INSERT INTO cooperadora.precios_historicos
+                (id_cat_monto, tipo, precio_anterior, precio_nuevo, fecha_cambio)
+            VALUES
+                (:id, :tipo, :pa, :pn, NOW())
+        ");
+    } catch (Throwable $ignore) {
+        $stPrecioHist = null;
     }
 
     $pdo->beginTransaction();
 
     /* =========================
        1) Actualizar categoria_monto (si hay campos)
-       ========================= */
+    ========================= */
     $set = [];
     $params = [':id' => $id];
 
@@ -105,15 +149,39 @@ try {
     }
 
     /* =========================
+       1.1) Historial BASE: precios_historicos
+       (MENSUAL/ANUAL) SOLO si cambió realmente
+    ========================= */
+    if ($stPrecioHist) {
+        if ($changedBaseMens) {
+            $stPrecioHist->execute([
+                ':id'   => $id,
+                ':tipo' => 'MENSUAL',
+                ':pa'   => $prevBaseMM,
+                ':pn'   => (int)$montoMensual,
+            ]);
+        }
+        if ($changedBaseAnu) {
+            $stPrecioHist->execute([
+                ':id'   => $id,
+                ':tipo' => 'ANUAL',
+                ':pa'   => $prevBaseMA,
+                ':pn'   => (int)$montoAnual,
+            ]);
+        }
+    }
+
+    /* =========================
        2) Actualizar categoria_hermanos (si vino hermanos)
-       ========================= */
+       Historial: categoria_hermanos_historial (ya lo tenías)
+    ========================= */
     if ($hermanos !== null) {
 
-        // Desactivar todo
+        // Desactivar todo (soft) para luego reactivar lo que venga
         $stOff = $pdo->prepare("UPDATE cooperadora.categoria_hermanos SET activo = 0 WHERE id_cat_monto = :id");
         $stOff->execute([':id' => $id]);
 
-        // Prepared del historial (nueva estructura)
+        // Prepared del historial hermanos (si existe la tabla)
         $stHist = null;
         try {
             $stHist = $pdo->prepare("
@@ -123,39 +191,58 @@ try {
                     (:idh, :tipo, :pa, :pn, NOW())
             ");
         } catch (Throwable $ignore) {
-            $stHist = null; // si no existe tabla, no rompemos
+            $stHist = null;
         }
+
+        // Preparados reusables (evitás preparar en cada loop)
+        $stFind = $pdo->prepare("
+            SELECT id_cat_hermanos
+            FROM cooperadora.categoria_hermanos
+            WHERE id_cat_monto = :id AND cantidad_hermanos = :cant
+            LIMIT 1
+        ");
+
+        $stPrev = $pdo->prepare("
+            SELECT monto_mensual, monto_anual
+            FROM cooperadora.categoria_hermanos
+            WHERE id_cat_hermanos = :idh
+            LIMIT 1
+        ");
+
+        $stUpdH = $pdo->prepare("
+            UPDATE cooperadora.categoria_hermanos
+            SET monto_mensual = :mm,
+                monto_anual   = :ma,
+                activo        = 1
+            WHERE id_cat_hermanos = :idh
+        ");
+
+        $stInsH = $pdo->prepare("
+            INSERT INTO cooperadora.categoria_hermanos
+              (id_cat_monto, cantidad_hermanos, monto_mensual, monto_anual, activo)
+            VALUES
+              (:id, :cant, :mm, :ma, 1)
+        ");
 
         foreach ($hermanos as $h) {
             $cant = isset($h['cantidad_hermanos']) ? (int)$h['cantidad_hermanos'] : 0;
             if ($cant < 2) continue;
 
+            // Los montos de hermanos pueden venir como string => dec
             $mm = array_key_exists('monto_mensual', $h) ? $toDecOrNull($h['monto_mensual']) : null;
-            $ma = array_key_exists('monto_anual', $h) ? $toDecOrNull($h['monto_anual']) : null;
+            $ma = array_key_exists('monto_anual',   $h) ? $toDecOrNull($h['monto_anual'])   : null;
 
             if ($mm === null && $ma === null) continue;
 
-            // ¿Existe fila para esa cantidad?
-            $stFind = $pdo->prepare("
-                SELECT id_cat_hermanos
-                FROM cooperadora.categoria_hermanos
-                WHERE id_cat_monto = :id AND cantidad_hermanos = :cant
-                LIMIT 1
-            ");
+            // Buscar si existe fila
             $stFind->execute([':id' => $id, ':cant' => $cant]);
             $idCatH = $stFind->fetchColumn();
 
             if ($idCatH) {
                 $idCatH = (int)$idCatH;
 
-                // 1) Leer valores previos ANTES del update (para precio_anterior)
+                // Leer previos ANTES
                 $prevMM = null; $prevMA = null;
-                $stPrev = $pdo->prepare("
-                    SELECT monto_mensual, monto_anual
-                    FROM cooperadora.categoria_hermanos
-                    WHERE id_cat_hermanos = :idh
-                    LIMIT 1
-                ");
                 $stPrev->execute([':idh' => $idCatH]);
                 $prev = $stPrev->fetch(PDO::FETCH_ASSOC);
                 if (is_array($prev)) {
@@ -163,23 +250,15 @@ try {
                     $prevMA = ($prev['monto_anual']   !== null) ? (float)$prev['monto_anual']   : null;
                 }
 
-                // 2) Update
-                $stUpdH = $pdo->prepare("
-                    UPDATE cooperadora.categoria_hermanos
-                    SET monto_mensual = :mm,
-                        monto_anual   = :ma,
-                        activo        = 1
-                    WHERE id_cat_hermanos = :idh
-                ");
+                // Update (guardamos 0 si vino null)
                 $stUpdH->execute([
                     ':mm'  => $mm ?? 0,
                     ':ma'  => $ma ?? 0,
                     ':idh' => $idCatH,
                 ]);
 
-                // 3) Historial: insertar SOLO si cambió
+                // Historial SOLO si cambió realmente
                 if ($stHist) {
-                    // mensual
                     if ($mm !== null) {
                         $newMM = (float)$mm;
                         if ($prevMM === null || $newMM != (float)$prevMM) {
@@ -191,7 +270,6 @@ try {
                             ]);
                         }
                     }
-                    // anual
                     if ($ma !== null) {
                         $newMA = (float)$ma;
                         if ($prevMA === null || $newMA != (float)$prevMA) {
@@ -207,12 +285,6 @@ try {
 
             } else {
                 // Insert nuevo
-                $stInsH = $pdo->prepare("
-                    INSERT INTO cooperadora.categoria_hermanos
-                      (id_cat_monto, cantidad_hermanos, monto_mensual, monto_anual, activo)
-                    VALUES
-                      (:id, :cant, :mm, :ma, 1)
-                ");
                 $stInsH->execute([
                     ':id'   => $id,
                     ':cant' => $cant,
@@ -222,7 +294,7 @@ try {
 
                 $newId = (int)$pdo->lastInsertId();
 
-                // Historial inicial (precio_anterior NULL)
+                // Historial inicial
                 if ($stHist) {
                     if ($mm !== null) {
                         $stHist->execute([

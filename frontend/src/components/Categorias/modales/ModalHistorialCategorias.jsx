@@ -26,7 +26,6 @@ const fmtARS = (n) =>
 
 const formatDate = (iso) => {
   if (!iso) return '—';
-  // admite "2026-02-26 19:06:53" o "2026-02-26T19:06:53"
   const s = iso.toString().slice(0, 10);
   const [y, m, d] = s.split('-');
   return (y && m && d) ? `${d}/${m}/${y}` : s;
@@ -81,28 +80,47 @@ const ModalBase = ({ open, title, onClose, children, width = 920 }) => {
 };
 
 /* =========================
-   Modal Historial con tabs
+   fetchJSON con timeout + abort
 ========================= */
-const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL, notify }) => {
-  const [loading, setLoading] = useState(false);
+async function fetchJSON(url, { signal, timeoutMs = 12000, ...options } = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
+  // Si viene signal externo, abortamos también cuando ese se aborte
+  const onAbort = () => ctrl.abort();
+  if (signal) signal.addEventListener('abort', onAbort, { once: true });
+
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    const text = await res.text();
+
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; }
+    catch { throw new Error(`Respuesta no JSON (HTTP ${res.status})`); }
+
+    if (!res.ok) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
+    return data;
+  } finally {
+    clearTimeout(t);
+    if (signal) signal.removeEventListener('abort', onAbort);
+  }
+}
+
+/* =========================
+   Modal Historial optimizado
+========================= */
+const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
+  const catId = categoria?.id;
+
+  const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState('base');
 
   const [baseHist, setBaseHist] = useState([]);
   const [hermanosCants, setHermanosCants] = useState([]);
   const [hermHistAll, setHermHistAll] = useState([]);
 
-  const fetchJSON = async (url, options = {}) => {
-    const res = await fetch(url, options);
-    const text = await res.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; }
-    catch { throw new Error(`Respuesta no JSON (HTTP ${res.status})`); }
-    if (!res.ok) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
-    return data;
-  };
-
-  const catId = categoria?.id;
+  // ✅ Estado “vacío real” (sin historial y sin config)
+  const [emptyMsg, setEmptyMsg] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -110,27 +128,33 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL, notify }
     setBaseHist([]);
     setHermanosCants([]);
     setHermHistAll([]);
+    setEmptyMsg('');
   }, [open, catId]);
 
   useEffect(() => {
-    const run = async () => {
-      if (!open || !catId) return;
+    if (!open || !catId) return;
 
+    const ac = new AbortController();
+
+    const run = async () => {
       try {
         setLoading(true);
 
-        // 1) Historial base
+        // =========================
+        // 1) Historial BASE (siempre)
+        // =========================
         const jBase = await fetchJSON(
-          `${BASE_URL}/api.php?action=cat_historial&id=${encodeURIComponent(catId)}`
+          `${BASE_URL}/api.php?action=cat_historial&id=${encodeURIComponent(catId)}`,
+          { signal: ac.signal, timeoutMs: 12000 }
         );
 
         let filasBase = [];
         if (Array.isArray(jBase)) filasBase = jBase;
-        else if (jBase?.historial) filasBase = jBase.historial;
+        else if (Array.isArray(jBase?.historial)) filasBase = jBase.historial;
         else if (jBase?.exito && Array.isArray(jBase?.data)) filasBase = jBase.data;
         else filasBase = jBase?.resultados || [];
 
-        const normBase = filasBase.map((r) => ({
+        const normBase = (filasBase || []).map((r) => ({
           tipo: (r.tipo ?? 'BASE').toString(),
           precio_anterior: (r.precio_anterior ?? r.anterior ?? r.old ?? null),
           precio_nuevo: (r.precio_nuevo ?? r.nuevo ?? r.new ?? null),
@@ -139,47 +163,68 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL, notify }
 
         setBaseHist(normBase);
 
-        // 2) Hermanos listar (para tabs)
+        // =========================
+        // 2) Config hermanos (para tabs)
+        // =========================
         const jH = await fetchJSON(
-          `${BASE_URL}/api.php?action=cat_hermanos_listar&id_cat_monto=${encodeURIComponent(catId)}`
+          `${BASE_URL}/api.php?action=cat_hermanos_listar&id_cat_monto=${encodeURIComponent(catId)}`,
+          { signal: ac.signal, timeoutMs: 12000 }
         );
-        const itemsH = Array.isArray(jH?.items) ? jH.items : [];
-        const cants = [...new Set(itemsH.map((x) => Number(x.cantidad_hermanos)).filter((n) => Number.isFinite(n) && n >= 2))];
-        cants.sort((a, b) => a - b);
+
+        const itemsH = Array.isArray(jH?.items) ? jH.items : (Array.isArray(jH) ? jH : []);
+        const cants = [...new Set(
+          (itemsH || [])
+            .map((x) => Number(x.cantidad_hermanos))
+            .filter((n) => Number.isFinite(n) && n >= 2)
+        )].sort((a, b) => a - b);
+
         setHermanosCants(cants);
 
-        // 3) Historial hermanos (NUEVO: tipo/anterior/nuevo)
-        const jHH = await fetchJSON(
-          `${BASE_URL}/api.php?action=cat_hermanos_historial&id_cat_monto=${encodeURIComponent(catId)}`
-        );
-        const filasHH = Array.isArray(jHH?.historial) ? jHH.historial : [];
-        setHermHistAll(filasHH);
+        // ✅ Si NO hay historial base y NO hay config, cortamos acá (NO pedimos historial hermanos)
+        if (normBase.length === 0 && cants.length === 0) {
+          setHermHistAll([]);
+          setEmptyMsg('No hay historial ni configuración de grupos familiares para esta categoría.');
+          return; // 👈 clave: no seguir pegándole al backend
+        }
 
-        if (!normBase.length && cants.length === 0) {
-          notify?.('info', 'No hay historial ni configuración de grupos familiares para esta categoría.');
+        // =========================
+        // 3) Historial hermanos (SOLO si hay config)
+        // =========================
+        if (cants.length > 0) {
+          const jHH = await fetchJSON(
+            `${BASE_URL}/api.php?action=cat_hermanos_historial&id_cat_monto=${encodeURIComponent(catId)}`,
+            { signal: ac.signal, timeoutMs: 12000 }
+          );
+
+          const filasHH = Array.isArray(jHH?.historial)
+            ? jHH.historial
+            : (Array.isArray(jHH) ? jHH : []);
+
+          setHermHistAll(filasHH || []);
+        } else {
+          setHermHistAll([]);
         }
 
       } catch (e) {
+        if (e?.name === 'AbortError') return; // cerrado/cambio categoría
         console.error(e);
-        notify?.('error', `No se pudo cargar el historial: ${e.message}`);
-        onClose?.();
+        setEmptyMsg(`No se pudo cargar el historial: ${e.message}`);
       } finally {
         setLoading(false);
       }
     };
 
     run();
-  }, [open, catId, BASE_URL, onClose, notify]);
+
+    return () => ac.abort();
+  }, [open, catId, BASE_URL]);
 
   const tabs = useMemo(() => {
     const t = [{ key: 'base', label: 'BASE' }];
-    for (const cant of (hermanosCants || [])) {
-      t.push({ key: `h_${cant}`, label: `${cant} Hermanos` });
-    }
+    for (const cant of (hermanosCants || [])) t.push({ key: `h_${cant}`, label: `${cant} Hermanos` });
     return t;
   }, [hermanosCants]);
 
-  // ✅ Rows para hermanos con la NUEVA estructura (tipo/anterior/nuevo)
   const hermanosRows = useMemo(() => {
     if (!tab.startsWith('h_')) return [];
     const cant = Number(tab.replace('h_', ''));
@@ -188,13 +233,11 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL, notify }
       .filter((r) => Number(r.cantidad_hermanos) === cant)
       .map((r) => ({
         tipo: (r.tipo ?? '').toString(), // MENSUAL / ANUAL
-        anterior: r.precio_anterior ?? null,
-        nuevo: r.precio_nuevo ?? null,
-        fecha: (r.fecha_cambio ?? '').toString(),
-      }));
-
-    // orden: fecha desc
-    filtered.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+        anterior: r.precio_anterior ?? r.anterior ?? null,
+        nuevo: r.precio_nuevo ?? r.nuevo ?? null,
+        fecha: (r.fecha_cambio ?? r.fecha ?? '').toString(),
+      }))
+      .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 
     return filtered;
   }, [tab, hermHistAll]);
@@ -230,8 +273,10 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL, notify }
         <div className="cat_hist_loading">Cargando historial…</div>
       ) : (
         <>
-          {/* BASE */}
-          {tab === 'base' ? (
+          {/* ✅ Mensaje vacío global (sin reventar backend) */}
+          {emptyMsg ? (
+            <div className="cat_hist_empty">{emptyMsg}</div>
+          ) : tab === 'base' ? (
             baseHist.length === 0 ? (
               <div className="cat_hist_empty">No hay historial BASE para esta categoría.</div>
             ) : (
@@ -263,7 +308,6 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL, notify }
               </div>
             )
           ) : (
-            /* HERMANOS (NUEVO) */
             hermanosRows.length === 0 ? (
               <div className="cat_hist_empty">No hay historial para este grupo familiar.</div>
             ) : (
