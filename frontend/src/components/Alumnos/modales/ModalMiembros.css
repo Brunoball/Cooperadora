@@ -108,7 +108,7 @@
 /* Subbar (en ambas columnas para alinear las cajas) */
 .modalmi-subbar{
   display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-  min-height:44px; /* asegura misma altura en ambos lados */
+   padding: 10px; /* asegura misma altura en ambos lados */
 }
 .modalmi-subbar-spacer{ width:320px; height:38px; } /* "fantasma" para igualar la barra de búsqueda */
 .modalmi-subtitle{ margin:0; font-weight:800; color:var(--modalmi-dark); }
@@ -118,7 +118,7 @@
   position: relative;
   display:flex; align-items:center;
   border:1px solid var(--modalmi-gray-200);
-  border-radius:14px; background:#fff;
+  border-radius:8px; background:#fff;
   transition: var(--modalmi-trans);
 }
 .modalmi-search input{
@@ -126,7 +126,7 @@
   padding:10px 40px 10px 12px;
   font-size:.95rem;
   background: transparent;
-  height:38px;
+  height:30px;
 }
 .modalmi-search:focus-within{
   border-color: color-mix(in srgb, var(--modalmi-accent-2) 45%, #fff);
