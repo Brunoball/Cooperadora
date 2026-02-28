@@ -86,7 +86,6 @@ async function fetchJSON(url, { signal, timeoutMs = 12000, ...options } = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
-  // Si viene signal externo, abortamos también cuando ese se aborte
   const onAbort = () => ctrl.abort();
   if (signal) signal.addEventListener('abort', onAbort, { once: true });
 
@@ -181,11 +180,12 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
         setHermanosCants(cants);
 
         // ✅ Si NO hay historial base y NO hay config, cortamos acá (NO pedimos historial hermanos)
-        if (normBase.length === 0 && cants.length === 0) {
-          setHermHistAll([]);
-          setEmptyMsg('No hay historial ni configuración de grupos familiares para esta categoría.');
-          return; // 👈 clave: no seguir pegándole al backend
-        }
+        //    (igual mostramos badge "sin historial" en BASE)
+if (normBase.length === 0 && cants.length === 0) {
+  setHermHistAll([]);
+  setEmptyMsg('No hay historial ni configuración de grupos familiares para esta categoría.');
+  return;
+}
 
         // =========================
         // 3) Historial hermanos (SOLO si hay config)
@@ -206,7 +206,7 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
         }
 
       } catch (e) {
-        if (e?.name === 'AbortError') return; // cerrado/cambio categoría
+        if (e?.name === 'AbortError') return;
         console.error(e);
         setEmptyMsg(`No se pudo cargar el historial: ${e.message}`);
       } finally {
@@ -219,11 +219,28 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
     return () => ac.abort();
   }, [open, catId, BASE_URL]);
 
+  // ✅ Tabs con indicador "sin historial" al lado
   const tabs = useMemo(() => {
-    const t = [{ key: 'base', label: 'BASE' }];
-    for (const cant of (hermanosCants || [])) t.push({ key: `h_${cant}`, label: `${cant} Hermanos` });
+    const t = [{
+      key: 'base',
+      label: 'BASE',
+      empty: (baseHist?.length || 0) === 0,
+    }];
+
+    for (const cant of (hermanosCants || [])) {
+      const hasRows = (hermHistAll || []).some(
+        (r) => Number(r.cantidad_hermanos) === Number(cant)
+      );
+
+      t.push({
+        key: `h_${cant}`,
+        label: `${cant} Hermanos`,
+        empty: !hasRows,
+      });
+    }
+
     return t;
-  }, [hermanosCants]);
+  }, [hermanosCants, baseHist, hermHistAll]);
 
   const hermanosRows = useMemo(() => {
     if (!tab.startsWith('h_')) return [];
@@ -232,7 +249,7 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
     const filtered = (hermHistAll || [])
       .filter((r) => Number(r.cantidad_hermanos) === cant)
       .map((r) => ({
-        tipo: (r.tipo ?? '').toString(), // MENSUAL / ANUAL
+        tipo: (r.tipo ?? '').toString(),
         anterior: r.precio_anterior ?? r.anterior ?? null,
         nuevo: r.precio_nuevo ?? r.nuevo ?? null,
         fecha: (r.fecha_cambio ?? r.fecha ?? '').toString(),
@@ -255,7 +272,7 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
       width={980}
     >
       {/* Tabs */}
-      <div className="cat_hist_tabs" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div className="cat_hist_tabs">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -264,7 +281,12 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
             onClick={() => setTab(t.key)}
             disabled={loading}
           >
-            {t.label}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {t.label}
+              {t.empty && !loading && (
+                <span className="cat_hist_badge_empty">sin historial</span>
+              )}
+            </span>
           </button>
         ))}
       </div>
@@ -273,13 +295,12 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
         <div className="cat_hist_loading">Cargando historial…</div>
       ) : (
         <>
-          {/* ✅ Mensaje vacío global (sin reventar backend) */}
+          {/* ✅ Solo mostramos mensaje grande si es ERROR (emptyMsg) */}
           {emptyMsg ? (
             <div className="cat_hist_empty">{emptyMsg}</div>
           ) : tab === 'base' ? (
-            baseHist.length === 0 ? (
-              <div className="cat_hist_empty">No hay historial BASE para esta categoría.</div>
-            ) : (
+            // ✅ En BASE: si está vacío, NO mostramos caja grande (solo badge al lado del tab)
+            baseHist.length === 0 ? null : (
               <div className="cat_hist_table_wrap">
                 <table className="cat_hist_table">
                   <thead>
@@ -295,12 +316,12 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
                   <tbody>
                     {baseHist.map((h, i) => (
                       <tr key={i}>
-                        <td className="cat_td_center">{i + 1}</td>
-                        <td className="cat_td_center">{h.tipo || 'BASE'}</td>
-                        <td className="cat_td_right">{fmtARS(h.precio_anterior)}</td>
-                        <td className="cat_td_right">{fmtARS(h.precio_nuevo)}</td>
-                        <td className="cat_td_center">{renderCambio(h.precio_anterior, h.precio_nuevo)}</td>
-                        <td className="cat_td_center">{formatDate(h.fecha)}</td>
+                        <td className="cat_td_center" data-label="#"> {i + 1} </td>
+                        <td className="cat_td_center" data-label="Tipo">{h.tipo || 'BASE'}</td>
+                        <td className="cat_td_right" data-label="Monto anterior">{fmtARS(h.precio_anterior)}</td>
+                        <td className="cat_td_right" data-label="Monto nuevo">{fmtARS(h.precio_nuevo)}</td>
+                        <td className="cat_td_center" data-label="Cambio">{renderCambio(h.precio_anterior, h.precio_nuevo)}</td>
+                        <td className="cat_td_center" data-label="Fecha">{formatDate(h.fecha)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -308,9 +329,8 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
               </div>
             )
           ) : (
-            hermanosRows.length === 0 ? (
-              <div className="cat_hist_empty">No hay historial para este grupo familiar.</div>
-            ) : (
+            // Hermanos: si está vacío, tampoco mostramos caja grande; el badge ya lo indica
+            hermanosRows.length === 0 ? null : (
               <div className="cat_hist_table_wrap">
                 <table className="cat_hist_table">
                   <thead>
@@ -326,12 +346,12 @@ const ModalHistorialCategorias = ({ open, onClose, categoria, BASE_URL }) => {
                   <tbody>
                     {hermanosRows.map((r, i) => (
                       <tr key={i}>
-                        <td className="cat_td_center">{i + 1}</td>
-                        <td className="cat_td_center">{r.tipo || '—'}</td>
-                        <td className="cat_td_right">{fmtARS(r.anterior)}</td>
-                        <td className="cat_td_right">{fmtARS(r.nuevo)}</td>
-                        <td className="cat_td_center">{renderCambio(r.anterior, r.nuevo)}</td>
-                        <td className="cat_td_center">{formatDate(r.fecha)}</td>
+                        <td className="cat_td_center" data-label="#"> {i + 1} </td>
+                        <td className="cat_td_center" data-label="Tipo">{r.tipo || '—'}</td>
+                        <td className="cat_td_right" data-label="Monto anterior">{fmtARS(r.anterior)}</td>
+                        <td className="cat_td_right" data-label="Monto nuevo">{fmtARS(r.nuevo)}</td>
+                        <td className="cat_td_center" data-label="Cambio">{renderCambio(r.anterior, r.nuevo)}</td>
+                        <td className="cat_td_center" data-label="Fecha">{formatDate(r.fecha)}</td>
                       </tr>
                     ))}
                   </tbody>

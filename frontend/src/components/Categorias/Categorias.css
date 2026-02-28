@@ -559,3 +559,138 @@ thead{ background:var(--reg-accent); }
   .catdel-modal-text { font-size: 0.9rem; }
   .catdel-btn { padding: .5rem .8rem; font-size: .85rem; min-width: 95px; }
 }
+/* =========================================================
+   Historial — Tabs / Loading / Empty (faltantes)
+   ========================================================= */
+
+/* Contenedor de tabs (reemplaza el inline style) */
+.cat_hist_tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+  padding:8px;
+  border:1px solid var(--reg-gray-200);
+  border-radius: var(--reg-border-radius-lg);
+  background: color-mix(in srgb, var(--reg-light) 70%, #fff);
+  box-shadow: var(--reg-shadow-sm);
+}
+
+/* Botón tab */
+.cat_hist_tab_btn{
+  appearance:none;
+  border:1px solid var(--reg-gray-300);
+  background:#fff;
+  color: var(--reg-gray-800);
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:700;
+  font-size:.92rem;
+  cursor:pointer;
+  transition: var(--reg-transition);
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  user-select:none;
+}
+
+/* Hover */
+.cat_hist_tab_btn:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--reg-shadow-md);
+  border-color: color-mix(in srgb, var(--reg-primary) 35%, var(--reg-gray-300));
+}
+
+/* Activo (rojo, como el header del historial) */
+.cat_hist_tab_btn.active{
+  background: linear-gradient(135deg, var(--reg-primary), var(--reg-accent));
+  color:#fff;
+  border-color: transparent;
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--reg-primary) 18%, transparent);
+}
+
+/* Activo hover (leve) */
+.cat_hist_tab_btn.active:hover{
+  filter: brightness(.98);
+}
+
+/* Disabled */
+.cat_hist_tab_btn:disabled{
+  opacity:.75;
+  cursor:not-allowed;
+  transform:none;
+  box-shadow: none;
+}
+
+/* Loading */
+.cat_hist_loading{
+  padding:14px;
+  border-radius: var(--reg-border-radius-lg);
+  border:1px solid var(--reg-gray-200);
+  background: #fff;
+  color: var(--reg-gray-700);
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  box-shadow: var(--reg-shadow-sm);
+}
+
+/* Puntitos animados */
+.cat_hist_loading::before{
+  content:'';
+  width:14px; height:14px;
+  border-radius:50%;
+  border:2px solid color-mix(in srgb, var(--reg-primary) 40%, var(--reg-gray-300));
+  border-top-color: var(--reg-primary);
+  animation: cat_spin .7s linear infinite;
+}
+@keyframes cat_spin{ to{ transform: rotate(360deg); } }
+
+/* Empty state (mismo “card” suave del sistema) */
+.cat_hist_empty{
+  padding:14px;
+  border-radius: var(--reg-border-radius-lg);
+  border:1px dashed var(--reg-gray-300);
+  background: #fff;
+  color: var(--reg-gray-700);
+  text-align:center;
+  box-shadow: var(--reg-shadow-sm);
+  line-height:1.45;
+}
+
+/* Pequeño acento arriba (similar a las cards) */
+.cat_hist_empty{
+  position:relative;
+  overflow:hidden;
+}
+.cat_hist_empty::before{
+  content:'';
+  position:absolute;
+  left:0; top:0; right:0;
+  height:3px;
+  background: linear-gradient(135deg, var(--reg-primary), var(--reg-secondary));
+  opacity:.85;
+}
+
+/* Mobile: tabs a full width si hace falta */
+@media (max-width: 720px){
+  .cat_hist_tabs{
+    padding:10px;
+    gap:10px;
+  }
+  .cat_hist_tab_btn{
+    flex: 1 1 auto;
+    justify-content:center;
+    padding:10px 12px;
+  }
+}.cat_hist_badge_empty{
+  margin-left:6px;
+  font-size:.75rem;
+  font-weight:700;
+  padding:3px 8px;
+  border-radius:999px;
+  background: color-mix(in srgb, var(--reg-gray-400) 25%, #fff);
+  color: var(--reg-gray-700);
+}

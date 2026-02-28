@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import BASE_URL from '../../config/config';
 import Toast from '../Global/Toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faSave, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSave, faPlus, faTrash, faTimes } from '@fortawesome/free-solid-svg-icons';
 import './CategoriaEditar.css';
 
 const CategoriaEditar = () => {
@@ -36,14 +36,11 @@ const CategoriaEditar = () => {
   const mensualRef = useRef(null);
 
   const [toast, setToast] = useState({ show: false, tipo: 'exito', mensaje: '', duracion: 3000 });
-  const showToast = (tipo, mensaje, duracion = 3000) =>
-    setToast({ show: true, tipo, mensaje, duracion });
+  const showToast = (tipo, mensaje, duracion = 3000) => setToast({ show: true, tipo, mensaje, duracion });
   const closeToast = () => setToast((t) => ({ ...t, show: false }));
 
   const fetchJSON = async (url, options = {}) => {
     const res = await fetch(url, options);
-
-    // si backend devolvió HTML por warning/error, esto explota => atrapamos con texto
     const text = await res.text();
     let data = null;
     try {
@@ -51,7 +48,6 @@ const CategoriaEditar = () => {
     } catch {
       throw new Error(`Respuesta no JSON (HTTP ${res.status})`);
     }
-
     if (!res.ok) throw new Error(data?.mensaje || `Error HTTP ${res.status}`);
     return data;
   };
@@ -64,15 +60,13 @@ const CategoriaEditar = () => {
     return Number.isFinite(n) ? n : null;
   };
 
-  const sortByCant = (arr) =>
-    [...arr].sort((a, b) => Number(a.cantidad_hermanos) - Number(b.cantidad_hermanos));
+  const sortByCant = (arr) => [...arr].sort((a, b) => Number(a.cantidad_hermanos) - Number(b.cantidad_hermanos));
 
   useEffect(() => {
     const cargar = async () => {
       try {
         setLoading(true);
 
-        // ✅ FIX: si no hay id válido, no pedimos nada
         if (!idValido) {
           throw new Error('ID inválido en la URL. Revisá la ruta: /categorias/editar/:id');
         }
@@ -97,7 +91,7 @@ const CategoriaEditar = () => {
         setMMensual(String(cat.monto_mensual ?? ''));
         setMAnual(String(cat.monto_anual ?? ''));
 
-        // 2) hermanos (✅ ahora id seguro)
+        // 2) hermanos
         const urlH = `${BASE_URL}/api.php?action=cat_hermanos_listar&id_cat_monto=${encodeURIComponent(String(idNum))}`;
         const hjson = await fetchJSON(urlH);
         const items = Array.isArray(hjson?.items) ? hjson.items : [];
@@ -133,10 +127,7 @@ const CategoriaEditar = () => {
     cargar();
   }, [idStr]); // ✅ depende del string de params
 
-  const hermanosCants = useMemo(
-    () => new Set(hermanos.map((h) => Number(h.cantidad_hermanos))),
-    [hermanos]
-  );
+  const hermanosCants = useMemo(() => new Set(hermanos.map((h) => Number(h.cantidad_hermanos))), [hermanos]);
 
   const agregarFila = () => {
     const cant = Number(nuevoCant);
@@ -164,7 +155,6 @@ const CategoriaEditar = () => {
     });
   };
 
-  // opcional: borrar en DB si ya existía
   const borrarFilaDB = async (fila) => {
     if (!fila?.id_cat_hermanos) {
       setHermanos((prev) => prev.filter((h) => h !== fila));
@@ -268,11 +258,9 @@ const CategoriaEditar = () => {
 
     const body = new FormData();
     body.append('id', String(idNum));
-
     if (changedBaseMens) body.append('monto', String(mens));
     if (changedBaseAnu) body.append('monto_anual', String(anu));
     if (changedBaseMens) body.append('precio', String(mens)); // compat
-
     if (changedH) body.append('hermanos', JSON.stringify(hermanosPayload));
 
     try {
@@ -295,142 +283,205 @@ const CategoriaEditar = () => {
 
   return (
     <div className="cat_edi_page">
-      <div className="cat_edi_card">
-        <header className="cat_edi_header">
-          <h2 className="cat_edi_title">Editar categoría</h2>
-        </header>
+      <div className="cat_edi_modal" role="dialog" aria-modal="true">
+        
+
+<div className="cat_edi_topbar">
+  <div className="cat_edi_headLeft">
+    <h1 className="cat_edi_title">Editar categoría</h1>
+  </div>
+
+  <button
+    type="button"
+    className="cat_edi_close"
+    onClick={() => navigate('/categorias')}
+    disabled={saving}
+    aria-label="Cerrar"
+    title="Cerrar"
+  >
+    <FontAwesomeIcon icon={faTimes} />
+  </button>
+</div>
+
+        <div className="cat_edi_divider" />
 
         {loading ? (
           <div className="cat_edi_loading">Cargando…</div>
         ) : (
           <form className="cat_edi_form" onSubmit={onSubmit}>
-            <div className="cat_edi_form_row">
-              <label className="cat_edi_label">Nombre (no editable)</label>
-              <input className="cat_edi_input" value={nombre} disabled style={{ textTransform: 'uppercase' }} />
-            </div>
+            <div className="cat_edi_grid">
+              {/* PANEL IZQ: Datos base */}
+              <section className="cat_edi_panel">
+                <div className="cat_edi_panelHead">
+                  <div className="cat_edi_panelTitle">Datos base</div>
+                  <div className="cat_edi_panelDesc">Nombre no editable + montos principales</div>
+                </div>
 
-            <div className="cat_edi_two_col">
-              <div className="cat_edi_form_row">
-                <label className="cat_edi_label">Monto mensual</label>
-                <input
-                  ref={mensualRef}
-                  className="cat_edi_input"
-                  type="number"
-                  inputMode="numeric"
-                  value={mMensual}
-                  onChange={(e) => setMMensual(e.target.value)}
-                  placeholder="0"
-                  min="0"
-                  step="1"
-                  disabled={saving}
-                />
-              </div>
+                <div className="cat_edi_panelBody">
+                  <div className="cat_edi_form_row">
+                    <label className="cat_edi_label">Nombre (no editable)</label>
+                    <input
+                      className="cat_edi_input"
+                      value={nombre}
+                      disabled
+                      style={{ textTransform: 'uppercase' }}
+                    />
+                  </div>
 
-              <div className="cat_edi_form_row">
-                <label className="cat_edi_label">Monto anual</label>
-                <input
-                  className="cat_edi_input"
-                  type="number"
-                  inputMode="numeric"
-                  value={mAnual}
-                  onChange={(e) => setMAnual(e.target.value)}
-                  placeholder="0"
-                  min="0"
-                  step="1"
-                  disabled={saving}
-                />
-              </div>
-            </div>
-
-            <div className="cat_edi_sep" />
-
-            <div className="cat_edi_subtitle">Montos por hermanos (grupo familiar)</div>
-
-            <div className="cat_edi_add_row">
-              <div className="cat_edi_form_row" style={{ marginBottom: 0 }}>
-                <label className="cat_edi_label">Cantidad de hermanos</label>
-                <input
-                  className="cat_edi_input"
-                  type="number"
-                  min="2"
-                  step="1"
-                  value={nuevoCant}
-                  onChange={(e) => setNuevoCant(e.target.value)}
-                  disabled={saving}
-                />
-              </div>
-
-              <button type="button" className="cat_edi_btn cat_edi_btn_small" onClick={agregarFila} disabled={saving}>
-                <FontAwesomeIcon icon={faPlus} /> Agregar
-              </button>
-            </div>
-
-            {hermanos.length === 0 ? (
-              <div className="cat_edi_hint">No hay montos por hermanos configurados para esta categoría.</div>
-            ) : (
-              <div className="cat_edi_hermanos_list">
-                {hermanos.map((h, idx) => (
-                  <div key={`${h.id_cat_hermanos ?? 'new'}_${h.cantidad_hermanos}`} className="cat_edi_hermano_card">
-                    <div className="cat_edi_hermano_head">
-                      <div className="cat_edi_hermano_title">{h.cantidad_hermanos} hermanos</div>
-
-                      <button
-                        type="button"
-                        className="cat_edi_btn_icon"
-                        onClick={() => borrarFilaDB(h)}
+                  <div className="cat_edi_two_col">
+                    <div className="cat_edi_form_row">
+                      <label className="cat_edi_label">Monto mensual</label>
+                      <input
+                        ref={mensualRef}
+                        className="cat_edi_input"
+                        type="number"
+                        inputMode="numeric"
+                        value={mMensual}
+                        onChange={(e) => setMMensual(e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        step="1"
                         disabled={saving}
-                        title="Eliminar"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
+                      />
                     </div>
 
-                    <div className="cat_edi_two_col">
-                      <div className="cat_edi_form_row">
-                        <label className="cat_edi_label">Mensual</label>
-                        <input
-                          className="cat_edi_input"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={h.monto_mensual}
-                          onChange={(e) => cambiarFila(idx, 'monto_mensual', e.target.value)}
-                          disabled={saving}
-                        />
-                      </div>
-
-                      <div className="cat_edi_form_row">
-                        <label className="cat_edi_label">Anual</label>
-                        <input
-                          className="cat_edi_input"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={h.monto_anual}
-                          onChange={(e) => cambiarFila(idx, 'monto_anual', e.target.value)}
-                          disabled={saving}
-                        />
-                      </div>
+                    <div className="cat_edi_form_row">
+                      <label className="cat_edi_label">Monto anual</label>
+                      <input
+                        className="cat_edi_input"
+                        type="number"
+                        inputMode="numeric"
+                        value={mAnual}
+                        onChange={(e) => setMAnual(e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        step="1"
+                        disabled={saving}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
 
-            <div className="cat_edi_form_actions">
-              <button type="button" className="cat_edi_btn cat_edi_btn_back" onClick={() => navigate('/categorias')} disabled={saving}>
-                <FontAwesomeIcon icon={faArrowLeft} /><span className="cat_edi_btn_text">Volver</span>
+                  <div className="cat_edi_tip">
+                    Tip: si querés “sin anual”, dejalo vacío o 0 según tu lógica del backend.
+                  </div>
+                </div>
+              </section>
+
+              {/* PANEL DER: Grupo familiar */}
+              <section className="cat_edi_panel">
+                <div className="cat_edi_panelHead">
+                  <div className="cat_edi_panelTitle">Grupo familiar</div>
+                  <div className="cat_edi_panelDesc">Montos por cantidad de hermanos</div>
+                </div>
+
+                <div className="cat_edi_panelBody">
+                  <div className="cat_edi_addBox">
+                    <div className="cat_edi_form_row" style={{ marginBottom: 0 }}>
+                      <label className="cat_edi_label">Cantidad</label>
+                      <input
+                        className="cat_edi_input"
+                        type="number"
+                        min="2"
+                        step="1"
+                        value={nuevoCant}
+                        onChange={(e) => setNuevoCant(e.target.value)}
+                        disabled={saving}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="cat_edi_btn cat_edi_btn_add"
+                      onClick={agregarFila}
+                      disabled={saving}
+                      title="Agregar fila"
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Agregar fila
+                    </button>
+                  </div>
+
+                  {hermanos.length === 0 ? (
+                    <div className="cat_edi_hint">No hay montos por hermanos configurados para esta categoría.</div>
+                  ) : (
+                    <div className="cat_edi_cardsGrid">
+                      {hermanos.map((h, idx) => (
+                        <article
+                          key={`${h.id_cat_hermanos ?? 'new'}_${h.cantidad_hermanos}`}
+                          className="cat_edi_hCard"
+                        >
+                          <div className="cat_edi_hHead">
+                            <div className="cat_edi_badge">{h.cantidad_hermanos}</div>
+                            <div className="cat_edi_hTitle">
+                              <span className="cat_edi_hTitleStrong">{h.cantidad_hermanos}</span> hermanos
+                            </div>
+
+                            <button
+                              type="button"
+                              className="cat_edi_btn_icon"
+                              onClick={() => borrarFilaDB(h)}
+                              disabled={saving}
+                              title="Eliminar"
+                              aria-label="Eliminar"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </div>
+
+                          <div className="cat_edi_two_col">
+                            <div className="cat_edi_form_row">
+                              <label className="cat_edi_label">Mensual</label>
+                              <input
+                                className="cat_edi_input"
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={h.monto_mensual}
+                                onChange={(e) => cambiarFila(idx, 'monto_mensual', e.target.value)}
+                                disabled={saving}
+                              />
+                            </div>
+
+                            <div className="cat_edi_form_row">
+                              <label className="cat_edi_label">Anual</label>
+                              <input
+                                className="cat_edi_input"
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={h.monto_anual}
+                                onChange={(e) => cambiarFila(idx, 'monto_anual', e.target.value)}
+                                disabled={saving}
+                              />
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            {/* Acciones abajo estilo captura */}
+            <div className="cat_edi_actionsBar">
+              <button
+                type="button"
+                className="cat_edi_btn cat_edi_btn_back"
+                onClick={() => navigate('/categorias')}
+                disabled={saving}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} /> Volver
               </button>
 
-              <button type="submit" className="cat_edi_btn cat_edi_btn_primary" disabled={saving}>
-                <FontAwesomeIcon icon={faSave} /><span className="cat_edi_btn_text">{saving ? 'Guardando…' : 'Guardar'}</span>
+              <button type="submit" className="cat_edi_btn cat_edi_btn_save" disabled={saving}>
+                <FontAwesomeIcon icon={faSave} /> {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
           </form>
         )}
-      </div>
 
-      {toast.show && <Toast tipo={toast.tipo} mensaje={toast.mensaje} duracion={toast.duracion} onClose={closeToast} />}
+        {toast.show && <Toast tipo={toast.tipo} mensaje={toast.mensaje} duracion={toast.duracion} onClose={closeToast} />}
+      </div>
     </div>
   );
 };
