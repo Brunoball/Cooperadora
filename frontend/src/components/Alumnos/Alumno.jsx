@@ -30,7 +30,9 @@ import {
   FaChevronDown,
   FaMoneyBillWave,
   FaCheckCircle,
+  FaTimesCircle,
 } from 'react-icons/fa';
+
 import './Alumno.css';
 
 // Modales
@@ -827,7 +829,7 @@ const Alumnos = () => {
                   }}
                   aria-label="Cobrador"
                 >
-                  <FaMoneyBillWave />
+                  {esCobrador ? <FaTimesCircle /> : <FaMoneyBillWave />}
                 </button>
               )}
 
@@ -1293,17 +1295,17 @@ const Alumnos = () => {
 
                         {!isVista && (
                           <>
-                            <button
-                              className={`alu-action-btn alu-iconchip ${esCobrador ? 'is-success' : 'is-warning'}`}
-                              title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                abrirModalCobrador(alumno);
-                              }}
-                              aria-label="Cobrador"
-                            >
-                              <FaMoneyBillWave />
-                            </button>
+<button
+  className={`alu-iconchip is-cobrador ${esCobrador ? 'is-success' : 'is-warning'}`}
+  title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
+  onClick={(e) => {
+    e.stopPropagation();
+    abrirModalCobrador(alumno);
+  }}
+  aria-label={esCobrador ? 'Quitar cobrador' : 'Marcar cobrador'}
+>
+  {esCobrador ? <FaTimesCircle /> : <FaMoneyBillWave />}
+</button>
 
                             <button
                               className="alu-action-btn alu-iconchip is-edit"

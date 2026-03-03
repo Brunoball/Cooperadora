@@ -557,3 +557,168 @@
   opacity: .75;
   cursor: not-allowed;
 }
+/* =========================================================
+   Modal confirmar salir sin guardar
+   (AgregarAlumno.jsx -> confirm-exit-overlay / confirm-exit-card)
+   ========================================================= */
+
+.confirm-exit-overlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 9999;
+
+  background: rgba(2, 6, 23, .55); /* oscuro suave */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  animation: confirmFadeIn .18s ease-out;
+}
+
+@keyframes confirmFadeIn{
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.confirm-exit-card{
+  width: min(520px, 100%);
+  background: var(--surface-color);
+  color: var(--text-primary);
+  border-radius: var(--border-radius-xl);
+  border: 1px solid rgba(148, 163, 184, .35);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+
+  transform: translateY(6px);
+  animation: confirmPopIn .18s ease-out forwards;
+}
+
+@keyframes confirmPopIn{
+  to { transform: translateY(0); }
+}
+
+.confirm-exit-card h3{
+  margin: 0;
+  padding: 1rem 1.15rem .6rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: .2px;
+
+  background: var(--gradient-primary);   /* azul institucional */
+  color: var(--text-on-primary);
+  text-align: center;
+
+  border-bottom: 1px solid rgba(255,255,255,.2);
+}
+
+.confirm-exit-card p{
+  margin: 0;
+  padding: 1.3rem 1.15rem 1rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  font-size: .95rem;
+}
+
+.confirm-exit-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: .65rem;
+  padding: 1rem 1.15rem 1.15rem;
+  border-top: 1px solid rgba(148, 163, 184, .20);
+  background: linear-gradient(180deg, rgba(248,250,252,.75), rgba(255,255,255,1));
+}
+
+.confirm-exit-actions button{
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: .65rem .95rem;
+  font-size: .92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease, color .15s ease;
+  min-height: 40px;
+}
+
+/* Cancelar: neutro */
+.confirm-exit-actions .btn-cancel{
+  background: var(--surface-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.confirm-exit-actions .btn-cancel:hover{
+  background: var(--gray-200);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Salir y descartar: peligro */
+.confirm-exit-actions .btn-danger{
+  background: var(--danger-500);
+  border-color: var(--danger-500);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.confirm-exit-actions .btn-danger:hover{
+  background: #fff;
+  color: var(--danger-500);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Focus accesible */
+.confirm-exit-actions button:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .22);
+}
+
+/* Responsive: botones uno debajo del otro */
+@media (max-width: 420px){
+  .confirm-exit-actions{
+    flex-direction: column;
+  }
+  .confirm-exit-actions button{
+    width: 100%;
+  }
+}
+
+/* Opcional: reduce motion */
+@media (prefers-reduced-motion: reduce){
+  .confirm-exit-overlay,
+  .confirm-exit-card{
+    animation: none !important;
+  }
+}
+/* Centrar texto del mensaje */
+.confirm-exit-card p{
+  text-align: center;
+}
+
+/* Centrar botones */
+.confirm-exit-actions{
+  justify-content: center;   /* en vez de flex-end */
+}/* Icono modal confirmar salir */
+.confirm-exit-icon{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1.2rem 0 .5rem;
+  font-size: 2.6rem;
+  color: var(--danger-500);
+  animation: confirmIconPop .2s ease-out;
+}
+
+@keyframes confirmIconPop{
+  from{
+    transform: scale(.85);
+    opacity: 0;
+  }
+  to{
+    transform: scale(1);
+    opacity: 1;
+  }
+}

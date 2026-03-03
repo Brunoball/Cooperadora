@@ -1,6 +1,7 @@
 // src/components/Alumnos/AgregarAlumno.jsx
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faArrowLeft, faUserPlus } from '@fortawesome/free-solid-svg-icons';
 import BASE_URL from '../../config/config';
@@ -719,6 +720,9 @@ const AgregarAlumno = () => {
         <div className="confirm-exit-overlay" role="dialog" aria-modal="true">
           <div className="confirm-exit-card">
             <h3>¿Salir sin guardar?</h3>
+              <div className="confirm-exit-icon">
+    <FontAwesomeIcon icon={faTriangleExclamation} />
+  </div>
             <p>Vas a perder todos los datos que estabas cargando.</p>
             <div className="confirm-exit-actions">
               <button className="btn-cancel" onClick={cancelExit}>Cancelar</button>
