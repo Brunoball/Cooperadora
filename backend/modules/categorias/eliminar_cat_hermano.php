@@ -26,7 +26,7 @@ try {
     exit;
   }
 
-  $st = $pdo->prepare("DELETE FROM cooperadora.categoria_hermanos WHERE id_cat_hermanos = :id");
+  $st = $pdo->prepare("DELETE FROM categoria_hermanos WHERE id_cat_hermanos = :id");
   $st->execute([':id' => $id_cat_hermanos]);
 
   echo json_encode(['exito' => true, 'mensaje' => 'Eliminado'], JSON_UNESCAPED_UNICODE);

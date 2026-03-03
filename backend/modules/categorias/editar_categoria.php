@@ -91,7 +91,7 @@ try {
     ========================= */
     $stBase = $pdo->prepare("
         SELECT id_cat_monto, monto_mensual, monto_anual
-        FROM cooperadora.categoria_monto
+        FROM categoria_monto
         WHERE id_cat_monto = :id
         LIMIT 1
     ");
@@ -116,7 +116,7 @@ try {
     $stPrecioHist = null;
     try {
         $stPrecioHist = $pdo->prepare("
-            INSERT INTO cooperadora.precios_historicos
+            INSERT INTO precios_historicos
                 (id_cat_monto, tipo, precio_anterior, precio_nuevo, fecha_cambio)
             VALUES
                 (:id, :tipo, :pa, :pn, NOW())
@@ -143,7 +143,7 @@ try {
     }
 
     if (!empty($set)) {
-        $sql = "UPDATE cooperadora.categoria_monto SET " . implode(', ', $set) . " WHERE id_cat_monto = :id";
+        $sql = "UPDATE categoria_monto SET " . implode(', ', $set) . " WHERE id_cat_monto = :id";
         $stUp = $pdo->prepare($sql);
         $stUp->execute($params);
     }
@@ -178,14 +178,14 @@ try {
     if ($hermanos !== null) {
 
         // Desactivar todo (soft) para luego reactivar lo que venga
-        $stOff = $pdo->prepare("UPDATE cooperadora.categoria_hermanos SET activo = 0 WHERE id_cat_monto = :id");
+        $stOff = $pdo->prepare("UPDATE categoria_hermanos SET activo = 0 WHERE id_cat_monto = :id");
         $stOff->execute([':id' => $id]);
 
         // Prepared del historial hermanos (si existe la tabla)
         $stHist = null;
         try {
             $stHist = $pdo->prepare("
-                INSERT INTO cooperadora.categoria_hermanos_historial
+                INSERT INTO categoria_hermanos_historial
                     (id_cat_hermanos, tipo, precio_anterior, precio_nuevo, fecha_cambio)
                 VALUES
                     (:idh, :tipo, :pa, :pn, NOW())
@@ -197,20 +197,20 @@ try {
         // Preparados reusables (evitás preparar en cada loop)
         $stFind = $pdo->prepare("
             SELECT id_cat_hermanos
-            FROM cooperadora.categoria_hermanos
+            FROM categoria_hermanos
             WHERE id_cat_monto = :id AND cantidad_hermanos = :cant
             LIMIT 1
         ");
 
         $stPrev = $pdo->prepare("
             SELECT monto_mensual, monto_anual
-            FROM cooperadora.categoria_hermanos
+            FROM categoria_hermanos
             WHERE id_cat_hermanos = :idh
             LIMIT 1
         ");
 
         $stUpdH = $pdo->prepare("
-            UPDATE cooperadora.categoria_hermanos
+            UPDATE categoria_hermanos
             SET monto_mensual = :mm,
                 monto_anual   = :ma,
                 activo        = 1
@@ -218,7 +218,7 @@ try {
         ");
 
         $stInsH = $pdo->prepare("
-            INSERT INTO cooperadora.categoria_hermanos
+            INSERT INTO categoria_hermanos
               (id_cat_monto, cantidad_hermanos, monto_mensual, monto_anual, activo)
             VALUES
               (:id, :cant, :mm, :ma, 1)

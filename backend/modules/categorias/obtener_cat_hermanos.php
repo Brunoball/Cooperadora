@@ -30,7 +30,7 @@ try {
             ch.activo,
             ch.creado_en,
             ch.actualizado_en
-        FROM cooperadora.categoria_hermanos ch
+        FROM categoria_hermanos ch
         WHERE ch.id_cat_monto = :id
           AND ch.activo = 1
         ORDER BY ch.cantidad_hermanos ASC

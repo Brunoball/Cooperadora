@@ -29,8 +29,8 @@ try {
       h.precio_anterior,
       h.precio_nuevo,
       h.fecha_cambio
-    FROM cooperadora.categoria_hermanos_historial h
-    INNER JOIN cooperadora.categoria_hermanos ch
+    FROM categoria_hermanos_historial h
+    INNER JOIN categoria_hermanos ch
       ON ch.id_cat_hermanos = h.id_cat_hermanos
     WHERE ch.id_cat_monto = :id
     ORDER BY h.fecha_cambio DESC, h.id_hist DESC

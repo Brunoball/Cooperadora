@@ -3,81 +3,21 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-function json_out(array $arr): void {
-  echo json_encode($arr, JSON_UNESCAPED_UNICODE);
-  exit;
-}
-
-/**
- * IDs fijos según tu tabla meses (captura):
- * 13 = CONTADO ANUAL
- * 15 = 1ER MITAD
- * 16 = 2DA MITAD
- */
-const ID_MES_ANUAL     = 13;
-const ID_MES_1ER_MITAD = 15;
-const ID_MES_2DA_MITAD = 16;
-
-/**
- * Reglas que vos pediste:
- * - 1ER MITAD cubre MARZO(3) a JULIO(7)
- * - 2DA MITAD cubre AGOSTO(8) a DICIEMBRE(12)
- */
-function mesPertenece1erMitad(int $idMes): bool {
-  return $idMes >= 3 && $idMes <= 7;
-}
-function mesPertenece2daMitad(int $idMes): bool {
-  return $idMes >= 8 && $idMes <= 12;
-}
-
-function buscarPagoExacto(PDO $pdo, int $idAlumno, int $anio, int $idMes): ?array {
-  $st = $pdo->prepare("
-    SELECT p.id_pago, p.id_mes, m.nombre AS mes_nombre, p.estado, p.fecha_pago
-    FROM pagos p
-    INNER JOIN meses m ON m.id_mes = p.id_mes
-    WHERE p.id_alumno = :id_alumno
-      AND p.id_mes = :id_mes
-      AND YEAR(p.fecha_pago) = :anio
-    ORDER BY p.id_pago DESC
-    LIMIT 1
-  ");
-  $st->execute([
-    ':id_alumno' => $idAlumno,
-    ':id_mes'    => $idMes,
-    ':anio'      => $anio,
-  ]);
-  $row = $st->fetch(PDO::FETCH_ASSOC);
-  return $row ?: null;
-}
-
-/**
- * Busca pago "contado" por ID (ANUAL / 1ER MITAD / 2DA MITAD)
- * en el año del pago.
- */
-function buscarPagoContado(PDO $pdo, int $idAlumno, int $anio, int $idMesContado): ?array {
-  $st = $pdo->prepare("
-    SELECT p.id_pago, p.id_mes, m.nombre AS mes_nombre, p.estado, p.fecha_pago
-    FROM pagos p
-    INNER JOIN meses m ON m.id_mes = p.id_mes
-    WHERE p.id_alumno = :id_alumno
-      AND p.id_mes = :id_mes
-      AND YEAR(p.fecha_pago) = :anio
-    ORDER BY p.id_pago DESC
-    LIMIT 1
-  ");
-  $st->execute([
-    ':id_alumno' => $idAlumno,
-    ':id_mes'    => $idMesContado,
-    ':anio'      => $anio,
-  ]);
-  $row = $st->fetch(PDO::FETCH_ASSOC);
-  return $row ?: null;
-}
-
 try {
-  $raw  = file_get_contents('php://input');
+  if (!isset($pdo) || !($pdo instanceof PDO)) {
+    json_out(['exito' => false, 'mensaje' => 'Conexión PDO no disponible.'], 500);
+  }
+
+  $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+  if ($method === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+  }
+  if ($method !== 'POST') {
+    json_out(['exito' => false, 'mensaje' => 'Método no permitido (usar POST).'], 405);
+  }
+
+  $raw = file_get_contents('php://input');
   $body = json_decode($raw ?: '{}', true);
   if (!is_array($body)) $body = [];
 
@@ -88,111 +28,110 @@ try {
   if ($id_alumno <= 0 || $id_mes <= 0 || $anio <= 0) {
     json_out([
       'exito' => false,
-      'mensaje' => 'Parámetros inválidos (id_alumno, id_mes, anio).',
-    ]);
+      'mensaje' => 'Parámetros inválidos. Requiere: id_alumno, id_mes, anio.',
+    ], 400);
   }
 
-  /* =========================================================
-     1) Intentar pago mensual exacto (el mes seleccionado)
-  ========================================================= */
-  $row1 = buscarPagoExacto($pdo, $id_alumno, $anio, $id_mes);
-  if ($row1) {
+  // 1) Buscar pago exacto mensual del mes seleccionado
+  $sqlMensual = "
+    SELECT p.id_pago, p.id_mes, m.nombre AS mes_nombre
+    FROM pagos p
+    INNER JOIN meses m ON m.id_mes = p.id_mes
+    WHERE p.id_alumno = :id_alumno
+      AND p.id_mes = :id_mes
+      AND YEAR(p.fecha_pago) = :anio
+    ORDER BY p.id_pago DESC
+    LIMIT 1
+  ";
+  $st = $pdo->prepare($sqlMensual);
+  $st->execute([
+    ':id_alumno' => $id_alumno,
+    ':id_mes'    => $id_mes,
+    ':anio'      => $anio,
+  ]);
+  $row = $st->fetch(PDO::FETCH_ASSOC);
+
+  if ($row) {
     json_out([
       'exito' => true,
-      'tipo' => 'mensual',
-      'id_pago' => (int)$row1['id_pago'],
-      'id_mes_real' => (int)$row1['id_mes'],
-      'mes_nombre_real' => (string)$row1['mes_nombre'],
-      'estado' => (string)$row1['estado'],
-      'fecha_pago' => (string)$row1['fecha_pago'],
+      'tipo' => 'MENSUAL',
+      'id_pago' => (int)$row['id_pago'],
+      'id_mes_real' => (int)$row['id_mes'],
+      'mes_nombre' => (string)($row['mes_nombre'] ?? ''),
       'warning' => false,
-      'mensaje' => 'Se encontró un pago mensual para el mes seleccionado.',
       'warning_text' => '',
     ]);
   }
 
-  /* =========================================================
-     2) Si NO hay mensual, buscar "contado" válido para ese mes
-        Orden lógico:
-        - Si el mes está cubierto por 1ER MITAD => buscar id_mes=15
-        - Si el mes está cubierto por 2DA MITAD => buscar id_mes=16
-        - Siempre como fallback final: ANUAL id_mes=13
-  ========================================================= */
+  // 2) Fallback: anual / contado / h1 / h2 / semestre (si no existe el mensual)
+  $sqlFallback = "
+    SELECT p.id_pago, p.id_mes, m.nombre AS mes_nombre
+    FROM pagos p
+    INNER JOIN meses m ON m.id_mes = p.id_mes
+    WHERE p.id_alumno = :id_alumno
+      AND YEAR(p.fecha_pago) = :anio
+      AND (
+        LOWER(m.nombre) LIKE '%anual%'
+        OR LOWER(m.nombre) LIKE '%contado%'
+        OR LOWER(m.nombre) LIKE '%h1%'
+        OR LOWER(m.nombre) LIKE '%h2%'
+        OR LOWER(m.nombre) LIKE '%semestre%'
+        OR LOWER(m.nombre) LIKE '%mitad%'
+      )
+    ORDER BY
+      CASE
+        WHEN LOWER(m.nombre) LIKE '%anual%' THEN 1
+        WHEN LOWER(m.nombre) LIKE '%contado%' THEN 2
+        WHEN LOWER(m.nombre) LIKE '%h1%' THEN 3
+        WHEN LOWER(m.nombre) LIKE '%h2%' THEN 4
+        WHEN LOWER(m.nombre) LIKE '%semestre%' THEN 5
+        WHEN LOWER(m.nombre) LIKE '%mitad%' THEN 6
+        ELSE 99
+      END,
+      p.id_pago DESC
+    LIMIT 1
+  ";
+  $st2 = $pdo->prepare($sqlFallback);
+  $st2->execute([
+    ':id_alumno' => $id_alumno,
+    ':anio'      => $anio,
+  ]);
+  $row2 = $st2->fetch(PDO::FETCH_ASSOC);
 
-  $candidato = null;
-  $tipo = '';
-  $warningText = '';
-
-  // Si el usuario seleccionó directamente 1ER MITAD / 2DA MITAD / ANUAL,
-  // primero intentamos borrar ese mismo.
-  if ($id_mes === ID_MES_1ER_MITAD || $id_mes === ID_MES_2DA_MITAD || $id_mes === ID_MES_ANUAL) {
-    $candidato = buscarPagoContado($pdo, $id_alumno, $anio, $id_mes);
-    if ($candidato) {
-      if ($id_mes === ID_MES_1ER_MITAD) {
-        $tipo = 'contado_1er_mitad';
-        $warningText = "⚠️ Este es un pago de 1ER MITAD. Si lo eliminás, eliminás el registro del período.";
-      } elseif ($id_mes === ID_MES_2DA_MITAD) {
-        $tipo = 'contado_2da_mitad';
-        $warningText = "⚠️ Este es un pago de 2DA MITAD. Si lo eliminás, eliminás el registro del período.";
-      } else {
-        $tipo = 'contado_anual';
-        $warningText = "⚠️ Este es un pago CONTADO ANUAL. Si lo eliminás, eliminás el registro de contado.";
-      }
+  if ($row2) {
+    $nombre = mb_strtolower((string)($row2['mes_nombre'] ?? ''), 'UTF-8');
+    $texto = "⚠️ Este alumno no tiene pago mensual en ese período, pero sí un pago ";
+    if (str_contains($nombre, 'anual') || str_contains($nombre, 'contado')) {
+      $texto .= "ANUAL/CONTADO";
+    } elseif (str_contains($nombre, 'h1') || str_contains($nombre, '1')) {
+      $texto .= "de 1ER MITAD (H1)";
+    } elseif (str_contains($nombre, 'h2') || str_contains($nombre, '2')) {
+      $texto .= "de 2DA MITAD (H2)";
+    } else {
+      $texto .= "SEMIANUAL/MITAD";
     }
-  }
+    $texto .= ". Si eliminás, se elimina el período completo.";
 
-  // Si no era un contado directo, detectamos por “mes normal”
-  if (!$candidato) {
-    if (mesPertenece1erMitad($id_mes)) {
-      $candidato = buscarPagoContado($pdo, $id_alumno, $anio, ID_MES_1ER_MITAD);
-      if ($candidato) {
-        $tipo = 'contado_1er_mitad';
-        $warningText = "⚠️ Este mes está cubierto por 1ER MITAD. Si lo eliminás, eliminás el registro del período.";
-      }
-    } elseif (mesPertenece2daMitad($id_mes)) {
-      $candidato = buscarPagoContado($pdo, $id_alumno, $anio, ID_MES_2DA_MITAD);
-      if ($candidato) {
-        $tipo = 'contado_2da_mitad';
-        $warningText = "⚠️ Este mes está cubierto por 2DA MITAD. Si lo eliminás, eliminás el registro del período.";
-      }
-    }
-  }
-
-  // Fallback final: ANUAL (si existe, cubre todo)
-  if (!$candidato) {
-    $candidato = buscarPagoContado($pdo, $id_alumno, $anio, ID_MES_ANUAL);
-    if ($candidato) {
-      $tipo = 'contado_anual';
-      $warningText = "⚠️ Este mes está cubierto por CONTADO ANUAL. Si lo eliminás, eliminás el registro de contado.";
-    }
-  }
-
-  if ($candidato) {
     json_out([
       'exito' => true,
-      'tipo' => $tipo ?: 'contado',
-      'id_pago' => (int)$candidato['id_pago'],
-      'id_mes_real' => (int)$candidato['id_mes'],              // 🔥 ESTE ES EL QUE SE DEBE BORRAR
-      'mes_nombre_real' => (string)$candidato['mes_nombre'],    // ej: "1ER MITAD"
-      'estado' => (string)$candidato['estado'],
-      'fecha_pago' => (string)$candidato['fecha_pago'],
+      'tipo' => 'PERIODO_COMPLETO',
+      'id_pago' => (int)$row2['id_pago'],
+      'id_mes_real' => (int)$row2['id_mes'],
+      'mes_nombre' => (string)($row2['mes_nombre'] ?? ''),
       'warning' => true,
-      'mensaje' => 'El mes seleccionado no tiene pago mensual, pero existe un pago de período (anual/mitad).',
-      'warning_text' => $warningText ?: ("⚠️ Este es un pago de " . (string)$candidato['mes_nombre'] . ". Si lo eliminás, eliminás el registro del período."),
+      'warning_text' => $texto,
     ]);
   }
 
-  /* =========================================================
-     3) Nada encontrado
-  ========================================================= */
+  // nada encontrado
   json_out([
     'exito' => false,
-    'mensaje' => 'No se encontró un pago mensual para ese mes ni un pago de contado/anual/mitad para ese alumno y año.',
-  ]);
+    'mensaje' => 'No se encontró pago mensual ni anual/mitad para ese alumno y año.',
+  ], 404);
 
 } catch (Throwable $e) {
   json_out([
     'exito' => false,
     'mensaje' => 'Error buscando pago a eliminar: ' . $e->getMessage(),
-  ]);
+  ], 500);
 }
