@@ -1092,7 +1092,7 @@
 }
 .info-icon:hover .tip, .info-icon:focus-visible .tip{ opacity:1; }
 
-.sep_headeric{display: flex; gap: 10px;}
+.sep_headeric{display: flex; gap: 10px; width: 100px;}
 
 /* =========================
    Medio de pago – estilos

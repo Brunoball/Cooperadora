@@ -469,9 +469,6 @@ const Cuotas = () => {
 
   /* =========================================================
      ✅ Determinar "período real a imprimir"
-     - Si la fila viene con id_mes especial (13/14/15/16) => se imprime eso
-     - Si es un mes normal pero origen_anual=1 => se imprime CONTADO ANUAL (13)
-     - Si no => se imprime el mes del selector (o el id_mes normal)
   ========================================================= */
   const getPeriodoImpresion = useCallback((cuota) => {
     const anio = Number(anioPagoSeleccionado) || CURRENT_YEAR;
@@ -504,8 +501,6 @@ const Cuotas = () => {
 
   /* =========================================================
      ✅ Armar “alumno para imprimir” (1 ítem)
-     - mensual con descuento por hermanos
-     - ANUAL: usa monto_anual si existe, sino mensual*12
   ========================================================= */
   const buildAlumnoParaImprimir = useCallback(async (cuota) => {
     const idAlumno = getIdAlumnoFromCuota(cuota);
@@ -536,14 +531,12 @@ const Cuotas = () => {
       const base = anualBase > 0 ? anualBase : (mensualBase * 12);
       precio = Math.max(0, Math.round(base * (1 - porc)));
     } else if (idMesImprimir === ID_MES_MATRICULA) {
-      // matrícula: normalmente NO aplica descuento de hermanos (si querés, lo activamos)
+      // matrícula: normalmente NO aplica descuento de hermanos
       precio = Math.max(0, Math.round(matricBase));
     } else if (idMesImprimir === ID_MES_1ER_MITAD || idMesImprimir === ID_MES_2DA_MITAD) {
-      // mitades: si el backend te devuelve monto especial lo usamos, sino aproximamos mensual*5
       const base = mensualBase * 5;
       precio = Math.max(0, Math.round(base * (1 - porc)));
     } else {
-      // mes normal
       precio = Math.max(0, Math.round(mensualBase * (1 - porc)));
     }
 
@@ -659,7 +652,6 @@ const Cuotas = () => {
       if (internos.length) {
         const w1 = window.open('', '_blank');
         if (!w1) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
-        // ⚠️ Para imprimir TODOS seguimos pasando el mes seleccionado como "contexto" (puede incluir anuales)
         await imprimirRecibos(internos, mesSeleccionado, w1, { anioPago: anioPagoSeleccionado });
       }
       if (externos.length) {
@@ -695,7 +687,7 @@ const Cuotas = () => {
 
   // ✅ Imprimir UNO:
   // - En PAGADOS => imprime DIRECTO (sin modal)
-  // - En otros casos => mantiene ModalMesCuotas (si querés también directo ahí, te lo dejo igual)
+  // - En otros casos => mantiene ModalMesCuotas
   const handlePrintClick = useCallback(async (item) => {
     if (!canPrint) {
       setToastTipo('advertencia');
@@ -711,7 +703,6 @@ const Cuotas = () => {
       return;
     }
 
-    // fallback (por si imprimís desde otras pestañas usando "solo cobrador")
     setSocioParaImprimir(item);
     setMostrarModalMesCuotas(true);
   }, [canPrint, soloCobrador, estadoPagoSeleccionado, imprimirUnoDirecto]);
@@ -731,8 +722,8 @@ const Cuotas = () => {
   const onChangeBusqueda   = (e) => { setBusqueda(e.target.value); triggerCascade(); };
 
   // ✅ toggle cobrador
-  // - Si lo ACTIVO => fuerzo pestaña "deudor" (siempre)
-  // - ✅ PEDIDO: al ACTIVAR => setear categoría automáticamente a EXTERNO (si existe)
+  // - Si lo ACTIVO => fuerzo pestaña "deudor"
+  // - ✅ al ACTIVAR => setear categoría automáticamente a EXTERNO (si existe)
   const onToggleSoloCobrador = () => {
     setSoloCobrador(prev => {
       const next = !prev;
@@ -1037,66 +1028,70 @@ const Cuotas = () => {
 
               <div className="gcuotas-select-container">
                 <div className="gcuotas-input-row">
+                  {/* ✅ Floating label: Año de pago */}
                   <div className="gcuotas-input-group">
-                    <label htmlFor="anioPago" className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faFilter} /> Año de pago
-                    </label>
-                    <select
-                      id="anioPago"
-                      value={anioPagoSeleccionado}
-                      onChange={onChangeAnioPago}
-                      className="gcuotas-dropdown"
-                      disabled={loading || aniosPago.length === 0}
-                    >
-                      {aniosPago.length === 0 ? (
-                        <option value="">Sin pagos</option>
-                      ) : (
-                        aniosPago.map((a, idx) => (
-                          <option key={idx} value={a.id}>{a.nombre}</option>
-                        ))
-                      )}
-                    </select>
+                    <div className="fl-field">
+                      <select
+                        id="anioPago"
+                        value={anioPagoSeleccionado}
+                        onChange={onChangeAnioPago}
+                        className="fl-control fl-select"
+                        disabled={loading || aniosPago.length === 0}
+                      >
+                        {aniosPago.length === 0 ? (
+                          <option value="">Sin pagos</option>
+                        ) : (
+                          aniosPago.map((a, idx) => (
+                            <option key={idx} value={a.id}>{a.nombre}</option>
+                          ))
+                        )}
+                      </select>
+                      <label htmlFor="anioPago" className="fl-label">Año</label>
+                    </div>
                   </div>
 
+                  {/* ✅ Floating label: Mes */}
                   <div className="gcuotas-input-group">
-                    <label htmlFor="meses" className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faCalendarAlt} /> Mes
-                    </label>
-                    <select
-                      id="meses"
-                      value={mesSeleccionado}
-                      onChange={onChangeMes}
-                      className="gcuotas-dropdown"
-                      disabled={loading}
-                    >
-                      <option value="">Mes</option>
-                      {meses.map((mes, idx) => (
-                        <option key={idx} value={mes.id}>{mes.nombre}</option>
-                      ))}
-                    </select>
+                    <div className="fl-field">
+                      <select
+                        id="meses"
+                        value={mesSeleccionado}
+                        onChange={onChangeMes}
+                        className="fl-control fl-select"
+                        disabled={loading}
+                      >
+                        <option value="">Mes</option>
+                        {meses.map((mes, idx) => (
+                          <option key={idx} value={mes.id}>{mes.nombre}</option>
+                        ))}
+                      </select>
+                      <label htmlFor="meses" className="fl-label">Mes</label>
+                    </div>
                   </div>
                 </div>
 
                 {/* ✅ CATEGORÍA + COBRADOR */}
-                <div className="gcuotas-input-row">
+                <div className="gcuotas-input-row gcuotas-input-row-categoria-cobrador">
+                  {/* ✅ Floating label: Categoría */}
                   <div className="gcuotas-input-group">
-                    <label htmlFor="categoria" className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faFilter} /> Categoría
-                    </label>
-                    <select
-                      id="categoria"
-                      value={categoriaSeleccionada}
-                      onChange={onChangeCategoria}
-                      className="gcuotas-dropdown"
-                      disabled={loading}
-                    >
-                      <option value="">Todas</option>
-                      {categorias.map((c, idx) => (
-                        <option key={idx} value={c.id}>{c.nombre}</option>
-                      ))}
-                    </select>
+                    <div className="fl-field">
+                      <select
+                        id="categoria"
+                        value={categoriaSeleccionada}
+                        onChange={onChangeCategoria}
+                        className="fl-control fl-select"
+                        disabled={loading}
+                      >
+                        <option value="">Todas</option>
+                        {categorias.map((c, idx) => (
+                          <option key={idx} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                      <label htmlFor="categoria" className="fl-label">Categoría</label>
+                    </div>
                   </div>
 
+                  {/* Cobrador (botón) */}
                   <div className="gcuotas-input-group">
                     <label className="gcuotas-input-label">
                       <FontAwesomeIcon icon={faFilter} /> Cobrador
@@ -1116,40 +1111,42 @@ const Cuotas = () => {
                 </div>
 
                 <div className="gcuotas-input-row">
+                  {/* ✅ Floating label: Año lectivo */}
                   <div className="gcuotas-input-group">
-                    <label htmlFor="anioLectivo" className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faFilter} /> Año
-                    </label>
-                    <select
-                      id="anioLectivo"
-                      value={anioLectivoSeleccionado}
-                      onChange={onChangeAnioLect}
-                      className="gcuotas-dropdown"
-                      disabled={loading}
-                    >
-                      <option value="">Todos</option>
-                      {aniosLectivos.map((a, idx) => (
-                        <option key={idx} value={a.id}>{a.nombre}</option>
-                      ))}
-                    </select>
+                    <div className="fl-field">
+                      <select
+                        id="anioLectivo"
+                        value={anioLectivoSeleccionado}
+                        onChange={onChangeAnioLect}
+                        className="fl-control fl-select"
+                        disabled={loading}
+                      >
+                        <option value="">Todos</option>
+                        {aniosLectivos.map((a, idx) => (
+                          <option key={idx} value={a.id}>{a.nombre}</option>
+                        ))}
+                      </select>
+                      <label htmlFor="anioLectivo" className="fl-label">Año</label>
+                    </div>
                   </div>
 
+                  {/* ✅ Floating label: División */}
                   <div className="gcuotas-input-group">
-                    <label htmlFor="division" className="gcuotas-input-label">
-                      <FontAwesomeIcon icon={faFilter} /> División
-                    </label>
-                    <select
-                      id="division"
-                      value={divisionSeleccionada}
-                      onChange={onChangeDivision}
-                      className="gcuotas-dropdown"
-                      disabled={loading}
-                    >
-                      <option value="">Todas</option>
-                      {divisiones.map((d, idx) => (
-                        <option key={idx} value={d.id}>{d.nombre}</option>
-                      ))}
-                    </select>
+                    <div className="fl-field">
+                      <select
+                        id="division"
+                        value={divisionSeleccionada}
+                        onChange={onChangeDivision}
+                        className="fl-control fl-select"
+                        disabled={loading}
+                      >
+                        <option value="">Todas</option>
+                        {divisiones.map((d, idx) => (
+                          <option key={idx} value={d.id}>{d.nombre}</option>
+                        ))}
+                      </select>
+                      <label htmlFor="division" className="fl-label">División</label>
+                    </div>
                   </div>
                 </div>
 
@@ -1249,18 +1246,22 @@ const Cuotas = () => {
                 : 'Cuotas Pendientes'}
             {mesSeleccionado && (<span className="gcuotas-periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>)}
           </h3>
+
+          {/* ✅ Floating label: Search */}
           <div className="gcuotas-input-group gcuotas-search-group">
-            <div className="gcuotas-search-integrated">
+            <div className="fl-field">
               <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
               <input
                 type="text"
-                placeholder="Buscar alumno..."
                 value={busqueda}
                 onChange={onChangeBusqueda}
                 disabled={loading || !mesSeleccionado}
+                className="fl-control fl-search"
               />
+              <label className="fl-label">Buscar alumno</label>
             </div>
           </div>
+
           <div className="gcuotas-summary-info">
             <span className="gcuotas-summary-item">
               <FontAwesomeIcon icon={faUsers} /> Total: {mesSeleccionado ? cuotasFiltradas.length : 0}
