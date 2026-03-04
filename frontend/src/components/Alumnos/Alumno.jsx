@@ -130,7 +130,6 @@ const Alumnos = () => {
   const [mostrarModalDarBaja, setMostrarModalDarBaja] = useState(false);
   const [alumnoDarBaja, setAlumnoDarBaja] = useState(null);
 
-  // ✅ NUEVO: modal cobrador
   const [mostrarModalCobrador, setMostrarModalCobrador] = useState(false);
   const [alumnoCobrador, setAlumnoCobrador] = useState(null);
   const [nuevoValorCobrador, setNuevoValorCobrador] = useState(0);
@@ -138,7 +137,6 @@ const Alumnos = () => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [bloquearInteraccion, setBloquearInteraccion] = useState(true);
 
-  // flags de animación
   const [animacionActiva, setAnimacionActiva] = useState(false);
   const [preCascada, setPreCascada] = useState(false);
 
@@ -147,16 +145,27 @@ const Alumnos = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile(768);
 
+  // refs para persistir scroll y alumno seleccionado entre acciones
+  const listRef = useRef(null);
+  // ✅ inicializar desde sessionStorage para sobrevivir navegación editar→volver
+  const _savedScroll = sessionStorage.getItem('alu_scroll');
+  const _savedAlumnoId = sessionStorage.getItem('alu_selected_id');
+  const scrollOffsetRef = useRef(_savedScroll ? Number(_savedScroll) : 0);
+  const alumnoSeleccionadoRef = useRef(null);
+  // ✅ flag para saber si debemos restaurar scroll tras un update de datos
+  const shouldRestoreScrollRef = useRef(false);
+  // ✅ flag: venimos de editar, hay que restaurar scroll+selección al montar datos
+  const restoringFromEditRef = useRef(!!_savedScroll);
+  const savedAlumnoIdRef = useRef(_savedAlumnoId ? Number(_savedAlumnoId) : null);
+
   const [toast, setToast] = useState({
     mostrar: false,
     tipo: '',
     mensaje: ''
   });
 
-  // categorías disponibles
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
-  // ✅ NUEVO: filtro cobrador
   const [filtros, setFiltros] = useState(() => {
     const saved = localStorage.getItem('filtros_alumnos');
     if (saved) {
@@ -167,7 +176,7 @@ const Alumnos = () => {
           divisionSeleccionada: parsed.divisionSeleccionada ?? '',
           anioSeleccionado: parsed.anioSeleccionado ?? null,
           categoriaSeleccionada: parsed.categoriaSeleccionada ?? '',
-          cobradorSeleccionado: parsed.cobradorSeleccionado ?? '', // '' | '1'
+          cobradorSeleccionado: parsed.cobradorSeleccionado ?? '',
           filtroActivo: parsed.filtroActivo ?? null,
         };
       } catch {}
@@ -182,12 +191,11 @@ const Alumnos = () => {
     };
   });
 
-  // Acordeones
   const [openSecciones, setOpenSecciones] = useState({
     division: false,
     anio: false,
     categoria: false,
-    cobrador: false, // ✅ nuevo acordeón
+    cobrador: false,
   });
 
   const {
@@ -209,7 +217,6 @@ const Alumnos = () => {
     (cobradorSeleccionado && cobradorSeleccionado !== '')
   );
 
-  // Rol
   const [isVista, setIsVista] = useState(false);
   useEffect(() => {
     try {
@@ -262,7 +269,6 @@ const Alumnos = () => {
       resultados = resultados.filter((a) => normalizar(a?.categoria_nombre ?? '') === catNorm);
     }
 
-    // ✅ NUEVO: solo cobrador
     if (cobradorSeleccionado === '1') {
       resultados = resultados.filter((a) => String(a?.es_cobrador ?? 0) === '1');
     }
@@ -281,6 +287,12 @@ const Alumnos = () => {
     cobradorSeleccionado,
     filtroActivo
   ]);
+
+  // ✅ itemData para el List virtualizado: incluye rows + selectedId para evitar stale closure en Row
+  const listItemData = useMemo(() => ({
+    rows: alumnosFiltrados,
+    selectedId: alumnoSeleccionado?.id_alumno ?? null,
+  }), [alumnosFiltrados, alumnoSeleccionado?.id_alumno]);
 
   const puedeExportar = useMemo(() => {
     return (hayFiltros || filtroActivo === 'todos') && alumnosFiltrados.length > 0 && !cargando;
@@ -324,8 +336,9 @@ const Alumnos = () => {
     };
 
     const handleClickOutsideTable = (event) => {
-      if (!event.target.closest('.alu-row')) {
+      if (!event.target.closest('.alu-row') && !event.target.closest('.alu-card')) {
         setAlumnoSeleccionado(null);
+        alumnoSeleccionadoRef.current = null;
       }
     };
 
@@ -340,6 +353,49 @@ const Alumnos = () => {
   const mostrarToast = useCallback((mensaje, tipo = 'exito') => {
     setToast({ mostrar: true, tipo, mensaje });
   }, []);
+
+  // ✅ Restaurar scroll cuando alumnosFiltrados cambia (por acciones locales como toggle cobrador)
+  useEffect(() => {
+    if (shouldRestoreScrollRef.current && listRef.current && scrollOffsetRef.current > 0) {
+      requestAnimationFrame(() => {
+        listRef.current?.scrollTo(scrollOffsetRef.current);
+      });
+      shouldRestoreScrollRef.current = false;
+    }
+  }, [alumnosFiltrados]);
+
+  // ✅ Restaurar scroll y selección cuando termina una carga
+  // También maneja el retorno desde la página de editar
+  useEffect(() => {
+    if (!cargando && alumnosFiltrados.length > 0) {
+      // Restaurar scroll
+      if (scrollOffsetRef.current > 0) {
+        requestAnimationFrame(() => {
+          listRef.current?.scrollTo(scrollOffsetRef.current);
+        });
+      }
+
+      // Restaurar selección: primero desde ref interna, luego desde sessionStorage
+      if (alumnoSeleccionadoRef.current !== null) {
+        setAlumnoSeleccionado(alumnoSeleccionadoRef.current);
+      } else if (restoringFromEditRef.current && savedAlumnoIdRef.current !== null) {
+        // Venimos de editar: buscar el alumno por ID guardado y restaurarlo
+        const alumnoRestaurado = alumnosFiltrados.find(
+          (a) => a.id_alumno === savedAlumnoIdRef.current ||
+                 String(a.id_alumno) === String(savedAlumnoIdRef.current)
+        );
+        if (alumnoRestaurado) {
+          alumnoSeleccionadoRef.current = alumnoRestaurado;
+          setAlumnoSeleccionado(alumnoRestaurado);
+        }
+        // Limpiar flags de restauración — solo se usa una vez al volver de editar
+        restoringFromEditRef.current = false;
+        savedAlumnoIdRef.current = null;
+        sessionStorage.removeItem('alu_selected_id');
+        // NO limpiar alu_scroll acá: se limpia al ir al panel
+      }
+    }
+  }, [cargando, alumnosFiltrados]);
 
   useEffect(() => {
     const cargarDatosIniciales = async () => {
@@ -370,7 +426,6 @@ const Alumnos = () => {
           mostrarToast(`Error al obtener alumnos: ${data.mensaje}`, 'error');
         }
 
-        // Listas (categorías)
         try {
           const resListas = await fetch(`${BASE_URL}/api.php?action=obtener_listas`);
           const dataListas = await resListas.json();
@@ -440,13 +495,25 @@ const Alumnos = () => {
   const manejarSeleccion = useCallback(
     (alumno) => {
       if (bloquearInteraccion || animacionActiva) return;
-      setAlumnoSeleccionado((prev) => (prev?.id_alumno !== alumno.id_alumno ? alumno : null));
+      setAlumnoSeleccionado((prev) => {
+        const next = prev?.id_alumno !== alumno.id_alumno ? alumno : null;
+        alumnoSeleccionadoRef.current = next;
+        // ✅ persistir en sessionStorage para sobrevivir navegación editar→volver
+        if (next) {
+          sessionStorage.setItem('alu_selected_id', String(next.id_alumno));
+        } else {
+          sessionStorage.removeItem('alu_selected_id');
+        }
+        return next;
+      });
     },
     [bloquearInteraccion, animacionActiva]
   );
 
   const eliminarAlumno = useCallback(
     async (id) => {
+      // ✅ marcar que debemos restaurar scroll tras el update
+      shouldRestoreScrollRef.current = true;
       try {
         const response = await fetch(`${BASE_URL}/api.php?action=eliminar_alumno`, {
           method: 'POST',
@@ -458,6 +525,11 @@ const Alumnos = () => {
         if (data.exito) {
           setAlumnos((prev) => prev.filter((a) => a.id_alumno !== id));
           setAlumnosDB((prev) => prev.filter((a) => a.id_alumno !== id));
+          // limpiar selección solo si era el eliminado
+          if (alumnoSeleccionadoRef.current?.id_alumno === id) {
+            alumnoSeleccionadoRef.current = null;
+            setAlumnoSeleccionado(null);
+          }
           mostrarToast('Alumno eliminado correctamente');
         } else {
           mostrarToast(`Error al eliminar: ${data.mensaje}`, 'error');
@@ -474,6 +546,8 @@ const Alumnos = () => {
 
   const darDeBajaAlumno = useCallback(
     async (id, motivo) => {
+      // ✅ marcar que debemos restaurar scroll tras el update
+      shouldRestoreScrollRef.current = true;
       try {
         const response = await fetch(`${BASE_URL}/api.php?action=dar_baja_alumno`, {
           method: 'POST',
@@ -487,6 +561,11 @@ const Alumnos = () => {
           setAlumnosDB((prev) =>
             prev.map((a) => (a.id_alumno === id ? { ...a, activo: 0, motivo, ingreso: data.fecha || a.ingreso } : a))
           );
+          // limpiar selección si era el dado de baja
+          if (alumnoSeleccionadoRef.current?.id_alumno === id) {
+            alumnoSeleccionadoRef.current = null;
+            setAlumnoSeleccionado(null);
+          }
           mostrarToast('Alumno dado de baja correctamente');
         } else {
           mostrarToast(`Error: ${data.mensaje}`, 'error');
@@ -617,7 +696,6 @@ const Alumnos = () => {
     triggerCascadaConPreMask();
   }, [triggerCascadaConPreMask]);
 
-  // ✅ NUEVO: filtro cobrador
   const handleFiltrarCobrador = useCallback((valor) => {
     setFiltros((prev) => {
       const next = { ...prev, cobradorSeleccionado: valor ? '1' : '' };
@@ -717,7 +795,6 @@ const Alumnos = () => {
     }
   }, []);
 
-  // ✅ NUEVO: abrir modal cobrador
   const abrirModalCobrador = useCallback((alumno) => {
     const actual = Number(alumno?.es_cobrador ?? 0) === 1 ? 1 : 0;
     const nuevo = actual === 1 ? 0 : 1;
@@ -726,7 +803,6 @@ const Alumnos = () => {
     setMostrarModalCobrador(true);
   }, []);
 
-  // ✅ NUEVO: confirmar cambio en backend + update local
   const confirmarToggleCobrador = useCallback(async () => {
     const a = alumnoCobrador;
     if (!a?.id_alumno) {
@@ -734,6 +810,9 @@ const Alumnos = () => {
       setAlumnoCobrador(null);
       return;
     }
+
+    // ✅ marcar que debemos restaurar scroll tras el update
+    shouldRestoreScrollRef.current = true;
 
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=toggle_cobrador`, {
@@ -745,25 +824,45 @@ const Alumnos = () => {
 
       if (!data?.exito) {
         mostrarToast(data?.mensaje || 'No se pudo actualizar cobrador', 'error');
+        shouldRestoreScrollRef.current = false;
         return;
       }
 
       const nuevo = Number(data.es_cobrador ?? nuevoValorCobrador);
 
+      // ✅ Actualizar la ref de selección ANTES de los setters de estado
+      if (alumnoSeleccionadoRef.current?.id_alumno === a.id_alumno) {
+        const actualizado = { ...alumnoSeleccionadoRef.current, es_cobrador: nuevo };
+        alumnoSeleccionadoRef.current = actualizado;
+        // Actualizar el estado de selección directamente para que Row lo refleje de inmediato
+        setAlumnoSeleccionado(actualizado);
+      }
+
+      // Actualizar la lista sin recargar — el useEffect de alumnosFiltrados restaurará el scroll
       setAlumnos((prev) => prev.map(x => x.id_alumno === a.id_alumno ? { ...x, es_cobrador: nuevo } : x));
       setAlumnosDB((prev) => prev.map(x => x.id_alumno === a.id_alumno ? { ...x, es_cobrador: nuevo } : x));
 
       mostrarToast(nuevo === 1 ? 'Marcado como COBRADOR' : 'Quitado de COBRADOR', 'exito');
     } catch (e) {
       mostrarToast('Error de red al actualizar cobrador', 'error');
+      shouldRestoreScrollRef.current = false;
     } finally {
       setMostrarModalCobrador(false);
       setAlumnoCobrador(null);
     }
   }, [alumnoCobrador, nuevoValorCobrador, mostrarToast]);
 
+  // ✅ callback para capturar el scroll de la lista virtualizada en tiempo real
+  // También persiste en sessionStorage para sobrevivir navegación editar→volver
+  const handleListScroll = useCallback(({ scrollOffset }) => {
+    scrollOffsetRef.current = scrollOffset;
+    sessionStorage.setItem('alu_scroll', String(scrollOffset));
+  }, []);
+
+  // ✅ Row: ahora lee selectedId desde data en lugar de closure externo
   const Row = React.memo(({ index, style, data }) => {
-    const alumno = data[index];
+    const alumno = data.rows[index];
+    const isSelected = data.selectedId === alumno.id_alumno;
     const esFilaPar = index % 2 === 0;
     const navigateRow = useNavigate();
     const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
@@ -779,12 +878,12 @@ const Alumnos = () => {
           opacity: preMask ? 0 : undefined,
           transform: preMask ? 'translateY(8px)' : undefined,
         }}
-        className={`alu-row ${esFilaPar ? 'alu-even-row' : 'alu-odd-row'} ${alumnoSeleccionado?.id_alumno === alumno.id_alumno ? 'alu-selected-row' : ''} ${willAnimate ? 'alu-cascade' : ''}`}
+        className={`alu-row ${esFilaPar ? 'alu-even-row' : 'alu-odd-row'} ${isSelected ? 'alu-selected-row' : ''} ${willAnimate ? 'alu-cascade' : ''}`}
         onClick={() => manejarSeleccion(alumno)}
       >
-<div className="alu-column alu-column-nombre" title={combinarNombre(alumno)}>
-  {combinarNombre(alumno)}
-</div>
+        <div className="alu-column alu-column-nombre" title={combinarNombre(alumno)}>
+          {combinarNombre(alumno)}
+        </div>
 
         <div className="alu-column alu-column-dni" title={alumno.num_documento ?? alumno.dni}>
           {alumno.num_documento ?? alumno.dni}
@@ -803,9 +902,8 @@ const Alumnos = () => {
         </div>
 
         <div className="alu-column alu-icons-column">
-          {alumnoSeleccionado?.id_alumno === alumno.id_alumno && (
+          {isSelected && (
             <div className="alu-icons-container">
-              {/* INFO */}
               <button
                 className="alu-iconchip is-info"
                 title="Ver información"
@@ -818,7 +916,6 @@ const Alumnos = () => {
                 <FaInfoCircle />
               </button>
 
-              {/* ✅ NUEVO: COBRADOR (admin) */}
               {!isVista && (
                 <button
                   className={`alu-iconchip is-cobrador ${esCobrador ? 'is-success' : 'is-warning'}`}
@@ -833,7 +930,6 @@ const Alumnos = () => {
                 </button>
               )}
 
-              {/* Admin: editar / eliminar / baja */}
               {!isVista && (
                 <>
                   <button
@@ -841,6 +937,9 @@ const Alumnos = () => {
                     title="Editar"
                     onClick={(e) => {
                       e.stopPropagation();
+                      // ✅ persistir scroll y selección antes de navegar a editar
+                      sessionStorage.setItem('alu_scroll', String(scrollOffsetRef.current));
+                      sessionStorage.setItem('alu_selected_id', String(alumno.id_alumno));
                       navigateRow(`/alumnos/editar/${alumno.id_alumno}`);
                     }}
                     aria-label="Editar"
@@ -919,12 +1018,7 @@ const Alumnos = () => {
           <div className="alu-filtros-container" ref={filtrosRef}>
             <button
               className="alu-filtros-button"
-              onClick={() => {
-                setMostrarFiltros((prev) => {
-                  const next = !prev;
-                  return next;
-                });
-              }}
+              onClick={() => setMostrarFiltros((prev) => !prev)}
               disabled={cargando}
             >
               <FaFilter className="alu-icon-button" />
@@ -1027,7 +1121,7 @@ const Alumnos = () => {
                   </div>
                 </div>
 
-                {/* ✅ NUEVO: COBRADOR */}
+                {/* COBRADOR */}
                 <div className="alu-filtros-group">
                   <button
                     type="button"
@@ -1185,13 +1279,16 @@ const Alumnos = () => {
                     <AutoSizer>
                       {({ height, width }) => (
                         <List
+                          ref={listRef}
                           height={height}
                           width={width}
                           itemCount={alumnosFiltrados.length}
                           itemSize={48}
-                          itemData={alumnosFiltrados}
+                          itemData={listItemData}
                           overscanCount={10}
-                          itemKey={(index, data) => data[index]?.id_alumno ?? index}
+                          itemKey={(index, data) => data.rows[index]?.id_alumno ?? index}
+                          onScroll={handleListScroll}
+                          initialScrollOffset={scrollOffsetRef.current}
                         >
                           {Row}
                         </List>
@@ -1238,11 +1335,12 @@ const Alumnos = () => {
                   const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
                   const preMask = preCascada && index < MAX_CASCADE_ITEMS;
                   const esCobrador = Number(alumno?.es_cobrador ?? 0) === 1;
+                  const isSelected = alumnoSeleccionado?.id_alumno === alumno.id_alumno;
 
                   return (
                     <div
                       key={alumno.id_alumno || `card-${index}`}
-                      className={`alu-card ${willAnimate ? 'alu-cascade' : ''}`}
+                      className={`alu-card ${isSelected ? 'alu-selected-row' : ''} ${willAnimate ? 'alu-cascade' : ''}`}
                       style={{
                         animationDelay: willAnimate ? `${index * 0.03}s` : '0s',
                         opacity: preMask ? 0 : undefined,
@@ -1295,23 +1393,26 @@ const Alumnos = () => {
 
                         {!isVista && (
                           <>
-<button
-  className={`alu-iconchip is-cobrador ${esCobrador ? 'is-success' : 'is-warning'}`}
-  title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
-  onClick={(e) => {
-    e.stopPropagation();
-    abrirModalCobrador(alumno);
-  }}
-  aria-label={esCobrador ? 'Quitar cobrador' : 'Marcar cobrador'}
->
-  {esCobrador ? <FaTimesCircle /> : <FaMoneyBillWave />}
-</button>
+                            <button
+                              className={`alu-iconchip is-cobrador ${esCobrador ? 'is-success' : 'is-warning'}`}
+                              title={esCobrador ? 'Quitar de COBRADOR' : 'Marcar como COBRADOR'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                abrirModalCobrador(alumno);
+                              }}
+                              aria-label={esCobrador ? 'Quitar cobrador' : 'Marcar cobrador'}
+                            >
+                              {esCobrador ? <FaTimesCircle /> : <FaMoneyBillWave />}
+                            </button>
 
                             <button
                               className="alu-action-btn alu-iconchip is-edit"
                               title="Editar"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                // ✅ persistir scroll y selección antes de navegar a editar
+                                sessionStorage.setItem('alu_scroll', String(scrollOffsetRef.current));
+                                sessionStorage.setItem('alu_selected_id', String(alumno.id_alumno));
                                 navigate(`/alumnos/editar/${alumno.id_alumno}`);
                               }}
                               aria-label="Editar"
@@ -1367,6 +1468,9 @@ const Alumnos = () => {
                 filtroActivo: null,
               });
               localStorage.removeItem('filtros_alumnos');
+              // ✅ limpiar sessionStorage al salir al panel
+              sessionStorage.removeItem('alu_scroll');
+              sessionStorage.removeItem('alu_selected_id');
               navigate('/panel');
             }}
             aria-label="Volver"
@@ -1461,7 +1565,6 @@ const Alumnos = () => {
         document.body
       )}
 
-      {/* ✅ NUEVO */}
       {ReactDOM.createPortal(
         <ModalCobradorAlumno
           mostrar={mostrarModalCobrador}

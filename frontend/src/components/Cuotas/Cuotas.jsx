@@ -41,17 +41,11 @@ const normalizar = (s = '') =>
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-/* =========================
-   ✅ IDs especiales (del backend)
-========================= */
-const ID_MES_ANUAL     = 13; // CONTADO ANUAL
-const ID_MES_MATRICULA = 14; // MATRÍCULA
-const ID_MES_1ER_MITAD = 15; // 1ER MITAD
-const ID_MES_2DA_MITAD = 16; // 2DA MITAD
+const ID_MES_ANUAL     = 13;
+const ID_MES_MATRICULA = 14;
+const ID_MES_1ER_MITAD = 15;
+const ID_MES_2DA_MITAD = 16;
 
-/* =========================
-   ✅ DESCUENTO HERMANOS (mismo que ModalMesCuotas)
-========================= */
 const REFERENCIAS = {
   INTERNO: { mensual: 50000, totals: { 2: 80000 } },
   EXTERNO: { mensual: 6000, totals: { 2: 8000, 3: 10000 } },
@@ -80,9 +74,6 @@ function getPorcDescuentoDerivado(categoriaNombre = "", familyCount = 1) {
   return Math.max(0, Math.min(descuento, 0.95));
 }
 
-/* =========================
-   ✅ Pool de promesas (concurrencia limitada)
-========================= */
 async function asyncPool(limit, array, iteratorFn) {
   const ret = [];
   const executing = [];
@@ -101,9 +92,6 @@ async function asyncPool(limit, array, iteratorFn) {
   return Promise.all(ret);
 }
 
-/* =========================
-   ✅ Parser de montos (tolera formato AR)
-========================= */
 const parseMonto = (v) => {
   if (typeof v === 'number') return v;
   if (v == null) return 0;
@@ -121,25 +109,14 @@ const Cuotas = () => {
   const [loadingPrint, setLoadingPrint] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
-
-  // pestaña: deudor | pagado | condonado
   const [estadoPagoSeleccionado, setEstadoPagoSeleccionado] = useState('deudor');
-
-  // Año **de pago**
   const [anioPagoSeleccionado, setAnioPagoSeleccionado] = useState('');
-
-  // Año lectivo
   const [anioLectivoSeleccionado, setAnioLectivoSeleccionado] = useState('');
-
-  // Otros filtros
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
   const [divisionSeleccionada, setDivisionSeleccionada] = useState('');
   const [mesSeleccionado, setMesSeleccionado] = useState('');
-
-  // ✅ NUEVO: filtro cobrador
   const [soloCobrador, setSoloCobrador] = useState(false);
 
-  // Listas
   const [aniosPago, setAniosPago] = useState([]);
   const [aniosLectivos, setAniosLectivos] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -159,21 +136,23 @@ const Cuotas = () => {
 
   const [socioParaPagar, setSocioParaPagar] = useState(null);
 
-  // Selector de meses (impresión)
   const [mostrarModalMesCuotas, setMostrarModalMesCuotas] = useState(false);
   const [socioParaImprimir, setSocioParaImprimir] = useState(null);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [selectedRow, setSelectedRow] = useState(null);
 
-  // ===== abort controllers (evitar respuestas viejas) =====
+  // ✅ NUEVO: ref para la lista virtualizada (para controlar scroll)
+  const listRef = useRef(null);
+  // ✅ NUEVO: guardamos el scroll offset y el índice seleccionado antes del resync
+  const scrollOffsetRef = useRef(0);
+  const selectedRowRef  = useRef(null);
+
   const abortRef = useRef({ cuotas: null, listas: null, anios: null });
 
-  // ✅ caches para imprimir todos (no repetir fetches) - incluye familyCount en key
-  const cacheMontoCategoriaRef = useRef(new Map()); // id_alumno::familyCount -> data
-  const cacheFamiliaRef = useRef(new Map());        // id_alumno -> data
+  const cacheMontoCategoriaRef = useRef(new Map());
+  const cacheFamiliaRef = useRef(new Map());
 
-  // Animación cascada
   const [cascadeActive, setCascadeActive] = useState(false);
   const [cascadeRunId, setCascadeRunId] = useState(0);
   const cascadeTimerRef = useRef(null);
@@ -192,14 +171,12 @@ const Cuotas = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Helpers de lectura (según estructura del backend)
   const getIdMesFromCuota = (c) => c?.id_mes ?? c?.id_periodo ?? '';
   const getNombreCuota = (c) => c?.nombre ?? '';
   const getDomicilioCuota = (c) => c?.domicilio ?? '';
   const getDocumentoCuota = (c) => c?.documento ?? c?.dni ?? c?.num_documento ?? '';
   const getIdAlumnoFromCuota = (c) => c?.id_alumno ?? c?.id_socio ?? c?.id ?? '';
 
-  // Año lectivo posible en cuota
   const getIdAnioLectivo = (c) =>
     c?.id_anio ?? c?.id_año ?? c?.anio_id ?? c?.anio ?? '';
   const getNombreAnioLectivo = (c) =>
@@ -209,20 +186,13 @@ const Cuotas = () => {
   const getNombreCategoria = (id) => (categorias.find(c => String(c.id) === String(id))?.nombre) || '';
   const getNombreMes = (id) => (meses.find(m => String(m.id) === String(id))?.nombre) || id;
 
-  // ✅ NUEVO helper: obtener ID de categoría "EXTERNO"
   const getCategoriaExternoId = useCallback(() => {
     const cat = categorias.find(c => normalizar(c?.nombre) === 'externo');
     return cat ? String(cat.id) : '';
   }, [categorias]);
 
-  // ✅ REGLA:
-  // - Imprimir normal SOLO en pagados
-  // - PERO si "Solo cobrador" está activo => habilitar imprimir
   const canPrint = (estadoPagoSeleccionado === 'pagado') || (soloCobrador === true);
 
-  /* =========================================================
-     ✅ FIX: no cambiar el año seleccionado automáticamente
-  ========================================================= */
   const fetchAniosPago = useCallback(async () => {
     try {
       if (abortRef.current.anios) abortRef.current.anios.abort();
@@ -250,7 +220,6 @@ const Cuotas = () => {
     }
   }, [anioPagoSeleccionado]);
 
-  // === Obtener cuotas + listas ===
   const obtenerCuotasYListas = useCallback(async () => {
     try {
       setLoading(true);
@@ -259,8 +228,6 @@ const Cuotas = () => {
       params.set('action', 'cuotas');
       if (mesSeleccionado) params.set('id_mes', String(mesSeleccionado));
       if (anioPagoSeleccionado) params.set('anio', String(anioPagoSeleccionado));
-
-      // ✅ filtro cobrador al backend
       if (soloCobrador) params.set('solo_cobrador', '1');
 
       if (abortRef.current.cuotas) abortRef.current.cuotas.abort();
@@ -296,11 +263,22 @@ const Cuotas = () => {
     }
   }, [mesSeleccionado, anioPagoSeleccionado, soloCobrador]);
 
-  // Cargar años de pago y luego datos
   useEffect(() => { fetchAniosPago(); }, [fetchAniosPago]);
   useEffect(() => { obtenerCuotasYListas(); /* eslint-disable-next-line */ }, [mesSeleccionado, anioPagoSeleccionado, soloCobrador]);
 
-  // ===== Patch optimista tras pagar/condonar/eliminar =====
+  // ✅ NUEVO: restaurar scroll y selección después de que loading termine
+  useEffect(() => {
+    if (!loading && listRef.current && scrollOffsetRef.current > 0) {
+      // Usamos requestAnimationFrame para asegurar que react-window ya renderizó
+      requestAnimationFrame(() => {
+        listRef.current?.scrollTo(scrollOffsetRef.current);
+      });
+    }
+    if (!loading && selectedRowRef.current !== null) {
+      setSelectedRow(selectedRowRef.current);
+    }
+  }, [loading]);
+
   const patchCuotasAfterAccion = useCallback(({ idAlumno, periodos, estado }) => {
     if (!idAlumno || !Array.isArray(periodos) || periodos.length === 0) return;
 
@@ -329,7 +307,6 @@ const Cuotas = () => {
     );
   }, []);
 
-  // Filtros locales
   const coincideBusquedaLibre = (c) => {
     if (!busqueda) return true;
     const q = normalizar(busqueda);
@@ -350,7 +327,6 @@ const Cuotas = () => {
     !estadoPagoSeleccionado ||
     String(c?.estado_pago ?? '').toLowerCase().trim() === String(estadoPagoSeleccionado).toLowerCase().trim();
 
-  // Año lectivo
   const coincideAnioLectivo = (c) => {
     if (!anioLectivoSeleccionado) return true;
     const idCuota = String(getIdAnioLectivo(c));
@@ -374,7 +350,6 @@ const Cuotas = () => {
     return asc ? va.localeCompare(vb) : vb.localeCompare(va);
   };
 
-  // Lista para la pestaña seleccionada
   const cuotasFiltradas = useMemo(() => {
     if (!mesSeleccionado) return [];
     return cuotas
@@ -387,7 +362,6 @@ const Cuotas = () => {
       .sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
   }, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, estadoPagoSeleccionado, orden]);
 
-  // Contadores
   const contarConFiltros = (estadoPago) =>
     cuotas.filter((c) =>
       String(getIdMesFromCuota(c)) === String(mesSeleccionado || '') &&
@@ -407,9 +381,6 @@ const Cuotas = () => {
     triggerCascade();
   }, [triggerCascade]);
 
-  /* =========================================================
-     ✅ FETCH helpers: monto_categoria (con familyCount + parse)
-  ========================================================= */
   const fetchMontoCategoria = useCallback(async (idAlumno, familyCount = 1) => {
     const key = `${idAlumno}::${familyCount}`;
     if (!idAlumno) return null;
@@ -467,9 +438,6 @@ const Cuotas = () => {
     }
   }, []);
 
-  /* =========================================================
-     ✅ Determinar "período real a imprimir"
-  ========================================================= */
   const getPeriodoImpresion = useCallback((cuota) => {
     const anio = Number(anioPagoSeleccionado) || CURRENT_YEAR;
 
@@ -499,23 +467,18 @@ const Cuotas = () => {
     return { idMesImprimir, periodoTexto, anio };
   }, [anioPagoSeleccionado, mesSeleccionado, getNombreMes]);
 
-  /* =========================================================
-     ✅ Armar “alumno para imprimir” (1 ítem)
-  ========================================================= */
   const buildAlumnoParaImprimir = useCallback(async (cuota) => {
     const idAlumno = getIdAlumnoFromCuota(cuota);
     const { idMesImprimir, periodoTexto, anio } = getPeriodoImpresion(cuota);
 
     const catFallback = (getNombreCategoria(cuota?.id_categoria) || '').toUpperCase();
 
-    // 1) familia => familyCount
     const fam = await fetchFamilia(idAlumno);
     const mA = Number(fam?.miembros_activos || 0);
     const mT = Number(fam?.miembros_total || 0);
     const baseFam = Math.max(mA, mT, 0);
     const familyCount = (fam?.tiene_familia) ? Math.max(1, baseFam) : 1;
 
-    // 2) monto_categoria con familyCount
     const mCat = await fetchMontoCategoria(idAlumno, familyCount);
     const categoriaNombre = (mCat?.categoria_nombre || catFallback || '').toUpperCase();
 
@@ -531,7 +494,6 @@ const Cuotas = () => {
       const base = anualBase > 0 ? anualBase : (mensualBase * 12);
       precio = Math.max(0, Math.round(base * (1 - porc)));
     } else if (idMesImprimir === ID_MES_MATRICULA) {
-      // matrícula: normalmente NO aplica descuento de hermanos
       precio = Math.max(0, Math.round(matricBase));
     } else if (idMesImprimir === ID_MES_1ER_MITAD || idMesImprimir === ID_MES_2DA_MITAD) {
       const base = mensualBase * 5;
@@ -571,9 +533,6 @@ const Cuotas = () => {
     getPeriodoImpresion,
   ]);
 
-  /* =========================================================
-     ✅ IMPRESIÓN DIRECTA (sin modal) SOLO EN PAGADOS
-  ========================================================= */
   const imprimirUnoDirecto = useCallback(async (cuota) => {
     try {
       if (!cuota) return;
@@ -612,7 +571,6 @@ const Cuotas = () => {
     getPeriodoImpresion,
   ]);
 
-  // Imprimir TODOS: separar internos/externos
   const handleImprimirTodos = async () => {
     if (!canPrint) {
       setToastTipo('advertencia');
@@ -673,11 +631,11 @@ const Cuotas = () => {
     }
   };
 
-  // Selección de filas
   const handleRowClick = useCallback((index) => {
     if (cascadeActive) return;
     if (typeof index === 'number' && index >= 0) {
       setSelectedRow(prev => (prev === index ? null : index));
+      selectedRowRef.current = index; // ✅ sincronizar ref
     }
   }, [cascadeActive]);
 
@@ -685,9 +643,6 @@ const Cuotas = () => {
   const handleDeletePaymentClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarPago(true); }, []);
   const handleDeleteCondClick = useCallback((item) => { setSocioParaPagar(item); setMostrarModalEliminarCond(true); }, []);
 
-  // ✅ Imprimir UNO:
-  // - En PAGADOS => imprime DIRECTO (sin modal)
-  // - En otros casos => mantiene ModalMesCuotas
   const handlePrintClick = useCallback(async (item) => {
     if (!canPrint) {
       setToastTipo('advertencia');
@@ -721,9 +676,6 @@ const Cuotas = () => {
   const onChangeAnioLect   = (e) => { setAnioLectivoSeleccionado(e.target.value); triggerCascade(); };
   const onChangeBusqueda   = (e) => { setBusqueda(e.target.value); triggerCascade(); };
 
-  // ✅ toggle cobrador
-  // - Si lo ACTIVO => fuerzo pestaña "deudor"
-  // - ✅ al ACTIVAR => setear categoría automáticamente a EXTERNO (si existe)
   const onToggleSoloCobrador = () => {
     setSoloCobrador(prev => {
       const next = !prev;
@@ -742,6 +694,11 @@ const Cuotas = () => {
 
     triggerCascade();
   };
+
+  // ✅ NUEVO: capturar scroll actual de la lista virtualizada
+  const handleListScroll = useCallback(({ scrollOffset }) => {
+    scrollOffsetRef.current = scrollOffset;
+  }, []);
 
   const Row = ({ index, style, data }) => {
     const cuota = data[index];
@@ -918,9 +875,13 @@ const Cuotas = () => {
     </div>
   );
 
-  // ✅ RESYNC FUERTE (ordenado y esperado)
+  // ✅ MODIFICADO: resyncAll guarda posición ANTES de recargar, NO resetea selectedRow
   const resyncAll = useCallback(async () => {
-    setSelectedRow(null);
+    // Guardar estado de posición y selección en refs antes del fetch
+    // scrollOffsetRef ya se actualiza en tiempo real via handleListScroll
+    // selectedRowRef ya se actualiza en handleRowClick
+    // Solo reseteamos si el caller lo pidió explícitamente
+
     await fetchAniosPago();
     await obtenerCuotasYListas();
     triggerCascade();
@@ -997,7 +958,6 @@ const Cuotas = () => {
         />
       )}
 
-      {/* ModalMesCuotas queda SOLO para casos no-pagados (ej: solo cobrador) */}
       {canPrint && mostrarModalMesCuotas && socioParaImprimir && (
         <ModalMesCuotas
           socio={socioParaImprimir}
@@ -1028,7 +988,6 @@ const Cuotas = () => {
 
               <div className="gcuotas-select-container">
                 <div className="gcuotas-input-row">
-                  {/* ✅ Floating label: Año de pago */}
                   <div className="gcuotas-input-group">
                     <div className="fl-field">
                       <select
@@ -1050,7 +1009,6 @@ const Cuotas = () => {
                     </div>
                   </div>
 
-                  {/* ✅ Floating label: Mes */}
                   <div className="gcuotas-input-group">
                     <div className="fl-field">
                       <select
@@ -1070,9 +1028,7 @@ const Cuotas = () => {
                   </div>
                 </div>
 
-                {/* ✅ CATEGORÍA + COBRADOR */}
                 <div className="gcuotas-input-row gcuotas-input-row-categoria-cobrador">
-                  {/* ✅ Floating label: Categoría */}
                   <div className="gcuotas-input-group">
                     <div className="fl-field">
                       <select
@@ -1091,7 +1047,6 @@ const Cuotas = () => {
                     </div>
                   </div>
 
-                  {/* Cobrador (botón) */}
                   <div className="gcuotas-input-group">
                     <label className="gcuotas-input-label">
                       <FontAwesomeIcon icon={faFilter} /> Cobrador
@@ -1111,7 +1066,6 @@ const Cuotas = () => {
                 </div>
 
                 <div className="gcuotas-input-row">
-                  {/* ✅ Floating label: Año lectivo */}
                   <div className="gcuotas-input-group">
                     <div className="fl-field">
                       <select
@@ -1130,7 +1084,6 @@ const Cuotas = () => {
                     </div>
                   </div>
 
-                  {/* ✅ Floating label: División */}
                   <div className="gcuotas-input-group">
                     <div className="fl-field">
                       <select
@@ -1247,7 +1200,6 @@ const Cuotas = () => {
             {mesSeleccionado && (<span className="gcuotas-periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>)}
           </h3>
 
-          {/* ✅ Floating label: Search */}
           <div className="gcuotas-input-group gcuotas-search-group">
             <div className="fl-field">
               <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
@@ -1303,12 +1255,15 @@ const Cuotas = () => {
                       {({ height, width }) => (
                         <List
                           key={`list-${cascadeRunId}`}
+                          ref={listRef}
                           height={height}
                           itemCount={cuotasFiltradas.length}
                           itemSize={45}
                           width={width}
                           itemData={cuotasFiltradas}
                           className="gcuotas-listoverflow"
+                          onScroll={handleListScroll}
+                          initialScrollOffset={scrollOffsetRef.current}
                         >
                           {Row}
                         </List>
