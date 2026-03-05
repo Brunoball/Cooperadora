@@ -1,5 +1,7 @@
 <?php
+// ✅ REEMPLAZAR COMPLETO
 // modules/pagos/registrar_pago.php
+
 require_once __DIR__ . '/../../config/db.php';
 
 header("Access-Control-Allow-Origin: http://localhost:3000");
@@ -37,6 +39,9 @@ try {
   // Monto libre / unitario
   $montoLibre = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
   $montoUI    = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
+
+  // ✅ NEW: fecha_pago elegida desde el modal (YYYY-MM-DD)
+  $fechaPagoPayload = isset($payload['fecha_pago']) ? trim((string)$payload['fecha_pago']) : '';
 
   // Montos por periodo
   $montosPorPeriodo = [];
@@ -81,9 +86,25 @@ try {
 
   $estadoRegistrar = $condonar ? 'condonado' : 'pagado';
 
-  // ✅ fecha_pago = fecha real de cobro (HOY)
-  $hoy = new DateTime();
-  $fechaPago = $hoy->format('Y-m-d');
+  /* ==========================================================
+     3.1) ✅ Resolver fecha_pago (si no viene, usar HOY)
+     ========================================================== */
+  $fechaPago = null;
+  if ($fechaPagoPayload !== '') {
+    // Validar YYYY-MM-DD real
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaPagoPayload)) {
+      echo json_encode(['exito' => false, 'mensaje' => 'Fecha de pago inválida (formato)'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    [$yy, $mm, $dd] = array_map('intval', explode('-', $fechaPagoPayload));
+    if (!checkdate($mm, $dd, $yy) || $yy < 2000 || $yy > 2100) {
+      echo json_encode(['exito' => false, 'mensaje' => 'Fecha de pago inválida'], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+    $fechaPago = sprintf('%04d-%02d-%02d', $yy, $mm, $dd);
+  } else {
+    $fechaPago = (new DateTime())->format('Y-m-d');
+  }
 
   /* ==========================================================
      4) Helpers
@@ -180,7 +201,7 @@ try {
        AND anio_aplicado = :anio
   ");
 
-  // ✅ insert incluye anio_aplicado
+  // ✅ insert incluye anio_aplicado y fecha_pago (elegida)
   $stIns = $pdo->prepare("
     INSERT INTO pagos (id_alumno, id_mes, anio_aplicado, fecha_pago, estado, monto_pago, id_medio_pago)
     VALUES (:id_alumno, :id_mes, :anio_aplicado, :fecha_pago, :estado, :monto_pago, :id_medio_pago)
@@ -241,7 +262,7 @@ try {
         ':id_alumno'     => $idA,
         ':id_mes'        => $mes,
         ':anio_aplicado' => $anioAplicado,
-        ':fecha_pago'    => $fechaPago,
+        ':fecha_pago'    => $fechaPago, // ✅ usa la elegida
         ':estado'        => $estadoRegistrar,
         ':monto_pago'    => $montoFinal,
         ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
@@ -265,7 +286,7 @@ try {
           ':id_alumno'     => $idA,
           ':id_mes'        => $mesMat,
           ':anio_aplicado' => $anioAplicado,
-          ':fecha_pago'    => $fechaPago,
+          ':fecha_pago'    => $fechaPago, // ✅ usa la elegida
           ':estado'        => $estadoRegistrar,
           ':monto_pago'    => $montoMatricula,
           ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
@@ -293,7 +314,7 @@ try {
         ':id_alumno'     => $idA,
         ':id_mes'        => $idMesSeg,
         ':anio_aplicado' => $anioAplicado,
-        ':fecha_pago'    => $fechaPago,
+        ':fecha_pago'    => $fechaPago, // ✅ usa la elegida
         ':estado'        => $estadoRegistrar,
         ':monto_pago'    => $montoFinalSeg,
         ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
@@ -318,6 +339,7 @@ try {
       'insertados_total'   => $totalInsertados,
       'familia_aplicada'   => $aplicarFamilia && count($alumnosObjetivo) > 1,
       'alumnos_procesados' => count($alumnosObjetivo),
+      'fecha_pago_usada'   => $fechaPago, // ✅ útil para debug
       'detalle_por_alumno' => $detallePorAlumno,
     ], JSON_UNESCAPED_UNICODE);
   } else {
@@ -326,6 +348,7 @@ try {
       'mensaje'            => 'No se insertaron registros (todos ya estaban cargados para ese año aplicado).',
       'familia_aplicada'   => $aplicarFamilia && count($alumnosObjetivo) > 1,
       'alumnos_procesados' => count($alumnosObjetivo),
+      'fecha_pago_usada'   => $fechaPago,
       'detalle_por_alumno' => $detallePorAlumno,
     ], JSON_UNESCAPED_UNICODE);
   }

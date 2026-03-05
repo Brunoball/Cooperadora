@@ -42,6 +42,26 @@ const construirListaAnios = (nowYear) => {
 
 const capitalizar = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : '');
 
+// ✅ NEW: hoy -> YYYY-MM-DD para input type="date"
+const toYMD = (d = new Date()) => {
+  const dt = d instanceof Date ? d : new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+// ✅ NEW: valida YYYY-MM-DD real
+const isValidYMD = (s) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s || ''))) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  if (y < 2000 || y > 2100) return false;
+  if (m < 1 || m > 12) return false;
+  if (d < 1 || d > 31) return false;
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+};
+
 // Cambiá este flag a true para mostrar siempre el CONTADO ANUAL
 const FORZAR_VENTANA_ANUAL = true;
 
@@ -78,6 +98,9 @@ const ModalPagos = ({ socio, onClose }) => {
   const [cargando, setCargando] = useState(false);
   const [toast, setToast] = useState(null);
   const [todosSeleccionados, setTodosSeleccionados] = useState(false);
+
+  // ✅ NEW: fecha de pago seleccionable (por defecto hoy)
+  const [fechaPagoSeleccionada, setFechaPagoSeleccionada] = useState(toYMD(now));
 
   // Éxito + modo comprobante
   const [pagoExitoso, setPagoExitoso] = useState(false);
@@ -215,10 +238,20 @@ const ModalPagos = ({ socio, onClose }) => {
 
     if (!estadoAnualFull) {
       if (estadoAnualH1 && !estadoAnualH2) {
-        return { tipo: 'h2', idPeriodo: ID_CONTADO_ANUAL_H2, importe: Math.max(0, Math.round(baseAnual / 2)), etiqueta: 'CONTADO ANUAL (2ª mitad)' };
+        return {
+          tipo: 'h2',
+          idPeriodo: ID_CONTADO_ANUAL_H2,
+          importe: Math.max(0, Math.round(baseAnual / 2)),
+          etiqueta: 'CONTADO ANUAL (2ª mitad)'
+        };
       }
       if (!estadoAnualH1 && estadoAnualH2) {
-        return { tipo: 'h1', idPeriodo: ID_CONTADO_ANUAL_H1, importe: Math.max(0, Math.round(baseAnual / 2)), etiqueta: 'CONTADO ANUAL (1ª mitad)' };
+        return {
+          tipo: 'h1',
+          idPeriodo: ID_CONTADO_ANUAL_H1,
+          importe: Math.max(0, Math.round(baseAnual / 2)),
+          etiqueta: 'CONTADO ANUAL (1ª mitad)'
+        };
       }
     }
 
@@ -226,7 +259,8 @@ const ModalPagos = ({ socio, onClose }) => {
     if (halfSelectedCount === 0 || halfSelectedCount === 2) {
       return { tipo: 'full', idPeriodo: ID_CONTADO_ANUAL, importe: baseAnual, etiqueta: 'CONTADO ANUAL' };
     }
-    if (anualH1) return { tipo: 'h1', idPeriodo: ID_CONTADO_ANUAL_H1, importe: Math.max(0, Math.round(baseAnual / 2)), etiqueta: 'CONTADO ANUAL (1ª mitad)' };
+    if (anualH1)
+      return { tipo: 'h1', idPeriodo: ID_CONTADO_ANUAL_H1, importe: Math.max(0, Math.round(baseAnual / 2)), etiqueta: 'CONTADO ANUAL (1ª mitad)' };
     return { tipo: 'h2', idPeriodo: ID_CONTADO_ANUAL_H2, importe: Math.max(0, Math.round(baseAnual / 2)), etiqueta: 'CONTADO ANUAL (2ª mitad)' };
   }, [anualSeleccionado, anualH1, anualH2, anualManualActivo, montoAnualManual, montoAnualFinal, estadoAnualH1, estadoAnualH2, estadoAnualFull]);
 
@@ -340,8 +374,9 @@ const ModalPagos = ({ socio, onClose }) => {
   const puedeConfirmarPago = useMemo(() => {
     const tienePeriodosSeleccionados = seleccionados.length > 0 || anualSeleccionado || matriculaSeleccionada;
     const tieneMedioPagoSeleccionado = !!medioSeleccionado;
-    return tienePeriodosSeleccionados && tieneMedioPagoSeleccionado && !cargando;
-  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, cargando]);
+    const fechaOk = isValidYMD(fechaPagoSeleccionada);
+    return tienePeriodosSeleccionados && tieneMedioPagoSeleccionado && !cargando && fechaOk;
+  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, cargando, fechaPagoSeleccionada]);
 
   /* ================= Efectos ================= */
 
@@ -392,9 +427,10 @@ const ModalPagos = ({ socio, onClose }) => {
           const montoMensual = Number(data?.monto_mensual ?? 0); // referencial
           const anual = Number(data?.monto_anual ?? 0);
           const nombre = (data?.categoria_nombre ?? '').toString();
-          const mapPeriodos = data?.montos_por_periodo && typeof data.montos_por_periodo === 'object'
-            ? data.montos_por_periodo
-            : {};
+          const mapPeriodos =
+            data?.montos_por_periodo && typeof data.montos_por_periodo === 'object'
+              ? data.montos_por_periodo
+              : {};
 
           setPrecioMensual(Number.isFinite(montoMensual) ? montoMensual : 0);
           setMontoAnual(Number.isFinite(anual) ? anual : 0);
@@ -506,6 +542,8 @@ const ModalPagos = ({ socio, onClose }) => {
     setMontoMatriculaManual('');
     setEditandoMatriculaManual(false);
     setAvisoHermanos('');
+    // ✅ NEW: reset fecha a hoy cuando cambia alumno
+    setFechaPagoSeleccionada(toYMD(new Date()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prevIdAlumnoKey]);
 
@@ -766,6 +804,11 @@ const ModalPagos = ({ socio, onClose }) => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
     if (!medioSeleccionado) return mostrarToast('error', 'Debés seleccionar un medio de pago antes de continuar.');
 
+    // ✅ validar fecha de pago
+    if (!isValidYMD(fechaPagoSeleccionada)) {
+      return mostrarToast('error', 'La fecha de pago es inválida.');
+    }
+
     const periodosSeleccionados = [
       ...periodosMesesOrdenados,
       ...(anualSeleccionado ? [anualConfig.idPeriodo] : []),
@@ -794,7 +837,10 @@ const ModalPagos = ({ socio, onClose }) => {
         periodos: periodosSeleccionados,
         anio: Number(anioTrabajo),
         condonar: !!condonar,
-        // mantenemos compatibilidad, pero el backend debería usar montos_por_periodo si existe
+        // ✅ fecha_pago elegida
+        fecha_pago: fechaPagoSeleccionada,
+
+        // compatibilidad (pero backend debería usar montos_por_periodo si existe)
         monto_unitario: Math.round(getPrecioMes(periodosMesesOrdenados[0] || 1)),
         montos_por_periodo: montosPorPeriodo,
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
@@ -1013,6 +1059,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     <p className="success-sub">{subExito}</p>
                     <ul className="summary-list" aria-label="Resumen de pago">
                       <li><span>Familia</span><strong>{textoFamilia}</strong></li>
+                      <li><span>Fecha de pago</span><strong>{formatearFecha(fechaPagoSeleccionada)}</strong></li>
                       <li><span>Valor mensual (referencial)</span><strong>{formatearARS(precioMensualFinal)}</strong></li>
                       <li><span>Meses</span><strong>{periodosMesesOrdenados.length}</strong></li>
                       {etiquetaAnualResumen && <li><span>Contado anual</span><strong>{etiquetaAnualResumen}</strong></li>}
@@ -1157,7 +1204,78 @@ const ModalPagos = ({ socio, onClose }) => {
               )}
             </div>
 
-            {/* Condonar + Año */}
+            {/* ✅ FECHA + AÑO EN LA MISMA FILA (como pediste) */}
+            <div className="condonarAño-montoLibre" style={{ marginTop: 10 }}>
+              {/* Fecha de pago */}
+              <div className="condonar-box is-active">
+                <div className="medio-pago-inline" style={{ paddingTop: 0 }}>
+                  <label className="medio-pago-inline-label" htmlFor="fecha-pago-input">Fecha de pago *</label>
+                  <div className="medio-pago-input">
+                    <input
+                      id="fecha-pago-input"
+                      type="date"
+                      className="medio-pago-select"
+                      value={fechaPagoSeleccionada}
+                      onChange={(e) => setFechaPagoSeleccionada(e.target.value)}
+                      disabled={cargando}
+                    />
+                    {!isValidYMD(fechaPagoSeleccionada) && (
+                      <div className="hint" style={{ marginTop: 4, color: 'var(--danger)' }}>
+                        * Fecha inválida
+                      </div>
+                    )}
+                    <div className="hint" style={{ marginTop: 4 }}>
+                      Por defecto es hoy, pero podés elegir cualquier fecha.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Año (mismo row que fecha) */}
+              <div className="condonar-box is-active">
+                <div className="medio-pago-inline" style={{ paddingTop: 0 }}>
+                  <label className="medio-pago-inline-label">Año *</label>
+                  <div className="medio-pago-input">
+                    <div className="year-picker" style={{ width: '100%' }}>
+                      <button
+                        type="button"
+                        className="year-button"
+                        onClick={() => setShowYearPicker((s) => !s)}
+                        disabled={cargando}
+                        title="Cambiar año"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                      >
+                        <FaCalendarAlt />
+                        <span>{anioTrabajo}</span>
+                      </button>
+
+                      {showYearPicker && (
+                        <div className="year-popover" onMouseLeave={() => setShowYearPicker(false)}>
+                          {yearOptions.map((y) => (
+                            <button
+                              key={y}
+                              className={`year-item ${y === anioTrabajo ? 'active' : ''}`}
+                              onClick={() => {
+                                setAnioTrabajo(y);
+                                setShowYearPicker(false);
+                              }}
+                            >
+                              {y}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="hint" style={{ marginTop: 4 }}>
+                      Define el año del período a registrar.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Condonar + Libre (ya SIN el selector de año acá) */}
             <div className="condonarAño-montoLibre">
               <div className={`condonar-box ${condonar ? 'is-active' : ''}`}>
                 <label className="condonar-check">
@@ -1165,23 +1283,6 @@ const ModalPagos = ({ socio, onClose }) => {
                   <span className="switch"><span className="switch-thumb" /></span>
                   <span className="switch-label">Marcar como <strong>Condonado</strong>(no genera cobro)</span>
                 </label>
-
-                <div className="year-picker">
-                  <button type="button" className="year-button" onClick={() => setShowYearPicker((s) => !s)} disabled={cargando} title="Cambiar año">
-                    <FaCalendarAlt />
-                    <span>{anioTrabajo}</span>
-                  </button>
-
-                  {showYearPicker && (
-                    <div className="year-popover" onMouseLeave={() => setShowYearPicker(false)}>
-                      {yearOptions.map((y) => (
-                        <button key={y} className={`year-item ${y === anioTrabajo ? 'active' : ''}`} onClick={() => { setAnioTrabajo(y); setShowYearPicker(false); }}>
-                          {y}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Modo libre */}
@@ -1522,6 +1623,11 @@ const ModalPagos = ({ socio, onClose }) => {
               {!medioSeleccionado && (
                 <span className="total-badge total-badge-warning" style={{ marginLeft: 8 }}>
                   Medio de pago requerido
+                </span>
+              )}
+              {!isValidYMD(fechaPagoSeleccionada) && (
+                <span className="total-badge total-badge-warning" style={{ marginLeft: 8 }}>
+                  Fecha inválida
                 </span>
               )}
             </div>
