@@ -21,8 +21,18 @@ import { IngresoCrearModal, IngresoEditarModal } from "./modalcontable/IngresoMo
 const hoy = new Date();
 const Y = hoy.getFullYear();
 const MESES = [
-  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
-  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+  "ENERO",
+  "FEBRERO",
+  "MARZO",
+  "ABRIL",
+  "MAYO",
+  "JUNIO",
+  "JULIO",
+  "AGOSTO",
+  "SEPTIEMBRE",
+  "OCTUBRE",
+  "NOVIEMBRE",
+  "DICIEMBRE",
 ];
 
 const STORAGE_KEYS = {
@@ -75,7 +85,9 @@ function toCSV(rows, headers) {
     return needs ? `"${withQ}"` : withQ;
   };
   const head = headers.map(esc).join(",");
-  const body = rows.map((r) => headers.map((h) => esc(r[h])).join(",")).join("\n");
+  const body = rows
+    .map((r) => headers.map((h) => esc(r[h])).join(","))
+    .join("\n");
   return `\uFEFF${head}\n${body}`;
 }
 
@@ -250,15 +262,21 @@ export default function IngresosContable() {
   const [toDelete, setToDelete] = useState(null);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.year, anio); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEYS.year, anio);
+    } catch {}
   }, [anio]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.month, mes); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEYS.month, mes);
+    } catch {}
   }, [mes]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.especial, mesEspecial); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEYS.especial, mesEspecial);
+    } catch {}
   }, [mesEspecial]);
 
   /* ====== Rango de fechas ====== */
@@ -335,13 +353,20 @@ export default function IngresosContable() {
         }
       });
 
+      // ✅ Orden: más nuevo arriba (fecha DESC)
+      todosLosDatos.sort((a, b) => {
+        const ta = new Date(a?.fecha_pago || 0).getTime();
+        const tb = new Date(b?.fecha_pago || 0).getTime();
+        return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+      });
+
       const rows = todosLosDatos.map((r, i) => ({
         id: `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Monto || 0}|${i}`,
         fecha: r?.fecha_pago ?? "",
         alumno: r?.Alumno ?? "",
         categoria: r?.Categoria ?? "-",
         monto: Number(r?.Monto ?? 0),
-        mesPagado: r?.Mes_pagado || MESES[(Number(r?.Mes_pagado_id || 0) - 1)] || "-",
+        mesPagado: r?.Mes_pagado || MESES[Number(r?.Mes_pagado_id || 0) - 1] || "-",
         mesPagadoId: Number(r?.Mes_pagado_id || r?.id_mes || 0),
         medio: r?.Medio || r?.medio || "—",
       }));
@@ -377,6 +402,13 @@ export default function IngresosContable() {
           return itemAnio === Number(anio) && itemMes === Number(mes);
         });
       }
+
+      // ✅ Orden: más nuevo arriba (fecha DESC)
+      filteredList = [...filteredList].sort((a, b) => {
+        const ta = new Date(a?.fecha || 0).getTime();
+        const tb = new Date(b?.fecha || 0).getTime();
+        return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+      });
 
       const rows = filteredList.map((r) => {
         const categoriaText = r.categoria || r.denominacion || "-";
@@ -416,7 +448,9 @@ export default function IngresosContable() {
       try {
         const data = await fetchJSON(`${BASE_URL}/api.php?action=contable_ingresos&meta=1`);
         if (Array.isArray(data?.anios_disponibles) && data.anios_disponibles.length) {
-          const list = [...data.anios_disponibles].sort((a, b) => b - a).map(String);
+          const list = [...data.anios_disponibles]
+            .sort((a, b) => b - a)
+            .map(String);
           setAnios(list);
         }
       } catch (e) {
@@ -540,8 +574,8 @@ export default function IngresosContable() {
       anio === "ALL"
         ? "Todos_los_años"
         : mes === "ALL"
-          ? `Año_${anio}`
-          : `${cap1(MESES[Number(mes)])}_${anio}`
+        ? `Año_${anio}`
+        : `${cap1(MESES[Number(mes)])}_${anio}`
     }_${isAlu ? "Alumnos" : "Ingresos"}`;
 
     await exportToExcelLike({ workbookName: wbName, sheetName: "Datos", rows });
@@ -611,8 +645,8 @@ export default function IngresosContable() {
                   {anio === "ALL"
                     ? "Todos los años"
                     : mes === "ALL"
-                      ? `${anio}`
-                      : `${cap1(MESES[Number(mes)])} ${anio}`}
+                    ? `${anio}`
+                    : `${cap1(MESES[Number(mes)])} ${anio}`}
                 </small>
               </div>
             </div>
@@ -622,13 +656,19 @@ export default function IngresosContable() {
                 <select id="anio" value={anio} onChange={(e) => setAnio(e.target.value)} aria-label="Año">
                   <option value="ALL">TODOS</option>
                   {anios.map((a) => (
-                    <option key={a} value={String(a)}>{a}</option>
+                    <option key={a} value={String(a)}>
+                      {a}
+                    </option>
                   ))}
                 </select>
                 <label htmlFor="anio">Año</label>
               </div>
 
-              <div className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${anio === "ALL" ? "is-disabled" : ""}`}>
+              <div
+                className={`ing-field fl ${mes !== "ALL" ? "has-value" : ""} ${
+                  anio === "ALL" ? "is-disabled" : ""
+                }`}
+              >
                 <select
                   id="mes"
                   value={mes}
@@ -638,7 +678,9 @@ export default function IngresosContable() {
                 >
                   <option value="ALL">TODOS</option>
                   {MESES.map((m, i) => (
-                    <option key={m} value={String(i)}>{m}</option>
+                    <option key={m} value={String(i)}>
+                      {m}
+                    </option>
                   ))}
                 </select>
                 <label htmlFor="mes">Mes</label>
@@ -668,7 +710,9 @@ export default function IngresosContable() {
 
             <div className="ing-kpi-cards">
               <div className="kpi-card">
-                <div className="kpi-card__icon" aria-hidden>$</div>
+                <div className="kpi-card__icon" aria-hidden>
+                  $
+                </div>
                 <div className="kpi-card__text">
                   <div className="kpi-card__label">Total</div>
                   <div className="kpi-card__value num">{fmtMonto(resumen.total)}</div>
@@ -676,7 +720,9 @@ export default function IngresosContable() {
               </div>
 
               <div className="kpi-card">
-                <div className="kpi-card__icon" aria-hidden>#</div>
+                <div className="kpi-card__icon" aria-hidden>
+                  #
+                </div>
                 <div className="kpi-card__text">
                   <div className="kpi-card__label">Registros</div>
                   <div className="kpi-card__value num">{resumen.cantidad}</div>
@@ -777,7 +823,11 @@ export default function IngresosContable() {
               </div>
 
               {innerTab === "alumnos" ? (
-                <div className={`ing-tablewrap ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (alumnos)">
+                <div
+                  className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
+                  role="table"
+                  aria-label="Listado de ingresos (alumnos)"
+                >
                   {cargando && (
                     <div className="ing-tableloader" role="status" aria-live="polite">
                       <div className="ing-spinner" />
@@ -795,7 +845,12 @@ export default function IngresosContable() {
                   </div>
 
                   {filasFiltradasAlu.map((f, idx) => (
-                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                    <div
+                      className={`ing-row data ${cascading ? "casc" : ""}`}
+                      role="row"
+                      key={f.id}
+                      style={{ "--i": idx }}
+                    >
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
                       <div className="c-alumno">
                         <div className="ing-alumno">
@@ -804,8 +859,12 @@ export default function IngresosContable() {
                           </div>
                         </div>
                       </div>
-                      <div className="c-cat"><span className="pill">{f.categoria}</span></div>
-                      <div className="c-monto t-right"><span className="num strong-amount">{fmtMonto(f.monto)}</span></div>
+                      <div className="c-cat">
+                        <span className="pill">{f.categoria}</span>
+                      </div>
+                      <div className="c-monto t-right">
+                        <span className="num strong-amount">{fmtMonto(f.monto)}</span>
+                      </div>
                       <div className="c-medio">{f.medio || "—"}</div>
                       <div className="c-mes">{f.mesPagado}</div>
                     </div>
@@ -817,13 +876,17 @@ export default function IngresosContable() {
                       {anio === "ALL"
                         ? "todos los años"
                         : mes === "ALL"
-                          ? `año ${anio}`
-                          : `${cap1(MESES[Number(mes)])} ${anio}`}
+                        ? `año ${anio}`
+                        : `${cap1(MESES[Number(mes)])} ${anio}`}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className={`ing-tablewrap is-manuales ${cargando ? "is-loading" : ""}`} role="table" aria-label="Listado de ingresos (tabla ingresos)">
+                <div
+                  className={`ing-tablewrap is-manuales ${cargando ? "is-loading" : ""}`}
+                  role="table"
+                  aria-label="Listado de ingresos (tabla ingresos)"
+                >
                   {cargando && (
                     <div className="ing-tableloader" role="status" aria-live="polite">
                       <div className="ing-spinner" />
@@ -842,13 +905,22 @@ export default function IngresosContable() {
                   </div>
 
                   {filasFiltradasIng.map((f, idx) => (
-                    <div className={`ing-row data ${cascading ? "casc" : ""}`} role="row" key={f.id} style={{ "--i": idx }}>
+                    <div
+                      className={`ing-row data ${cascading ? "casc" : ""}`}
+                      role="row"
+                      key={f.id}
+                      style={{ "--i": idx }}
+                    >
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-proveedor">{f.proveedor || "-"}</div>
-                      <div className="c-cat"><span className="pill">{f.categoria || "-"}</span></div>
+                      <div className="c-cat">
+                        <span className="pill">{f.categoria || "-"}</span>
+                      </div>
                       <div className="c-imputacion">{f.imputacion || f.descripcion || "-"}</div>
-                      <div className="c-importe"><span className="num strong-amount">{fmtMonto(f.importe)}</span></div>
+                      <div className="c-importe">
+                        <span className="num strong-amount">{fmtMonto(f.importe)}</span>
+                      </div>
                       <div className="c-actions center">
                         <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
                           <FontAwesomeIcon icon={faEdit} />
@@ -866,8 +938,8 @@ export default function IngresosContable() {
                       {anio === "ALL"
                         ? "todos los años"
                         : mes === "ALL"
-                          ? `año ${anio}`
-                          : `${cap1(MESES[Number(mes)])} ${anio}`}
+                        ? `año ${anio}`
+                        : `${cap1(MESES[Number(mes)])} ${anio}`}
                     </div>
                   )}
                 </div>
@@ -878,7 +950,11 @@ export default function IngresosContable() {
       </div>
 
       {sideOpen && (
-        <button className="ing-layout__overlay" onClick={() => setSideOpen(false)} aria-label="Cerrar panel" />
+        <button
+          className="ing-layout__overlay"
+          onClick={() => setSideOpen(false)}
+          aria-label="Cerrar panel"
+        />
       )}
 
       <IngresoCrearModal
