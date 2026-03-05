@@ -1200,19 +1200,22 @@ const Cuotas = () => {
             {mesSeleccionado && (<span className="gcuotas-periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>)}
           </h3>
 
-          <div className="gcuotas-input-group gcuotas-search-group">
-            <div className="fl-field">
-              <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
-              <input
-                type="text"
-                value={busqueda}
-                onChange={onChangeBusqueda}
-                disabled={loading || !mesSeleccionado}
-                className="fl-control fl-search"
-              />
-              <label className="fl-label">Buscar alumno</label>
-            </div>
-          </div>
+<div className="gcuotas-input-group gcuotas-search-group">
+  <div className="fl-field fl-field--float">
+    <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
+    <input
+      id="buscarAlumno"
+      type="text"
+      value={busqueda}
+      onChange={onChangeBusqueda}
+      disabled={loading || !mesSeleccionado}
+      className="fl-control fl-search"
+      placeholder=" "
+      autoComplete="off"
+    />
+    <label htmlFor="buscarAlumno" className="fl-label">Buscar alumno</label>
+  </div>
+</div>
 
           <div className="gcuotas-summary-info">
             <span className="gcuotas-summary-item">

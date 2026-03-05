@@ -1136,4 +1136,71 @@
 }
 .gcuotas-input-row-categoria-cobrador{
    align-items:end;
+}/* ===========================
+   Floating label INTERACTIVO (solo donde uses .fl-field--float)
+   - Baja si está vacío y sin foco
+   - Sube si tiene foco o texto
+=========================== */
+
+.fl-field.fl-field--float .fl-label{
+  /* Estado "bajado" (dentro del input) */
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  pointer-events: none;
+  opacity: 0.85;
+  transition: var(--transition-smooth);
 }
+
+/* Cuando está vacío y sin foco => label abajo */
+.fl-field.fl-field--float .fl-control:placeholder-shown + .fl-label{
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* Cuando hay foco o texto => label arriba (modo floating) */
+.fl-field.fl-field--float .fl-control:focus + .fl-label,
+.fl-field.fl-field--float .fl-control:not(:placeholder-shown) + .fl-label{
+  top: -9px;
+  transform: translateY(0);
+  background: var(--surface-color);
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .2px;
+  opacity: 1;
+}
+
+/* Focus color */
+.fl-field.fl-field--float .fl-control:focus + .fl-label{
+  color: var(--secondary-color);
+}
+
+/* Disabled: mantiene lógica pero se nota apagado */
+.fl-field.fl-field--float .fl-control:disabled + .fl-label{
+  color: var(--text-muted);
+  opacity: 0.75;
+}/* ✅ FIX: que el label "abajo" no se pise con la lupa */
+.fl-field.fl-field--float .fl-control:placeholder-shown + .fl-label{
+  left: 36px; /* 12 + ancho de icono + aire */
+}
+
+/* cuando flota arriba, que vuelva a alinearse */
+.fl-field.fl-field--float .fl-control:focus + .fl-label,
+.fl-field.fl-field--float .fl-control:not(:placeholder-shown) + .fl-label{
+  left: 12px;
+}
+
+/* (opcional) asegurar capas: label arriba del icono */
+.fl-field.fl-field--float .fl-label{ z-index: 4; }
+.fl-field .gcuotas-search-icon{ z-index: 3; pointer-events: none; }

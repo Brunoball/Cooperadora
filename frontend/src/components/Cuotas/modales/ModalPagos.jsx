@@ -163,6 +163,7 @@ const ModalPagos = ({ socio, onClose }) => {
   // ===== medios de pago =====
   const [mediosPago, setMediosPago] = useState([]); // [{id, nombre}]
   const [medioSeleccionado, setMedioSeleccionado] = useState(''); // id como string
+  const fechaPagoRef = React.useRef(null);
 
   // ===== Estados para matrícula manual =====
   const [matriculaManualActiva, setMatriculaManualActiva] = useState(false);
@@ -1204,76 +1205,140 @@ const ModalPagos = ({ socio, onClose }) => {
               )}
             </div>
 
-            {/* ✅ FECHA + AÑO EN LA MISMA FILA (como pediste) */}
-            <div className="condonarAño-montoLibre" style={{ marginTop: 10 }}>
-              {/* Fecha de pago */}
-              <div className="condonar-box is-active">
-                <div className="medio-pago-inline" style={{ paddingTop: 0 }}>
-                  <label className="medio-pago-inline-label" htmlFor="fecha-pago-input">Fecha de pago *</label>
-                  <div className="medio-pago-input">
-                    <input
-                      id="fecha-pago-input"
-                      type="date"
-                      className="medio-pago-select"
-                      value={fechaPagoSeleccionada}
-                      onChange={(e) => setFechaPagoSeleccionada(e.target.value)}
-                      disabled={cargando}
-                    />
-                    {!isValidYMD(fechaPagoSeleccionada) && (
-                      <div className="hint" style={{ marginTop: 4, color: 'var(--danger)' }}>
-                        * Fecha inválida
-                      </div>
-                    )}
-                    <div className="hint" style={{ marginTop: 4 }}>
-                      Por defecto es hoy, pero podés elegir cualquier fecha.
-                    </div>
-                  </div>
-                </div>
-              </div>
+{/* ✅ FECHA + AÑO — fila refinada */}
+<div className="fecha-anio-row">
 
-              {/* Año (mismo row que fecha) */}
-              <div className="condonar-box is-active">
-                <div className="medio-pago-inline" style={{ paddingTop: 0 }}>
-                  <label className="medio-pago-inline-label">Año *</label>
-                  <div className="medio-pago-input">
-                    <div className="year-picker" style={{ width: '100%' }}>
-                      <button
-                        type="button"
-                        className="year-button"
-                        onClick={() => setShowYearPicker((s) => !s)}
-                        disabled={cargando}
-                        title="Cambiar año"
-                        style={{ width: '100%', justifyContent: 'center' }}
-                      >
-                        <FaCalendarAlt />
-                        <span>{anioTrabajo}</span>
-                      </button>
+<div className="field-card field-card--fecha">
+  {/* Ícono como botón: SOLO esto abre el calendario */}
+  <button
+    type="button"
+    className="field-card__icon-wrap fecha-icon-btn"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (cargando) return;
 
-                      {showYearPicker && (
-                        <div className="year-popover" onMouseLeave={() => setShowYearPicker(false)}>
-                          {yearOptions.map((y) => (
-                            <button
-                              key={y}
-                              className={`year-item ${y === anioTrabajo ? 'active' : ''}`}
-                              onClick={() => {
-                                setAnioTrabajo(y);
-                                setShowYearPicker(false);
-                              }}
-                            >
-                              {y}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+      const el = fechaPagoRef.current;
+      if (!el) return;
 
-                    <div className="hint" style={{ marginTop: 4 }}>
-                      Define el año del período a registrar.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      // gesto del usuario = OK
+      el.focus({ preventScroll: true });
+
+      if (typeof el.showPicker === "function") {
+        try {
+          el.showPicker();
+          return;
+        } catch (_) {
+          // fallback
+        }
+      }
+
+      // fallback: algunos browsers abren con click
+      try { el.click(); } catch (_) {}
+    }}
+    aria-label="Abrir calendario"
+    disabled={cargando}
+  >
+    <FaCalendarAlt />
+  </button>
+
+  <div className="field-card__body">
+    <label className="field-card__label" htmlFor="fecha-pago-input">
+      Fecha de pago
+      <span className="field-card__required">*</span>
+    </label>
+
+<input
+  ref={fechaPagoRef}
+  id="fecha-pago-input"
+  type="date"
+  className={`field-card__input ${!isValidYMD(fechaPagoSeleccionada) ? "field-card__input--error" : ""}`}
+  value={fechaPagoSeleccionada}
+  onChange={(e) => setFechaPagoSeleccionada(e.target.value)}
+  disabled={cargando}
+
+  // ✅ 1) marcamos "user gesture" REAL
+  onPointerDown={() => {
+    if (!fechaPagoRef.current) return;
+    fechaPagoRef.current.dataset.userGesture = "1";
+  }}
+
+  // ✅ 2) al enfocarse, abrimos el picker (si venimos del gesto)
+  onFocus={(e) => {
+    if (cargando) return;
+    const el = e.currentTarget;
+
+    if (el.dataset.userGesture !== "1") return;
+    el.dataset.userGesture = "0";
+
+    if (typeof el.showPicker === "function") {
+      try {
+        el.showPicker();
+      } catch (_) {
+        // fallback: no hacemos nada para evitar errores/loops
+        // en algunos browsers ya se abre igual
+      }
+    }
+  }}
+/>
+
+    {!isValidYMD(fechaPagoSeleccionada) ? (
+      <span className="field-card__hint field-card__hint--error">Fecha inválida</span>
+    ) : (
+      <span className="field-card__hint">Por defecto hoy · podés cambiarla</span>
+    )}
+  </div>
+</div>
+
+  {/* —— Año de trabajo —— */}
+  <div className="field-card field-card--anio">
+    <div className="field-card__icon-wrap">
+      <FaCalendarAlt />
+    </div>
+    <div className="field-card__body">
+      <label className="field-card__label">
+        Año
+        <span className="field-card__required">*</span>
+      </label>
+
+      <div className="year-pill-picker" style={{ position: 'relative' }}>
+        <button
+          type="button"
+          className={`year-pill-btn ${showYearPicker ? 'year-pill-btn--open' : ''}`}
+          onClick={() => setShowYearPicker((s) => !s)}
+          disabled={cargando}
+          title="Cambiar año"
+        >
+          <span className="year-pill-btn__year">{anioTrabajo}</span>
+          <svg className={`year-pill-btn__chevron ${showYearPicker ? 'rotated' : ''}`}
+            width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        {showYearPicker && (
+          <div className="year-pill-popover" onMouseLeave={() => setShowYearPicker(false)}>
+            {yearOptions.map((y) => (
+              <button
+                key={y}
+                type="button"
+                className={`year-pill-option ${y === anioTrabajo ? 'year-pill-option--active' : ''}`}
+                onClick={() => { setAnioTrabajo(y); setShowYearPicker(false); }}
+              >
+                {y}
+                {y === nowYear && <span className="year-pill-option__tag">Hoy</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <span className="field-card__hint">Período a registrar</span>
+    </div>
+  </div>
+
+</div>
 
             {/* Condonar + Libre (ya SIN el selector de año acá) */}
             <div className="condonarAño-montoLibre">
