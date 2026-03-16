@@ -838,7 +838,7 @@ export default function IngresosContable() {
                   <div className="ing-row h" role="row">
                     <div className="c-fecha">Fecha</div>
                     <div className="c-alumno">Alumno</div>
-                    <div className="c-cat">Categoría</div>
+                    <div className="c-cat c-cat-aling">Categoría</div>
                     <div className="c-monto t-right">Monto</div>
                     <div className="c-medio">Medio</div>
                     <div className="c-mes">Mes pagado</div>
@@ -859,7 +859,7 @@ export default function IngresosContable() {
                           </div>
                         </div>
                       </div>
-                      <div className="c-cat">
+                      <div className="c-cat c-cat-aling">
                         <span className="pill">{f.categoria}</span>
                       </div>
                       <div className="c-monto t-right">
@@ -898,7 +898,7 @@ export default function IngresosContable() {
                     <div className="c-fecha">Fecha</div>
                     <div className="c-medio">Medio</div>
                     <div className="c-proveedor">Proveedor</div>
-                    <div className="c-cat">Categoría</div>
+                    <div className="c-cat c-cat-aling">Categoría</div>
                     <div className="c-imputacion">Imputación</div>
                     <div className="c-importe">Importe</div>
                     <div className="c-actions center">Acciones</div>
@@ -914,7 +914,7 @@ export default function IngresosContable() {
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
                       <div className="c-medio">{f.medio}</div>
                       <div className="c-proveedor">{f.proveedor || "-"}</div>
-                      <div className="c-cat">
+                      <div className="c-cat c-cat-aling">
                         <span className="pill">{f.categoria || "-"}</span>
                       </div>
                       <div className="c-imputacion">{f.imputacion || f.descripcion || "-"}</div>

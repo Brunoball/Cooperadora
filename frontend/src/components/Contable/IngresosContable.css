@@ -250,14 +250,14 @@ small { font-size: var(--fs-small); color: var(--muted); }
   position: sticky; top: 0; z-index: 2;
   background: #f7f7fb; color: #64748b; border-bottom: 1px solid var(--border);
   font-weight: 900; font-size: var(--fs-th);
-  display: grid; align-items: center; gap: 10px;
+  display: grid; align-items: center; gap: 0;
   /* Fecha | Alumno | Categoría | Monto | Medio | Mes */
-  grid-template-columns: 0.8fr 1.6fr 1.0fr 0.9fr 1.0fr 1.0fr; /* ← FIX: 6 columnas */
+  grid-template-columns: 0.8fr 1.6fr .7fr 0.9fr 1.0fr 1.2fr; /* ← FIX: 6 columnas */
   padding: 10px 12px;
 }
 .ing-row {
   display: grid; align-items: center;
-  grid-template-columns: 0.8fr 1.6fr 1.0fr 0.9fr 1.0fr 1.0fr;  /* ← FIX: 6 columnas */
+  grid-template-columns: 0.8fr 1.6fr .7fr 0.9fr 1.0fr 1.2fr;  /* ← FIX: 6 columnas */
   border-bottom: 1px solid var(--border);
   padding: 10px 12px; font-size: var(--fs-td);
 }
@@ -282,14 +282,13 @@ small { font-size: var(--fs-small); color: var(--muted); }
 
 /* chips de categoría */
 .c-cat .pill { white-space: nowrap; }
-
+.c-cat-aling{ display: flex; justify-content: center; align-items: center;}
 .ing-alumno { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ing-alumno__text { min-width: 0; }
 .ing-alumno__text .muted { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .pill {
-  display: inline-block; padding: 6px 10px; border-radius: 999px;
-  font-weight: 800; background: #f3f4f6; border: 1px solid var(--border);
+  display: inline-block; padding: 6px 10px; 
   color: #111827; font-size: 0.85rem; letter-spacing: .2px;
 }
 
@@ -387,13 +386,12 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .is-manuales .ing-row.h,
 .is-manuales .ing-row {
   /* Fecha | Medio | Proveedor | Categoría | Imputación | Importe | Acciones */
-  grid-template-columns: 0.8fr 1.0fr 1.2fr 1.0fr 1.2fr 0.9fr 0.9fr;
+  grid-template-columns: 1fr 1.2fr 1.2fr 1fr 1.2fr 1fr 0.9fr;
 }
 .is-manuales .c-importe,
 .is-manuales .c-medio { text-align: center; }
-.is-manuales .c-proveedor{ min-width: 180px; }
-.is-manuales .c-imputacion{ min-width: 220px; }
-.is-manuales .c-cat{ min-width: 130px; }
+
+
 
 @media (max-width: 720px){
   .is-manuales .ing-row.h,

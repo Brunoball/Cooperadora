@@ -786,7 +786,7 @@ export default function EgresoContable() {
                         {e.numero_factura || "-"}
                       </div>
 
-                      <div className="gt_cell truncate" role="cell" title={e.descripcion || "-"}>
+                      <div className="gt_cell truncate center" role="cell" title={e.descripcion || "-"}>
                         {e.descripcion || "-"}
                       </div>
 
@@ -795,7 +795,8 @@ export default function EgresoContable() {
                       </div>
 
                       <div className="gt_cell center" role="cell">
-                        {e.medio_nombre || e.medio_pago || "-"}
+                        <span className="badge"> {e.medio_nombre || e.medio_pago || "-"}</span>
+                       
                       </div>
 
                       <div className="gt_cell center" role="cell">
