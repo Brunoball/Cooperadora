@@ -241,6 +241,42 @@ const Cuotas = () => {
 
   const canPrint = (estadoPagoSeleccionado === 'pagado') || (soloCobrador === true);
 
+  const getAlumnoUniqueKey = useCallback((c) => {
+    const idAlumno = getIdAlumnoFromCuota(c);
+    if (idAlumno !== '' && idAlumno != null) return `id:${idAlumno}`;
+
+    const nombre = normalizar(getNombreCuota(c));
+    const dni = String(getDocumentoCuota(c) || '').trim();
+    const division = String(c?.id_division || '').trim();
+
+    return `fallback:${nombre}|${dni}|${division}`;
+  }, []);
+
+  const deduplicarPorAlumno = useCallback((lista) => {
+    if (!Array.isArray(lista) || lista.length === 0) return [];
+
+    const map = new Map();
+
+    for (const item of lista) {
+      const key = getAlumnoUniqueKey(item);
+      const actual = map.get(key);
+
+      if (!actual) {
+        map.set(key, item);
+        continue;
+      }
+
+      const mesActual = Number(getIdMesFromCuota(actual)) || 999;
+      const mesNuevo = Number(getIdMesFromCuota(item)) || 999;
+
+      if (mesNuevo < mesActual) {
+        map.set(key, item);
+      }
+    }
+
+    return Array.from(map.values());
+  }, [getAlumnoUniqueKey]);
+
   const fetchAniosPago = useCallback(async () => {
     try {
       if (abortRef.current.anios) abortRef.current.anios.abort();
@@ -398,14 +434,20 @@ const Cuotas = () => {
 
   const cuotasFiltradas = useMemo(() => {
     if (!mesSeleccionado && !soloCobrador) return [];
-    return cuotas
+
+    let lista = cuotas
       .filter(coincideEstadoPago)
       .filter(coincideBusquedaLibre)
       .filter(coincideCategoria)
       .filter(coincideDivision)
       .filter(coincideAnioLectivo)
-      .filter(c => (soloCobrador ? true : coincideMes(c)))
-      .sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
+      .filter(c => (soloCobrador ? true : coincideMes(c)));
+
+    if (soloCobrador) {
+      lista = deduplicarPorAlumno(lista);
+    }
+
+    return lista.sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
   }, [
     cuotas,
     busqueda,
@@ -415,22 +457,39 @@ const Cuotas = () => {
     mesSeleccionado,
     estadoPagoSeleccionado,
     orden,
-    soloCobrador
+    soloCobrador,
+    deduplicarPorAlumno
   ]);
 
-  const contarConFiltros = (estadoPago) =>
-    cuotas.filter((c) =>
+  const contarConFiltros = useCallback((estadoPago) => {
+    let lista = cuotas.filter((c) =>
       (soloCobrador ? true : String(getIdMesFromCuota(c)) === String(mesSeleccionado || '')) &&
       (!busqueda || coincideBusquedaLibre(c)) &&
       coincideCategoria(c) &&
       coincideDivision(c) &&
       coincideAnioLectivo(c) &&
       (String(c?.estado_pago ?? '').toLowerCase().trim() === String(estadoPago).toLowerCase().trim())
-    ).length;
+    );
 
-  const cantidadFiltradaDeudores   = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('deudor')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, soloCobrador]);
-  const cantidadFiltradaPagados    = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('pagado')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, soloCobrador]);
-  const cantidadFiltradaCondonados = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('condonado') : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, soloCobrador]);
+    if (soloCobrador) {
+      lista = deduplicarPorAlumno(lista);
+    }
+
+    return lista.length;
+  }, [
+    cuotas,
+    soloCobrador,
+    mesSeleccionado,
+    busqueda,
+    categoriaSeleccionada,
+    divisionSeleccionada,
+    anioLectivoSeleccionado,
+    deduplicarPorAlumno
+  ]);
+
+  const cantidadFiltradaDeudores   = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('deudor')    : 0, [mesSeleccionado, soloCobrador, contarConFiltros]);
+  const cantidadFiltradaPagados    = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('pagado')    : 0, [mesSeleccionado, soloCobrador, contarConFiltros]);
+  const cantidadFiltradaCondonados = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('condonado') : 0, [mesSeleccionado, soloCobrador, contarConFiltros]);
 
   const toggleOrden = useCallback((campo) => {
     setOrden(prev => ({ campo, ascendente: prev.campo === campo ? !prev.ascendente : true }));
@@ -1363,7 +1422,7 @@ const Cuotas = () => {
                 isMobile ? (
                   <div className="gcuotas-mobile-list">
                     {cuotasFiltradas.map((item, index) => (
-                      <Row key={`${cascadeRunId}-${index}`} index={index} style={{}} data={cuotasFiltradas} />
+                      <Row key={`${cascadeRunId}-${getAlumnoUniqueKey(item)}-${index}`} index={index} style={{}} data={cuotasFiltradas} />
                     ))}
                   </div>
                 ) : (
