@@ -51,6 +51,20 @@ const REFERENCIAS = {
   EXTERNO: { mensual: 6000, totals: { 2: 8000, 3: 10000 } },
 };
 
+const ORDEN_MESES_ESCOLARES = {
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  setiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+};
+
 function getPorcDescuentoDerivado(categoriaNombre = "", familyCount = 1) {
   const catNorm = normalizar(categoriaNombre).includes("extern") ? "EXTERNO" : "INTERNO";
   const ref = REFERENCIAS[catNorm];
@@ -142,9 +156,7 @@ const Cuotas = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [selectedRow, setSelectedRow] = useState(null);
 
-  // ✅ NUEVO: ref para la lista virtualizada (para controlar scroll)
   const listRef = useRef(null);
-  // ✅ NUEVO: guardamos el scroll offset y el índice seleccionado antes del resync
   const scrollOffsetRef = useRef(0);
   const selectedRowRef  = useRef(null);
 
@@ -165,6 +177,7 @@ const Cuotas = () => {
   useEffect(() => () => { if (cascadeTimerRef.current) clearTimeout(cascadeTimerRef.current); }, []);
 
   const navigate = useNavigate();
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -190,6 +203,41 @@ const Cuotas = () => {
     const cat = categorias.find(c => normalizar(c?.nombre) === 'externo');
     return cat ? String(cat.id) : '';
   }, [categorias]);
+
+  const getMesesEscolaresOrdenados = useCallback(() => {
+    const lista = Array.isArray(meses) ? meses : [];
+
+    const encontrados = lista
+      .map((m) => {
+        const nombreNorm = normalizar(m?.nombre || '');
+        const orden = ORDEN_MESES_ESCOLARES[nombreNorm];
+        if (!orden) return null;
+        return {
+          id: Number(m.id),
+          nombre: m.nombre,
+          orden,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.orden - b.orden);
+
+    if (encontrados.length > 0) {
+      return encontrados;
+    }
+
+    return [
+      { id: 3, nombre: 'Marzo', orden: 3 },
+      { id: 4, nombre: 'Abril', orden: 4 },
+      { id: 5, nombre: 'Mayo', orden: 5 },
+      { id: 6, nombre: 'Junio', orden: 6 },
+      { id: 7, nombre: 'Julio', orden: 7 },
+      { id: 8, nombre: 'Agosto', orden: 8 },
+      { id: 9, nombre: 'Septiembre', orden: 9 },
+      { id: 10, nombre: 'Octubre', orden: 10 },
+      { id: 11, nombre: 'Noviembre', orden: 11 },
+      { id: 12, nombre: 'Diciembre', orden: 12 },
+    ];
+  }, [meses]);
 
   const canPrint = (estadoPagoSeleccionado === 'pagado') || (soloCobrador === true);
 
@@ -266,10 +314,8 @@ const Cuotas = () => {
   useEffect(() => { fetchAniosPago(); }, [fetchAniosPago]);
   useEffect(() => { obtenerCuotasYListas(); /* eslint-disable-next-line */ }, [mesSeleccionado, anioPagoSeleccionado, soloCobrador]);
 
-  // ✅ NUEVO: restaurar scroll y selección después de que loading termine
   useEffect(() => {
     if (!loading && listRef.current && scrollOffsetRef.current > 0) {
-      // Usamos requestAnimationFrame para asegurar que react-window ya renderizó
       requestAnimationFrame(() => {
         listRef.current?.scrollTo(scrollOffsetRef.current);
       });
@@ -351,20 +397,30 @@ const Cuotas = () => {
   };
 
   const cuotasFiltradas = useMemo(() => {
-    if (!mesSeleccionado) return [];
+    if (!mesSeleccionado && !soloCobrador) return [];
     return cuotas
       .filter(coincideEstadoPago)
       .filter(coincideBusquedaLibre)
       .filter(coincideCategoria)
       .filter(coincideDivision)
       .filter(coincideAnioLectivo)
-      .filter(coincideMes)
+      .filter(c => (soloCobrador ? true : coincideMes(c)))
       .sort((a, b) => ordenarPor(a, b, orden.campo, orden.ascendente));
-  }, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, estadoPagoSeleccionado, orden]);
+  }, [
+    cuotas,
+    busqueda,
+    categoriaSeleccionada,
+    divisionSeleccionada,
+    anioLectivoSeleccionado,
+    mesSeleccionado,
+    estadoPagoSeleccionado,
+    orden,
+    soloCobrador
+  ]);
 
   const contarConFiltros = (estadoPago) =>
     cuotas.filter((c) =>
-      String(getIdMesFromCuota(c)) === String(mesSeleccionado || '') &&
+      (soloCobrador ? true : String(getIdMesFromCuota(c)) === String(mesSeleccionado || '')) &&
       (!busqueda || coincideBusquedaLibre(c)) &&
       coincideCategoria(c) &&
       coincideDivision(c) &&
@@ -372,9 +428,9 @@ const Cuotas = () => {
       (String(c?.estado_pago ?? '').toLowerCase().trim() === String(estadoPago).toLowerCase().trim())
     ).length;
 
-  const cantidadFiltradaDeudores   = useMemo(() => mesSeleccionado ? contarConFiltros('deudor')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
-  const cantidadFiltradaPagados    = useMemo(() => mesSeleccionado ? contarConFiltros('pagado')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
-  const cantidadFiltradaCondonados = useMemo(() => mesSeleccionado ? contarConFiltros('condonado') : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado]);
+  const cantidadFiltradaDeudores   = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('deudor')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, soloCobrador]);
+  const cantidadFiltradaPagados    = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('pagado')    : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, soloCobrador]);
+  const cantidadFiltradaCondonados = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('condonado') : 0, [cuotas, busqueda, categoriaSeleccionada, divisionSeleccionada, anioLectivoSeleccionado, mesSeleccionado, soloCobrador]);
 
   const toggleOrden = useCallback((campo) => {
     setOrden(prev => ({ campo, ascendente: prev.campo === campo ? !prev.ascendente : true }));
@@ -438,18 +494,20 @@ const Cuotas = () => {
     }
   }, []);
 
-  const getPeriodoImpresion = useCallback((cuota) => {
+  const getPeriodoImpresion = useCallback((cuota, overrideMesId = null) => {
     const anio = Number(anioPagoSeleccionado) || CURRENT_YEAR;
 
     const idMesCuota = Number(getIdMesFromCuota(cuota));
-    const idMesSel = Number(mesSeleccionado);
+    const idMesSel = Number(overrideMesId || mesSeleccionado);
 
     const esEspecial = [ID_MES_ANUAL, ID_MES_MATRICULA, ID_MES_1ER_MITAD, ID_MES_2DA_MITAD].includes(idMesCuota);
     const origenAnual = Number(cuota?.origen_anual || 0) === 1;
 
     let idMesImprimir = idMesSel || idMesCuota || 0;
 
-    if (esEspecial) {
+    if (overrideMesId) {
+      idMesImprimir = Number(overrideMesId);
+    } else if (esEspecial) {
       idMesImprimir = idMesCuota;
     } else if (origenAnual) {
       idMesImprimir = ID_MES_ANUAL;
@@ -467,9 +525,9 @@ const Cuotas = () => {
     return { idMesImprimir, periodoTexto, anio };
   }, [anioPagoSeleccionado, mesSeleccionado, getNombreMes]);
 
-  const buildAlumnoParaImprimir = useCallback(async (cuota) => {
+  const buildAlumnoParaImprimir = useCallback(async (cuota, overrideMesId = null) => {
     const idAlumno = getIdAlumnoFromCuota(cuota);
-    const { idMesImprimir, periodoTexto, anio } = getPeriodoImpresion(cuota);
+    const { idMesImprimir, periodoTexto, anio } = getPeriodoImpresion(cuota, overrideMesId);
 
     const catFallback = (getNombreCategoria(cuota?.id_categoria) || '').toUpperCase();
 
@@ -533,27 +591,53 @@ const Cuotas = () => {
     getPeriodoImpresion,
   ]);
 
+  const buildAlumnoCuponesCobrador = useCallback(async (cuota) => {
+    const mesesEscolares = getMesesEscolaresOrdenados();
+    const cupones = [];
+
+    for (const mes of mesesEscolares) {
+      const alumnoMes = await buildAlumnoParaImprimir(cuota, mes.id);
+      cupones.push(alumnoMes);
+    }
+
+    return cupones;
+  }, [buildAlumnoParaImprimir, getMesesEscolaresOrdenados]);
+
   const imprimirUnoDirecto = useCallback(async (cuota) => {
     try {
       if (!cuota) return;
-      if (!mesSeleccionado) return;
+      if (!mesSeleccionado && !soloCobrador) return;
 
       setLoadingPrint(true);
-
-      const alumno = await buildAlumnoParaImprimir(cuota);
 
       const nombreCat = getNombreCategoria(cuota?.id_categoria);
       const isExterno = normalizar(nombreCat) === 'externo';
 
-      const { idMesImprimir } = getPeriodoImpresion(cuota);
-
       const w = window.open('', '_blank');
-      if (!w) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+      if (!w) {
+        alert('Deshabilite el bloqueador de popups para imprimir');
+        return;
+      }
 
-      if (isExterno) {
-        await imprimirRecibosExternos([alumno], idMesImprimir, w, { anioPago: anioPagoSeleccionado });
+      if (soloCobrador) {
+        const alumnoCupones = await buildAlumnoCuponesCobrador(cuota);
+        const mesesEscolares = getMesesEscolaresOrdenados();
+        const primerMes = mesesEscolares[0]?.id || 3;
+
+        if (isExterno) {
+          await imprimirRecibosExternos(alumnoCupones, primerMes, w, { anioPago: anioPagoSeleccionado, modoCobrador: true });
+        } else {
+          await imprimirRecibos(alumnoCupones, primerMes, w, { anioPago: anioPagoSeleccionado, modoCobrador: true });
+        }
       } else {
-        await imprimirRecibos([alumno], idMesImprimir, w, { anioPago: anioPagoSeleccionado });
+        const alumno = await buildAlumnoParaImprimir(cuota);
+        const { idMesImprimir } = getPeriodoImpresion(cuota);
+
+        if (isExterno) {
+          await imprimirRecibosExternos([alumno], idMesImprimir, w, { anioPago: anioPagoSeleccionado });
+        } else {
+          await imprimirRecibos([alumno], idMesImprimir, w, { anioPago: anioPagoSeleccionado });
+        }
       }
     } catch (e) {
       console.error('imprimirUnoDirecto error:', e);
@@ -565,10 +649,13 @@ const Cuotas = () => {
     }
   }, [
     mesSeleccionado,
+    soloCobrador,
     anioPagoSeleccionado,
     buildAlumnoParaImprimir,
+    buildAlumnoCuponesCobrador,
     getNombreCategoria,
     getPeriodoImpresion,
+    getMesesEscolaresOrdenados,
   ]);
 
   const handleImprimirTodos = async () => {
@@ -588,7 +675,7 @@ const Cuotas = () => {
       return;
     }
 
-    if (!mesSeleccionado || cuotasFiltradas.length === 0) return;
+    if ((!mesSeleccionado && !soloCobrador) || cuotasFiltradas.length === 0) return;
 
     setLoadingPrint(true);
     try {
@@ -603,6 +690,34 @@ const Cuotas = () => {
       }
 
       const CONCURRENCY = 8;
+
+      if (soloCobrador) {
+        const internosNested = await asyncPool(CONCURRENCY, internosRaw, buildAlumnoCuponesCobrador);
+        const externosNested = await asyncPool(CONCURRENCY, externosRaw, buildAlumnoCuponesCobrador);
+
+        const internos = internosNested.flat();
+        const externos = externosNested.flat();
+
+        const mesesEscolares = getMesesEscolaresOrdenados();
+        const primerMes = mesesEscolares[0]?.id || 3;
+
+        if (internos.length) {
+          const w1 = window.open('', '_blank');
+          if (!w1) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+          await imprimirRecibos(internos, primerMes, w1, { anioPago: anioPagoSeleccionado, modoCobrador: true });
+        }
+
+        if (externos.length) {
+          const w2 = window.open('', '_blank');
+          if (!w2) { alert('Deshabilite el bloqueador de popups para imprimir'); return; }
+          await imprimirRecibosExternos(externos, primerMes, w2, { anioPago: anioPagoSeleccionado, modoCobrador: true });
+        }
+
+        setToastTipo('exito');
+        setToastMensaje('Impresión de cobrador generada: 1 cupón por mes escolar (marzo a diciembre) por alumno.');
+        setToastVisible(true);
+        return;
+      }
 
       const internos = await asyncPool(CONCURRENCY, internosRaw, buildAlumnoParaImprimir);
       const externos = await asyncPool(CONCURRENCY, externosRaw, buildAlumnoParaImprimir);
@@ -635,7 +750,7 @@ const Cuotas = () => {
     if (cascadeActive) return;
     if (typeof index === 'number' && index >= 0) {
       setSelectedRow(prev => (prev === index ? null : index));
-      selectedRowRef.current = index; // ✅ sincronizar ref
+      selectedRowRef.current = index;
     }
   }, [cascadeActive]);
 
@@ -653,7 +768,7 @@ const Cuotas = () => {
       return;
     }
 
-    if (estadoPagoSeleccionado === 'pagado') {
+    if (estadoPagoSeleccionado === 'pagado' || soloCobrador) {
       await imprimirUnoDirecto(item);
       return;
     }
@@ -663,11 +778,28 @@ const Cuotas = () => {
   }, [canPrint, soloCobrador, estadoPagoSeleccionado, imprimirUnoDirecto]);
 
   const handleExportExcel = useCallback(() => {
-    if (!mesSeleccionado) { setToastTipo('advertencia'); setToastMensaje('Seleccione mes'); setToastVisible(true); return; }
-    if (loading) { setToastTipo('advertencia'); setToastMensaje('Esperando datos...'); setToastVisible(true); return; }
-    if (cuotasFiltradas.length === 0) { setToastTipo('advertencia'); setToastMensaje('No hay datos'); setToastVisible(true); return; }
-    setToastTipo('exito'); setToastMensaje('Exportación a Excel iniciada'); setToastVisible(true);
-  }, [mesSeleccionado, loading, cuotasFiltradas.length]);
+    if (!mesSeleccionado && !soloCobrador) {
+      setToastTipo('advertencia');
+      setToastMensaje('Seleccione mes');
+      setToastVisible(true);
+      return;
+    }
+    if (loading) {
+      setToastTipo('advertencia');
+      setToastMensaje('Esperando datos...');
+      setToastVisible(true);
+      return;
+    }
+    if (cuotasFiltradas.length === 0) {
+      setToastTipo('advertencia');
+      setToastMensaje('No hay datos');
+      setToastVisible(true);
+      return;
+    }
+    setToastTipo('exito');
+    setToastMensaje('Exportación a Excel iniciada');
+    setToastVisible(true);
+  }, [mesSeleccionado, soloCobrador, loading, cuotasFiltradas.length]);
 
   const onChangeMes        = (e) => { setMesSeleccionado(e.target.value); triggerCascade(); };
   const onChangeAnioPago   = (e) => { setAnioPagoSeleccionado(e.target.value); triggerCascade(); };
@@ -695,7 +827,6 @@ const Cuotas = () => {
     triggerCascade();
   };
 
-  // ✅ NUEVO: capturar scroll actual de la lista virtualizada
   const handleListScroll = useCallback(({ scrollOffset }) => {
     scrollOffsetRef.current = scrollOffset;
   }, []);
@@ -862,12 +993,14 @@ const Cuotas = () => {
       <p>Cargando datos...</p>
     </div>
   );
+
   const NoMonthSelected  = () => (
     <div className="gcuotas-info-message">
       <FontAwesomeIcon icon={faCalendarAlt} size="3x" />
       <p>Por favor seleccione un mes para ver los datos</p>
     </div>
   );
+
   const NoDataFound      = () => (
     <div className="gcuotas-info-message">
       <FontAwesomeIcon icon={faExclamationTriangle} size="3x" />
@@ -875,13 +1008,7 @@ const Cuotas = () => {
     </div>
   );
 
-  // ✅ MODIFICADO: resyncAll guarda posición ANTES de recargar, NO resetea selectedRow
   const resyncAll = useCallback(async () => {
-    // Guardar estado de posición y selección en refs antes del fetch
-    // scrollOffsetRef ya se actualiza en tiempo real via handleListScroll
-    // selectedRowRef ya se actualiza en handleRowClick
-    // Solo reseteamos si el caller lo pidió explícitamente
-
     await fetchAniosPago();
     await obtenerCuotasYListas();
     triggerCascade();
@@ -958,7 +1085,7 @@ const Cuotas = () => {
         />
       )}
 
-      {canPrint && mostrarModalMesCuotas && socioParaImprimir && (
+      {canPrint && mostrarModalMesCuotas && socioParaImprimir && !soloCobrador && (
         <ModalMesCuotas
           socio={socioParaImprimir}
           meses={meses}
@@ -1156,6 +1283,7 @@ const Cuotas = () => {
               >
                 <FontAwesomeIcon icon={faArrowLeft} /><span>Volver</span>
               </button>
+
               <button
                 className="gcuotas-button gcuotas-button-export"
                 onClick={handleExportExcel}
@@ -1170,7 +1298,7 @@ const Cuotas = () => {
                 disabled={
                   !canPrint ||
                   loadingPrint ||
-                  !mesSeleccionado ||
+                  (!mesSeleccionado && !soloCobrador) ||
                   cuotasFiltradas.length === 0 ||
                   loading ||
                   !categoriaSeleccionada
@@ -1197,36 +1325,40 @@ const Cuotas = () => {
               : estadoPagoSeleccionado === 'condonado'
                 ? 'Cuotas Condonadas'
                 : 'Cuotas Pendientes'}
-            {mesSeleccionado && (<span className="gcuotas-periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>)}
+            {soloCobrador
+              ? (<span className="gcuotas-periodo-seleccionado"> - Cobrador (Marzo a Diciembre)</span>)
+              : mesSeleccionado
+                ? (<span className="gcuotas-periodo-seleccionado"> - {getNombreMes(mesSeleccionado)}</span>)
+                : null}
           </h3>
 
-<div className="gcuotas-input-group gcuotas-search-group">
-  <div className="fl-field fl-field--float">
-    <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
-    <input
-      id="buscarAlumno"
-      type="text"
-      value={busqueda}
-      onChange={onChangeBusqueda}
-      disabled={loading || !mesSeleccionado}
-      className="fl-control fl-search"
-      placeholder=" "
-      autoComplete="off"
-    />
-    <label htmlFor="buscarAlumno" className="fl-label">Buscar alumno</label>
-  </div>
-</div>
+          <div className="gcuotas-input-group gcuotas-search-group">
+            <div className="fl-field fl-field--float">
+              <FontAwesomeIcon icon={faSearch} className="gcuotas-search-icon" />
+              <input
+                id="buscarAlumno"
+                type="text"
+                value={busqueda}
+                onChange={onChangeBusqueda}
+                disabled={loading || (!mesSeleccionado && !soloCobrador)}
+                className="fl-control fl-search"
+                placeholder=" "
+                autoComplete="off"
+              />
+              <label htmlFor="buscarAlumno" className="fl-label">Buscar alumno</label>
+            </div>
+          </div>
 
           <div className="gcuotas-summary-info">
             <span className="gcuotas-summary-item">
-              <FontAwesomeIcon icon={faUsers} /> Total: {mesSeleccionado ? cuotasFiltradas.length : 0}
+              <FontAwesomeIcon icon={faUsers} /> Total: {(mesSeleccionado || soloCobrador) ? cuotasFiltradas.length : 0}
             </span>
           </div>
         </div>
 
         <div className="gcuotas-table-container">
           {loading ? <LoadingIndicator /> :
-            !mesSeleccionado ? <NoMonthSelected /> :
+            (!mesSeleccionado && !soloCobrador) ? <NoMonthSelected /> :
               cuotasFiltradas.length === 0 ? <NoDataFound /> :
                 isMobile ? (
                   <div className="gcuotas-mobile-list">
@@ -1286,6 +1418,7 @@ const Cuotas = () => {
           >
             <FontAwesomeIcon icon={faArrowLeft} /><span>Volver</span>
           </button>
+
           <button
             className="gcuotas-mbar-btn mbar-excel"
             onClick={handleExportExcel}
@@ -1300,7 +1433,7 @@ const Cuotas = () => {
             disabled={
               !canPrint ||
               loadingPrint ||
-              !mesSeleccionado ||
+              (!mesSeleccionado && !soloCobrador) ||
               cuotasFiltradas.length === 0 ||
               loading ||
               !categoriaSeleccionada
