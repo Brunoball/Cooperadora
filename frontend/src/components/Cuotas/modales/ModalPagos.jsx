@@ -30,7 +30,6 @@ const ID_CONTADO_ANUAL_H2 = 16; // Ago–Dic
 
 // Constantes para cobrador
 const PORCENTAJE_COBRADOR = 15;
-const FACTOR_COOPERADORA = 0.85;
 
 /* ====== Helpers ====== */
 const normalizar = (s = '') =>
@@ -814,10 +813,12 @@ const ModalPagos = ({ socio, onClose }) => {
     return Math.round(Number(totalParaMostrar || 0) * (PORCENTAJE_COBRADOR / 100));
   }, [condonar, esAlumnoCobrador, totalParaMostrar]);
 
+  // ✅ Resto visible: total cobrado sin restar menos comisión 15%
   const montoNetoCooperadoraVista = useMemo(() => {
-    if (condonar || !esAlumnoCobrador) return Number(totalParaMostrar || 0);
-    return Math.round(Number(totalParaMostrar || 0) * FACTOR_COOPERADORA);
-  }, [condonar, esAlumnoCobrador, totalParaMostrar]);
+    const totalBase = Number(totalParaMostrar || 0);
+    if (condonar || !esAlumnoCobrador) return totalBase;
+    return Math.max(0, totalBase - Number(montoComisionCobradorVista || 0));
+  }, [condonar, esAlumnoCobrador, totalParaMostrar, montoComisionCobradorVista]);
 
   const etiquetaTotal = esPagoGrupo ? `Total grupo (${cantidadRegistrosLista})` : 'Total';
 
@@ -1092,6 +1093,12 @@ const ModalPagos = ({ socio, onClose }) => {
                       )}
                       <li><span>Medio de pago</span><strong>{medioNombre}</strong></li>
                       <li><span>{etiquetaTotal}</span><strong>{formatearARS(totalParaMostrar)}</strong></li>
+                      {esAlumnoCobrador && !condonar && totalParaMostrar > 0 && (
+                        <>
+                          <li><span>{PORCENTAJE_COBRADOR}% cobrador</span><strong>- {formatearARS(montoComisionCobradorVista)}</strong></li>
+                          <li><span>Resto cooperadora</span><strong>{formatearARS(montoNetoCooperadoraVista)}</strong></li>
+                        </>
+                      )}
                       <li><span>Registros</span><strong>{cantidadRegistrosLista}</strong></li>
                       {periodoTextoFinal && <li className="full-row"><span>Período</span><strong>{periodoTextoFinal}</strong></li>}
                     </ul>
@@ -1117,10 +1124,21 @@ const ModalPagos = ({ socio, onClose }) => {
             </div>
 
             <div className="modal-footer success-footer">
-              <div className="footer-left">
+              <div className="footer-left footer-left--chips">
                 <span className={`total-badge ${condonar ? 'total-badge-warning' : ''}`}>
                   {etiquetaTotal}: {formatearARS(totalParaMostrar)}
                 </span>
+
+                {esAlumnoCobrador && !condonar && totalParaMostrar > 0 && (
+                  <div className="cobrador-footer-chips" aria-label="Detalle de cobrador">
+                    <span className="cobrador-footer-chip cobrador-footer-chip--comision">
+                      {PORCENTAJE_COBRADOR}% cobrador: - {formatearARS(montoComisionCobradorVista)}
+                    </span>
+                    <span className="cobrador-footer-chip cobrador-footer-chip--neto">
+                      Resto cooperadora: {formatearARS(montoNetoCooperadoraVista)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="footer-actions">
                 <button className="btn btn-secondary" onClick={() => onClose?.(true)} type="button">Listo</button>
@@ -1243,7 +1261,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     // gesto del usuario = OK
                     el.focus({ preventScroll: true });
 
-                    if (typeof el.showPicker === "function") {
+                    if (typeof el.showPicker === 'function') {
                       try {
                         el.showPicker();
                         return;
@@ -1271,7 +1289,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     ref={fechaPagoRef}
                     id="fecha-pago-input"
                     type="date"
-                    className={`field-card__input ${!isValidYMD(fechaPagoSeleccionada) ? "field-card__input--error" : ""}`}
+                    className={`field-card__input ${!isValidYMD(fechaPagoSeleccionada) ? 'field-card__input--error' : ''}`}
                     value={fechaPagoSeleccionada}
                     onChange={(e) => setFechaPagoSeleccionada(e.target.value)}
                     disabled={cargando}
@@ -1279,7 +1297,7 @@ const ModalPagos = ({ socio, onClose }) => {
                     // ✅ 1) marcamos "user gesture" REAL
                     onPointerDown={() => {
                       if (!fechaPagoRef.current) return;
-                      fechaPagoRef.current.dataset.userGesture = "1";
+                      fechaPagoRef.current.dataset.userGesture = '1';
                     }}
 
                     // ✅ 2) al enfocarse, abrimos el picker (si venimos del gesto)
@@ -1287,10 +1305,10 @@ const ModalPagos = ({ socio, onClose }) => {
                       if (cargando) return;
                       const el = e.currentTarget;
 
-                      if (el.dataset.userGesture !== "1") return;
-                      el.dataset.userGesture = "0";
+                      if (el.dataset.userGesture !== '1') return;
+                      el.dataset.userGesture = '0';
 
-                      if (typeof el.showPicker === "function") {
+                      if (typeof el.showPicker === 'function') {
                         try {
                           el.showPicker();
                         } catch (_) {
@@ -1616,27 +1634,6 @@ const ModalPagos = ({ socio, onClose }) => {
               </div>
             </div>
 
-            {/* ✅ Bloque de visualización de descuento por cobrador */}
-            {esAlumnoCobrador && !condonar && totalParaMostrar > 0 && (
-              <div className="cobrador-descuento-box">
-                <div className="cobrador-descuento-header">
-                  <strong>Alumno con cobrador</strong>
-                  <span>El {PORCENTAJE_COBRADOR}% se registra automáticamente como egreso mensual del cobrador.</span>
-                </div>
-
-                <div className="cobrador-descuento-grid">
-                  <span>Total cobrado:</span>
-                  <strong>{formatearARS(totalParaMostrar)}</strong>
-
-                  <span>{PORCENTAJE_COBRADOR}% cobrador:</span>
-                  <strong>- {formatearARS(montoComisionCobradorVista)}</strong>
-
-                  <span>Neto cooperadora:</span>
-                  <strong>{formatearARS(montoNetoCooperadoraVista)}</strong>
-                </div>
-              </div>
-            )}
-
             {/* Selección de meses */}
             <div className="periodos-section">
               <div className="section-header">
@@ -1720,17 +1717,31 @@ const ModalPagos = ({ socio, onClose }) => {
 
           {/* Footer */}
           <div className="modal-footer">
-            <div className="footer-left">
+            <div className="footer-left footer-left--chips">
               <span className={`total-badge ${condonar ? 'total-badge-warning' : ''}`}>
                 {etiquetaTotal}: {formatearARS(totalParaMostrar)}
               </span>
+
+              {esAlumnoCobrador && !condonar && totalParaMostrar > 0 && (
+                <div className="cobrador-footer-chips" aria-label="Detalle de cobrador">
+                  <span className="cobrador-footer-chip cobrador-footer-chip--comision">
+                    {PORCENTAJE_COBRADOR}% cobrador: - {formatearARS(montoComisionCobradorVista)}
+                  </span>
+
+                  <span className="cobrador-footer-chip cobrador-footer-chip--neto">
+                    cooperadora: {formatearARS(montoNetoCooperadoraVista)}
+                  </span>
+                </div>
+              )}
+
               {!medioSeleccionado && (
-                <span className="total-badge total-badge-warning" style={{ marginLeft: 8 }}>
+                <span className="total-badge total-badge-warning">
                   Medio de pago requerido
                 </span>
               )}
+
               {!isValidYMD(fechaPagoSeleccionada) && (
-                <span className="total-badge total-badge-warning" style={{ marginLeft: 8 }}>
+                <span className="total-badge total-badge-warning">
                   Fecha inválida
                 </span>
               )}

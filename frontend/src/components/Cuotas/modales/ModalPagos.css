@@ -1444,4 +1444,58 @@
 .cobrador-descuento-grid strong {
   font-weight: 800;
   text-align: right;
+}.footer-left--chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cobrador-footer-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cobrador-footer-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.cobrador-footer-chip--comision {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #92400e;
+}
+
+.cobrador-footer-chip--neto {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.30);
+  color: #047857;
+}
+
+@media (max-width: 600px) {
+  .footer-left--chips,
+  .cobrador-footer-chips {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .cobrador-footer-chip,
+  .footer-left--chips .total-badge {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+    line-height: 1.25;
+  }
 }
