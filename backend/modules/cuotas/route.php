@@ -47,4 +47,4 @@ function route_cuotas(string $action): bool
     }
 
     return false;
-}
+}  

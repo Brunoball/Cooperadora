@@ -1,5 +1,11 @@
-// src/components/BotPanel/BotPanel.jsx
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -21,6 +27,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./BotPanel.css";
+import notificationSound from "./notificacion/notificacion.mp3";
 
 // ✅ emoji-mart (v5)
 import Picker from "@emoji-mart/react";
@@ -53,11 +60,49 @@ const fmtHora = (ts) => {
   return `${hh}:${mm}`;
 };
 
+const fmtDateKey = (ts) => {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+const isSameDay = (a, b) => {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+};
+
+const fmtFechaSeparador = (ts) => {
+  if (!Number.isFinite(ts)) return "";
+
+  const now = Date.now();
+  const yesterday = now - 24 * 60 * 60 * 1000;
+
+  if (isSameDay(ts, now)) return "Hoy";
+  if (isSameDay(ts, yesterday)) return "Ayer";
+
+  const d = new Date(ts);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
+};
+
 const toTs = (value) => {
   if (!value) return null;
   const s = String(value).trim();
 
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  const m = s.match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/
+  );
 
   if (!m) {
     const d = new Date(s);
@@ -116,13 +161,21 @@ function calcWindow(ventana24hTs, nowTs) {
   const expireAt = ventana24hTs + MS_24H;
   const remainingMs = expireAt - nowTs;
   const valid = remainingMs > 0;
-  const remainingHours = valid ? Math.max(0, Math.ceil(remainingMs / 3600000)) : 0;
+  const remainingHours = valid
+    ? Math.max(0, Math.ceil(remainingMs / 3600000))
+    : 0;
 
-  return { valid, remainingMs: Math.max(0, remainingMs), remainingHours, expireAt };
+  return {
+    valid,
+    remainingMs: Math.max(0, remainingMs),
+    remainingHours,
+    expireAt,
+  };
 }
 
 const isImageMime = (mime) => /^image\//i.test(String(mime || ""));
-const isPdfMime = (mime) => String(mime || "").toLowerCase() === "application/pdf";
+const isPdfMime = (mime) =>
+  String(mime || "").toLowerCase() === "application/pdf";
 
 const inferMimeFromUrl = (url) => {
   const u = String(url || "").toLowerCase();
@@ -159,15 +212,8 @@ const fmtBytes = (n) => {
   return `${x.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
 };
 
-
-
-
-
-
-
-
 /* =========================
-   ✅ MODAL VISOR (IMG / PDF) - CORREGIDO Z-INDEX
+   ✅ MODAL VISOR (IMG / PDF)
 ========================= */
 const MediaViewerModal = ({ open, onClose, item }) => {
   const boxRef = useRef(null);
@@ -218,7 +264,12 @@ const MediaViewerModal = ({ open, onClose, item }) => {
             <a className="wp-media-open" href={item.url} target="_blank" rel="noreferrer">
               Abrir
             </a>
-            <button className="wp-media-close" type="button" onClick={onClose} aria-label="Cerrar">
+            <button
+              className="wp-media-close"
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+            >
               <FontAwesomeIcon icon={faXmark} />
             </button>
           </div>
@@ -262,9 +313,11 @@ const BotPanel = () => {
   const [mode, setMode] = useState("bot");
 
   const msgEndRef = useRef(null);
+  const messagesRef = useRef(null);
 
   const lastHashRef = useRef("");
   const globalHashRef = useRef("");
+  const pendingScrollRef = useRef(null);
 
   const selectedIdRef = useRef(null);
   useEffect(() => {
@@ -278,6 +331,76 @@ const BotPanel = () => {
     const t = setInterval(() => setNowTs(Date.now()), 15000);
     return () => clearInterval(t);
   }, []);
+
+  // ==========================
+  // ✅ SONIDO NOTIFICACIÓN
+  // ==========================
+  const audioUrgentRef = useRef(null);
+  const prevChatsRef = useRef([]);
+  const firstChatsLoadRef = useRef(true);
+  const userInteractedRef = useRef(false);
+
+  useEffect(() => {
+    const unlock = () => {
+      userInteractedRef.current = true;
+    };
+
+    window.addEventListener("click", unlock, { passive: true });
+    window.addEventListener("keydown", unlock, { passive: true });
+
+    return () => {
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  const playUrgentSound = useCallback(() => {
+    if (!userInteractedRef.current) return;
+
+    const audio = audioUrgentRef.current;
+    if (!audio) return;
+
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {});
+      }
+    } catch {}
+  }, []);
+
+  const scrollToBottom = useCallback((behavior = "auto") => {
+    const el = messagesRef.current;
+    if (el) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior,
+      });
+      return;
+    }
+
+    msgEndRef.current?.scrollIntoView({
+      behavior,
+      block: "end",
+    });
+  }, []);
+
+  const isNearBottom = useCallback((threshold = 140) => {
+    const el = messagesRef.current;
+    if (!el) return true;
+
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return remaining <= threshold;
+  }, []);
+
+  useLayoutEffect(() => {
+    const behavior = pendingScrollRef.current;
+    if (!behavior) return;
+
+    scrollToBottom(behavior);
+    pendingScrollRef.current = null;
+  }, [mensajes, scrollToBottom]);
 
   const fetchJSON = useCallback(async (url) => {
     const res = await fetch(url, { method: "GET", cache: "no-store" });
@@ -311,16 +434,16 @@ const BotPanel = () => {
       if (!waId) return;
       try {
         await fetchJSON(
-          `${PANEL_API}/panel_mark_seen.php?wa_id=${encodeURIComponent(waId)}&_=${Date.now()}`
+          `${PANEL_API}/panel_mark_seen.php?wa_id=${encodeURIComponent(
+            waId
+          )}&_=${Date.now()}`
         );
       } catch {}
     },
     [fetchJSON]
   );
- 
 
-
-    // ==========================
+  // ==========================
   // ✅ TEMA CLARO / OSCURO
   // ==========================
   const [theme, setTheme] = useState(() => {
@@ -329,7 +452,6 @@ const BotPanel = () => {
   });
 
   useEffect(() => {
-    // aplica el tema a todo el documento (CSS lo lee)
     document.documentElement.setAttribute("data-botpanel-theme", theme);
     localStorage.setItem("botpanel_theme", theme);
   }, [theme]);
@@ -349,8 +471,12 @@ const BotPanel = () => {
     setLoadingEtiquetas(true);
     setErrorEtiquetas("");
     try {
-      const { res, data } = await fetchJSON(`${PANEL_PUNTOS}/etiquetas_list.php?_=${Date.now()}`);
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+      const { res, data } = await fetchJSON(
+        `${PANEL_PUNTOS}/etiquetas_list.php?_=${Date.now()}`
+      );
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
       setEtiquetas(Array.isArray(data.etiquetas) ? data.etiquetas : []);
     } catch (e) {
       setErrorEtiquetas(e?.message || "No se pudieron cargar etiquetas");
@@ -368,29 +494,80 @@ const BotPanel = () => {
       setErrorChats("");
 
       try {
-        const { res, data } = await fetchJSON(`${PANEL_API}/panel_chats.php?_=${Date.now()}`);
-        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+        const { res, data } = await fetchJSON(
+          `${PANEL_API}/panel_chats.php?_=${Date.now()}`
+        );
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
 
         const rows = Array.isArray(data.chats) ? data.chats : [];
-        const mapped = rows.map((c) => ({
-          id: normStr(c.wa_id),
-          nombre: pickNombre(c),
+        const mapped = rows.map((c) => {
+          const modo = pickModo(c);
+          const unread = Number(c.unread || 0);
+          const prioridad = normStr(c.prioridad || "normal");
+          const consultasPendientes = Number(
+            c.consultas_pendientes || c.pending_consultas || 0
+          );
 
-          etiqueta: normStr(c.etiqueta || ""),
-          etiqueta_id: c?.etiqueta_id ?? c?.etiquetaId ?? null,
+          const urgente =
+            consultasPendientes > 0 ||
+            (modo === "manual" && unread > 0) ||
+            prioridad === "alta";
 
-          ventana24hTs: toTs(c?.ventana_24h),
+          return {
+            id: normStr(c.wa_id),
+            nombre: pickNombre(c),
 
-          online: !!c.online,
-          ultimo: normStr(c.ultimo_mensaje || ""),
-          updatedAt: toTs(c.ultima_fecha) ?? Date.now(),
-          total: Number(c.total || 0),
-          prioridad: normStr(c.prioridad || "normal"),
-          unread: Number(c.unread || 0),
-          modo: pickModo(c),
-        }));
+            etiqueta: normStr(c.etiqueta || ""),
+            etiqueta_id: c?.etiqueta_id ?? c?.etiquetaId ?? null,
 
-        setChats(mapped);
+            ventana24hTs: toTs(c?.ventana_24h),
+
+            online: !!c.online,
+            ultimo: normStr(c.ultimo_mensaje || ""),
+            updatedAt: toTs(c.ultima_fecha) ?? Date.now(),
+            total: Number(c.total || 0),
+            prioridad,
+            unread,
+            modo,
+            urgente,
+            consultasPendientes,
+          };
+        });
+
+        setChats((prevCurrent) => {
+          const prevList = prevChatsRef.current?.length
+            ? prevChatsRef.current
+            : prevCurrent;
+
+          if (firstChatsLoadRef.current) {
+            firstChatsLoadRef.current = false;
+          } else {
+            let mustPlayUrgent = false;
+
+            for (const nextChat of mapped) {
+              const prevChat = prevList.find((x) => x.id === nextChat.id);
+              const prevUnread = Number(prevChat?.unread || 0);
+              const nextUnread = Number(nextChat?.unread || 0);
+
+              const unreadIncreased = nextUnread > prevUnread;
+              const isUrgentNow = !!nextChat.urgente;
+
+              if (unreadIncreased && isUrgentNow) {
+                mustPlayUrgent = true;
+                break;
+              }
+            }
+
+            if (mustPlayUrgent) {
+              playUrgentSound();
+            }
+          }
+
+          prevChatsRef.current = mapped;
+          return mapped;
+        });
       } catch (err) {
         setErrorChats(err?.message || "Error cargando chats");
       } finally {
@@ -398,7 +575,7 @@ const BotPanel = () => {
         else setLoadingChats(false);
       }
     },
-    [fetchJSON]
+    [fetchJSON, playUrgentSound]
   );
 
   // ==========================
@@ -407,10 +584,8 @@ const BotPanel = () => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerItem, setViewerItem] = useState(null);
 
-  // CORRECCIÓN: Cerrar galería antes de abrir el visor
   const openViewer = (item) => {
     if (!item?.url) return;
-    // Cerrar galería primero para que no quede encima
     setGaleriaOpen(false);
     setViewerItem(item);
     setViewerOpen(true);
@@ -425,28 +600,40 @@ const BotPanel = () => {
     async (waId, { silent = false } = {}) => {
       if (!waId) return;
 
+      const wasNearBottom = isNearBottom();
+
       if (!silent) setLoadingMsgs(true);
       setErrorMsgs("");
 
       try {
         const { res, data } = await fetchJSON(
-          `${PANEL_API}/panel_mensajes.php?wa_id=${encodeURIComponent(waId)}&limit=600&_=${Date.now()}`
+          `${PANEL_API}/panel_mensajes.php?wa_id=${encodeURIComponent(
+            waId
+          )}&limit=600&_=${Date.now()}`
         );
-        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
 
         const rows = Array.isArray(data.mensajes) ? data.mensajes : [];
 
         const mapped = rows.map((m) => {
-          // ✅ compat: nuevo (archivo_url) o viejo (media_url)
           const url = normStr(m.archivo_url || m.media_url || "");
-          const mime = normStr(m.media_mime || "") || (url ? inferMimeFromUrl(url) : "");
-          const name = normStr(m.media_name || "") || (url ? inferNameFromUrl(url) : "");
+          const mime =
+            normStr(m.media_mime || "") || (url ? inferMimeFromUrl(url) : "");
+          const name =
+            normStr(m.media_name || "") || (url ? inferNameFromUrl(url) : "");
           const size = Number(m.media_size || 0);
 
-          // tipo para UI (si no viene)
           const tipo =
             normStr(m.tipo || "") ||
-            (url ? (isPdfMime(mime) ? "document" : isImageMime(mime) ? "image" : "file") : "text");
+            (url
+              ? isPdfMime(mime)
+                ? "document"
+                : isImageMime(mime)
+                ? "image"
+                : "file"
+              : "text");
 
           return {
             id: Number(m.id) || m.id || `${m.fecha}-${Math.random()}`,
@@ -455,6 +642,10 @@ const BotPanel = () => {
             emisor: normStr(m.emisor),
             prioridad: normStr(m.prioridad || "normal"),
             ts: toTs(m.fecha) ?? Date.now(),
+
+            es_consulta: Number(m.es_consulta || 0) === 1,
+            consulta_atendida: Number(m.consulta_atendida || 0) === 1,
+            consulta_fecha: toTs(m.consulta_fecha),
 
             tipo,
             media_url: url,
@@ -466,8 +657,13 @@ const BotPanel = () => {
 
         if (selectedIdRef.current !== waId) return;
 
+        if (!silent) {
+          pendingScrollRef.current = "auto";
+        } else if (wasNearBottom) {
+          pendingScrollRef.current = "auto";
+        }
+
         setMensajes(mapped);
-        setTimeout(() => msgEndRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
 
         await markSeen(waId);
         await fetchChats(true);
@@ -478,13 +674,15 @@ const BotPanel = () => {
         if (!silent) setLoadingMsgs(false);
       }
     },
-    [fetchJSON, markSeen, fetchChats]
+    [fetchJSON, markSeen, fetchChats, isNearBottom]
   );
 
   const getHash = useCallback(
     async (waId) => {
       const { res, data } = await fetchJSON(
-        `${PANEL_API}/panel_hash.php?wa_id=${encodeURIComponent(waId)}&_=${Date.now()}`
+        `${PANEL_API}/panel_hash.php?wa_id=${encodeURIComponent(
+          waId
+        )}&_=${Date.now()}`
       );
       if (!res.ok || !data?.success) return "";
       return String(data.hash ?? "");
@@ -493,7 +691,9 @@ const BotPanel = () => {
   );
 
   const getGlobalHash = useCallback(async () => {
-    const { res, data } = await fetchJSON(`${PANEL_API}/panel_global_hash.php?_=${Date.now()}`);
+    const { res, data } = await fetchJSON(
+      `${PANEL_API}/panel_global_hash.php?_=${Date.now()}`
+    );
     if (!res.ok || !data?.success) return "";
     return String(data.hash ?? "");
   }, [fetchJSON]);
@@ -546,7 +746,9 @@ const BotPanel = () => {
           modo: nextMode,
         });
 
-        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
         await fetchChats(true);
       } catch (err) {
         setMensajes((prev) => [
@@ -554,7 +756,9 @@ const BotPanel = () => {
           {
             id: `err-mode-${Date.now()}`,
             wa_id: waId,
-            text: `ERROR MODO: ${err?.message || "No se pudo actualizar el modo en la DB"}`,
+            text: `ERROR MODO: ${
+              err?.message || "No se pudo actualizar el modo en la DB"
+            }`,
             emisor: "Panel",
             prioridad: "alta",
             ts: Date.now(),
@@ -605,7 +809,11 @@ const BotPanel = () => {
 
   const list = useMemo(() => {
     const qq = q.trim().toLowerCase();
-    const arr = [...chats].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const arr = [...chats].sort((a, b) => {
+      if (!!b.urgente !== !!a.urgente) return b.urgente ? 1 : -1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+
     if (!qq) return arr;
 
     return arr.filter((c) => {
@@ -617,7 +825,10 @@ const BotPanel = () => {
     });
   }, [chats, q]);
 
-  const selected = useMemo(() => chats.find((c) => c.id === selectedId) || null, [chats, selectedId]);
+  const selected = useMemo(
+    () => chats.find((c) => c.id === selectedId) || null,
+    [chats, selectedId]
+  );
 
   const selectedWindow = useMemo(
     () => calcWindow(selected?.ventana24hTs, nowTs),
@@ -628,8 +839,21 @@ const BotPanel = () => {
 
   const openChat = (id) => {
     const c = chats.find((x) => x.id === id) || null;
-    setSelectedId(id);
+    const sameChat = selectedIdRef.current === id;
+
+    pendingScrollRef.current = "auto";
     setMode(c?.modo === "manual" ? "manual" : "bot");
+
+    // Si vuelve a hacer clic en el mismo chat, NO vaciamos mensajes.
+    // Opcionalmente refrescamos el chat.
+    if (sameChat) {
+      fetchMensajes(id, { silent: true });
+      return;
+    }
+
+    // Si es otro chat distinto, sí limpiamos y cambiamos selección.
+    setMensajes([]);
+    setSelectedId(id);
   };
 
   // ==========================
@@ -782,11 +1006,28 @@ const BotPanel = () => {
       return;
     }
 
+    if (mode !== "manual") {
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: `mode-block-${Date.now()}`,
+          wa_id: waId,
+          text: "⚠️ Para responder manualmente, activá primero el modo manual.",
+          emisor: "Panel",
+          prioridad: "alta",
+          ts: Date.now(),
+        },
+      ]);
+      return;
+    }
+
     // ✅ si hay archivo => enviar media
     if (attachedFile) {
       setSendingMedia(true);
 
       const tempId = `local-media-${Date.now()}`;
+      pendingScrollRef.current = "auto";
+
       setMensajes((prev) => [
         ...prev,
         {
@@ -814,7 +1055,9 @@ const BotPanel = () => {
         fd.append("file", attachedFile);
 
         const { res, data } = await postFormData(`${PANEL_API}/panel_send_media.php`, fd);
-        if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
 
         clearAttached();
 
@@ -848,6 +1091,8 @@ const BotPanel = () => {
     if (!text) return;
 
     const tempId = `local-${Date.now()}`;
+    pendingScrollRef.current = "auto";
+
     setMensajes((prev) => [
       ...prev,
       {
@@ -860,9 +1105,9 @@ const BotPanel = () => {
         tipo: "text",
       },
     ]);
+
     setDraft("");
     setEmojiOpen(false);
-    setTimeout(() => msgEndRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
 
     try {
       const { res, data } = await postJSON(`${PANEL_API}/panel_send.php`, {
@@ -870,7 +1115,9 @@ const BotPanel = () => {
         texto: text,
       });
 
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
 
       lastHashRef.current = "";
       await fetchMensajes(waId, { silent: true });
@@ -957,8 +1204,13 @@ const BotPanel = () => {
     setModalEditLoading(true);
     setModalEditError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/editar_nombre.php`, { wa_id: waId, nombre });
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/editar_nombre.php`, {
+        wa_id: waId,
+        nombre,
+      });
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
       setModalEditOpen(false);
       await fetchChats(true);
     } catch (e) {
@@ -972,8 +1224,13 @@ const BotPanel = () => {
     setModalTagLoading(true);
     setModalTagError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/etiquetas_set.php`, { wa_id: waId, etiqueta_id: etiquetaId });
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/etiquetas_set.php`, {
+        wa_id: waId,
+        etiqueta_id: etiquetaId,
+      });
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
       setModalTagOpen(false);
       await fetchChats(true);
     } catch (e) {
@@ -990,8 +1247,12 @@ const BotPanel = () => {
     setModalVaciarLoading(true);
     setModalVaciarError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/vaciar_chat.php`, { wa_id: waId });
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+      const { res, data } = await postJSON(`${PANEL_PUNTOS}/vaciar_chat.php`, {
+        wa_id: waId,
+      });
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
 
       setModalVaciarOpen(false);
 
@@ -1015,8 +1276,13 @@ const BotPanel = () => {
     setModalEliminarLoading(true);
     setModalEliminarError("");
     try {
-      const { res, data } = await postJSON(`${PANEL_PUNTOS}/eliminar_contacto.php`, { wa_id: waId });
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Error HTTP ${res.status}`);
+      const { res, data } = await postJSON(
+        `${PANEL_PUNTOS}/eliminar_contacto.php`,
+        { wa_id: waId }
+      );
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
 
       setModalEliminarOpen(false);
 
@@ -1033,7 +1299,6 @@ const BotPanel = () => {
     }
   };
 
-  // ✅ NUEVO: construir items de galería desde mensajes
   const galleryItems = useMemo(() => {
     const arr = Array.isArray(mensajes) ? mensajes : [];
     const files = arr
@@ -1041,7 +1306,11 @@ const BotPanel = () => {
       .map((m) => {
         const url = m.media_url;
         const mime = m.media_mime || inferMimeFromUrl(url);
-        const kind = isPdfMime(mime) ? "pdf" : isImageMime(mime) ? "image" : "file";
+        const kind = isPdfMime(mime)
+          ? "pdf"
+          : isImageMime(mime)
+          ? "image"
+          : "file";
         return {
           url,
           mime,
@@ -1052,7 +1321,6 @@ const BotPanel = () => {
         };
       });
 
-    // orden: más nuevo primero
     files.sort((a, b) => (b.ts || 0) - (a.ts || 0));
     return files;
   }, [mensajes]);
@@ -1063,11 +1331,8 @@ const BotPanel = () => {
 
   const closeGaleria = () => setGaleriaOpen(false);
 
-  // CORRECCIÓN: Modificado para cerrar galería antes de abrir el visor
   const onOpenGalleryItem = (it) => {
-    // Cierra la galería primero
     setGaleriaOpen(false);
-    // Luego abre el visor
     setTimeout(() => {
       openViewer({ url: it.url, mime: it.mime, name: it.name });
     }, 50);
@@ -1075,6 +1340,8 @@ const BotPanel = () => {
 
   return (
     <div className="wp-shell">
+      <audio ref={audioUrgentRef} preload="auto" src={notificationSound} />
+
       <aside className="wp-sidebar">
         <div className="wp-side-top">
           <button
@@ -1093,7 +1360,13 @@ const BotPanel = () => {
             </span>
             <div className="wp-brand-txt">
               <div className="wp-brand-title">Panel Bot WhatsApp</div>
-              <div className="wp-brand-sub">{loadingChats ? "Cargando…" : refreshingChats ? "Actualizando…" : ""}</div>
+              <div className="wp-brand-sub">
+                {loadingChats
+                  ? "Cargando…"
+                  : refreshingChats
+                  ? "Actualizando…"
+                  : ""}
+              </div>
             </div>
           </div>
         </div>
@@ -1130,6 +1403,7 @@ const BotPanel = () => {
             const nombreOk = c.nombre || "Sin nombre";
             const hora = fmtHora(c.updatedAt || Date.now());
             const totalTxt = `${Number(c.total || 0)} msgs`;
+            const urgent = !!c.urgente;
 
             return (
               <button
@@ -1137,6 +1411,14 @@ const BotPanel = () => {
                 type="button"
                 className={`wp-chatitem ${active ? "is-active" : ""}`}
                 onClick={() => openChat(c.id)}
+                style={
+                  urgent
+                    ? {
+                        border: "1px solid rgba(239,68,68,.45)",
+                        boxShadow: "0 0 0 1px rgba(239,68,68,.12) inset",
+                      }
+                    : undefined
+                }
               >
                 <div className="wp-avatar" aria-hidden="true">
                   <FontAwesomeIcon icon={faUser} />
@@ -1146,6 +1428,29 @@ const BotPanel = () => {
                   <div className="wp-chatrow" style={{ alignItems: "center" }}>
                     <div className="wp-chatname">
                       {nombreOk}
+                      {urgent ? (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#f87171",
+                          }}
+                        >
+                        </span>
+                      ) : null}
+                      {Number(c.consultasPendientes || 0) > 0 ? (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#fbbf24",
+                          }}
+                        >
+                          • CONSULTA
+                        </span>
+                      ) : null}
                       {c.online ? (
                         <span className="wp-online" title="En línea" aria-hidden="true">
                           <FontAwesomeIcon icon={faCircle} />
@@ -1160,15 +1465,44 @@ const BotPanel = () => {
                     <div className="wp-chatlast">
                       {c.id} • {totalTxt}
                       {c.prioridad === "alta" ? " • ⚠️" : ""}
-                      {c.modo === "manual" ? " • ✋" : ""}
+                      {c.modo === "manual" ? " • ✋ manual" : ""}
                     </div>
 
                     {c.unread > 0 && !active ? (
-                      <span className="wp-unread" title="Mensajes sin ver">
+                      <span
+                        className="wp-unread"
+                        title={
+                          urgent
+                            ? "Mensaje urgente: manual activo"
+                            : "Mensajes sin ver"
+                        }
+                        style={
+                          urgent
+                            ? {
+                                background: "#dc2626",
+                                color: "#fff",
+                                boxShadow: "0 0 0 2px rgba(220,38,38,.25)",
+                              }
+                            : undefined
+                        }
+                      >
                         {c.unread > 99 ? "99+" : c.unread}
                       </span>
                     ) : (
-                      <span className={`wp-tag wp-tag--${(c.etiqueta || "sin").replace(/\s/g, "")}`}>
+                      <span
+                        className={`wp-tag wp-tag--${(c.etiqueta || "sin").replace(
+                          /\s/g,
+                          ""
+                        )}`}
+                        style={
+                          urgent
+                            ? {
+                                borderColor: "rgba(239,68,68,.4)",
+                                color: "#fca5a5",
+                              }
+                            : undefined
+                        }
+                      >
                         {c.etiqueta || "sin etiqueta"}
                       </span>
                     )}
@@ -1178,7 +1512,9 @@ const BotPanel = () => {
             );
           })}
 
-          {!loadingChats && list.length === 0 ? <div className="wp-empty">No hay chats con ese filtro.</div> : null}
+          {!loadingChats && list.length === 0 ? (
+            <div className="wp-empty">No hay chats con ese filtro.</div>
+          ) : null}
         </div>
       </aside>
 
@@ -1203,7 +1539,6 @@ const BotPanel = () => {
                 <div className="wp-chat-top-meta">
                   <div className="wp-chat-top-name">
                     {selected?.nombre || "Sin nombre"}
-                    {selected?.online ? <span className="wp-status">• en línea</span> : <span className="wp-status">• offline</span>}
                   </div>
                   <div className="wp-chat-top-id">{selectedId}</div>
                 </div>
@@ -1213,7 +1548,11 @@ const BotPanel = () => {
                 <div className="wp-mode">
                   <div
                     className={`wp-window ${isWindowExpired ? "is-expired" : ""}`}
-                    title={isWindowExpired ? "Ventana de 24hs expirada" : `Quedan ${selectedWindow.remainingHours}h`}
+                    title={
+                      isWindowExpired
+                        ? "Ventana de 24hs expirada"
+                        : `Quedan ${selectedWindow.remainingHours}h`
+                    }
                     aria-label="Ventana 24 horas"
                   >
                     {isWindowExpired ? (
@@ -1221,7 +1560,9 @@ const BotPanel = () => {
                         <FontAwesomeIcon icon={faXmark} />
                       </span>
                     ) : (
-                      <span className="wp-window-h">{selectedWindow.remainingHours}hs</span>
+                      <span className="wp-window-h">
+                        {selectedWindow.remainingHours}hs
+                      </span>
                     )}
                   </div>
 
@@ -1229,7 +1570,7 @@ const BotPanel = () => {
                     type="button"
                     className={`wp-modebtn ${mode === "bot" ? "is-active" : ""}`}
                     onClick={() => setModeDB("bot")}
-                    title="Modo Bot (oculta barra de escribir)"
+                    title="Modo Bot (respuestas automáticas activas)"
                     aria-label="Modo Bot"
                   >
                     <FontAwesomeIcon icon={faRobot} />
@@ -1239,7 +1580,11 @@ const BotPanel = () => {
                     type="button"
                     className={`wp-modebtn ${mode === "manual" ? "is-active" : ""}`}
                     onClick={() => setModeDB("manual")}
-                    title={isWindowExpired ? "Modo Manual (pero ventana expirada: no se puede enviar)" : "Modo Manual (muestra barra de escribir)"}
+                    title={
+                      isWindowExpired
+                        ? "Modo Manual (pero ventana expirada: no se puede enviar)"
+                        : "Modo Manual (el bot queda inhabilitado)"
+                    }
                     aria-label="Modo Manual"
                   >
                     <FontAwesomeIcon icon={faHand} />
@@ -1252,23 +1597,45 @@ const BotPanel = () => {
                     onClose={() => setOpenMenu(false)}
                     onEditarNombre={() => openEditarNombre(selectedId)}
                     onCambiarEtiqueta={() => openCambiarEtiqueta(selectedId)}
-                    onVerGaleria={() => openGaleria()}   // ✅ NUEVO
+                    onVerGaleria={() => openGaleria()}
                     onVaciarChat={() => openVaciarChat(selectedId)}
                     onEliminarContacto={() => openEliminarContacto(selectedId)}
                   />
                 </div>
-                <button
-  type="button"
-  className="wp-themebtn"
-  onClick={toggleTheme}
-  title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-  aria-label="Cambiar tema"
->
-  <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
-  <span className="wp-themebtn-txt">{theme === "dark" ? "Claro" : "Oscuro"}</span>
-</button>
 
-                <span className="wp-chip wp-chip--tag">{selected?.etiqueta || "sin etiqueta"}</span>
+                <button
+                  type="button"
+                  className="wp-themebtn"
+                  onClick={toggleTheme}
+                  title={
+                    theme === "dark"
+                      ? "Cambiar a modo claro"
+                      : "Cambiar a modo oscuro"
+                  }
+                  aria-label="Cambiar tema"
+                >
+                  <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
+                  <span className="wp-themebtn-txt">
+                    {theme === "dark" ? "Claro" : "Oscuro"}
+                  </span>
+                </button>
+
+                {mode === "manual" ? (
+                  <span
+                    className="wp-chip"
+                    style={{
+                      background: "rgba(239,68,68,.14)",
+                      border: "1px solid rgba(239,68,68,.35)",
+                      color: "#fecaca",
+                    }}
+                  >
+                    Manual activo • bot pausado
+                  </span>
+                ) : null}
+
+                <span className="wp-chip wp-chip--tag">
+                  {selected?.etiqueta || "sin etiqueta"}
+                </span>
 
                 {loadingMsgs ? (
                   <span className="wp-chip">
@@ -1285,7 +1652,25 @@ const BotPanel = () => {
               </div>
             ) : null}
 
-            <div className="wp-messages">
+            {mode === "manual" ? (
+              <div
+                style={{
+                  margin: "10px 14px 0",
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(239,68,68,.28)",
+                  background: "rgba(239,68,68,.08)",
+                  color: "#fecaca",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                ✋ Conversación manual activa: el bot no va a responder automáticamente
+                hasta que vuelvas a modo bot.
+              </div>
+            ) : null}
+
+            <div className="wp-messages" ref={messagesRef}>
               <div className="wp-day">
                 <span>Mensajes</span>
               </div>
@@ -1297,73 +1682,137 @@ const BotPanel = () => {
                 </div>
               ) : null}
 
-              {(mensajes || []).map((m) => {
+              {(mensajes || []).map((m, idx) => {
+                const prev = idx > 0 ? mensajes[idx - 1] : null;
+                const showDateSeparator =
+                  !prev || fmtDateKey(prev.ts) !== fmtDateKey(m.ts);
+
                 const side = mapEmisorToSide(m.emisor);
-                const danger = String(m.text || "").startsWith("ERROR") || m.prioridad === "alta";
+
+                const isPendingConsult =
+                  m.es_consulta === true && m.consulta_atendida === false;
+
+                const danger =
+                  String(m.text || "").startsWith("ERROR") ||
+                  (m.prioridad === "alta" && !isPendingConsult);
 
                 const hasMedia = !!m.media_url;
-                const mime = m.media_mime || (m.media_url ? inferMimeFromUrl(m.media_url) : "");
+                const mime =
+                  m.media_mime || (m.media_url ? inferMimeFromUrl(m.media_url) : "");
                 const showImg = hasMedia && isImageMime(mime);
                 const showPdf = hasMedia && isPdfMime(mime);
 
                 return (
-                  <div key={m.id} className={`wp-msg wp-msg--${side}`}>
-                    <div className={`wp-bubble ${danger ? "wp-bubble--danger" : ""}`}>
-                      {hasMedia ? (
-                        <div className="wp-media-inbubble">
-                          {showImg ? (
-                            <button
-                              type="button"
-                              className="wp-media-thumbbtn"
-                              onClick={() =>
-                                openViewer({
-                                  url: m.media_url,
-                                  mime,
-                                  name: m.media_name || "imagen",
-                                })
+                  <React.Fragment key={m.id}>
+                    {showDateSeparator ? (
+                      <div className="wp-date-separator">
+                        <span>{fmtFechaSeparador(m.ts)}</span>
+                      </div>
+                    ) : null}
+
+                    <div className={`wp-msg wp-msg--${side}`}>
+                      <div
+                        className={`wp-bubble ${danger ? "wp-bubble--danger" : ""} ${
+                          isPendingConsult ? "wp-bubble--consulta" : ""
+                        }`}
+                        style={
+                          isPendingConsult
+                            ? {
+                                border: "1px solid rgba(251,191,36,.60)",
+                                boxShadow: "0 0 0 1px rgba(251,191,36,.18) inset",
+                                background: "rgba(251,191,36,.10)",
                               }
-                              title="Ver imagen"
-                            >
-                              <img className="wp-media-thumb" src={m.media_url} alt={m.media_name || "imagen"} />
-                            </button>
-                          ) : showPdf ? (
-                            <button
-                              type="button"
-                              className="wp-doc-card"
-                              onClick={() =>
-                                openViewer({
-                                  url: m.media_url,
-                                  mime,
-                                  name: m.media_name || "documento.pdf",
-                                })
-                              }
-                              title="Ver PDF"
-                            >
-                              <div className="wp-doc-ico">
-                                <FontAwesomeIcon icon={faFilePdf} />
-                              </div>
-                              <div className="wp-doc-meta">
-                                <div className="wp-doc-name">{m.media_name || "Documento PDF"}</div>
-                                <div className="wp-doc-sub">
-                                  PDF {m.media_size ? `• ${fmtBytes(m.media_size)}` : ""}
+                            : undefined
+                        }
+                      >
+                        {isPendingConsult ? (
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              marginBottom: 8,
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              background: "rgba(251,191,36,.16)",
+                              border: "1px solid rgba(251,191,36,.32)",
+                              color: "#fbbf24",
+                              fontSize: 11,
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              letterSpacing: ".04em",
+                            }}
+                          >
+                            👩‍💼 Consulta pendiente
+                          </div>
+                        ) : null}
+                        
+                        {hasMedia ? (
+                          <div className="wp-media-inbubble">
+                            {showImg ? (
+                              <button
+                                type="button"
+                                className="wp-media-thumbbtn"
+                                onClick={() =>
+                                  openViewer({
+                                    url: m.media_url,
+                                    mime,
+                                    name: m.media_name || "imagen",
+                                  })
+                                }
+                                title="Ver imagen"
+                              >
+                                <img
+                                  className="wp-media-thumb"
+                                  src={m.media_url}
+                                  alt={m.media_name || "imagen"}
+                                />
+                              </button>
+                            ) : showPdf ? (
+                              <button
+                                type="button"
+                                className="wp-doc-card"
+                                onClick={() =>
+                                  openViewer({
+                                    url: m.media_url,
+                                    mime,
+                                    name: m.media_name || "documento.pdf",
+                                  })
+                                }
+                                title="Ver PDF"
+                              >
+                                <div className="wp-doc-ico">
+                                  <FontAwesomeIcon icon={faFilePdf} />
                                 </div>
-                              </div>
-                            </button>
-                          ) : (
-                            <a href={m.media_url} target="_blank" rel="noreferrer">
-                              📎 {m.media_name || "Archivo"} {m.media_size ? `(${fmtBytes(m.media_size)})` : ""}
-                            </a>
-                          )}
+                                <div className="wp-doc-meta">
+                                  <div className="wp-doc-name">
+                                    {m.media_name || "Documento PDF"}
+                                  </div>
+                                  <div className="wp-doc-sub">
+                                    PDF{" "}
+                                    {m.media_size
+                                      ? `• ${fmtBytes(m.media_size)}`
+                                      : ""}
+                                  </div>
+                                </div>
+                              </button>
+                            ) : (
+                              <a href={m.media_url} target="_blank" rel="noreferrer">
+                                📎 {m.media_name || "Archivo"}{" "}
+                                {m.media_size ? `(${fmtBytes(m.media_size)})` : ""}
+                              </a>
+                            )}
+                          </div>
+                        ) : null}
+
+                        {m.text ? <div className="wp-bubble-text">{m.text}</div> : null}
+
+                        <div className="wp-bubble-time">
+                          {fmtHora(m.ts)} • {m.emisor}
                         </div>
-                      ) : null}
-
-                      {m.text ? <div className="wp-bubble-text">{m.text}</div> : null}
-
-                      <div className="wp-bubble-time">
-                        {fmtHora(m.ts)} • {m.emisor}
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })}
 
@@ -1405,7 +1854,12 @@ const BotPanel = () => {
                   </button>
 
                   {emojiOpen && !isWindowExpired ? (
-                    <div ref={emojiPopRef} className="wp-emoji-pop" role="dialog" aria-label="Selector de emojis">
+                    <div
+                      ref={emojiPopRef}
+                      className="wp-emoji-pop"
+                      role="dialog"
+                      aria-label="Selector de emojis"
+                    >
                       <Picker
                         data={data}
                         previewPosition="none"
@@ -1442,15 +1896,34 @@ const BotPanel = () => {
                     className="wp-send"
                     onClick={sendManual}
                     aria-label="Enviar"
-                    title={isWindowExpired ? "Ventana expirada" : attachedFile ? "Enviar archivo" : "Enviar"}
+                    title={
+                      isWindowExpired
+                        ? "Ventana expirada"
+                        : attachedFile
+                        ? "Enviar archivo"
+                        : "Enviar"
+                    }
                     disabled={isWindowExpired || sendingMedia}
                   >
-                    {sendingMedia ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faPaperPlane} />}
+                    {sendingMedia ? (
+                      <FontAwesomeIcon icon={faSpinner} spin />
+                    ) : (
+                      <FontAwesomeIcon icon={faPaperPlane} />
+                    )}
                   </button>
                 </div>
 
                 {attachedFile ? (
-                  <div style={{ padding: "6px 10px", fontSize: 12, opacity: 0.9, display: "flex", gap: 10, alignItems: "center" }}>
+                  <div
+                    style={{
+                      padding: "6px 10px",
+                      fontSize: 12,
+                      opacity: 0.9,
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                    }}
+                  >
                     <span>
                       📎 <b>{attachedFile.name}</b> ({fmtBytes(attachedFile.size)})
                     </span>
@@ -1475,10 +1948,8 @@ const BotPanel = () => {
         )}
       </main>
 
-      {/* ✅ VISOR - CORREGIDO: Mayor z-index que la galería */}
       <MediaViewerModal open={viewerOpen} onClose={closeViewer} item={viewerItem} />
 
-      {/* ✅ NUEVO: GALERÍA - Menor z-index que el visor */}
       <GaleriaModal
         open={galeriaOpen}
         onClose={closeGaleria}
@@ -1487,7 +1958,6 @@ const BotPanel = () => {
         onOpenItem={(it) => onOpenGalleryItem(it)}
       />
 
-      {/* ✅ MODALES */}
       <EditNombreModal
         open={modalEditOpen}
         waId={modalEditWa}

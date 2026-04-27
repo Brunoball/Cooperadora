@@ -28,6 +28,10 @@ const ID_MATRICULA = 14;
 const ID_CONTADO_ANUAL_H1 = 15; // Mar–Jul
 const ID_CONTADO_ANUAL_H2 = 16; // Ago–Dic
 
+// Constantes para cobrador
+const PORCENTAJE_COBRADOR = 15;
+const FACTOR_COOPERADORA = 0.85;
+
 /* ====== Helpers ====== */
 const normalizar = (s = '') =>
   String(s).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
@@ -174,6 +178,11 @@ const ModalPagos = ({ socio, onClose }) => {
 
   // ID tolerante
   const idAlumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? null;
+
+  // ✅ Verificar si el alumno es cobrador (desde DB, más seguro)
+  const esAlumnoCobrador = useMemo(() => {
+    return Number(socio?.es_cobrador ?? 0) === 1;
+  }, [socio]);
 
   /* ================= Helpers ================= */
   const formatearFecha = (f) => {
@@ -799,6 +808,17 @@ const ModalPagos = ({ socio, onClose }) => {
     return roundToHundreds((Number(total) || 0) * n);
   }, [total, esPagoGrupo, cantidadRegistrosLista]);
 
+  // ✅ Cálculo de comisión para cobrador (solo visual)
+  const montoComisionCobradorVista = useMemo(() => {
+    if (condonar || !esAlumnoCobrador) return 0;
+    return Math.round(Number(totalParaMostrar || 0) * (PORCENTAJE_COBRADOR / 100));
+  }, [condonar, esAlumnoCobrador, totalParaMostrar]);
+
+  const montoNetoCooperadoraVista = useMemo(() => {
+    if (condonar || !esAlumnoCobrador) return Number(totalParaMostrar || 0);
+    return Math.round(Number(totalParaMostrar || 0) * FACTOR_COOPERADORA);
+  }, [condonar, esAlumnoCobrador, totalParaMostrar]);
+
   const etiquetaTotal = esPagoGrupo ? `Total grupo (${cantidadRegistrosLista})` : 'Total';
 
   const confirmarPago = async () => {
@@ -939,7 +959,7 @@ const ModalPagos = ({ socio, onClose }) => {
       id_periodo: periodoCodigo,
       periodos,
       periodo_texto: periodoTextoCustom,
-      // precio_unitario queda como “referencial”, pero para impresión real tenés montos_por_periodo
+      // precio_unitario queda como "referencial", pero para impresión real tenés montos_por_periodo
       precio_unitario: Math.round(getPrecioMes(periodosMesesOrdenados[0] || 1)),
       importe_total: total,
       precio_total: total,
@@ -1205,140 +1225,138 @@ const ModalPagos = ({ socio, onClose }) => {
               )}
             </div>
 
-{/* ✅ FECHA + AÑO — fila refinada */}
-<div className="fecha-anio-row">
+            {/* ✅ FECHA + AÑO — fila refinada */}
+            <div className="fecha-anio-row">
+              <div className="field-card field-card--fecha">
+                {/* Ícono como botón: SOLO esto abre el calendario */}
+                <button
+                  type="button"
+                  className="field-card__icon-wrap fecha-icon-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (cargando) return;
 
-<div className="field-card field-card--fecha">
-  {/* Ícono como botón: SOLO esto abre el calendario */}
-  <button
-    type="button"
-    className="field-card__icon-wrap fecha-icon-btn"
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (cargando) return;
+                    const el = fechaPagoRef.current;
+                    if (!el) return;
 
-      const el = fechaPagoRef.current;
-      if (!el) return;
+                    // gesto del usuario = OK
+                    el.focus({ preventScroll: true });
 
-      // gesto del usuario = OK
-      el.focus({ preventScroll: true });
+                    if (typeof el.showPicker === "function") {
+                      try {
+                        el.showPicker();
+                        return;
+                      } catch (_) {
+                        // fallback
+                      }
+                    }
 
-      if (typeof el.showPicker === "function") {
-        try {
-          el.showPicker();
-          return;
-        } catch (_) {
-          // fallback
-        }
-      }
+                    // fallback: algunos browsers abren con click
+                    try { el.click(); } catch (_) {}
+                  }}
+                  aria-label="Abrir calendario"
+                  disabled={cargando}
+                >
+                  <FaCalendarAlt />
+                </button>
 
-      // fallback: algunos browsers abren con click
-      try { el.click(); } catch (_) {}
-    }}
-    aria-label="Abrir calendario"
-    disabled={cargando}
-  >
-    <FaCalendarAlt />
-  </button>
+                <div className="field-card__body">
+                  <label className="field-card__label" htmlFor="fecha-pago-input">
+                    Fecha de pago
+                    <span className="field-card__required">*</span>
+                  </label>
 
-  <div className="field-card__body">
-    <label className="field-card__label" htmlFor="fecha-pago-input">
-      Fecha de pago
-      <span className="field-card__required">*</span>
-    </label>
+                  <input
+                    ref={fechaPagoRef}
+                    id="fecha-pago-input"
+                    type="date"
+                    className={`field-card__input ${!isValidYMD(fechaPagoSeleccionada) ? "field-card__input--error" : ""}`}
+                    value={fechaPagoSeleccionada}
+                    onChange={(e) => setFechaPagoSeleccionada(e.target.value)}
+                    disabled={cargando}
 
-<input
-  ref={fechaPagoRef}
-  id="fecha-pago-input"
-  type="date"
-  className={`field-card__input ${!isValidYMD(fechaPagoSeleccionada) ? "field-card__input--error" : ""}`}
-  value={fechaPagoSeleccionada}
-  onChange={(e) => setFechaPagoSeleccionada(e.target.value)}
-  disabled={cargando}
+                    // ✅ 1) marcamos "user gesture" REAL
+                    onPointerDown={() => {
+                      if (!fechaPagoRef.current) return;
+                      fechaPagoRef.current.dataset.userGesture = "1";
+                    }}
 
-  // ✅ 1) marcamos "user gesture" REAL
-  onPointerDown={() => {
-    if (!fechaPagoRef.current) return;
-    fechaPagoRef.current.dataset.userGesture = "1";
-  }}
+                    // ✅ 2) al enfocarse, abrimos el picker (si venimos del gesto)
+                    onFocus={(e) => {
+                      if (cargando) return;
+                      const el = e.currentTarget;
 
-  // ✅ 2) al enfocarse, abrimos el picker (si venimos del gesto)
-  onFocus={(e) => {
-    if (cargando) return;
-    const el = e.currentTarget;
+                      if (el.dataset.userGesture !== "1") return;
+                      el.dataset.userGesture = "0";
 
-    if (el.dataset.userGesture !== "1") return;
-    el.dataset.userGesture = "0";
+                      if (typeof el.showPicker === "function") {
+                        try {
+                          el.showPicker();
+                        } catch (_) {
+                          // fallback: no hacemos nada para evitar errores/loops
+                          // en algunos browsers ya se abre igual
+                        }
+                      }
+                    }}
+                  />
 
-    if (typeof el.showPicker === "function") {
-      try {
-        el.showPicker();
-      } catch (_) {
-        // fallback: no hacemos nada para evitar errores/loops
-        // en algunos browsers ya se abre igual
-      }
-    }
-  }}
-/>
+                  {!isValidYMD(fechaPagoSeleccionada) ? (
+                    <span className="field-card__hint field-card__hint--error">Fecha inválida</span>
+                  ) : (
+                    <span className="field-card__hint">Por defecto hoy · podés cambiarla</span>
+                  )}
+                </div>
+              </div>
 
-    {!isValidYMD(fechaPagoSeleccionada) ? (
-      <span className="field-card__hint field-card__hint--error">Fecha inválida</span>
-    ) : (
-      <span className="field-card__hint">Por defecto hoy · podés cambiarla</span>
-    )}
-  </div>
-</div>
+              {/* —— Año de trabajo —— */}
+              <div className="field-card field-card--anio">
+                <div className="field-card__icon-wrap">
+                  <FaCalendarAlt />
+                </div>
+                <div className="field-card__body">
+                  <label className="field-card__label">
+                    Año
+                    <span className="field-card__required">*</span>
+                  </label>
 
-  {/* —— Año de trabajo —— */}
-  <div className="field-card field-card--anio">
-    <div className="field-card__icon-wrap">
-      <FaCalendarAlt />
-    </div>
-    <div className="field-card__body">
-      <label className="field-card__label">
-        Año
-        <span className="field-card__required">*</span>
-      </label>
+                  <div className="year-pill-picker" style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      className={`year-pill-btn ${showYearPicker ? 'year-pill-btn--open' : ''}`}
+                      onClick={() => setShowYearPicker((s) => !s)}
+                      disabled={cargando}
+                      title="Cambiar año"
+                    >
+                      <span className="year-pill-btn__year">{anioTrabajo}</span>
+                      <svg className={`year-pill-btn__chevron ${showYearPicker ? 'rotated' : ''}`}
+                        width="14" height="14" viewBox="0 0 20 20" fill="none">
+                        <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="2"
+                          strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
 
-      <div className="year-pill-picker" style={{ position: 'relative' }}>
-        <button
-          type="button"
-          className={`year-pill-btn ${showYearPicker ? 'year-pill-btn--open' : ''}`}
-          onClick={() => setShowYearPicker((s) => !s)}
-          disabled={cargando}
-          title="Cambiar año"
-        >
-          <span className="year-pill-btn__year">{anioTrabajo}</span>
-          <svg className={`year-pill-btn__chevron ${showYearPicker ? 'rotated' : ''}`}
-            width="14" height="14" viewBox="0 0 20 20" fill="none">
-            <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+                    {showYearPicker && (
+                      <div className="year-pill-popover" onMouseLeave={() => setShowYearPicker(false)}>
+                        {yearOptions.map((y) => (
+                          <button
+                            key={y}
+                            type="button"
+                            className={`year-pill-option ${y === anioTrabajo ? 'year-pill-option--active' : ''}`}
+                            onClick={() => { setAnioTrabajo(y); setShowYearPicker(false); }}
+                          >
+                            {y}
+                            {y === nowYear && <span className="year-pill-option__tag">Hoy</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-        {showYearPicker && (
-          <div className="year-pill-popover" onMouseLeave={() => setShowYearPicker(false)}>
-            {yearOptions.map((y) => (
-              <button
-                key={y}
-                type="button"
-                className={`year-pill-option ${y === anioTrabajo ? 'year-pill-option--active' : ''}`}
-                onClick={() => { setAnioTrabajo(y); setShowYearPicker(false); }}
-              >
-                {y}
-                {y === nowYear && <span className="year-pill-option__tag">Hoy</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <span className="field-card__hint">Período a registrar</span>
-    </div>
-  </div>
-
-</div>
+                  <span className="field-card__hint">Período a registrar</span>
+                </div>
+              </div>
+            </div>
 
             {/* Condonar + Libre (ya SIN el selector de año acá) */}
             <div className="condonarAño-montoLibre">
@@ -1597,6 +1615,27 @@ const ModalPagos = ({ socio, onClose }) => {
                 </div>
               </div>
             </div>
+
+            {/* ✅ Bloque de visualización de descuento por cobrador */}
+            {esAlumnoCobrador && !condonar && totalParaMostrar > 0 && (
+              <div className="cobrador-descuento-box">
+                <div className="cobrador-descuento-header">
+                  <strong>Alumno con cobrador</strong>
+                  <span>El {PORCENTAJE_COBRADOR}% se registra automáticamente como egreso mensual del cobrador.</span>
+                </div>
+
+                <div className="cobrador-descuento-grid">
+                  <span>Total cobrado:</span>
+                  <strong>{formatearARS(totalParaMostrar)}</strong>
+
+                  <span>{PORCENTAJE_COBRADOR}% cobrador:</span>
+                  <strong>- {formatearARS(montoComisionCobradorVista)}</strong>
+
+                  <span>Neto cooperadora:</span>
+                  <strong>{formatearARS(montoNetoCooperadoraVista)}</strong>
+                </div>
+              </div>
+            )}
 
             {/* Selección de meses */}
             <div className="periodos-section">

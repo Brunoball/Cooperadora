@@ -1403,3 +1403,45 @@
   color: var(--secondary-700);
   border-color: var(--secondary-200);
 }
+
+.cobrador-descuento-box {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #78350f;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cobrador-descuento-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cobrador-descuento-header strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.cobrador-descuento-header span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.cobrador-descuento-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 14px;
+  font-size: 0.9rem;
+  align-items: center;
+}
+
+.cobrador-descuento-grid strong {
+  font-weight: 800;
+  text-align: right;
+}

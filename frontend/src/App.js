@@ -1,36 +1,67 @@
-// src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
-import Inicio from './components/Login/Inicio';
-import Principal from './components/Principal/Principal';
-import Registro from './components/Login/Registro';
+import Inicio from "./components/Login/Inicio";
+import Principal from "./components/Principal/Principal";
+import Registro from "./components/Login/Registro";
 
 import BotPanel from "./components/BotPanel/BotPanel";
+import notificationSound from "./components/BotPanel/notificacion/notificacion.mp3";
 
 // 🧑‍🎓 Alumnos
-import Alumnos from './components/Alumnos/Alumno';
-import AgregarAlumno from './components/Alumnos/AgregarAlumno';
-import EditarAlumno from './components/Alumnos/EditarAlumno';
-import AlumnoBaja from './components/Alumnos/AlumnoBaja';
+import Alumnos from "./components/Alumnos/Alumno";
+import AgregarAlumno from "./components/Alumnos/AgregarAlumno";
+import EditarAlumno from "./components/Alumnos/EditarAlumno";
+import AlumnoBaja from "./components/Alumnos/AlumnoBaja";
 
 // 💵 Cuotas
-import Cuotas from './components/Cuotas/Cuotas';
+import Cuotas from "./components/Cuotas/Cuotas";
 
 // 📊 Contable
-// ❌ Quitado: import DashboardContable from './components/Contable/DashboardContable';
-import LibroContable from './components/Contable/LibroContable';
+import LibroContable from "./components/Contable/LibroContable";
 
 // 🪪 Tipos de Documento
-import TiposDocumentos from './components/TiposDocumentos/TiposDocumentos';
+import TiposDocumentos from "./components/TiposDocumentos/TiposDocumentos";
 
 // 🧩 Categorías
-import Categorias from './components/Categorias/Categorias';
-import CategoriaNueva from './components/Categorias/CategoriaNueva';
-import CategoriaEditar from './components/Categorias/CategoriaEditar';
+import Categorias from "./components/Categorias/Categorias";
+import CategoriaNueva from "./components/Categorias/CategoriaNueva";
+import CategoriaEditar from "./components/Categorias/CategoriaEditar";
 
-// 🔹 Familias (ubicado dentro de components/Socios)
-import Familias from './components/Alumnos/Familias';
+// 🔹 Familias
+import Familias from "./components/Alumnos/Familias";
+
+const PANEL_API =
+  process.env.REACT_APP_BOT_PANEL_URL ||
+  "https://cooperadora.ipet50.edu.ar/api/bot_wp/funciones/Panel/endpoints";
+
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const calcularUrgentesDesdeChats = (rows) => {
+  const chats = Array.isArray(rows) ? rows : [];
+  let urgent = 0;
+
+  for (const c of chats) {
+    const consultasPendientes = Math.max(
+      0,
+      toNum(c?.consultas_pendientes || c?.pending_consultas || 0)
+    );
+
+    urgent += consultasPendientes;
+  }
+
+  return urgent;
+};
 
 /* =========================================================
    🔒 Cierre de sesión por inactividad (global)
@@ -46,41 +77,58 @@ function InactivityLogout() {
   React.useEffect(() => {
     const hasSession = () => {
       try {
-        return !!localStorage.getItem('token') || !!localStorage.getItem('usuario');
+        return (
+          !!localStorage.getItem("token") || !!localStorage.getItem("usuario")
+        );
       } catch {
         return false;
       }
     };
 
     const doLogout = () => {
-      try { sessionStorage.clear(); } catch {}
       try {
-        localStorage.removeItem('token');
-        localStorage.removeItem('usuario');
+        sessionStorage.clear();
       } catch {}
-      navigate('/', { replace: true });
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("usuario");
+      } catch {}
+      navigate("/", { replace: true });
     };
 
     const resetTimer = () => {
       if (!hasSession()) return;
-      if (location.pathname === '/') return;
+      if (location.pathname === "/") return;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(doLogout, INACTIVITY_MS);
     };
 
     const onActivity = () => resetTimer();
-    const onVisibility = () => { if (document.visibilityState === 'visible') resetTimer(); };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") resetTimer();
+    };
     const onStorage = (e) => {
-      if (e.key === 'token' || e.key === 'usuario') {
-        const hasAny = !!localStorage.getItem('token') || !!localStorage.getItem('usuario');
+      if (e.key === "token" || e.key === "usuario") {
+        const hasAny =
+          !!localStorage.getItem("token") || !!localStorage.getItem("usuario");
         if (!hasAny) doLogout();
       }
     };
 
-    const events = ['pointermove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-    events.forEach((ev) => window.addEventListener(ev, onActivity, { passive: true }));
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('storage', onStorage);
+    const events = [
+      "pointermove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    events.forEach((ev) =>
+      window.addEventListener(ev, onActivity, { passive: true })
+    );
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("storage", onStorage);
 
     resetTimer();
 
@@ -90,19 +138,113 @@ function InactivityLogout() {
         timerRef.current = null;
       }
       events.forEach((ev) => window.removeEventListener(ev, onActivity));
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('storage', onStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("storage", onStorage);
     };
   }, [location.pathname, navigate]);
 
   return null;
 }
 
+/* =========================================================
+   🔔 Notificación global urgente del bot
+   Suena aunque el panel del bot no esté abierto
+   SOLO cuando aumentan las consultas pendientes
+========================================================= */
+function GlobalUrgentBotNotifier() {
+  const location = useLocation();
+
+  const audioRef = React.useRef(null);
+  const prevUrgentRef = React.useRef(0);
+  const firstLoadRef = React.useRef(true);
+  const interactedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const unlock = () => {
+      interactedRef.current = true;
+    };
+
+    window.addEventListener("click", unlock, { passive: true });
+    window.addEventListener("keydown", unlock, { passive: true });
+    window.addEventListener("touchstart", unlock, { passive: true });
+
+    return () => {
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const hasSession = () => {
+      try {
+        return (
+          !!localStorage.getItem("token") || !!localStorage.getItem("usuario")
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const playSound = () => {
+      if (!interactedRef.current) return;
+
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        const p = audio.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch {}
+    };
+
+    const tick = async () => {
+      if (!hasSession()) return;
+      if (location.pathname === "/") return;
+
+      try {
+        const res = await fetch(`${PANEL_API}/panel_chats.php?_=${Date.now()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) return;
+
+        const urgent = calcularUrgentesDesdeChats(data.chats);
+
+        if (firstLoadRef.current) {
+          firstLoadRef.current = false;
+          prevUrgentRef.current = urgent;
+          return;
+        }
+
+        if (urgent > prevUrgentRef.current) {
+          playSound();
+        }
+
+        prevUrgentRef.current = urgent;
+      } catch {
+        // silencio
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 2000);
+
+    return () => clearInterval(interval);
+  }, [location.pathname]);
+
+  return <audio ref={audioRef} preload="auto" src={notificationSound} />;
+}
+
 function RutaProtegida({ componente }) {
   try {
-    const usuario = JSON.parse(localStorage.getItem('usuario'));
-    const token = localStorage.getItem('token');
-    return (usuario || token) ? componente : <Navigate to="/" replace />;
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
+    const token = localStorage.getItem("token");
+    return usuario || token ? componente : <Navigate to="/" replace />;
   } catch {
     return <Navigate to="/" replace />;
   }
@@ -112,34 +254,62 @@ function App() {
   return (
     <Router>
       <InactivityLogout />
+      <GlobalUrgentBotNotifier />
 
       <Routes>
         {/* Login */}
         <Route path="/" element={<Inicio />} />
 
         {/* Panel y registro */}
-        <Route path="/panel" element={<RutaProtegida componente={<Principal />} />} />
-        <Route path="/registro" element={<RutaProtegida componente={<Registro />} />} />
+        <Route
+          path="/panel"
+          element={<RutaProtegida componente={<Principal />} />}
+        />
+        <Route
+          path="/registro"
+          element={<RutaProtegida componente={<Registro />} />}
+        />
 
-        <Route path="/bot/panel" element={<BotPanel />} />
+        {/* Bot panel */}
+        <Route
+          path="/bot/panel"
+          element={<RutaProtegida componente={<BotPanel />} />}
+        />
 
         {/* Rutas de Alumnos */}
-        <Route path="/alumnos" element={<RutaProtegida componente={<Alumnos />} />} />
-        <Route path="/alumnos/agregar" element={<RutaProtegida componente={<AgregarAlumno />} />} />
-        <Route path="/alumnos/editar/:id" element={<RutaProtegida componente={<EditarAlumno />} />} />
-        <Route path="/alumnos/baja" element={<RutaProtegida componente={<AlumnoBaja />} />} />
+        <Route
+          path="/alumnos"
+          element={<RutaProtegida componente={<Alumnos />} />}
+        />
+        <Route
+          path="/alumnos/agregar"
+          element={<RutaProtegida componente={<AgregarAlumno />} />}
+        />
+        <Route
+          path="/alumnos/editar/:id"
+          element={<RutaProtegida componente={<EditarAlumno />} />}
+        />
+        <Route
+          path="/alumnos/baja"
+          element={<RutaProtegida componente={<AlumnoBaja />} />}
+        />
 
-        <Route path="/familias" element={<RutaProtegida componente={<Familias />} />} />
+        <Route
+          path="/familias"
+          element={<RutaProtegida componente={<Familias />} />}
+        />
 
         {/* Rutas de Cuotas */}
-        <Route path="/cuotas" element={<RutaProtegida componente={<Cuotas />} />} />
+        <Route
+          path="/cuotas"
+          element={<RutaProtegida componente={<Cuotas />} />}
+        />
 
         {/* Contable */}
-        {/* ❌ Quitada esta ruta: /contable con DashboardContable */}
-        {/* <Route path="/contable" element={<RutaProtegida componente={<DashboardContable />} />} /> */}
-
-        {/* ✅ Redirigimos /contable → /contable/libro */}
-        <Route path="/contable" element={<Navigate to="/contable/libro" replace />} />
+        <Route
+          path="/contable"
+          element={<Navigate to="/contable/libro" replace />}
+        />
         <Route
           path="/contable/libro"
           element={
@@ -149,7 +319,7 @@ function App() {
                   onBack={() =>
                     window.history.length > 1
                       ? window.history.back()
-                      : window.location.assign('/panel')
+                      : window.location.assign("/panel")
                   }
                 />
               }
@@ -158,12 +328,24 @@ function App() {
         />
 
         {/* Tipos de Documento */}
-        <Route path="/tipos-documentos" element={<RutaProtegida componente={<TiposDocumentos />} />} />
+        <Route
+          path="/tipos-documentos"
+          element={<RutaProtegida componente={<TiposDocumentos />} />}
+        />
 
         {/* Categorías */}
-        <Route path="/categorias" element={<RutaProtegida componente={<Categorias />} />} />
-        <Route path="/categorias/nueva" element={<RutaProtegida componente={<CategoriaNueva />} />} />
-        <Route path="/categorias/editar/:id" element={<RutaProtegida componente={<CategoriaEditar />} />} />
+        <Route
+          path="/categorias"
+          element={<RutaProtegida componente={<Categorias />} />}
+        />
+        <Route
+          path="/categorias/nueva"
+          element={<RutaProtegida componente={<CategoriaNueva />} />}
+        />
+        <Route
+          path="/categorias/editar/:id"
+          element={<RutaProtegida componente={<CategoriaEditar />} />}
+        />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,4 +1,3 @@
-// src/components/Principal/Principal.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -26,9 +25,11 @@ const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
   useEffect(() => {
     if (!open) return;
     cancelBtnRef.current?.focus();
+
     const onKeyDown = (e) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
@@ -83,14 +84,48 @@ const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
   );
 };
 
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const fmtBadge = (n) => {
+  const v = toNum(n);
+  if (v <= 0) return "";
+  return v > 99 ? "99+" : String(v);
+};
+
+const calcularBadgesDesdeChats = (rows) => {
+  const chats = Array.isArray(rows) ? rows : [];
+
+  let normal = 0;
+  let urgent = 0;
+
+  for (const c of chats) {
+    const unread = Math.max(0, toNum(c?.unread || 0));
+    const consultasPendientes = Math.max(
+      0,
+      toNum(c?.consultas_pendientes || c?.pending_consultas || 0)
+    );
+
+    const urgentesChat = Math.min(unread, consultasPendientes);
+    const normalesChat = Math.max(0, unread - urgentesChat);
+
+    urgent += urgentesChat;
+    normal += normalesChat;
+  }
+
+  return { normal, urgent };
+};
+
 const Principal = () => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
-  // ✅ badge total
-  const [unreadTotal, setUnreadTotal] = useState(0);
+  const [normalUnread, setNormalUnread] = useState(0);
+  const [urgentUnread, setUrgentUnread] = useState(0);
 
   useEffect(() => {
     try {
@@ -110,21 +145,36 @@ const Principal = () => {
     } catch {}
   }, []);
 
-  // ✅ poll unread total
   useEffect(() => {
     let alive = true;
 
-    const tick = async () => {
+    const hasSession = () => {
       try {
-        const res = await fetch(`${PANEL_API}/panel_unread_total.php?_=${Date.now()}`, {
+        return (
+          !!localStorage.getItem("token") || !!localStorage.getItem("usuario")
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const tick = async () => {
+      if (!hasSession()) return;
+
+      try {
+        const res = await fetch(`${PANEL_API}/panel_chats.php?_=${Date.now()}`, {
           method: "GET",
           cache: "no-store",
         });
+
         const data = await res.json().catch(() => null);
         if (!alive) return;
 
         if (res.ok && data?.success) {
-          setUnreadTotal(Number(data.total_unread || 0));
+          const { normal, urgent } = calcularBadgesDesdeChats(data.chats);
+
+          setNormalUnread(Math.max(0, toNum(normal)));
+          setUrgentUnread(Math.max(0, toNum(urgent)));
         }
       } catch {
         // silencio
@@ -133,6 +183,7 @@ const Principal = () => {
 
     tick();
     const t = setInterval(tick, 2000);
+
     return () => {
       alive = false;
       clearInterval(t);
@@ -143,12 +194,16 @@ const Principal = () => {
   const isAdmin = role === "admin";
 
   const menuItems = [
-    { icon: faUsers,            text: "Gestionar Alumnos",    ruta: "/alumnos" },
-    { icon: faMoneyCheckDollar, text: "Gestionar Cuotas",     ruta: "/cuotas" },
-    { icon: faIdCard,           text: "Tipos de Documento",   ruta: "/tipos-documentos" },
-    { icon: faLayerGroup,       text: "Categorías",           ruta: "/categorias" },
-    { icon: faUserPlus,         text: "Registro de Usuarios", ruta: "/registro" },
-    { icon: faMoneyCheckDollar, text: "Contable",             ruta: "/contable/libro" },
+    { icon: faUsers, text: "Gestionar Alumnos", ruta: "/alumnos" },
+    { icon: faMoneyCheckDollar, text: "Gestionar Cuotas", ruta: "/cuotas" },
+    {
+      icon: faIdCard,
+      text: "Tipos de Documento",
+      ruta: "/tipos-documentos",
+    },
+    { icon: faLayerGroup, text: "Categorías", ruta: "/categorias" },
+    { icon: faUserPlus, text: "Registro de Usuarios", ruta: "/registro" },
+    { icon: faMoneyCheckDollar, text: "Contable", ruta: "/contable/libro" },
   ];
 
   const visibleItems = isAdmin
@@ -167,7 +222,9 @@ const Principal = () => {
   const confirmarCierreSesion = () => {
     setIsExiting(true);
     setTimeout(() => {
-      try { sessionStorage.clear(); } catch {}
+      try {
+        sessionStorage.clear();
+      } catch {}
       try {
         localStorage.removeItem("token");
         localStorage.removeItem("usuario");
@@ -177,10 +234,16 @@ const Principal = () => {
     }, 400);
   };
 
-  const irPanelBot = () => navigate("/bot/panel");
+  const irPanelBot = () => {
+    window.open("/bot/panel", "_blank", "noopener,noreferrer");
+  };
 
   return (
-    <div className={`pagina-principal-container ${isExiting ? "slide-fade-out" : ""}`}>
+    <div
+      className={`pagina-principal-container ${
+        isExiting ? "slide-fade-out" : ""
+      }`}
+    >
       <div className="pagina-principal-card">
         <div className="pagina-principal-header header--row">
           <div className="header-text">
@@ -239,18 +302,69 @@ const Principal = () => {
         </footer>
       </div>
 
-      {/* ✅ BOTÓN FLOTANTE con badge */}
       <button
         type="button"
         className="bot-fab"
         onClick={irPanelBot}
         aria-label="Abrir panel interno del bot"
         title="Panel interno del Bot (WhatsApp)"
+        style={{ position: "fixed" }}
       >
         <FontAwesomeIcon icon={faRobot} />
-        {unreadTotal > 0 ? (
-          <span className="bot-fab-badge" aria-label={`Mensajes sin ver: ${unreadTotal}`}>
-            {unreadTotal > 99 ? "99+" : unreadTotal}
+
+        {normalUnread > 0 ? (
+          <span
+            aria-label={`Notificaciones normales: ${normalUnread}`}
+            title={`Normales: ${normalUnread}`}
+            style={{
+              position: "absolute",
+              top: -6,
+              right: -6,
+              minWidth: 22,
+              height: 22,
+              padding: "0 6px",
+              borderRadius: 999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#22c55e",
+              color: "#ffffff",
+              fontSize: 12,
+              fontWeight: 800,
+              lineHeight: 1,
+              boxShadow: "0 0 0 3px rgba(15,23,42,.35)",
+              zIndex: 3,
+            }}
+          >
+            {fmtBadge(normalUnread)}
+          </span>
+        ) : null}
+
+        {urgentUnread > 0 ? (
+          <span
+            aria-label={`Notificaciones urgentes: ${urgentUnread}`}
+            title={`Urgentes: ${urgentUnread}`}
+            style={{
+              position: "absolute",
+              bottom: -4,
+              right: -8,
+              minWidth: 22,
+              height: 22,
+              padding: "0 6px",
+              borderRadius: 999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#ef4444",
+              color: "#ffffff",
+              fontSize: 12,
+              fontWeight: 800,
+              lineHeight: 1,
+              boxShadow: "0 0 0 3px rgba(15,23,42,.35)",
+              zIndex: 4,
+            }}
+          >
+            {fmtBadge(urgentUnread)}
           </span>
         ) : null}
       </button>

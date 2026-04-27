@@ -1,6 +1,6 @@
 <?php
 // ✅ REEMPLAZAR COMPLETO
-// modules/pagos/registrar_pago.php
+// backend/modules/cuotas/registrar_pago.php
 
 require_once __DIR__ . '/../../config/db.php';
 
@@ -14,10 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit;
 }
 
+const PORCENTAJE_COBRADOR = 15;
+const FACTOR_COOPERADORA = 0.85;
+const DESCRIPCION_COBRADOR = 'COBRADOR';
+
 try {
   if (!($pdo instanceof PDO)) {
     throw new RuntimeException('Conexión PDO no disponible');
   }
+
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   /* ==========================================================
@@ -25,82 +30,107 @@ try {
      ========================================================== */
   $payload = json_decode(file_get_contents('php://input'), true) ?: [];
 
-  $idAlumno  = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
-  $periodos  = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
-  $condonar  = !empty($payload['condonar']);
+  $idAlumno = isset($payload['id_alumno']) ? (int)$payload['id_alumno'] : 0;
+  $periodos = isset($payload['periodos']) && is_array($payload['periodos']) ? $payload['periodos'] : [];
+  $condonar = !empty($payload['condonar']);
 
-  // ✅ ahora "anio" es AÑO APLICADO
   $anioAplicado = isset($payload['anio']) ? (int)$payload['anio'] : (int)date('Y');
 
-  // Medio de pago
   $idMedioPago = isset($payload['id_medio_pago']) && $payload['id_medio_pago'] !== ''
-    ? (int)$payload['id_medio_pago'] : null;
+    ? (int)$payload['id_medio_pago']
+    : null;
 
-  // Monto libre / unitario
   $montoLibre = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
-  $montoUI    = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
+  $montoUI = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
 
-  // ✅ NEW: fecha_pago elegida desde el modal (YYYY-MM-DD)
   $fechaPagoPayload = isset($payload['fecha_pago']) ? trim((string)$payload['fecha_pago']) : '';
 
-  // Montos por periodo
   $montosPorPeriodo = [];
+
   if (!empty($payload['montos_por_periodo']) && is_array($payload['montos_por_periodo'])) {
     foreach ($payload['montos_por_periodo'] as $k => $v) {
       $kk = (int)$k;
       $vv = (int)$v;
-      $montosPorPeriodo[$kk] = $vv;
+
+      if ($kk > 0) {
+        $montosPorPeriodo[$kk] = max(0, $vv);
+      }
     }
   }
 
   /* ==========================================================
-     2) Grupo familiar (ids_familia)
+     2) Grupo familiar
      ========================================================== */
   $aplicarFamilia = !empty($payload['aplicar_a_familia']);
-  $idsFamilia     = [];
+  $idsFamilia = [];
 
   if ($aplicarFamilia && isset($payload['ids_familia']) && is_array($payload['ids_familia'])) {
     foreach ($payload['ids_familia'] as $idf) {
       $idClean = (int)$idf;
+
       if ($idClean > 0 && $idClean !== $idAlumno) {
         $idsFamilia[$idClean] = true;
       }
     }
   }
+
   $idsFamilia = array_keys($idsFamilia);
 
   /* ==========================================================
-     3) Validaciones mínimas
+     3) Validaciones
      ========================================================== */
   if ($idAlumno <= 0) {
-    echo json_encode(['exito' => false, 'mensaje' => 'ID de alumno inválido'], JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+      'exito' => false,
+      'mensaje' => 'ID de alumno inválido',
+    ], JSON_UNESCAPED_UNICODE);
     exit;
   }
+
   if (empty($periodos)) {
-    echo json_encode(['exito' => false, 'mensaje' => 'No se enviaron períodos a registrar'], JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+      'exito' => false,
+      'mensaje' => 'No se enviaron períodos a registrar',
+    ], JSON_UNESCAPED_UNICODE);
     exit;
   }
+
   if ($anioAplicado < 2000 || $anioAplicado > 2100) {
     $anioAplicado = (int)date('Y');
   }
 
   $estadoRegistrar = $condonar ? 'condonado' : 'pagado';
 
+  if (!$condonar && (!$idMedioPago || $idMedioPago <= 0)) {
+    echo json_encode([
+      'exito' => false,
+      'mensaje' => 'Debés seleccionar un medio de pago.',
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
   /* ==========================================================
-     3.1) ✅ Resolver fecha_pago (si no viene, usar HOY)
+     3.1) Resolver fecha de pago
      ========================================================== */
-  $fechaPago = null;
   if ($fechaPagoPayload !== '') {
-    // Validar YYYY-MM-DD real
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaPagoPayload)) {
-      echo json_encode(['exito' => false, 'mensaje' => 'Fecha de pago inválida (formato)'], JSON_UNESCAPED_UNICODE);
+      echo json_encode([
+        'exito' => false,
+        'mensaje' => 'Fecha de pago inválida (formato)',
+      ], JSON_UNESCAPED_UNICODE);
       exit;
     }
+
     [$yy, $mm, $dd] = array_map('intval', explode('-', $fechaPagoPayload));
+
     if (!checkdate($mm, $dd, $yy) || $yy < 2000 || $yy > 2100) {
-      echo json_encode(['exito' => false, 'mensaje' => 'Fecha de pago inválida'], JSON_UNESCAPED_UNICODE);
+      echo json_encode([
+        'exito' => false,
+        'mensaje' => 'Fecha de pago inválida',
+      ], JSON_UNESCAPED_UNICODE);
       exit;
     }
+
     $fechaPago = sprintf('%04d-%02d-%02d', $yy, $mm, $dd);
   } else {
     $fechaPago = (new DateTime())->format('Y-m-d');
@@ -109,7 +139,6 @@ try {
   /* ==========================================================
      4) Helpers
      ========================================================== */
-
   $resolverMonto = function (
     bool $condonar,
     ?int $montoUI,
@@ -117,32 +146,47 @@ try {
     array $montosPorPeriodo,
     int $periodo
   ): int {
-    if ($condonar) return 0;
+    if ($condonar) {
+      return 0;
+    }
 
-    if (isset($montosPorPeriodo[$periodo]) && is_int($montosPorPeriodo[$periodo]) && $montosPorPeriodo[$periodo] >= 0) {
+    if (
+      isset($montosPorPeriodo[$periodo]) &&
+      is_int($montosPorPeriodo[$periodo]) &&
+      $montosPorPeriodo[$periodo] >= 0
+    ) {
       return (int)$montosPorPeriodo[$periodo];
     }
-    if (!is_null($montoUI) && $montoUI > 0) return (int)$montoUI;
-    if ($montoLibre > 0) return (int)$montoLibre;
+
+    if (!is_null($montoUI) && $montoUI > 0) {
+      return (int)$montoUI;
+    }
+
+    if ($montoLibre > 0) {
+      return (int)$montoLibre;
+    }
+
     return 0;
   };
 
   $parsearSeleccion = function (array $periodos, array $montosPorPeriodo, bool $condonar): array {
-    $mesesExplicitos = []; // 1..12
-    $matricula       = false;
-    $segmentos       = []; // 13,15,16 con total
+    $mesesExplicitos = [];
+    $matricula = false;
+    $segmentos = [];
 
     foreach ($periodos as $p) {
       $p = (int)$p;
+
       if ($p >= 1 && $p <= 12) {
         $mesesExplicitos[$p] = true;
       } elseif ($p === 14) {
         $matricula = true;
       } elseif ($p === 13 || $p === 15 || $p === 16) {
         $total = isset($montosPorPeriodo[$p]) ? (int)$montosPorPeriodo[$p] : 0;
+
         $segmentos[] = [
           'id_mes' => $p,
-          'total'  => $condonar ? 0 : $total,
+          'total' => $condonar ? 0 : $total,
         ];
       }
     }
@@ -151,8 +195,8 @@ try {
 
     return [
       'mesesExplicitos' => array_keys($mesesExplicitos),
-      'matricula'       => $matricula,
-      'segmentos'       => $segmentos,
+      'matricula' => $matricula,
+      'segmentos' => $segmentos,
     ];
   };
 
@@ -164,22 +208,184 @@ try {
     int $montoLibre
   ) use ($resolverMonto): array {
     $map = [];
+
     foreach ($mesesExplicitos as $m) {
       $m = (int)$m;
-      if ($m < 1 || $m > 12) continue;
-      $map[$m] = $resolverMonto($condonar, $montoUI, $montoLibre, $montosPorPeriodo, $m);
+
+      if ($m < 1 || $m > 12) {
+        continue;
+      }
+
+      $map[$m] = $resolverMonto(
+        $condonar,
+        $montoUI,
+        $montoLibre,
+        $montosPorPeriodo,
+        $m
+      );
     }
+
     ksort($map);
+
     return $map;
+  };
+
+  $obtenerIdDescripcionCobrador = function (PDO $pdo): int {
+    $st = $pdo->prepare("
+      SELECT id_cont_descripcion
+        FROM contable_descripcion
+       WHERE UPPER(TRIM(nombre_descripcion)) = :nombre
+       LIMIT 1
+    ");
+
+    $st->execute([
+      ':nombre' => DESCRIPCION_COBRADOR,
+    ]);
+
+    $id = (int)$st->fetchColumn();
+
+    if ($id > 0) {
+      return $id;
+    }
+
+    $stIns = $pdo->prepare("
+      INSERT INTO contable_descripcion (nombre_descripcion)
+      VALUES (:nombre)
+    ");
+
+    $stIns->execute([
+      ':nombre' => DESCRIPCION_COBRADOR,
+    ]);
+
+    return (int)$pdo->lastInsertId();
+  };
+
+  $obtenerEsCobrador = function (PDO $pdo, int $idA): int {
+    $st = $pdo->prepare("
+      SELECT COALESCE(es_cobrador, 0)
+        FROM alumnos
+       WHERE id_alumno = :id_alumno
+       LIMIT 1
+    ");
+
+    $st->execute([
+      ':id_alumno' => $idA,
+    ]);
+
+    $valor = $st->fetchColumn();
+
+    if ($valor === false) {
+      throw new RuntimeException("No existe el alumno con ID {$idA}");
+    }
+
+    return (int)$valor;
+  };
+
+  /**
+   * ✅ Egreso mensual del cobrador.
+   *
+   * Regla final:
+   * - Si ya existe egreso de COBRADOR para ese mes:
+   *   suma importe, conserva fecha original y conserva id_medio_pago original.
+   *
+   * - Si todavía no existe:
+   *   crea el egreso con la fecha real del pago que disparó el primer registro
+   *   y con el medio de pago seleccionado en ese primer pago.
+   */
+  $sumarEgresoCobradorMensual = function (
+    PDO $pdo,
+    int $idContDescripcion,
+    string $fechaPago,
+    float $importeComision,
+    ?int $idMedioPagoSeleccionado
+  ): void {
+    if ($importeComision <= 0) {
+      return;
+    }
+
+    $fechaObj = new DateTime($fechaPago);
+    $anio = (int)$fechaObj->format('Y');
+    $mes = (int)$fechaObj->format('m');
+
+    // ✅ Fecha real del primer pago del cobrador.
+    // NO usar más YYYY-MM-01.
+    $fechaRegistro = $fechaPago;
+
+    $stBuscar = $pdo->prepare("
+      SELECT id_egreso, id_medio_pago, fecha
+        FROM egresos
+       WHERE id_cont_descripcion = :id_cont_descripcion
+         AND YEAR(fecha) = :anio
+         AND MONTH(fecha) = :mes
+       ORDER BY id_egreso ASC
+       LIMIT 1
+    ");
+
+    $stBuscar->execute([
+      ':id_cont_descripcion' => $idContDescripcion,
+      ':anio' => $anio,
+      ':mes' => $mes,
+    ]);
+
+    $egresoExistente = $stBuscar->fetch(PDO::FETCH_ASSOC);
+
+    if ($egresoExistente && (int)$egresoExistente['id_egreso'] > 0) {
+      $idEgreso = (int)$egresoExistente['id_egreso'];
+
+      $stUpd = $pdo->prepare("
+        UPDATE egresos
+           SET importe = importe + :importe
+         WHERE id_egreso = :id_egreso
+         LIMIT 1
+      ");
+
+      $stUpd->execute([
+        ':importe' => $importeComision,
+        ':id_egreso' => $idEgreso,
+      ]);
+
+      return;
+    }
+
+    $stIns = $pdo->prepare("
+      INSERT INTO egresos (
+        fecha,
+        id_cont_categoria,
+        id_cont_proveedor,
+        comprobante,
+        id_cont_descripcion,
+        id_medio_pago,
+        importe,
+        comprobante_url
+      )
+      VALUES (
+        :fecha,
+        NULL,
+        NULL,
+        NULL,
+        :id_cont_descripcion,
+        :id_medio_pago,
+        :importe,
+        NULL
+      )
+    ");
+
+    $stIns->execute([
+      ':fecha' => $fechaRegistro,
+      ':id_cont_descripcion' => $idContDescripcion,
+      ':id_medio_pago' => ($idMedioPagoSeleccionado && $idMedioPagoSeleccionado > 0) ? $idMedioPagoSeleccionado : null,
+      ':importe' => $importeComision,
+    ]);
   };
 
   /* ==========================================================
      5) Interpretar selección
      ========================================================== */
-  $seleccion        = $parsearSeleccion($periodos, $montosPorPeriodo, $condonar);
-  $mesesExplicitos  = $seleccion['mesesExplicitos'];
-  $matriculaSel     = $seleccion['matricula'];
-  $segmentos        = $seleccion['segmentos'];
+  $seleccion = $parsearSeleccion($periodos, $montosPorPeriodo, $condonar);
+
+  $mesesExplicitos = $seleccion['mesesExplicitos'];
+  $matriculaSel = $seleccion['matricula'];
+  $segmentos = $seleccion['segmentos'];
 
   $montosPorMes = $construirMontosMensuales(
     $mesesExplicitos,
@@ -190,10 +396,8 @@ try {
   );
 
   /* ==========================================================
-     6) Consultas
+     6) Consultas base
      ========================================================== */
-
-  // ✅ existentes por alumno + anio_aplicado (no por YEAR(fecha_pago))
   $stExist = $pdo->prepare("
     SELECT id_mes, estado
       FROM pagos
@@ -201,10 +405,25 @@ try {
        AND anio_aplicado = :anio
   ");
 
-  // ✅ insert incluye anio_aplicado y fecha_pago (elegida)
   $stIns = $pdo->prepare("
-    INSERT INTO pagos (id_alumno, id_mes, anio_aplicado, fecha_pago, estado, monto_pago, id_medio_pago)
-    VALUES (:id_alumno, :id_mes, :anio_aplicado, :fecha_pago, :estado, :monto_pago, :id_medio_pago)
+    INSERT INTO pagos (
+      id_alumno,
+      id_mes,
+      anio_aplicado,
+      fecha_pago,
+      estado,
+      monto_pago,
+      id_medio_pago
+    )
+    VALUES (
+      :id_alumno,
+      :id_mes,
+      :anio_aplicado,
+      :fecha_pago,
+      :estado,
+      :monto_pago,
+      :id_medio_pago
+    )
   ");
 
   /* ==========================================================
@@ -214,8 +433,15 @@ try {
 
   if ($aplicarFamilia && !empty($idsFamilia)) {
     $set = [];
-    foreach ($alumnosObjetivo as $idp) $set[(int)$idp] = true;
-    foreach ($idsFamilia as $idf) $set[(int)$idf] = true;
+
+    foreach ($alumnosObjetivo as $idp) {
+      $set[(int)$idp] = true;
+    }
+
+    foreach ($idsFamilia as $idf) {
+      $set[(int)$idf] = true;
+    }
+
     $alumnosObjetivo = array_map('intval', array_keys($set));
     sort($alumnosObjetivo);
   }
@@ -223,110 +449,177 @@ try {
   /* ==========================================================
      8) Registrar
      ========================================================== */
-  $totalInsertados  = 0;
+  $totalInsertados = 0;
   $detallePorAlumno = [];
+  $totalComisionCobrador = 0;
+  $totalNetoCooperadora = 0;
+  $totalBrutoOriginal = 0;
 
   $pdo->beginTransaction();
 
+  $idDescripcionCobrador = $obtenerIdDescripcionCobrador($pdo);
+
   foreach ($alumnosObjetivo as $idA) {
     $idA = (int)$idA;
-    if ($idA <= 0) continue;
+
+    if ($idA <= 0) {
+      continue;
+    }
+
+    $esCobrador = $obtenerEsCobrador($pdo, $idA);
 
     $stExist->execute([
       ':id_alumno' => $idA,
-      ':anio'      => $anioAplicado,
+      ':anio' => $anioAplicado,
     ]);
+
     $existentes = $stExist->fetchAll(PDO::FETCH_ASSOC);
 
     $yaPorMes = [];
+
     foreach ($existentes as $row) {
       $yaPorMes[(int)$row['id_mes']] = (string)$row['estado'];
     }
 
-    $insertadosAlumno    = 0;
+    $insertadosAlumno = 0;
     $yaRegistradosAlumno = [];
+    $brutoAlumno = 0;
+    $netoAlumno = 0;
+    $comisionAlumno = 0;
 
-    // 8.1 meses 1..12
-    foreach ($montosPorMes as $mes => $monto) {
-      $mes = (int)$mes;
-      if ($mes < 1 || $mes > 12) continue;
+    $registrarItem = function (
+      int $idMes,
+      int $montoBruto
+    ) use (
+      $pdo,
+      $stIns,
+      $fechaPago,
+      $estadoRegistrar,
+      $anioAplicado,
+      $idMedioPago,
+      $condonar,
+      $idA,
+      $esCobrador,
+      $idDescripcionCobrador,
+      $sumarEgresoCobradorMensual,
+      &$insertadosAlumno,
+      &$totalInsertados,
+      &$brutoAlumno,
+      &$netoAlumno,
+      &$comisionAlumno,
+      &$totalComisionCobrador,
+      &$totalNetoCooperadora,
+      &$totalBrutoOriginal
+    ): void {
+      $montoBruto = $condonar ? 0 : max(0, (int)$montoBruto);
 
-      if (array_key_exists($mes, $yaPorMes)) {
-        $yaRegistradosAlumno[] = ['periodo' => $mes, 'estado' => $yaPorMes[$mes]];
-        continue;
+      $montoComision = 0;
+      $montoNeto = $montoBruto;
+
+      if (!$condonar && $esCobrador === 1 && $montoBruto > 0) {
+        $montoComision = (int)round($montoBruto * (PORCENTAJE_COBRADOR / 100));
+        $montoNeto = (int)round($montoBruto * FACTOR_COOPERADORA);
       }
 
-      $montoFinal = $condonar ? 0 : max(0, (int)$monto);
-
       $stIns->execute([
-        ':id_alumno'     => $idA,
-        ':id_mes'        => $mes,
+        ':id_alumno' => $idA,
+        ':id_mes' => $idMes,
         ':anio_aplicado' => $anioAplicado,
-        ':fecha_pago'    => $fechaPago, // ✅ usa la elegida
-        ':estado'        => $estadoRegistrar,
-        ':monto_pago'    => $montoFinal,
-        ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
+        ':fecha_pago' => $fechaPago,
+        ':estado' => $estadoRegistrar,
+        ':monto_pago' => $montoNeto,
+        ':id_medio_pago' => (!$condonar && $idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
       ]);
+
+      if (!$condonar && $esCobrador === 1 && $montoComision > 0) {
+        $sumarEgresoCobradorMensual(
+          $pdo,
+          $idDescripcionCobrador,
+          $fechaPago,
+          (float)$montoComision,
+          ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null
+        );
+      }
 
       $insertadosAlumno++;
       $totalInsertados++;
+
+      $brutoAlumno += $montoBruto;
+      $netoAlumno += $montoNeto;
+      $comisionAlumno += $montoComision;
+
+      $totalBrutoOriginal += $montoBruto;
+      $totalNetoCooperadora += $montoNeto;
+      $totalComisionCobrador += $montoComision;
+    };
+
+    foreach ($montosPorMes as $mes => $monto) {
+      $mes = (int)$mes;
+
+      if ($mes < 1 || $mes > 12) {
+        continue;
+      }
+
+      if (array_key_exists($mes, $yaPorMes)) {
+        $yaRegistradosAlumno[] = [
+          'periodo' => $mes,
+          'estado' => $yaPorMes[$mes],
+        ];
+
+        continue;
+      }
+
+      $registrarItem($mes, (int)$monto);
     }
 
-    // 8.2 matrícula (14)
     if ($matriculaSel) {
       $mesMat = 14;
 
       if (array_key_exists($mesMat, $yaPorMes)) {
-        $yaRegistradosAlumno[] = ['periodo' => $mesMat, 'estado' => $yaPorMes[$mesMat]];
+        $yaRegistradosAlumno[] = [
+          'periodo' => $mesMat,
+          'estado' => $yaPorMes[$mesMat],
+        ];
       } else {
-        $montoMatricula = $resolverMonto($condonar, $montoUI, $montoLibre, $montosPorPeriodo, $mesMat);
-        $montoMatricula = $condonar ? 0 : max(0, (int)$montoMatricula);
+        $montoMatricula = $resolverMonto(
+          $condonar,
+          $montoUI,
+          $montoLibre,
+          $montosPorPeriodo,
+          $mesMat
+        );
 
-        $stIns->execute([
-          ':id_alumno'     => $idA,
-          ':id_mes'        => $mesMat,
-          ':anio_aplicado' => $anioAplicado,
-          ':fecha_pago'    => $fechaPago, // ✅ usa la elegida
-          ':estado'        => $estadoRegistrar,
-          ':monto_pago'    => $montoMatricula,
-          ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
-        ]);
-
-        $insertadosAlumno++;
-        $totalInsertados++;
+        $registrarItem($mesMat, (int)$montoMatricula);
       }
     }
 
-    // 8.3 anual/mitades (13,15,16)
     foreach ($segmentos as $seg) {
       $idMesSeg = (int)($seg['id_mes'] ?? 0);
       $montoSeg = (int)($seg['total'] ?? 0);
-      if (!$idMesSeg) continue;
 
-      if (array_key_exists($idMesSeg, $yaPorMes)) {
-        $yaRegistradosAlumno[] = ['periodo' => $idMesSeg, 'estado' => $yaPorMes[$idMesSeg]];
+      if (!$idMesSeg) {
         continue;
       }
 
-      $montoFinalSeg = $condonar ? 0 : max(0, $montoSeg);
+      if (array_key_exists($idMesSeg, $yaPorMes)) {
+        $yaRegistradosAlumno[] = [
+          'periodo' => $idMesSeg,
+          'estado' => $yaPorMes[$idMesSeg],
+        ];
 
-      $stIns->execute([
-        ':id_alumno'     => $idA,
-        ':id_mes'        => $idMesSeg,
-        ':anio_aplicado' => $anioAplicado,
-        ':fecha_pago'    => $fechaPago, // ✅ usa la elegida
-        ':estado'        => $estadoRegistrar,
-        ':monto_pago'    => $montoFinalSeg,
-        ':id_medio_pago' => ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
-      ]);
+        continue;
+      }
 
-      $insertadosAlumno++;
-      $totalInsertados++;
+      $registrarItem($idMesSeg, $montoSeg);
     }
 
     $detallePorAlumno[] = [
-      'id_alumno'      => $idA,
-      'insertados'     => $insertadosAlumno,
+      'id_alumno' => $idA,
+      'es_cobrador' => $esCobrador,
+      'insertados' => $insertadosAlumno,
+      'monto_bruto_original' => $brutoAlumno,
+      'monto_neto_cooperadora' => $netoAlumno,
+      'monto_comision_cobrador' => $comisionAlumno,
       'ya_registrados' => $yaRegistradosAlumno,
     ];
   }
@@ -335,20 +628,33 @@ try {
 
   if ($totalInsertados > 0) {
     echo json_encode([
-      'exito'              => true,
-      'insertados_total'   => $totalInsertados,
-      'familia_aplicada'   => $aplicarFamilia && count($alumnosObjetivo) > 1,
+      'exito' => true,
+      'mensaje' => 'Pago registrado correctamente.',
+      'insertados_total' => $totalInsertados,
+      'familia_aplicada' => $aplicarFamilia && count($alumnosObjetivo) > 1,
       'alumnos_procesados' => count($alumnosObjetivo),
-      'fecha_pago_usada'   => $fechaPago, // ✅ útil para debug
+      'fecha_pago_usada' => $fechaPago,
+      'id_medio_pago_seleccionado' => (!$condonar && $idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
+      'monto_bruto_original' => $totalBrutoOriginal,
+      'monto_neto_cooperadora' => $totalNetoCooperadora,
+      'monto_comision_cobrador' => $totalComisionCobrador,
+      'porcentaje_cobrador' => PORCENTAJE_COBRADOR,
+      'egreso_cobrador' => [
+        'descripcion' => DESCRIPCION_COBRADOR,
+        'id_medio_pago_usado_al_crear' => (!$condonar && $idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
+        'nota' => 'Si el egreso mensual ya existía, solo se sumó el importe y se conservaron la fecha y el medio de pago que ya tenía.',
+        'importe_sumado' => $totalComisionCobrador,
+        'comprobante' => null,
+      ],
       'detalle_por_alumno' => $detallePorAlumno,
     ], JSON_UNESCAPED_UNICODE);
   } else {
     echo json_encode([
-      'exito'              => false,
-      'mensaje'            => 'No se insertaron registros (todos ya estaban cargados para ese año aplicado).',
-      'familia_aplicada'   => $aplicarFamilia && count($alumnosObjetivo) > 1,
+      'exito' => false,
+      'mensaje' => 'No se insertaron registros (todos ya estaban cargados para ese año aplicado).',
+      'familia_aplicada' => $aplicarFamilia && count($alumnosObjetivo) > 1,
       'alumnos_procesados' => count($alumnosObjetivo),
-      'fecha_pago_usada'   => $fechaPago,
+      'fecha_pago_usada' => $fechaPago,
       'detalle_por_alumno' => $detallePorAlumno,
     ], JSON_UNESCAPED_UNICODE);
   }
@@ -357,9 +663,11 @@ try {
   if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
     $pdo->rollBack();
   }
+
   http_response_code(200);
+
   echo json_encode([
-    'exito'   => false,
+    'exito' => false,
     'mensaje' => 'Error al registrar pagos: ' . $e->getMessage(),
   ], JSON_UNESCAPED_UNICODE);
 }
