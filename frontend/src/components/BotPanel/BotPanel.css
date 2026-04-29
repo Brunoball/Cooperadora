@@ -705,9 +705,14 @@
 
 /* =========================
    MEDIA EN BURBUJA
+   ✅ Tamaño tipo WhatsApp real:
+   - Evita que imágenes verticales ocupen media pantalla.
+   - Mantiene la imagen completa sin deformarla.
+   - Al hacer clic se abre grande en el visor.
 ========================= */
 .wp-media-inbubble {
   margin-bottom: 6px;
+  max-width: 300px;
 }
 
 .wp-media-thumbbtn {
@@ -715,13 +720,43 @@
   background: transparent;
   padding: 0;
   cursor: pointer;
+  display: block;
+  max-width: 300px;
+  max-height: 340px;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .wp-media-thumb {
-  max-width: 320px;
-  width: 100%;
-  border-radius: 10px;
   display: block;
+  width: auto;
+  height: auto;
+  max-width: min(300px, 72vw);
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+/* Si la imagen viene dentro de una burbuja propia, que la burbuja no quede gigante */
+.wp-bubble:has(.wp-media-inbubble) {
+  max-width: min(340px, 82%);
+}
+
+/* En móvil, achicamos un poco más para que no tape todo el chat */
+@media (max-width: 820px){
+  .wp-media-inbubble,
+  .wp-media-thumbbtn{
+    max-width: 260px;
+  }
+
+  .wp-media-thumb{
+    max-width: min(260px, 78vw);
+    max-height: 300px;
+  }
+
+  .wp-bubble:has(.wp-media-inbubble){
+    max-width: min(300px, 88%);
+  }
 }
 
 /* tarjeta pdf estilo whatsapp */
