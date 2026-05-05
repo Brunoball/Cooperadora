@@ -269,8 +269,8 @@ try {
         $histMensual = $id_cat_hermanos > 0 ? cargar_historial($pdo, $id_cat_hermanos, 'MENSUAL') : [];
         $histAnual   = $id_cat_hermanos > 0 ? cargar_historial($pdo, $id_cat_hermanos, 'ANUAL')   : [];
 
-        // ✅ Mensual por mes (periodos 1..12) -> precio al 1° de cada mes
-        for ($mes = 1; $mes <= 12; $mes++) {
+        // ✅ Mensual por mes escolar (periodos 3..12) -> precio al 1° de cada mes
+        for ($mes = 3; $mes <= 12; $mes++) {
           $fecha = new DateTime(sprintf('%04d-%02d-01', $anio, $mes));
           $montos_por_periodo[$mes] = precio_en_fecha($histMensual, $fecha, $monto_mensual_actual);
         }
@@ -290,13 +290,14 @@ try {
 
   // Si no hubo override (o family_count=1), montos por período son uniformes con base
   if (count($montos_por_periodo) === 0) {
-    for ($mes = 1; $mes <= 12; $mes++) $montos_por_periodo[$mes] = $monto_mensual_actual;
+    for ($mes = 3; $mes <= 12; $mes++) $montos_por_periodo[$mes] = $monto_mensual_actual;
   }
 
   // Monto mensual "referencial" para mostrar arriba:
   // - si el año es el actual -> mes actual
-  // - si es otro año -> enero
-  $mesRef = ($anio === (int)date('Y')) ? (int)date('n') : 1;
+  // - si cae en enero/febrero o es otro año, se toma marzo como referencia escolar
+  $mesRef = ($anio === (int)date('Y')) ? (int)date('n') : 3;
+  if ($mesRef < 3 || $mesRef > 12) $mesRef = 3;
   $monto_mensual_referencial = (float)($montos_por_periodo[$mesRef] ?? $monto_mensual_actual);
 
   json_out([

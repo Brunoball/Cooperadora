@@ -53,6 +53,8 @@ export async function generarComprobanteAlumnoPDF(alumno, opts = {}) {
   const getDni = (s) =>
     s?.num_documento ?? s?.dni ?? s?.documento ?? s?.numDocumento ?? '';
 
+  const fechaImpresion = new Date().toLocaleDateString('es-AR');
+
   // 1) Enriquecer desde backend (trae nombre_año y nombre_division)
   let alumnoFull = { ...alumno };
   const idAlu = getIdAlumno(alumnoFull);
@@ -124,6 +126,7 @@ export async function generarComprobanteAlumnoPDF(alumno, opts = {}) {
     .val { font-size: 12pt; font-weight: 600; }
     .mono { font-family: "Courier New", Courier, monospace; letter-spacing: .2px; }
     .right { text-align:right; }
+    .fecha-impresion { margin-top: 5mm; text-align: right; font-size: 8pt; color: #555; font-weight: 600; }
   `;
 
   const importeFmt = Number(importeTotal || 0).toLocaleString('es-AR', {
@@ -180,6 +183,8 @@ export async function generarComprobanteAlumnoPDF(alumno, opts = {}) {
             <span class="val mono">$ ${importeFmt}</span>
           </div>
         </div>
+
+        <div class="fecha-impresion">Exportado: ${fechaImpresion}</div>
       </div>
     </div>
   `;

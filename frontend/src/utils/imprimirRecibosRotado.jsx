@@ -84,6 +84,7 @@ function renderComprobante({
   periodoTexto = '',
   destino = '',
   mesesCantidad = 1,
+  fechaImpresion = fechaHoy(),
 }) {
   const montoLetras = numeroALetras(Math.round(montoEntero));
   const mesesTxt = mesesCantidad > 1 ? ` por ${mesesCantidad} meses` : '';
@@ -132,6 +133,7 @@ function renderComprobante({
       </div>
 
       <!-- Destino -->
+      <div class="fecha-impresion">Impreso: ${fechaImpresion}</div>
       <div class="destino">${destino || ''}</div>
     </div>
   `;
@@ -225,6 +227,15 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
     .leyenda { color: #555; }
     .son { font-weight: 700; font-size: 11pt; margin-top: 0.5mm; }
 
+    .fecha-impresion {
+      position: absolute;
+      right: 5mm;
+      bottom: 6.5mm;
+      font-size: 7.5pt;
+      color: #555;
+      font-weight: 700;
+    }
+
     .destino {
       position: absolute;
       bottom: 2mm;
@@ -261,6 +272,7 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
   const reciboBase = Number(opciones?.reciboBase ?? 1);
   const localidad = opciones?.localidad || 'San Francisco';
   const fecha = opciones?.fecha || fechaHoy();
+  const fechaImpresion = opciones?.fechaImpresion || fechaHoy();
 
   // 6) Armar cupones
   const cuponesDuplicados = [];
@@ -311,6 +323,7 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
         periodoTexto,
         destino: 'CUPÓN PARA EL ALUMNO',
         mesesCantidad,
+        fechaImpresion,
       })
     );
     // Derecha: cooperadora
@@ -326,6 +339,7 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
         periodoTexto,
         destino: 'CUPÓN PARA LA COOPERADORA',
         mesesCantidad,
+        fechaImpresion,
       })
     );
   });

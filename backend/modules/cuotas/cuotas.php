@@ -81,6 +81,17 @@ try {
   $anioFiltro  = isset($_GET['anio']) ? max(1900, (int)$_GET['anio']) : (int)date('Y');
   $idMesFiltro = isset($_GET['id_mes']) ? (int)$_GET['id_mes'] : 0;
 
+  // Enero y febrero no se usan en cuotas escolares.
+  // Si llegan por URL/API, se devuelve una lista vacía controlada para evitar confusiones.
+  if ($idMesFiltro === 1 || $idMesFiltro === 2) {
+    echo json_encode([
+      'exito' => true,
+      'cuotas' => [],
+      'mensaje' => 'Enero y febrero no están habilitados para cuotas escolares.',
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
   $soloPagados = isset($_GET['pagados']);
   $soloCondon  = isset($_GET['condonados']);
 
@@ -93,7 +104,9 @@ try {
 
   $meses = [];
   foreach ($mesesRows as $m) {
-    $meses[(int)$m['id_mes']] = (string)$m['nombre'];
+    $idMesCatalogo = (int)$m['id_mes'];
+    if ($idMesCatalogo === 1 || $idMesCatalogo === 2) continue;
+    $meses[$idMesCatalogo] = (string)$m['nombre'];
   }
 
   // fallback por si faltan en tabla (seguridad)

@@ -9,10 +9,12 @@ try {
   }
 
   $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
   if ($method === 'OPTIONS') {
     http_response_code(204);
     exit;
   }
+
   if ($method !== 'POST') {
     json_out(['exito' => false, 'mensaje' => 'Método no permitido (usar POST).'], 405);
   }
@@ -28,110 +30,174 @@ try {
   if ($id_alumno <= 0 || $id_mes <= 0 || $anio <= 0) {
     json_out([
       'exito' => false,
-      'mensaje' => 'Parámetros inválidos. Requiere: id_alumno, id_mes, anio.',
+      'mensaje' => 'Parámetros inválidos. Requiere id_alumno, id_mes y anio.',
+      'debug' => [
+        'id_alumno' => $id_alumno,
+        'id_mes' => $id_mes,
+        'anio' => $anio,
+      ],
     ], 400);
   }
 
-  // 1) Buscar pago exacto mensual del mes seleccionado
-  $sqlMensual = "
-    SELECT p.id_pago, p.id_mes, m.nombre AS mes_nombre
+  /*
+    IMPORTANTE:
+    Buscar por anio_aplicado, NO por YEAR(fecha_pago).
+    Ejemplo real:
+    id_alumno 823 tiene id_mes 15, anio_aplicado 2026,
+    pero fecha_pago 2025-12-28.
+  */
+
+  // 1) Buscar pago exacto del período seleccionado
+  $sqlExacto = "
+    SELECT 
+      p.id_pago,
+      p.id_alumno,
+      p.id_mes,
+      p.anio_aplicado,
+      p.fecha_pago,
+      p.estado,
+      p.monto_pago,
+      p.id_medio_pago,
+      m.nombre AS nombre_mes
     FROM pagos p
-    INNER JOIN meses m ON m.id_mes = p.id_mes
+    LEFT JOIN meses m ON m.id_mes = p.id_mes
     WHERE p.id_alumno = :id_alumno
       AND p.id_mes = :id_mes
-      AND YEAR(p.fecha_pago) = :anio
+      AND p.anio_aplicado = :anio
     ORDER BY p.id_pago DESC
     LIMIT 1
   ";
-  $st = $pdo->prepare($sqlMensual);
+
+  $st = $pdo->prepare($sqlExacto);
   $st->execute([
     ':id_alumno' => $id_alumno,
-    ':id_mes'    => $id_mes,
-    ':anio'      => $anio,
+    ':id_mes' => $id_mes,
+    ':anio' => $anio,
   ]);
+
   $row = $st->fetch(PDO::FETCH_ASSOC);
 
   if ($row) {
+    $nombreMes = strtoupper((string)($row['nombre_mes'] ?? ''));
+
+    $esEspecial = (
+      str_contains(strtolower($nombreMes), 'anual') ||
+      str_contains(strtolower($nombreMes), 'contado') ||
+      str_contains(strtolower($nombreMes), 'mitad') ||
+      str_contains(strtolower($nombreMes), 'h1') ||
+      str_contains(strtolower($nombreMes), 'h2')
+    );
+
     json_out([
       'exito' => true,
-      'tipo' => 'MENSUAL',
+      'mensaje' => 'Pago encontrado.',
       'id_pago' => (int)$row['id_pago'],
       'id_mes_real' => (int)$row['id_mes'],
-      'mes_nombre' => (string)($row['mes_nombre'] ?? ''),
-      'warning' => false,
-      'warning_text' => '',
-    ]);
+      'id_mes_solicitado' => $id_mes,
+      'anio_aplicado' => (int)$row['anio_aplicado'],
+      'fecha_pago' => $row['fecha_pago'],
+      'estado' => $row['estado'],
+      'monto_pago' => (float)$row['monto_pago'],
+      'nombre_mes' => $nombreMes,
+      'warning' => $esEspecial,
+      'warning_text' => $esEspecial
+        ? '⚠️ Este pago corresponde a ' . $nombreMes . '. Si lo eliminás, eliminás ese período completo.'
+        : '',
+    ], 200);
   }
 
-  // 2) Fallback: anual / contado / h1 / h2 / semestre (si no existe el mensual)
+  /*
+    2) Fallback:
+    Si el usuario hizo clic en un mes común pero ese mes está cubierto por:
+    - CONTADO ANUAL id 13
+    - 1ERA MITAD id 15
+    - 2DA MITAD id 16
+
+    Entonces buscamos el pago real asociado.
+  */
+
+  $idsCandidatos = [];
+
+  if ($id_mes >= 3 && $id_mes <= 7) {
+    // Marzo a Julio: anual completo o primera mitad
+    $idsCandidatos = [15, 13];
+  } elseif ($id_mes >= 8 && $id_mes <= 12) {
+    // Agosto a Diciembre: anual completo o segunda mitad
+    $idsCandidatos = [16, 13];
+  } else {
+    // Otros períodos: buscar especiales por nombre
+    $idsCandidatos = [13, 15, 16];
+  }
+
+  $placeholders = implode(',', array_fill(0, count($idsCandidatos), '?'));
+
   $sqlFallback = "
-    SELECT p.id_pago, p.id_mes, m.nombre AS mes_nombre
+    SELECT 
+      p.id_pago,
+      p.id_alumno,
+      p.id_mes,
+      p.anio_aplicado,
+      p.fecha_pago,
+      p.estado,
+      p.monto_pago,
+      p.id_medio_pago,
+      m.nombre AS nombre_mes
     FROM pagos p
-    INNER JOIN meses m ON m.id_mes = p.id_mes
-    WHERE p.id_alumno = :id_alumno
-      AND YEAR(p.fecha_pago) = :anio
-      AND (
-        LOWER(m.nombre) LIKE '%anual%'
-        OR LOWER(m.nombre) LIKE '%contado%'
-        OR LOWER(m.nombre) LIKE '%h1%'
-        OR LOWER(m.nombre) LIKE '%h2%'
-        OR LOWER(m.nombre) LIKE '%semestre%'
-        OR LOWER(m.nombre) LIKE '%mitad%'
-      )
-    ORDER BY
-      CASE
-        WHEN LOWER(m.nombre) LIKE '%anual%' THEN 1
-        WHEN LOWER(m.nombre) LIKE '%contado%' THEN 2
-        WHEN LOWER(m.nombre) LIKE '%h1%' THEN 3
-        WHEN LOWER(m.nombre) LIKE '%h2%' THEN 4
-        WHEN LOWER(m.nombre) LIKE '%semestre%' THEN 5
-        WHEN LOWER(m.nombre) LIKE '%mitad%' THEN 6
+    LEFT JOIN meses m ON m.id_mes = p.id_mes
+    WHERE p.id_alumno = ?
+      AND p.anio_aplicado = ?
+      AND p.id_mes IN ($placeholders)
+    ORDER BY 
+      CASE p.id_mes
+        WHEN 15 THEN 1
+        WHEN 16 THEN 2
+        WHEN 13 THEN 3
         ELSE 99
       END,
       p.id_pago DESC
     LIMIT 1
   ";
+
+  $params = [$id_alumno, $anio, ...$idsCandidatos];
+
   $st2 = $pdo->prepare($sqlFallback);
-  $st2->execute([
-    ':id_alumno' => $id_alumno,
-    ':anio'      => $anio,
-  ]);
+  $st2->execute($params);
+
   $row2 = $st2->fetch(PDO::FETCH_ASSOC);
 
   if ($row2) {
-    $nombre = mb_strtolower((string)($row2['mes_nombre'] ?? ''), 'UTF-8');
-    $texto = "⚠️ Este alumno no tiene pago mensual en ese período, pero sí un pago ";
-    if (str_contains($nombre, 'anual') || str_contains($nombre, 'contado')) {
-      $texto .= "ANUAL/CONTADO";
-    } elseif (str_contains($nombre, 'h1') || str_contains($nombre, '1')) {
-      $texto .= "de 1ER MITAD (H1)";
-    } elseif (str_contains($nombre, 'h2') || str_contains($nombre, '2')) {
-      $texto .= "de 2DA MITAD (H2)";
-    } else {
-      $texto .= "SEMIANUAL/MITAD";
-    }
-    $texto .= ". Si eliminás, se elimina el período completo.";
+    $nombreMes = strtoupper((string)($row2['nombre_mes'] ?? ''));
 
     json_out([
       'exito' => true,
-      'tipo' => 'PERIODO_COMPLETO',
+      'mensaje' => 'Pago especial encontrado.',
       'id_pago' => (int)$row2['id_pago'],
       'id_mes_real' => (int)$row2['id_mes'],
-      'mes_nombre' => (string)($row2['mes_nombre'] ?? ''),
+      'id_mes_solicitado' => $id_mes,
+      'anio_aplicado' => (int)$row2['anio_aplicado'],
+      'fecha_pago' => $row2['fecha_pago'],
+      'estado' => $row2['estado'],
+      'monto_pago' => (float)$row2['monto_pago'],
+      'nombre_mes' => $nombreMes,
       'warning' => true,
-      'warning_text' => $texto,
-    ]);
+      'warning_text' => '⚠️ Este pago corresponde a ' . $nombreMes . '. Si lo eliminás, eliminás ese período completo.',
+    ], 200);
   }
 
-  // nada encontrado
   json_out([
     'exito' => false,
-    'mensaje' => 'No se encontró pago mensual ni anual/mitad para ese alumno y año.',
+    'mensaje' => 'No se encontró un pago para eliminar en ' . $anio . '.',
+    'debug' => [
+      'id_alumno' => $id_alumno,
+      'id_mes_solicitado' => $id_mes,
+      'anio_aplicado' => $anio,
+      'ids_candidatos' => $idsCandidatos,
+    ],
   ], 404);
 
 } catch (Throwable $e) {
   json_out([
     'exito' => false,
-    'mensaje' => 'Error buscando pago a eliminar: ' . $e->getMessage(),
+    'mensaje' => 'Error buscando pago para eliminar: ' . $e->getMessage(),
   ], 500);
 }

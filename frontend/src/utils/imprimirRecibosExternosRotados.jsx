@@ -8,6 +8,8 @@ const NOMBRE_COLEGIO_2 = 'I.P.E.T. N° 50';
 
 const NORMALIZAR = (s = '') => String(s || '').trim();
 
+const fechaHoy = () => new Date().toLocaleDateString('es-AR');
+
 const nombreMes = (idMes) => {
   const m = ['', 'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const i = Number(idMes);
@@ -70,9 +72,13 @@ function renderCupon({
   barrio = '',
   curso = '',
   periodoTexto = '',
-  importe = 0
+  importe = 0,
+  fechaImpresion = fechaHoy()
 }) {
-  const importeFmt = Number(importe || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const importeFmt = Number(importe || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 
   return `
     <div class="cupon" style="left:${x}mm; top:${y}mm;">
@@ -92,6 +98,7 @@ function renderCupon({
       ${lineConEtiqueta('Cobrad.:', '—')}
 
       <div class="nota">(${etiqueta})</div>
+      <div class="fecha-impresion">Impreso: ${fechaImpresion}</div>
     </div>
   `;
 }
@@ -108,7 +115,9 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       const data = await res.json();
       if (data?.exito && data?.socio) alumnos.push({ ...item, ...data.socio });
       else alumnos.push(item);
-    } catch { alumnos.push(item); }
+    } catch {
+      alumnos.push(item);
+    }
   }
 
   // 2) Listas
@@ -158,7 +167,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
 
   const FIRST_LEFT = 0;
 
-  // (tu centrado visual interno por filas)
+  // centrado visual interno por filas
   const filasUsadas = Math.min(Math.max(alumnos.length, 1), FILAS_POR_PAGINA);
   const altoUsado = filasUsadas * CUP_H;
   const FIRST_TOP = Math.max(0, (CANVAS_H - altoUsado) / 2);
@@ -167,9 +176,9 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
 
   const espejoX = (x) => (CANVAS_W - (Number(x) + CUP_W));
 
-  // ✅ centrado horizontal (y ajuste fino a la izquierda)
-  const ROT_LEFT = (PAGE_W - CANVAS_H) / 2; // normalmente 0
-  const ROT_LEFT_AJUSTE = -6; // 👈 mueve todo a la IZQUIERDA (probá -6)
+  // centrado horizontal general
+  const ROT_LEFT = (PAGE_W - CANVAS_H) / 2;
+  const ROT_LEFT_AJUSTE = -6;
 
   const css = `
     @page { size: 210mm 297mm; margin: 0mm; }
@@ -200,7 +209,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       position: absolute;
       width: ${CUP_W}mm;
       height: ${CUP_H}mm;
-      padding: 0mm 3mm 1.6mm 3mm;
+      padding: 0mm 3mm 3.5mm 3mm;
     }
 
     /* ocultar cabecera sin mover el resto */
@@ -219,8 +228,25 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     .line.nolbl .val { flex: none; width: 100%; }
 
     .nota { margin-top: 2mm; font-size: 9pt; color: #000; }
+
+    /*
+      Fecha de impresión más centrada dentro de cada comprobante.
+      No modifica la posición del resto de la información.
+    */
+    .fecha-impresion {
+      margin-top: 2mm;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+      text-align: center;
+      font-size: 7.5pt;
+      color: #444;
+      font-weight: 700;
+      transform: translateX(-4mm);
+    }
   `;
 
+  const fechaImpresion = opciones?.fechaImpresion || fechaHoy();
   const anio = (opciones?.anioPago && String(opciones.anioPago)) || new Date().getFullYear();
   const mesTextoBase = nombreMes(periodoActual);
 
@@ -239,7 +265,8 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       barrio: s?.localidad || '',
       curso: cursoTexto || '',
       periodoTexto,
-      importe: precio
+      importe: precio,
+      fechaImpresion
     });
   };
 

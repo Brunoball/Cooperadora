@@ -3,10 +3,9 @@ import BASE_URL from '../config/config';
 
 /* ================= Helpers ================= */
 
-const NOMBRE_COLEGIO_1 = 'ASOCIACIÓN COOPERADORA';
-const NOMBRE_COLEGIO_2 = 'I.P.E.T. N° 50';
-
 const NORMALIZAR = (s = '') => String(s || '').trim();
+
+const fechaHoy = () => new Date().toLocaleDateString('es-AR');
 
 const nombreMes = (idMes) => {
   const m = ['', 'Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -72,15 +71,17 @@ function renderCupon({
   barrio = '',
   curso = '',
   periodoTexto = '',
-  importe = 0
+  importe = 0,
+  fechaImpresion = fechaHoy()
 }) {
-  const importeFmt = Number(importe || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const importeFmt = Number(importe || 0).toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 
   return `
     <div class="cupon" style="left:${x}mm; top:${y}mm;">
-      <div class="enc-1">${NOMBRE_COLEGIO_1}</div>
-      <div class="enc-2">${NOMBRE_COLEGIO_2}</div>
-      <div class="enc-rule"></div>
+      <div class="enc-spacer" aria-hidden="true"></div>
 
       ${lineSinEtiqueta(dni ? dni : '')}
       ${lineSinEtiqueta(nombreCompleto)}
@@ -93,6 +94,7 @@ function renderCupon({
       ${lineConEtiqueta('Cobrad.:', '—')}
 
       <div class="nota">(${etiqueta})</div>
+      <div class="fecha-impresion">Impreso: ${fechaImpresion}</div>
     </div>
   `;
 }
@@ -103,24 +105,33 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   const alumnos = [];
   for (const item of (listaSocios || [])) {
     const id = getIdAlumno(item);
-    if (!id) { alumnos.push(item); continue; }
+    if (!id) {
+      alumnos.push(item);
+      continue;
+    }
+
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=obtener_socio_comprobante&id=${id}`);
       const data = await res.json();
       if (data?.exito && data?.socio) alumnos.push({ ...item, ...data.socio });
       else alumnos.push(item);
-    } catch { alumnos.push(item); }
+    } catch {
+      alumnos.push(item);
+    }
   }
 
   // 2) Listas
   let categoriasById = {};
   let aniosById = {};
   let divisionesById = {};
+
   try {
     const r = await fetch(`${BASE_URL}/api.php?action=obtener_listas`);
     const j = await r.json();
+
     if (j?.exito) {
       const L = j?.listas || {};
+
       (L.categorias || []).forEach((c) => {
         const id = c.id ?? c.id_categoria ?? c.idCategoria;
         if (id != null) {
@@ -130,10 +141,12 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
           };
         }
       });
+
       (L.anios || L.años || []).forEach((a) => {
         const id = a.id ?? a.id_anio ?? a.id_año;
         if (id != null) aniosById[String(id)] = a.nombre ?? a.nombre_anio ?? a.nombre_año ?? '';
       });
+
       (L.divisiones || []).forEach((d) => {
         const id = d.id ?? d.id_division;
         if (id != null) divisionesById[String(id)] = d.nombre ?? d.nombre_division ?? '';
@@ -150,7 +163,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
   const A4_H = 297;
 
   const FIRST_LEFT = 4;
-  const FIRST_TOP  = 20;
+  const FIRST_TOP = 20;
 
   const FILAS_POR_PAGINA = 4;
   const CUP_W = 71;
@@ -169,12 +182,17 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       position: absolute;
       width: ${CUP_W}mm;
       height: ${CUP_H}mm;
-      padding: 0mm 3mm 1.6mm 3mm;
+      padding: 0mm 3mm 3.5mm 3mm;
     }
 
-    .enc-1 { font-weight: 600; font-size: 10pt; text-transform: uppercase; letter-spacing: .2px; margin: 0; }
-    .enc-2 { font-weight: 700; font-size: 10pt; margin: 0.6mm 0 0 0; }
-    .enc-rule { margin: 0.8mm 0 1.6mm 0; border-bottom: 1px solid #000; }
+    /*
+      Se eliminó la cabecera y la línea, pero se conserva el mismo alto
+      para que la información quede exactamente donde estaba.
+    */
+    .enc-spacer {
+      height: 10.4mm;
+      margin: 0 0 1.6mm 0;
+    }
 
     .line { display: flex; gap: 2mm; line-height: 1.25; font-size: 10pt; }
     .line .lbl { min-width: 20mm; display: inline-block; }
@@ -185,8 +203,20 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     .line.nolbl .val { flex: none; width: 100%; }
 
     .nota { margin-top: 2mm; font-size: 9pt; color: #000; }
+
+    /* Fecha más al medio para que no se corte en el tercer comprobante */
+    .fecha-impresion {
+      margin-top: 2mm;
+      text-align: center;
+      font-size: 7.5pt;
+      color: #444;
+      font-weight: 700;
+      width: 100%;
+      padding-right: 0;
+    }
   `;
 
+  const fechaImpresion = opciones?.fechaImpresion || fechaHoy();
   const anio = (opciones?.anioPago && String(opciones.anioPago)) || new Date().getFullYear();
   const mesTextoBase = nombreMes(periodoActual);
 
@@ -204,9 +234,11 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       domicilio: s?.domicilio || '',
       barrio: s?.localidad || '',
       curso: cursoTexto || '',
-      periodoTexto, // ya viene armado (p. ej. “ENE / FEB / MAR 2025”)
-      importe: precio
+      periodoTexto,
+      importe: precio,
+      fechaImpresion
     });
+
     pageHTML += html;
   };
 
@@ -224,6 +256,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     // 🔹 MONTO: priorizar total (multi-mes) > otros
     const idCat = s?.id_categoria ?? null;
     const precioListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
+
     const candidatos = [
       Number(s?.importe_total),
       Number(s?.precio_total),
@@ -236,6 +269,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       Number(s?.importe),
       precioListas
     ].filter(v => Number.isFinite(v) && v > 0);
+
     const precio = candidatos.length ? candidatos[0] : 0;
 
     // 🔹 PERÍODO: usar full si llega, si no usar “Mes Año”
@@ -258,6 +292,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     pushCupon(x, y, 'Cupón para el cobrador', s, precio, cursoTexto, periodoTexto);
 
     fila += 1;
+
     if (fila >= filasPorPagina || idx === alumnos.length - 1) {
       cuponesHTML += flushPage();
     }
@@ -281,6 +316,7 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
       </body>
     </html>
   `;
+
   w.document.open();
   w.document.write(html);
   w.document.close();

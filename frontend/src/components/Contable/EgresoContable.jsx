@@ -165,16 +165,27 @@ const fetchJSON = async (url, options = {}) => {
 const arraysIguales = (a = [], b = []) =>
   a.length === b.length && a.every((v, i) => v === b[i]);
 
+const limpiarComprobanteAutomaticoCobrador = (valor = "") => {
+  const texto = String(valor || "").trim();
+  // Los egresos automáticos generados desde pagos venían como "PAGO #123".
+  // No se muestran en el front porque el id del pago no aporta al usuario.
+  return /^pago\s*#\s*\d+$/i.test(texto) ? "" : texto;
+};
+
 /** Normaliza un row del backend a lo que usa el front */
 const normalizeEgreso = (r = {}) => ({
   id_egreso: r.id_egreso,
   fecha: r.fecha || "",
-  categoria: r.nombre_categoria || "SIN CATEGORÍA",
+  categoria: r.nombre_categoria || "-",
   descripcion: r.nombre_descripcion || "",
   medio_pago: r.medio_pago || "",
   medio_nombre: r.medio_pago || "",
-  proveedor: r.nombre_proveedor || "",
-  numero_factura: r.comprobante || "",
+  alumno: r.alumno_origen_nombre || "",
+  proveedor: r.alumno_origen_nombre || r.nombre_proveedor || "",
+  alumno_documento: r.alumno_origen_documento || "",
+  id_pago_origen: r.id_pago_origen || null,
+  id_alumno_origen: r.id_alumno_origen || null,
+  numero_factura: limpiarComprobanteAutomaticoCobrador(r.comprobante),
   monto: Number.isFinite(parseFloat(r.importe)) ? parseFloat(r.importe) : 0,
   comprobante_url: r.comprobante_url || "",
 });
@@ -383,6 +394,8 @@ export default function EgresoContable() {
         e.numero_factura,
         e.medio_nombre || e.medio_pago,
         e.proveedor,
+        e.alumno,
+        e.alumno_documento,
         e.fecha,
       ]
         .join(" ")
@@ -394,7 +407,7 @@ export default function EgresoContable() {
   const catBreakdown = useMemo(() => {
     const map = new Map();
     for (const e of egresosBase) {
-      const k = e.categoria || "SIN CATEGORÍA";
+      const k = e.categoria || "-";
       const monto = Number.isFinite(e.monto) ? e.monto : 0;
       if (!map.has(k)) map.set(k, { label: k, total: 0, count: 0 });
       const obj = map.get(k);
@@ -505,9 +518,10 @@ export default function EgresoContable() {
       return;
     }
 
-    const headers = ["Fecha", "N° Factura", "Descripción", "Proveedor", "Medio", "Monto (ARS)"];
+    const headers = ["Fecha", "Categoría", "N° Factura", "Descripción", "Alumno / Proveedor", "Medio", "Monto (ARS)"];
     const data = rows.map((e) => [
       formatFechaDMY(e.fecha || ""),
+      e.categoria || "-",
       e.numero_factura || "",
       e.descripcion || "",
       e.proveedor || "",
@@ -521,11 +535,11 @@ export default function EgresoContable() {
 
     // Forzar “Monto” como número
     for (let r = 2; r <= aoa.length; r++) {
-      const addr = XLSX.utils.encode_cell({ r: r - 1, c: 5 });
+      const addr = XLSX.utils.encode_cell({ r: r - 1, c: 6 });
       if (ws[addr]) ws[addr].t = "n";
     }
 
-    ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 22 }, { wch: 18 }, { wch: 14 }];
+    ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 40 }, { wch: 30 }, { wch: 18 }, { wch: 14 }];
 
     const sheetName =
       anio === "ALL"
@@ -732,7 +746,7 @@ export default function EgresoContable() {
                     Descripción
                   </div>
                   <div className="gt_cell h" role="columnheader">
-                    Proveedor
+                    Alumno / Proveedor
                   </div>
                   <div className="gt_cell h center" role="columnheader">
                     Medio

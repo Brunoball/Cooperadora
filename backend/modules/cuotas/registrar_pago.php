@@ -95,6 +95,19 @@ try {
     exit;
   }
 
+  // Enero (1) y febrero (2) no forman parte del ciclo de pagos escolares.
+  // Se bloquean también desde backend para evitar registros accidentales por API.
+  foreach ($periodos as $periodoValidar) {
+    $pv = (int)$periodoValidar;
+    if ($pv === 1 || $pv === 2) {
+      echo json_encode([
+        'exito' => false,
+        'mensaje' => 'Enero y febrero no están habilitados para registrar pagos escolares. Usá períodos de marzo a diciembre, matrícula o mitades.',
+      ], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+  }
+
   if ($anioAplicado < 2000 || $anioAplicado > 2100) {
     $anioAplicado = (int)date('Y');
   }
@@ -177,7 +190,7 @@ try {
     foreach ($periodos as $p) {
       $p = (int)$p;
 
-      if ($p >= 1 && $p <= 12) {
+      if ($p >= 3 && $p <= 12) {
         $mesesExplicitos[$p] = true;
       } elseif ($p === 14) {
         $matricula = true;
@@ -212,7 +225,7 @@ try {
     foreach ($mesesExplicitos as $m) {
       $m = (int)$m;
 
-      if ($m < 1 || $m > 12) {
+      if ($m < 3 || $m > 12) {
         continue;
       }
 
@@ -281,101 +294,103 @@ try {
     return (int)$valor;
   };
 
+  $existeColumna = function (PDO $pdo, string $tabla, string $columna): bool {
+    $st = $pdo->prepare("
+      SELECT 1
+        FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = :tabla
+         AND COLUMN_NAME = :columna
+       LIMIT 1
+    ");
+
+    $st->execute([
+      ':tabla' => $tabla,
+      ':columna' => $columna,
+    ]);
+
+    return (bool)$st->fetchColumn();
+  };
+
+  $egresosTieneIdPagoOrigen = $existeColumna($pdo, 'egresos', 'id_pago_origen');
+  $egresosTieneIdAlumnoOrigen = $existeColumna($pdo, 'egresos', 'id_alumno_origen');
+
   /**
-   * ✅ Egreso mensual del cobrador.
+   * ✅ Egreso individual del cobrador por cada pago registrado.
    *
-   * Regla final:
-   * - Si ya existe egreso de COBRADOR para ese mes:
-   *   suma importe, conserva fecha original y conserva id_medio_pago original.
-   *
-   * - Si todavía no existe:
-   *   crea el egreso con la fecha real del pago que disparó el primer registro
-   *   y con el medio de pago seleccionado en ese primer pago.
+   * Regla nueva:
+   * - NO se acumula más por mes.
+   * - Cada INSERT real en pagos genera 1 INSERT real en egresos.
+   * - El egreso queda relacionado con el pago y con el alumno si existen
+   *   las columnas id_pago_origen / id_alumno_origen en egresos.
+   * - Categoría queda NULL para que el frontend la muestre como "-".
+   * - Descripción queda "COBRADOR".
    */
-  $sumarEgresoCobradorMensual = function (
+  $insertarEgresoCobradorPorPago = function (
     PDO $pdo,
     int $idContDescripcion,
     string $fechaPago,
     float $importeComision,
-    ?int $idMedioPagoSeleccionado
+    ?int $idMedioPagoSeleccionado,
+    int $idAlumnoOrigen,
+    int $idPagoOrigen
+  ) use (
+    $egresosTieneIdPagoOrigen,
+    $egresosTieneIdAlumnoOrigen
   ): void {
-    if ($importeComision <= 0) {
+    if ($importeComision <= 0 || $idAlumnoOrigen <= 0 || $idPagoOrigen <= 0) {
       return;
     }
 
-    $fechaObj = new DateTime($fechaPago);
-    $anio = (int)$fechaObj->format('Y');
-    $mes = (int)$fechaObj->format('m');
+    $columnas = [
+      'fecha',
+      'id_cont_categoria',
+      'id_cont_proveedor',
+      'comprobante',
+      'id_cont_descripcion',
+      'id_medio_pago',
+      'importe',
+      'comprobante_url',
+    ];
 
-    // ✅ Fecha real del primer pago del cobrador.
-    // NO usar más YYYY-MM-01.
-    $fechaRegistro = $fechaPago;
+    $placeholders = [
+      ':fecha',
+      'NULL',
+      'NULL',
+      ':comprobante',
+      ':id_cont_descripcion',
+      ':id_medio_pago',
+      ':importe',
+      'NULL',
+    ];
 
-    $stBuscar = $pdo->prepare("
-      SELECT id_egreso, id_medio_pago, fecha
-        FROM egresos
-       WHERE id_cont_descripcion = :id_cont_descripcion
-         AND YEAR(fecha) = :anio
-         AND MONTH(fecha) = :mes
-       ORDER BY id_egreso ASC
-       LIMIT 1
-    ");
-
-    $stBuscar->execute([
-      ':id_cont_descripcion' => $idContDescripcion,
-      ':anio' => $anio,
-      ':mes' => $mes,
-    ]);
-
-    $egresoExistente = $stBuscar->fetch(PDO::FETCH_ASSOC);
-
-    if ($egresoExistente && (int)$egresoExistente['id_egreso'] > 0) {
-      $idEgreso = (int)$egresoExistente['id_egreso'];
-
-      $stUpd = $pdo->prepare("
-        UPDATE egresos
-           SET importe = importe + :importe
-         WHERE id_egreso = :id_egreso
-         LIMIT 1
-      ");
-
-      $stUpd->execute([
-        ':importe' => $importeComision,
-        ':id_egreso' => $idEgreso,
-      ]);
-
-      return;
-    }
-
-    $stIns = $pdo->prepare("
-      INSERT INTO egresos (
-        fecha,
-        id_cont_categoria,
-        id_cont_proveedor,
-        comprobante,
-        id_cont_descripcion,
-        id_medio_pago,
-        importe,
-        comprobante_url
-      )
-      VALUES (
-        :fecha,
-        NULL,
-        NULL,
-        NULL,
-        :id_cont_descripcion,
-        :id_medio_pago,
-        :importe,
-        NULL
-      )
-    ");
-
-    $stIns->execute([
-      ':fecha' => $fechaRegistro,
+    $params = [
+      ':fecha' => $fechaPago,
+      ':comprobante' => 'PAGO #' . $idPagoOrigen,
       ':id_cont_descripcion' => $idContDescripcion,
       ':id_medio_pago' => ($idMedioPagoSeleccionado && $idMedioPagoSeleccionado > 0) ? $idMedioPagoSeleccionado : null,
       ':importe' => $importeComision,
-    ]);
+    ];
+
+    if ($egresosTieneIdPagoOrigen) {
+      $columnas[] = 'id_pago_origen';
+      $placeholders[] = ':id_pago_origen';
+      $params[':id_pago_origen'] = $idPagoOrigen;
+    }
+
+    if ($egresosTieneIdAlumnoOrigen) {
+      $columnas[] = 'id_alumno_origen';
+      $placeholders[] = ':id_alumno_origen';
+      $params[':id_alumno_origen'] = $idAlumnoOrigen;
+    }
+
+    $sql = "
+      INSERT INTO egresos (" . implode(', ', $columnas) . ")
+      VALUES (" . implode(', ', $placeholders) . ")
+    ";
+
+    $stInsEgreso = $pdo->prepare($sql);
+    $stInsEgreso->execute($params);
   };
 
   /* ==========================================================
@@ -501,7 +516,7 @@ try {
       $idA,
       $esCobrador,
       $idDescripcionCobrador,
-      $sumarEgresoCobradorMensual,
+      $insertarEgresoCobradorPorPago,
       &$insertadosAlumno,
       &$totalInsertados,
       &$brutoAlumno,
@@ -531,13 +546,17 @@ try {
         ':id_medio_pago' => (!$condonar && $idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
       ]);
 
+      $idPagoInsertado = (int)$pdo->lastInsertId();
+
       if (!$condonar && $esCobrador === 1 && $montoComision > 0) {
-        $sumarEgresoCobradorMensual(
+        $insertarEgresoCobradorPorPago(
           $pdo,
           $idDescripcionCobrador,
           $fechaPago,
           (float)$montoComision,
-          ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null
+          ($idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
+          $idA,
+          $idPagoInsertado
         );
       }
 
@@ -642,8 +661,8 @@ try {
       'egreso_cobrador' => [
         'descripcion' => DESCRIPCION_COBRADOR,
         'id_medio_pago_usado_al_crear' => (!$condonar && $idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,
-        'nota' => 'Si el egreso mensual ya existía, solo se sumó el importe y se conservaron la fecha y el medio de pago que ya tenía.',
-        'importe_sumado' => $totalComisionCobrador,
+        'nota' => 'Se generó un egreso individual por cada pago registrado, relacionado al pago y al alumno cuando la base tiene las columnas nuevas.',
+        'importe_generado_total' => $totalComisionCobrador,
         'comprobante' => null,
       ],
       'detalle_por_alumno' => $detallePorAlumno,

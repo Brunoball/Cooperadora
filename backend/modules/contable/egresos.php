@@ -65,6 +65,20 @@ function obtener_max_fecha(PDO $pdo): ?string {
   return $r && $r['f'] ? $r['f'] : null;
 }
 
+
+function contable_columna_existe(PDO $pdo, string $tabla, string $columna): bool {
+  $st = $pdo->prepare("
+    SELECT 1
+      FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = :tabla
+       AND COLUMN_NAME = :columna
+     LIMIT 1
+  ");
+  $st->execute([':tabla' => $tabla, ':columna' => $columna]);
+  return (bool)$st->fetchColumn();
+}
+
 /* ---------- Router ---------- */
 try {
   $op = $_GET['op'] ?? 'list';
@@ -87,9 +101,16 @@ try {
     $provId  = isset($_GET['proveedor_id'])   ? (int)$_GET['proveedor_id']   : 0;
     $descId  = isset($_GET['descripcion_id']) ? (int)$_GET['descripcion_id'] : 0;
     $medio   = trim((string)($_GET['medio'] ?? ''));
+    $categoriaTexto = trim((string)($_GET['categoria'] ?? ''));
 
-    if ($catId === 0 && isset($_GET['categoria'])) {
-      $catId = buscar_id_por_nombre($pdo, 'contable_categoria','id_cont_categoria','nombre_categoria', $_GET['categoria']) ?? 0;
+    // "-" representa egresos sin categoría, por ejemplo las comisiones del cobrador.
+    if ($catId === 0 && $categoriaTexto !== '') {
+      $catTxtNorm = strtoupper($categoriaTexto);
+      if ($catTxtNorm === '-' || $catTxtNorm === 'SIN CATEGORIA' || $catTxtNorm === 'SIN CATEGORÍA') {
+        $catId = -1;
+      } else {
+        $catId = buscar_id_por_nombre($pdo, 'contable_categoria','id_cont_categoria','nombre_categoria', $categoriaTexto) ?? 0;
+      }
     }
     if ($provId === 0 && isset($_GET['proveedor'])) {
       $provId = buscar_id_por_nombre($pdo, 'contable_proveedor','id_cont_proveedor','nombre_proveedor', $_GET['proveedor']) ?? 0;
@@ -105,6 +126,7 @@ try {
     elseif ($end) { $where .= " AND e.fecha <= :e"; $par[':e']=$end; }
 
     if ($catId > 0) { $where .= " AND e.id_cont_categoria = :cid"; $par[':cid']=$catId; }
+    elseif ($catId === -1) { $where .= " AND e.id_cont_categoria IS NULL"; }
     if ($provId> 0) { $where .= " AND e.id_cont_proveedor = :pid"; $par[':pid']=$provId; }
     if ($descId> 0) { $where .= " AND e.id_cont_descripcion = :did"; $par[':did']=$descId; }
 
@@ -112,6 +134,17 @@ try {
       if (ctype_digit($medio)) { $where .= " AND e.id_medio_pago = :mid"; $par[':mid'] = (int)$medio; }
       else { $where .= " AND UPPER(mp.medio_pago) = UPPER(:mnom)"; $par[':mnom'] = $medio; }
     }
+
+    $tieneIdPagoOrigen = contable_columna_existe($pdo, 'egresos', 'id_pago_origen');
+    $tieneIdAlumnoOrigen = contable_columna_existe($pdo, 'egresos', 'id_alumno_origen');
+
+    $selectOrigenPago = $tieneIdPagoOrigen ? "e.id_pago_origen" : "NULL AS id_pago_origen";
+    $selectOrigenAlumno = $tieneIdAlumnoOrigen
+      ? "e.id_alumno_origen, TRIM(CONCAT(COALESCE(aorig.apellido,''), ' ', COALESCE(aorig.nombre,''))) AS alumno_origen_nombre, aorig.num_documento AS alumno_origen_documento"
+      : "NULL AS id_alumno_origen, NULL AS alumno_origen_nombre, NULL AS alumno_origen_documento";
+    $joinOrigenAlumno = $tieneIdAlumnoOrigen
+      ? "LEFT JOIN alumnos aorig ON aorig.id_alumno = e.id_alumno_origen"
+      : "";
 
     // Traigo los registros y el total decimal (2 decimales)
     $sql = "
@@ -128,12 +161,15 @@ try {
         e.id_medio_pago,
         mp.medio_pago,
         e.importe,
-        e.comprobante_url
+        e.comprobante_url,
+        $selectOrigenPago,
+        $selectOrigenAlumno
       FROM egresos e
       LEFT JOIN contable_categoria   cc ON cc.id_cont_categoria   = e.id_cont_categoria
       LEFT JOIN contable_proveedor   cp ON cp.id_cont_proveedor   = e.id_cont_proveedor
       LEFT JOIN contable_descripcion cd ON cd.id_cont_descripcion = e.id_cont_descripcion
       INNER JOIN medio_pago          mp ON mp.id_medio_pago       = e.id_medio_pago
+      $joinOrigenAlumno
       WHERE $where
       ORDER BY e.fecha DESC, e.id_egreso DESC
     ";

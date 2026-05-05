@@ -1,5 +1,15 @@
 // src/utils/imprimirMatricula.js
 
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
 export async function imprimirMatricula(alumno, opts = {}) {
   const {
     baseUrl = "",
@@ -45,6 +55,7 @@ export async function imprimirMatricula(alumno, opts = {}) {
     }).format(Number(m || 0));
 
   const periodoTexto = `${periodoLabel} / ${anioPago}`;
+  const fechaImpresion = new Date().toLocaleDateString("es-AR");
   const nombre = alumno?.nombre ?? alumno?.Nombre ?? alumno?.alumno ?? alumno?.apellido_nombre ?? alumno?.ApellidoNombre ?? "";
   const dni =
     alumno?.documento ??
@@ -85,6 +96,7 @@ export async function imprimirMatricula(alumno, opts = {}) {
       border: 1px solid #111;
       border-radius: 12px;
       padding: 18px;
+      position: relative;
     }
     .head {
       display: flex;
@@ -160,6 +172,13 @@ export async function imprimirMatricula(alumno, opts = {}) {
       font-size: 11px;
       color: #444;
     }
+    .fecha-impresion {
+      margin-top: 10px;
+      text-align: right;
+      font-size: 10px;
+      color: #555;
+      font-weight: 700;
+    }
     .print-hide {
       margin-top: 12px;
       display: flex;
@@ -198,7 +217,7 @@ export async function imprimirMatricula(alumno, opts = {}) {
         <div>
           <h1 class="title">COMPROBANTE DE MATRÍCULA</h1>
           <div class="sub">Período: <b>${periodoTexto}</b></div>
-          <div class="sub">Fecha: <b>${new Date().toLocaleDateString("es-AR")}</b></div>
+          <div class="sub">Fecha: <b>${fechaImpresion}</b></div>
         </div>
         <div class="badge">${moneyARS(precioMensual || 0)}</div>
       </div>
@@ -238,6 +257,8 @@ export async function imprimirMatricula(alumno, opts = {}) {
       <div class="note">
         Este comprobante corresponde a la <b>MATRÍCULA</b> del año <b>${anioPago}</b>.
       </div>
+
+      <div class="fecha-impresion">Impreso: ${fechaImpresion}</div>
 
       <div class="print-hide">
         <button class="btn" onclick="window.print()">Imprimir</button>

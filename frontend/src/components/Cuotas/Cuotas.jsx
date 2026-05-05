@@ -65,6 +65,13 @@ const ORDEN_MESES_ESCOLARES = {
   diciembre: 12,
 };
 
+const esPeriodoVisibleCuotas = (mes) => {
+  const id = Number(mes?.id ?? mes?.id_mes ?? 0);
+  // En cuotas escolares NO se usan enero/febrero.
+  // Se conservan marzo-diciembre y períodos especiales: contado anual, matrícula, 1era mitad y 2da mitad.
+  return (id >= 3 && id <= 12) || [13, 14, 15, 16].includes(id);
+};
+
 function getPorcDescuentoDerivado(categoriaNombre = "", familyCount = 1) {
   const catNorm = normalizar(categoriaNombre).includes("extern") ? "EXTERNO" : "INTERNO";
   const ref = REFERENCIAS[catNorm];
@@ -183,6 +190,13 @@ const Cuotas = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const id = Number(mesSeleccionado);
+    if (id === 1 || id === 2) {
+      setMesSeleccionado('');
+    }
+  }, [mesSeleccionado]);
 
   const getIdMesFromCuota = (c) => c?.id_mes ?? c?.id_periodo ?? '';
   const getNombreCuota = (c) => c?.nombre ?? '';
@@ -333,7 +347,7 @@ const Cuotas = () => {
         const L = dataListas.listas || {};
         setCategorias(Array.isArray(L.categorias) ? L.categorias : []);
         setDivisiones(Array.isArray(L.divisiones) ? L.divisiones : []);
-        setMeses(Array.isArray(L.meses) ? L.meses : []);
+        setMeses(Array.isArray(L.meses) ? L.meses.filter(esPeriodoVisibleCuotas) : []);
         setAniosLectivos(Array.isArray(L.anios) ? L.anios : []);
       } else {
         setCategorias([]); setDivisiones([]); setMeses([]); setAniosLectivos([]);
@@ -843,22 +857,108 @@ const Cuotas = () => {
       setToastVisible(true);
       return;
     }
+
     if (loading) {
       setToastTipo('advertencia');
       setToastMensaje('Esperando datos...');
       setToastVisible(true);
       return;
     }
-    if (cuotasFiltradas.length === 0) {
+
+    if (!Array.isArray(cuotasFiltradas) || cuotasFiltradas.length === 0) {
       setToastTipo('advertencia');
-      setToastMensaje('No hay datos');
+      setToastMensaje('No hay datos para exportar');
       setToastVisible(true);
       return;
     }
-    setToastTipo('exito');
-    setToastMensaje('Exportación a Excel iniciada');
-    setToastVisible(true);
-  }, [mesSeleccionado, soloCobrador, loading, cuotasFiltradas.length]);
+
+    try {
+      // IMPORTANTE:
+      // Antes se generaba HTML con extensión .xls. Excel lo abría, pero mostraba
+      // el aviso "el formato y la extensión no coinciden" porque no era un XLS real.
+      // CSV con BOM + separador ; abre directo en Excel sin ese aviso.
+      const escapeCsv = (value) => {
+        const text = String(value ?? '').replace(/\r?\n|\r/g, ' ').trim();
+        const escaped = text.replace(/"/g, '""');
+        return '"' + escaped + '"';
+      };
+
+      const periodoTexto = soloCobrador
+        ? 'Cobrador - Marzo a Diciembre'
+        : getNombreMes(mesSeleccionado);
+
+      const estadoTexto = String(estadoPagoSeleccionado || '')
+        .charAt(0)
+        .toUpperCase() + String(estadoPagoSeleccionado || '').slice(1);
+
+      const headers = [
+        'Alumno',
+        'DNI',
+        'Domicilio',
+        'División',
+        'Categoría',
+        'Estado',
+        'Período',
+        'Año de pago',
+      ];
+
+      const rows = cuotasFiltradas.map((cuota) => [
+        getNombreCuota(cuota),
+        getDocumentoCuota(cuota),
+        getDomicilioCuota(cuota),
+        getNombreDivision(cuota?.id_division) || '',
+        getNombreCategoria(cuota?.id_categoria) || '',
+        estadoTexto,
+        periodoTexto,
+        anioPagoSeleccionado || CURRENT_YEAR,
+      ]);
+
+      const csvLines = [
+        headers.map(escapeCsv).join(';'),
+        ...rows.map((row) => row.map(escapeCsv).join(';')),
+      ];
+
+      const csvContent = csvLines.join('\r\n');
+      const blob = new Blob(['\ufeff', csvContent], {
+        type: 'text/csv;charset=utf-8;',
+      });
+
+      const fecha = new Date().toISOString().slice(0, 10);
+      const periodoArchivo = normalizar(periodoTexto)
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'cuotas';
+      const estadoArchivo = normalizar(estadoPagoSeleccionado || 'cuotas')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'cuotas';
+
+      const filename = `cuotas_${estadoArchivo}_${periodoArchivo}_${fecha}.csv`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setToastTipo('exito');
+      setToastMensaje(`Excel exportado correctamente (${cuotasFiltradas.length} registros)`);
+      setToastVisible(true);
+    } catch (error) {
+      console.error('Error al exportar Excel:', error);
+      setToastTipo('error');
+      setToastMensaje('No se pudo exportar el Excel. Revisá consola.');
+      setToastVisible(true);
+    }
+  }, [
+    mesSeleccionado,
+    soloCobrador,
+    loading,
+    cuotasFiltradas,
+    estadoPagoSeleccionado,
+    anioPagoSeleccionado,
+    getNombreMes,
+  ]);
 
   const onChangeMes        = (e) => { setMesSeleccionado(e.target.value); triggerCascade(); };
   const onChangeAnioPago   = (e) => { setAnioPagoSeleccionado(e.target.value); triggerCascade(); };

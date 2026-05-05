@@ -22,6 +22,12 @@ import { generarComprobanteAlumnoPDF } from '../../../utils/ComprobanteExternoPD
 
 /* ====== Constantes ====== */
 const MIN_YEAR = 2025;
+const esPeriodoVisiblePagos = (mes) => {
+  const id = Number(mes?.id ?? mes?.id_mes ?? 0);
+  // En cuotas escolares NO se usan enero/febrero.
+  // Se conservan marzo-diciembre y períodos especiales.
+  return (id >= 3 && id <= 12) || [13, 14, 15, 16].includes(id);
+};
 const ID_CONTADO_ANUAL = 13;
 const ID_MATRICULA = 14;
 // Mitades de contado anual
@@ -195,7 +201,7 @@ const ModalPagos = ({ socio, onClose }) => {
   const formatearARS = (monto) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(monto);
 
-  const mesesGrid = useMemo(() => meses.filter((m) => Number(m.id) >= 1 && Number(m.id) <= 12), [meses]);
+  const mesesGrid = useMemo(() => meses.filter((m) => Number(m.id) >= 3 && Number(m.id) <= 12), [meses]);
 
   const esExterno = useMemo(() => {
     const raw = nombreCategoria || socio?.categoria_nombre || socio?.nombre_categoria || socio?.categoria || '';
@@ -568,7 +574,7 @@ const ModalPagos = ({ socio, onClose }) => {
     const idsDisponibles = mesesGrid
       .map((m) => Number(m.id))
       .filter((id) => {
-        if (id < 1 || id > 12) return false;
+        if (id < 3 || id > 12) return false;
         if (periodosEstado[id]) return false;
         if (periodosPagados.includes(Number(id))) return false;
         if (isMesBloqueado(id)) return false;
@@ -602,7 +608,10 @@ const ModalPagos = ({ socio, onClose }) => {
 
         if (dataListas?.exito) {
           const arrMeses = Array.isArray(dataListas?.listas?.meses) ? dataListas.listas.meses : [];
-          const norm = arrMeses.map((m) => ({ id: Number(m.id), nombre: m.nombre })).sort((a, b) => a.id - b.id);
+          const norm = arrMeses
+            .map((m) => ({ id: Number(m.id), nombre: m.nombre }))
+            .filter(esPeriodoVisiblePagos)
+            .sort((a, b) => a.id - b.id);
           setMeses(norm);
 
           const arrMedios = Array.isArray(dataListas?.listas?.medios_pago) ? dataListas.listas.medios_pago : [];
@@ -665,7 +674,7 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const togglePeriodo = (id) => {
     const idNum = Number(id);
-    if (idNum < 1 || idNum > 12) return;
+    if (idNum < 3 || idNum > 12) return;
     if (isMesBloqueado(idNum)) return;
     if (periodosEstado[idNum] || periodosPagados.includes(idNum)) return;
 
@@ -676,7 +685,7 @@ const ModalPagos = ({ socio, onClose }) => {
     const idsDisponibles = mesesGrid
       .map((m) => Number(m.id))
       .filter((id) => {
-        if (id < 1 || id > 12) return false;
+        if (id < 3 || id > 12) return false;
         if (periodosEstado[id]) return false;
         if (periodosPagados.includes(id)) return false;
         if (isMesBloqueado(id)) return false;
