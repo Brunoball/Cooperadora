@@ -12,6 +12,7 @@ import {
   faSearch,
   faFilter,
   faChartPie,
+  faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import ContableEgresoModal from "./modalcontable/ContableEgresoModal";
 import Toast from "../Global/Toast";
@@ -143,6 +144,138 @@ function ConfirmModal({
   );
 }
 
+/* ===== Celda Alumno / Proveedor: botón Ver todo si el texto se corta ===== */
+function AlumnoProveedorCell({ valor, onShow }) {
+  const textRef = useRef(null);
+  const [truncado, setTruncado] = useState(false);
+  const texto = String(valor || "").trim() || "-";
+  const puedeAbrir = texto !== "-";
+
+  const chequearTruncado = () => {
+    const el = textRef.current;
+    if (!el) return;
+    const desbordaH = el.scrollWidth > el.clientWidth;
+    const desbordaV = el.scrollHeight > el.clientHeight;
+    setTruncado(desbordaH || desbordaV);
+  };
+
+  useEffect(() => {
+    chequearTruncado();
+  }, [texto]);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return undefined;
+
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(chequearTruncado)
+        : null;
+
+    if (ro) ro.observe(el);
+
+    const t = setTimeout(chequearTruncado, 0);
+    window.addEventListener("resize", chequearTruncado);
+    window.addEventListener("orientationchange", chequearTruncado);
+
+    return () => {
+      if (ro) ro.disconnect();
+      clearTimeout(t);
+      window.removeEventListener("resize", chequearTruncado);
+      window.removeEventListener("orientationchange", chequearTruncado);
+    };
+  }, []);
+
+  const abrirDetalle = () => {
+    if (!puedeAbrir) return;
+    onShow?.(texto);
+  };
+
+  return (
+    <div
+      className="eg-ap-cell"
+      title={texto}
+      onDoubleClick={abrirDetalle}
+    >
+      <span ref={textRef} className="eg-ap-cell__text">
+        {texto}
+      </span>
+
+      {truncado && puedeAbrir && (
+        <button
+          type="button"
+          className="eg-btn-ver-ap"
+          onClick={abrirDetalle}
+          title="Ver alumno / proveedor completo"
+          aria-label="Ver alumno o proveedor completo"
+        >
+          <FontAwesomeIcon icon={faInfoCircle} />
+
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ===== Modal con la misma estética del motivo en Socios Baja ===== */
+function AlumnoProveedorDetalleModal({ open, contenido, onClose }) {
+  const cerrarBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    cerrarBtnRef.current?.focus();
+
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="eg-modal-overlay-motivo"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="eg-modal-ap-title"
+      onMouseDown={onClose}
+    >
+      <div
+        className="eg-modal-contenido-motivo"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="eg-modal-icono-motivo" aria-hidden="true">
+          <FontAwesomeIcon icon={faInfoCircle} />
+        </div>
+
+        <h3 id="eg-modal-ap-title" className="eg-modal-titulo-motivo">
+          Alumno / Proveedor
+        </h3>
+
+        <div className="eg-modal-texto-motivo">
+          {contenido || "No hay alumno / proveedor especificado"}
+        </div>
+
+        <div className="eg-modal-botones-motivo">
+          <button
+            type="button"
+            className="eg-boton-cerrar-motivo"
+            onClick={onClose}
+            ref={cerrarBtnRef}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 /* ===== helpers ===== */
 const fetchJSON = async (url, options = {}) => {
   const sep = url.includes("?") ? "&" : "?";
@@ -231,6 +364,9 @@ export default function EgresoContable() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState(null);
+
+  const [modalAlumnoProveedorOpen, setModalAlumnoProveedorOpen] = useState(false);
+  const [alumnoProveedorCompleto, setAlumnoProveedorCompleto] = useState("");
 
   // Toasts
   const [toasts, setToasts] = useState([]);
@@ -448,6 +584,16 @@ export default function EgresoContable() {
     } catch {
       window.location.href = finalUrl;
     }
+  };
+
+  const mostrarAlumnoProveedorCompleto = (valor) => {
+    setAlumnoProveedorCompleto(valor || "No hay alumno / proveedor especificado");
+    setModalAlumnoProveedorOpen(true);
+  };
+
+  const cerrarAlumnoProveedorCompleto = () => {
+    setModalAlumnoProveedorOpen(false);
+    setAlumnoProveedorCompleto("");
   };
 
   const askDeleteEgreso = (id) => {
@@ -804,8 +950,11 @@ export default function EgresoContable() {
                         {e.descripcion || "-"}
                       </div>
 
-                      <div className="gt_cell truncate" role="cell" title={e.proveedor || "-"}>
-                        {e.proveedor || "-"}
+                      <div className="gt_cell" role="cell">
+                        <AlumnoProveedorCell
+                          valor={e.proveedor || "-"}
+                          onShow={mostrarAlumnoProveedorCompleto}
+                        />
                       </div>
 
                       <div className="gt_cell center" role="cell">
@@ -865,6 +1014,12 @@ export default function EgresoContable() {
         onSaved={onSavedEgreso}
         editRow={editRow}
         notify={addToast}
+      />
+
+      <AlumnoProveedorDetalleModal
+        open={modalAlumnoProveedorOpen}
+        contenido={alumnoProveedorCompleto}
+        onClose={cerrarAlumnoProveedorCompleto}
       />
 
       <ConfirmModal
