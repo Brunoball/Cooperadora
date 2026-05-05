@@ -888,7 +888,7 @@ export default function EgresoContable() {
                   <div className="gt_cell h center" role="columnheader">
                     N° Factura
                   </div>
-                  <div className="gt_cell h" role="columnheader">
+                  <div className="gt_cell h center" role="columnheader">
                     Descripción
                   </div>
                   <div className="gt_cell h" role="columnheader">
