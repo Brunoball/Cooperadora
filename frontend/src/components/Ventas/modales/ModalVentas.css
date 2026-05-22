@@ -1,0 +1,174 @@
+.ventas-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+}
+
+.ventas-modal {
+  width: min(940px, 100%);
+  max-height: min(92vh, 920px);
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.35);
+  border: 1px solid #dbe7f5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ventasModalIn 0.18s ease-out;
+}
+
+.ventas-modal--sm {
+  width: min(520px, 100%);
+}
+
+.ventas-modal__head {
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+}
+
+.ventas-modal__title h2 {
+  margin: 0;
+  color: #102e6a;
+  font-size: 22px;
+}
+
+.ventas-modal__title p {
+  margin: 4px 0 0;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.ventas-modal__close {
+  border: none;
+  background: #ffffff;
+  color: #475569;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+}
+
+.ventas-modal__body {
+  overflow: auto;
+  padding: 20px;
+}
+
+.ventas-modal__footer {
+  border-top: 1px solid #e2e8f0;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #f8fafc;
+}
+
+.ventas-modal-cancel,
+.ventas-modal-danger {
+  border: none;
+  cursor: pointer;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ventas-modal-cancel {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.ventas-modal-danger {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.18);
+}
+
+.ventas-modal-danger:disabled,
+.ventas-modal-cancel:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@keyframes ventasModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 760px) {
+  .ventas-modal-backdrop {
+    padding: 10px;
+    align-items: stretch;
+  }
+
+  .ventas-modal {
+    max-height: 96vh;
+    border-radius: 18px;
+  }
+
+  .ventas-modal__head,
+  .ventas-modal__body,
+  .ventas-modal__footer {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .ventas-modal__footer {
+    flex-direction: column-reverse;
+  }
+
+  .ventas-modal__footer button {
+    width: 100%;
+  }
+}
+
+/* Modal largo: mantiene header/footer fijos y permite bajar con scroll dentro del cuerpo. */
+.ventas-modal > .ventas-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.ventas-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: calc(92vh - 158px);
+  scrollbar-width: thin;
+}
+
+.ventas-modal__footer {
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .ventas-modal__body {
+    max-height: calc(96vh - 170px);
+  }
+}

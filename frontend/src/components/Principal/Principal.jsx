@@ -9,6 +9,7 @@ import {
   faIdCard,
   faLayerGroup,
   faRobot,
+  faStore,
 } from "@fortawesome/free-solid-svg-icons";
 import logoRH from "../../imagenes/Escudo.png";
 import "./principal.css";
@@ -196,6 +197,7 @@ const Principal = () => {
   const menuItems = [
     { icon: faUsers, text: "Gestionar Alumnos", ruta: "/alumnos" },
     { icon: faMoneyCheckDollar, text: "Gestionar Cuotas", ruta: "/cuotas" },
+    { icon: faStore, text: "Ventas Escolares", ruta: "/ventas" },
     {
       icon: faIdCard,
       text: "Tipos de Documento",

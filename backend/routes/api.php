@@ -86,6 +86,7 @@ try {
   require_once __DIR__ . '/../modules/contable/route.php';
   require_once __DIR__ . '/../modules/tipos_documentos/route.php';
   require_once __DIR__ . '/../modules/categorias/route.php';
+  require_once __DIR__ . '/../modules/ventas/route.php';
 
   /* =========================
      Router (orden importa)
@@ -97,6 +98,7 @@ try {
   if (function_exists('route_contable') && route_contable($action)) exit;
   if (function_exists('route_tipos_documentos') && route_tipos_documentos($action)) exit;
   if (function_exists('route_categorias') && route_categorias($action)) exit;
+  if (function_exists('route_ventas') && route_ventas($action)) exit;
 
   json_out([
     'exito' => false,

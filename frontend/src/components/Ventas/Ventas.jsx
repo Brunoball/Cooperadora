@@ -1,0 +1,625 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faArrowLeft,
+  faBoxesStacked,
+  faChartLine,
+  faEye,
+  faReceipt,
+  faRotateRight,
+  faTags,
+} from "@fortawesome/free-solid-svg-icons";
+
+import BASE_URL from "../../config/config";
+import Toast from "../Global/Toast";
+import "../Global/roots.css";
+import "./Ventas.css";
+
+import CampaniasTab from "./tabs/CampaniasTab";
+import ProductosTab from "./tabs/ProductosTab";
+import OrdenesTab from "./tabs/OrdenesTab";
+
+import ModalCampania from "./modales/ModalCampania";
+import ModalProducto from "./modales/ModalProducto";
+import ModalOrden from "./modales/ModalOrden";
+import ModalConfirmar from "./modales/ModalConfirmar";
+
+import {
+  asBool,
+  emptyCampania,
+  emptyOrden,
+  emptyProducto,
+  money,
+  personaLabel,
+  toInputDate,
+} from "./ventasConfig";
+
+const API = `${BASE_URL}/api.php`;
+
+function StatCard({ icon, label, value, small }) {
+  return (
+    <div className="ventas-stat-card">
+      <div className="ventas-stat-icon">
+        <FontAwesomeIcon icon={icon} />
+      </div>
+      <div>
+        <p>{label}</p>
+        <strong>{value}</strong>
+        {small ? <span>{small}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+export default function Ventas() {
+  const navigate = useNavigate();
+
+  const [tab, setTab] = useState("campanias");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [dashboard, setDashboard] = useState(null);
+  const [campanias, setCampanias] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [productosCampaniaModal, setProductosCampaniaModal] = useState([]);
+  const [ordenes, setOrdenes] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
+
+  const [campaniaForm, setCampaniaForm] = useState(emptyCampania);
+  const [productoForm, setProductoForm] = useState(emptyProducto);
+  const [ordenForm, setOrdenForm] = useState(emptyOrden);
+
+  const [modalCampania, setModalCampania] = useState(false);
+  const [modalProducto, setModalProducto] = useState(false);
+  const [modalOrden, setModalOrden] = useState(false);
+  const [confirmacion, setConfirmacion] = useState(null);
+
+  const [campaniaSeleccionada, setCampaniaSeleccionada] = useState("");
+  const [ordenEstado, setOrdenEstado] = useState("");
+  const [ordenBusqueda, setOrdenBusqueda] = useState("");
+
+  const [toast, setToast] = useState({ mostrar: false, tipo: "", mensaje: "" });
+
+  const showToast = useCallback((tipo, mensaje) => {
+    setToast({ mostrar: true, tipo, mensaje });
+  }, []);
+
+  const request = useCallback(async (action, options = {}) => {
+    const query = options.query ? `&${options.query}` : "";
+    const res = await fetch(`${API}?action=${encodeURIComponent(action)}${query}`, {
+      method: options.method || "GET",
+      headers: options.body ? { "Content-Type": "application/json" } : undefined,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: "no-store",
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!data || data.exito === false) {
+      throw new Error(data?.mensaje || "No se pudo completar la operación.");
+    }
+    return data;
+  }, []);
+
+  const cargarDashboard = useCallback(async () => {
+    const data = await request("ventas_dashboard");
+    setDashboard(data.resumen || null);
+  }, [request]);
+
+  const cargarCampanias = useCallback(async () => {
+    const data = await request("ventas_campanias");
+    const rows = Array.isArray(data.items) ? data.items : [];
+    setCampanias(rows);
+
+    // En Ventas registradas el filtro debe quedar en "Todas las ventas" por defecto.
+    // Antes se auto-seleccionaba la primera campaña y eso ocultaba ventas manuales
+    // guardadas en otra venta/campaña, dando la sensación de que no se habían cargado.
+    if (rows.length === 0) {
+      setCampaniaSeleccionada("");
+      return;
+    }
+
+    const seleccionExiste =
+      campaniaSeleccionada === "" || rows.some((c) => String(c.id_campania) === String(campaniaSeleccionada));
+
+    if (!seleccionExiste) {
+      setCampaniaSeleccionada("");
+    }
+  }, [campaniaSeleccionada, request]);
+
+  const cargarProductos = useCallback(async () => {
+    const data = await request("ventas_productos");
+    setProductos(Array.isArray(data.items) ? data.items : []);
+  }, [request]);
+
+  const cargarProductosCatalogo = useCallback(async () => {
+    const data = await request("ventas_productos");
+    return Array.isArray(data.items) ? data.items : [];
+  }, [request]);
+
+  const cargarMediosPago = useCallback(async () => {
+    const data = await request("ventas_medios_pago");
+    const rows = Array.isArray(data.items) ? data.items : [];
+    setMediosPago(rows);
+    return rows;
+  }, [request]);
+
+  const cargarOrdenes = useCallback(async (filtros = null) => {
+    const params = new URLSearchParams();
+    const idCampaniaFiltro =
+      filtros && Object.prototype.hasOwnProperty.call(filtros, "idCampania")
+        ? filtros.idCampania
+        : campaniaSeleccionada;
+
+    if (idCampaniaFiltro) params.set("id_campania", idCampaniaFiltro);
+    if (ordenEstado) params.set("estado", ordenEstado);
+    if (ordenBusqueda.trim()) params.set("q", ordenBusqueda.trim());
+
+    const data = await request("ventas_ordenes", { query: params.toString() });
+    setOrdenes(Array.isArray(data.items) ? data.items : []);
+  }, [campaniaSeleccionada, ordenBusqueda, ordenEstado, request]);
+
+  const cargarTodo = useCallback(async () => {
+    setLoading(true);
+    try {
+      const tareas = [cargarDashboard(), cargarCampanias()];
+      if (tab === "productos") tareas.push(cargarProductos());
+      if (tab === "ordenes") tareas.push(cargarOrdenes(), cargarMediosPago());
+      await Promise.all(tareas);
+    } catch (e) {
+      showToast("error", e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [cargarCampanias, cargarDashboard, cargarMediosPago, cargarOrdenes, cargarProductos, showToast, tab]);
+
+  useEffect(() => {
+    cargarTodo();
+  }, [cargarTodo]);
+
+  useEffect(() => {
+    if (tab === "productos") cargarProductos().catch((e) => showToast("error", e.message));
+    if (tab === "ordenes") {
+      cargarOrdenes().catch((e) => showToast("error", e.message));
+      cargarMediosPago().catch((e) => showToast("error", e.message));
+    }
+  }, [tab, campaniaSeleccionada, cargarMediosPago, cargarProductos, cargarOrdenes, showToast]);
+
+  const campaniaActual = useMemo(
+    () => campanias.find((c) => String(c.id_campania) === String(campaniaSeleccionada)),
+    [campanias, campaniaSeleccionada]
+  );
+
+  const cambiarCampaniaGlobal = (value) => {
+    setCampaniaSeleccionada(value);
+  };
+
+  const recargarVistaActual = useCallback(async () => {
+    const tareas = [cargarDashboard(), cargarCampanias()];
+
+    // La acción puede afectar más de una pestaña: por ejemplo, eliminar un producto
+    // impacta en Productos y también en Configuración si una venta lo usaba.
+    if (tab === "productos") tareas.push(cargarProductos());
+    if (tab === "ordenes") tareas.push(cargarOrdenes(), cargarMediosPago());
+
+    await Promise.all(tareas);
+  }, [cargarCampanias, cargarDashboard, cargarMediosPago, cargarOrdenes, cargarProductos, tab]);
+
+  const refrescarDespuesDeGuardar = async () => {
+    await recargarVistaActual();
+  };
+
+  const abrirNuevaCampania = async () => {
+    setProductosCampaniaModal([]);
+    setCampaniaForm(emptyCampania);
+    setModalCampania(true);
+
+    try {
+      const productosCatalogo = await cargarProductosCatalogo();
+      setProductosCampaniaModal(productosCatalogo);
+    } catch (err) {
+      showToast("error", err.message);
+    }
+  };
+
+  const abrirEditarCampania = async (c) => {
+    setProductosCampaniaModal([]);
+    setCampaniaForm({
+      ...emptyCampania,
+      ...c,
+      id_campania: c.id_campania || "",
+      fecha_inicio: toInputDate(c.fecha_inicio),
+      fecha_fin: toInputDate(c.fecha_fin),
+      activo: Number(c.activo || 0),
+      visible_menu: Number(c.visible_menu || 0),
+      tipo_persona: c.tipo_persona || "comprador",
+      pregunta_persona: c.pregunta_persona || emptyCampania.pregunta_persona,
+      mensaje_inicio: c.mensaje_inicio || emptyCampania.mensaje_inicio,
+      mensaje_aprobado: c.mensaje_aprobado || emptyCampania.mensaje_aprobado,
+      id_producto_principal: c.id_producto_principal || "",
+      producto_nombre: c.producto_principal_nombre || "",
+      producto_descripcion: c.producto_principal_descripcion || "",
+      producto_precio: c.producto_principal_precio ?? "",
+      producto_stock: c.producto_principal_stock ?? "",
+    });
+    setModalCampania(true);
+
+    try {
+      const productosCatalogo = await cargarProductosCatalogo();
+      setProductosCampaniaModal(productosCatalogo);
+    } catch (err) {
+      showToast("error", err.message);
+    }
+  };
+
+  const guardarCampania = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const payload = {
+        ...campaniaForm,
+        id_producto_principal: campaniaForm.id_producto_principal || "",
+      };
+      await request("ventas_campania_guardar", { method: "POST", body: payload });
+      showToast("exito", "Venta guardada correctamente.");
+      setModalCampania(false);
+      setCampaniaForm(emptyCampania);
+      setProductosCampaniaModal([]);
+      await refrescarDespuesDeGuardar();
+    } catch (err) {
+      showToast("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const abrirNuevoProducto = () => {
+    setProductoForm({ ...emptyProducto });
+    setModalProducto(true);
+  };
+
+  const abrirEditarProducto = (p) => {
+    setProductoForm({
+      ...emptyProducto,
+      ...p,
+      id_producto: p.id_producto || "",
+      precio: p.precio ?? "",
+      stock: p.stock ?? "",
+      activo: Number(p.activo || 0),
+    });
+    setModalProducto(true);
+  };
+
+  const guardarProducto = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const payload = { ...productoForm };
+      await request("ventas_producto_guardar", { method: "POST", body: payload });
+      showToast("exito", "Producto guardado correctamente.");
+      setModalProducto(false);
+      setProductoForm({ ...emptyProducto });
+      await Promise.all([cargarProductos(), cargarDashboard(), cargarCampanias()]);
+    } catch (err) {
+      showToast("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const pedirConfirmacion = ({ titulo, mensaje, confirmText, accion }) => {
+    setConfirmacion({ titulo, mensaje, confirmText, accion });
+  };
+
+  const ejecutarConfirmacion = async () => {
+    if (!confirmacion?.accion) return;
+    setSaving(true);
+    try {
+      await confirmacion.accion();
+      setConfirmacion(null);
+    } catch (err) {
+      showToast("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cambiarEstadoCampania = (c) => {
+    const activar = !asBool(c.activo);
+    pedirConfirmacion({
+      titulo: activar ? "Activar venta" : "Dar de baja venta",
+      mensaje: activar
+        ? `¿Activar la venta "${c.nombre}"? Si queda activa, las demás ventas se darán de baja automáticamente.`
+        : `¿Dar de baja la venta "${c.nombre}"? No se elimina, solo deja de mostrarse en el bot.`,
+      confirmText: activar ? "Activar" : "Dar de baja",
+      accion: async () => {
+        await request("ventas_campania_estado", {
+          method: "POST",
+          body: { id_campania: c.id_campania, activo: activar ? 1 : 0 },
+        });
+        showToast("exito", activar ? "Venta activada." : "Venta dada de baja.");
+        await recargarVistaActual();
+      },
+    });
+  };
+
+  const eliminarCampania = (c) => {
+    pedirConfirmacion({
+      titulo: "Eliminar venta",
+      mensaje: `¿Eliminar definitivamente la venta "${c.nombre}"? Esta acción no es para dar de baja: borra el registro si no tiene ventas registradas.`,
+      confirmText: "Eliminar",
+      accion: async () => {
+        await request("ventas_campania_eliminar", {
+          method: "POST",
+          body: { id_campania: c.id_campania },
+        });
+        showToast("exito", "Venta eliminada.");
+        await recargarVistaActual();
+      },
+    });
+  };
+
+  const cambiarEstadoProducto = (p) => {
+    const activar = !asBool(p.activo);
+    pedirConfirmacion({
+      titulo: activar ? "Activar producto" : "Dar de baja producto",
+      mensaje: activar
+        ? `¿Activar el producto "${p.nombre}"?`
+        : `¿Dar de baja el producto "${p.nombre}"? No se elimina, solo deja de estar disponible para nuevas ventas.`,
+      confirmText: activar ? "Activar" : "Dar de baja",
+      accion: async () => {
+        await request("ventas_producto_estado", {
+          method: "POST",
+          body: { id_producto: p.id_producto, activo: activar ? 1 : 0 },
+        });
+        showToast("exito", activar ? "Producto activado." : "Producto dado de baja.");
+        await recargarVistaActual();
+      },
+    });
+  };
+
+  const eliminarProducto = (p) => {
+    pedirConfirmacion({
+      titulo: "Eliminar producto",
+      mensaje: `¿Eliminar definitivamente el producto "${p.nombre}"? Si solo querés ocultarlo, usá el botón de dar de baja.`,
+      confirmText: "Eliminar",
+      accion: async () => {
+        await request("ventas_producto_eliminar", {
+          method: "POST",
+          body: { id_producto: p.id_producto },
+        });
+        showToast("exito", "Producto eliminado.");
+        await recargarVistaActual();
+      },
+    });
+  };
+
+  const obtenerMedioPorDefecto = useCallback((preferido = "EFECTIVO") => {
+    const normalizar = (txt) => String(txt || "").trim().toUpperCase();
+    const encontrado = mediosPago.find((m) => normalizar(m.medio_pago) === preferido);
+    return encontrado?.id_medio_pago || mediosPago[0]?.id_medio_pago || "";
+  }, [mediosPago]);
+
+  const hoyInput = () => new Date().toISOString().slice(0, 10);
+
+  const abrirNuevaOrden = async () => {
+    try {
+      const medios = mediosPago.length ? mediosPago : await cargarMediosPago();
+      const tieneProducto = (c) => !!(c?.id_producto_principal || c?.producto_principal_nombre);
+      const ventaBase =
+        (campaniaActual && tieneProducto(campaniaActual) ? campaniaActual : null) ||
+        campanias.find((c) => asBool(c.activo) && tieneProducto(c)) ||
+        campanias.find((c) => tieneProducto(c)) ||
+        null;
+      const medioEfectivo = medios.find((m) => String(m.medio_pago || "").trim().toUpperCase() === "EFECTIVO")?.id_medio_pago || medios[0]?.id_medio_pago || "";
+
+      setOrdenForm({
+        ...emptyOrden,
+        id_campania: ventaBase?.id_campania || "",
+        id_producto: ventaBase?.id_producto_principal || "",
+        producto_nombre: ventaBase?.producto_principal_nombre || "",
+        precio_unitario: ventaBase?.producto_principal_precio ?? "",
+        persona_tipo: ventaBase?.tipo_persona || "comprador",
+        id_medio_pago: medioEfectivo,
+        fecha_venta: hoyInput(),
+        estado: "aprobada",
+      });
+      setModalOrden(true);
+    } catch (err) {
+      showToast("error", err.message);
+    }
+  };
+
+  const abrirEditarOrden = async (o) => {
+    try {
+      if (mediosPago.length === 0) await cargarMediosPago();
+      setOrdenForm({
+        ...emptyOrden,
+        ...o,
+        id_orden: o.id_orden || "",
+        id_campania: o.id_campania || "",
+        id_producto: o.id_producto || "",
+        producto_nombre: o.producto_nombre || "",
+        precio_unitario: o.precio_unitario ?? "",
+        cantidad: o.cantidad || 1,
+        persona_tipo: o.persona_tipo || "comprador",
+        persona_nombre: o.persona_nombre || "",
+        persona_detalle: o.persona_detalle || "",
+        comprador_telefono: o.comprador_telefono || "",
+        estado: o.estado || "aprobada",
+        id_medio_pago: o.id_medio_pago || obtenerMedioPorDefecto(o.origen === "manual" ? "EFECTIVO" : "TRANSFERENCIA"),
+        fecha_venta: String(o.aprobado_en || o.creado_en || hoyInput()).slice(0, 10),
+        observacion: o.observacion || "",
+      });
+      setModalOrden(true);
+    } catch (err) {
+      showToast("error", err.message);
+    }
+  };
+
+  const guardarOrden = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await request("ventas_orden_guardar", { method: "POST", body: ordenForm });
+      showToast("exito", ordenForm.id_orden ? "Venta actualizada correctamente." : "Venta manual agregada correctamente.");
+      setModalOrden(false);
+      setOrdenForm(emptyOrden);
+
+      // Después de guardar una venta manual, mostramos el listado completo para que no quede
+      // oculta por un filtro de campaña anterior.
+      setCampaniaSeleccionada("");
+      await Promise.all([cargarDashboard(), cargarOrdenes({ idCampania: "" })]);
+    } catch (err) {
+      showToast("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="ventas-page">
+      <div className="ventas-shell">
+        <header className="ventas-header">
+          <button type="button" className="ventas-back" onClick={() => navigate("/panel")}>
+            <FontAwesomeIcon icon={faArrowLeft} /> Volver
+          </button>
+
+          <div className="ventas-title-block">
+            <span className="ventas-kicker">Cooperadora IPET 50</span>
+            <h1>Ventas escolares</h1>
+            <p>
+              Configurá la única venta activa del bot: definí si pide nombre o DNI, elegí un producto del catálogo
+              y dejá listo el flujo para Mercado Pago y comprobantes.
+            </p>
+          </div>
+
+          <button type="button" className="ventas-refresh" onClick={cargarTodo} disabled={loading}>
+            <FontAwesomeIcon icon={faRotateRight} /> Actualizar
+          </button>
+        </header>
+
+        <section className="ventas-stats">
+          <StatCard icon={faTags} label="Venta activa" value={dashboard?.campanias_activas ?? "-"} small="máximo 1 para el bot" />
+          <StatCard icon={faEye} label="Visible en bot" value={dashboard?.campanias_visibles_menu ?? "-"} small="activa, vigente y con producto" />
+          <StatCard icon={faBoxesStacked} label="Producto activo" value={dashboard?.productos_activos ?? "-"} />
+          <StatCard icon={faChartLine} label="Total aprobado" value={money(dashboard?.total_aprobado ?? 0)} small={`${dashboard?.ordenes_aprobadas ?? 0} ventas`} />
+        </section>
+
+        <nav className="ventas-tabs">
+          <button className={tab === "campanias" ? "active" : ""} onClick={() => setTab("campanias")}>
+            <FontAwesomeIcon icon={faTags} /> Configuración
+          </button>
+          <button className={tab === "productos" ? "active" : ""} onClick={() => setTab("productos")}>
+            <FontAwesomeIcon icon={faBoxesStacked} /> Productos
+          </button>
+          <button className={tab === "ordenes" ? "active" : ""} onClick={() => setTab("ordenes")}>
+            <FontAwesomeIcon icon={faReceipt} /> Ventas registradas
+          </button>
+        </nav>
+
+        {tab === "ordenes" ? (
+          <div className="ventas-filter-bar">
+            <label>
+              Venta
+              <select value={campaniaSeleccionada} onChange={(e) => cambiarCampaniaGlobal(e.target.value)}>
+                <option value="">Todas las ventas</option>
+                {campanias.map((c) => (
+                  <option key={c.id_campania} value={c.id_campania}>
+                    {c.nombre}{!asBool(c.activo) ? " (inactiva)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {campaniaActual ? (
+              <span className="ventas-campaign-pill">Flujo: {personaLabel(campaniaActual.tipo_persona)}</span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {tab === "campanias" ? (
+          <CampaniasTab
+            campanias={campanias}
+            onAdd={abrirNuevaCampania}
+            onEdit={abrirEditarCampania}
+            onDelete={eliminarCampania}
+            onToggleActivo={cambiarEstadoCampania}
+          />
+        ) : null}
+
+        {tab === "productos" ? (
+          <ProductosTab
+            productos={productos}
+            onAdd={abrirNuevoProducto}
+            onEdit={abrirEditarProducto}
+            onDelete={eliminarProducto}
+            onToggleActivo={cambiarEstadoProducto}
+          />
+        ) : null}
+
+        {tab === "ordenes" ? (
+          <OrdenesTab
+            ordenes={ordenes}
+            estado={ordenEstado}
+            setEstado={setOrdenEstado}
+            busqueda={ordenBusqueda}
+            setBusqueda={setOrdenBusqueda}
+            onBuscar={() => cargarOrdenes()}
+            onAdd={abrirNuevaOrden}
+            onEdit={abrirEditarOrden}
+          />
+        ) : null}
+      </div>
+
+      <ModalCampania
+        abierto={modalCampania}
+        form={campaniaForm}
+        setForm={setCampaniaForm}
+        productos={productosCampaniaModal}
+        saving={saving}
+        onClose={() => setModalCampania(false)}
+        onSubmit={guardarCampania}
+      />
+
+      <ModalProducto
+        abierto={modalProducto}
+        form={productoForm}
+        setForm={setProductoForm}
+        saving={saving}
+        onClose={() => setModalProducto(false)}
+        onSubmit={guardarProducto}
+      />
+
+      <ModalOrden
+        abierto={modalOrden}
+        form={ordenForm}
+        setForm={setOrdenForm}
+        campanias={campanias}
+        mediosPago={mediosPago}
+        saving={saving}
+        onClose={() => setModalOrden(false)}
+        onSubmit={guardarOrden}
+      />
+
+      <ModalConfirmar
+        abierto={!!confirmacion}
+        titulo={confirmacion?.titulo}
+        mensaje={confirmacion?.mensaje}
+        confirmText={confirmacion?.confirmText}
+        saving={saving}
+        onClose={() => setConfirmacion(null)}
+        onConfirm={ejecutarConfirmacion}
+      />
+
+      {loading ? <div className="ventas-loading">Cargando módulo de ventas...</div> : null}
+      {toast.mostrar ? (
+        <Toast
+          tipo={toast.tipo}
+          mensaje={toast.mensaje}
+          duracion={3000}
+          onClose={() => setToast({ mostrar: false, tipo: "", mensaje: "" })}
+        />
+      ) : null}
+    </div>
+  );
+}

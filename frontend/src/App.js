@@ -38,6 +38,9 @@ import CategoriaEditar from "./components/Categorias/CategoriaEditar";
 // 🔹 Familias
 import Familias from "./components/Alumnos/Familias";
 
+// 🛒 Ventas escolares
+import Ventas from "./components/Ventas/Ventas";
+
 const PANEL_API =
   process.env.REACT_APP_BOT_PANEL_URL ||
   "https://cooperadora.ipet50.edu.ar/api/bot_wp/funciones/Panel/endpoints";
@@ -303,6 +306,12 @@ function App() {
         <Route
           path="/cuotas"
           element={<RutaProtegida componente={<Cuotas />} />}
+        />
+
+        {/* Ventas escolares */}
+        <Route
+          path="/ventas"
+          element={<RutaProtegida componente={<Ventas />} />}
         />
 
         {/* Contable */}

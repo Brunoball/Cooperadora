@@ -1,0 +1,272 @@
+<?php
+// backend/modules/ventas/helpers.php
+// Helpers del módulo Ventas Escolares.
+
+function ventas_json($payload, $code = 200) {
+    http_response_code((int)$code);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function ventas_pdo() {
+    if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
+        $GLOBALS['pdo']->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $GLOBALS['pdo']->exec('SET NAMES utf8mb4');
+        return $GLOBALS['pdo'];
+    }
+
+    $dbFile = __DIR__ . '/../../config/db.php';
+    if (!is_file($dbFile)) {
+        throw new RuntimeException('No se encontró el archivo de conexión: backend/config/db.php');
+    }
+
+    require $dbFile;
+
+    if (!isset($pdo) || !($pdo instanceof PDO)) {
+        throw new RuntimeException('Conexión PDO no disponible. Revisá backend/config/db.php: debe crear una variable $pdo con instancia PDO.');
+    }
+
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('SET NAMES utf8mb4');
+    $GLOBALS['pdo'] = $pdo;
+
+    return $pdo;
+}
+
+function ventas_body() {
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw ?: '', true);
+
+    if (!is_array($data)) {
+        $data = $_POST ?: array();
+    }
+
+    return $data;
+}
+
+function ventas_bool($value, $default = 0) {
+    if ($value === null || $value === '') return $default ? 1 : 0;
+    if (is_bool($value)) return $value ? 1 : 0;
+    if (is_numeric($value)) return ((int)$value) ? 1 : 0;
+
+    $v = strtolower(trim((string)$value));
+    return in_array($v, array('1', 'true', 'si', 'sí', 'yes', 'on'), true) ? 1 : 0;
+}
+
+function ventas_text($value, $max = 255, $upper = false) {
+    $txt = trim((string)($value ?? ''));
+    $txt = preg_replace('/\s+/u', ' ', $txt);
+    if ($txt === null) $txt = '';
+    if ($upper) $txt = mb_strtoupper($txt, 'UTF-8');
+    if (mb_strlen($txt, 'UTF-8') > (int)$max) {
+        $txt = mb_substr($txt, 0, (int)$max, 'UTF-8');
+    }
+    return $txt;
+}
+
+function ventas_nullable_text($value, $max = 255, $upper = false) {
+    $txt = ventas_text($value, $max, $upper);
+    return $txt === '' ? null : $txt;
+}
+
+function ventas_decimal($value) {
+    if ($value === null || $value === '') return 0.0;
+    if (is_numeric($value)) return round((float)$value, 2);
+
+    $s = trim((string)$value);
+    $s = str_replace(array('$', ' '), '', $s);
+    if (strpos($s, ',') !== false) {
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } else {
+        $s = str_replace(',', '', $s);
+    }
+
+    return is_numeric($s) ? round((float)$s, 2) : 0.0;
+}
+
+function ventas_date_or_null($value) {
+    $v = trim((string)($value ?? ''));
+    if ($v === '') return null;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) return null;
+    $parts = explode('-', $v);
+    $y = (int)$parts[0];
+    $m = (int)$parts[1];
+    $d = (int)$parts[2];
+    return checkdate($m, $d, $y) ? sprintf('%04d-%02d-%02d', $y, $m, $d) : null;
+}
+
+function ventas_column_exists($pdo, $table, $column) {
+    $st = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :column");
+    $st->execute(array(':column' => $column));
+    return $st->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function ventas_foreign_key_for_column($pdo, $table, $column) {
+    $sql = "
+        SELECT CONSTRAINT_NAME
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+          AND COLUMN_NAME = :column_name
+          AND REFERENCED_TABLE_NAME IS NOT NULL
+        LIMIT 1
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute(array(':table_name' => $table, ':column_name' => $column));
+    $name = $st->fetchColumn();
+    return $name ? (string)$name : null;
+}
+
+function ventas_index_exists($pdo, $table, $indexName) {
+    $st = $pdo->prepare("SHOW INDEX FROM `$table` WHERE Key_name = :idx");
+    $st->execute(array(':idx' => $indexName));
+    return (bool)$st->fetch(PDO::FETCH_ASSOC);
+}
+
+function ventas_constraint_exists($pdo, $table, $constraintName) {
+    $sql = "
+        SELECT 1
+        FROM information_schema.TABLE_CONSTRAINTS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+          AND CONSTRAINT_NAME = :constraint_name
+        LIMIT 1
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute(array(':table_name' => $table, ':constraint_name' => $constraintName));
+    return (bool)$st->fetchColumn();
+}
+
+function ventas_asegurar_esquema_productos_independientes($pdo) {
+    // Desde esta versión los productos son de catálogo global y la venta/campaña solo elige cuál vender.
+    if (!ventas_column_exists($pdo, 'ventas_campanias', 'id_producto_principal')) {
+        $pdo->exec("ALTER TABLE ventas_campanias ADD COLUMN id_producto_principal INT UNSIGNED NULL DEFAULT NULL AFTER visible_menu");
+    }
+
+    if (!ventas_index_exists($pdo, 'ventas_campanias', 'idx_ventas_campanias_producto')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_campanias ADD KEY idx_ventas_campanias_producto (id_producto_principal)");
+        } catch (Throwable $e) {
+            // El índice no es crítico si el motor lo creó automáticamente por la FK.
+        }
+    }
+
+    $colCampaniaProducto = ventas_column_exists($pdo, 'ventas_productos', 'id_campania');
+
+    // Compatibilidad con bases viejas: si todavía existe ventas_productos.id_campania,
+    // primero migramos el producto principal de cada venta y luego dejamos esa columna nullable
+    // para que el producto pueda cargarse sin estar atado a una venta.
+    if ($colCampaniaProducto) {
+        try {
+            $pdo->exec("
+                UPDATE ventas_campanias c
+                SET c.id_producto_principal = (
+                    SELECT p.id_producto
+                    FROM ventas_productos p
+                    WHERE p.id_campania = c.id_campania
+                    ORDER BY p.activo DESC, p.id_producto ASC
+                    LIMIT 1
+                )
+                WHERE c.id_producto_principal IS NULL
+                  AND EXISTS (SELECT 1 FROM ventas_productos p2 WHERE p2.id_campania = c.id_campania)
+            ");
+        } catch (Throwable $e) {
+            // Si la columna legacy existe pero no puede consultarse por una diferencia de esquema,
+            // no bloqueamos todo el módulo: el usuario puede ejecutar el SQL de limpieza incluido.
+        }
+
+        if (strtoupper((string)($colCampaniaProducto['Null'] ?? 'NO')) === 'NO') {
+            try {
+                $fk = ventas_foreign_key_for_column($pdo, 'ventas_productos', 'id_campania');
+                if ($fk) {
+                    $pdo->exec("ALTER TABLE ventas_productos DROP FOREIGN KEY `$fk`");
+                }
+
+                $pdo->exec("ALTER TABLE ventas_productos MODIFY id_campania INT UNSIGNED NULL DEFAULT NULL");
+
+                if (!ventas_foreign_key_for_column($pdo, 'ventas_productos', 'id_campania')) {
+                    $pdo->exec("ALTER TABLE ventas_productos ADD CONSTRAINT fk_ventas_productos_campania FOREIGN KEY (id_campania) REFERENCES ventas_campanias (id_campania) ON DELETE SET NULL ON UPDATE CASCADE");
+                }
+            } catch (Throwable $e) {
+                throw new RuntimeException('La base necesita actualizar el módulo Ventas para productos independientes. Ejecutá el SQL de limpieza/migración indicado. Detalle: ' . $e->getMessage());
+            }
+        }
+    }
+
+    if (!ventas_constraint_exists($pdo, 'ventas_campanias', 'fk_ventas_campanias_producto_principal')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_campanias ADD CONSTRAINT fk_ventas_campanias_producto_principal FOREIGN KEY (id_producto_principal) REFERENCES ventas_productos (id_producto) ON DELETE SET NULL ON UPDATE CASCADE");
+        } catch (Throwable $e) {
+            // Si el hosting no permite agregar la FK, el sistema igual funciona usando la validación del backend.
+        }
+    }
+}
+
+function ventas_asegurar_esquema_ordenes_medios_pago($pdo) {
+    if (!ventas_column_exists($pdo, 'ventas_ordenes', 'id_medio_pago')) {
+        $pdo->exec("ALTER TABLE ventas_ordenes ADD COLUMN id_medio_pago INT UNSIGNED NOT NULL DEFAULT 2 AFTER total");
+    }
+
+    try {
+        $pdo->exec("UPDATE ventas_ordenes SET id_medio_pago = 2 WHERE id_medio_pago IS NULL OR id_medio_pago = 0");
+    } catch (Throwable $e) {
+        // Si la base todavía no tiene datos compatibles, no bloqueamos el módulo.
+    }
+
+    if (!ventas_index_exists($pdo, 'ventas_ordenes', 'idx_ventas_ordenes_medio')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_ordenes ADD KEY idx_ventas_ordenes_medio (id_medio_pago)");
+        } catch (Throwable $e) {
+            // El índice no es crítico para operar.
+        }
+    }
+
+    if (!ventas_constraint_exists($pdo, 'ventas_ordenes', 'fk_ventas_ordenes_medio')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_ordenes ADD CONSTRAINT fk_ventas_ordenes_medio FOREIGN KEY (id_medio_pago) REFERENCES medio_pago (id_medio_pago) ON DELETE RESTRICT ON UPDATE CASCADE");
+        } catch (Throwable $e) {
+            // En algunos hostings la FK puede fallar por motor o datos viejos; el backend igual valida el medio.
+        }
+    }
+}
+
+function ventas_tablas_verificadas($pdo) {
+    if (!($pdo instanceof PDO)) {
+        throw new RuntimeException('Conexión PDO no disponible.');
+    }
+
+    $st = $pdo->query("SHOW TABLES LIKE 'ventas_campanias'");
+    if (!$st || !$st->fetchColumn()) {
+        throw new RuntimeException('Faltan las tablas del módulo Ventas. Ejecutá primero database/migrations/2026_05_20_ventas_generales.sql en la base de Cooperadora.');
+    }
+
+    ventas_asegurar_esquema_productos_independientes($pdo);
+    ventas_asegurar_esquema_ordenes_medios_pago($pdo);
+}
+
+function ventas_tipo_persona($value) {
+    $v = strtolower(trim((string)($value ?? '')));
+    if (in_array($v, array('vendedor', 'responsable', 'responsable_dni', 'dni_responsable'), true)) {
+        return 'vendedor';
+    }
+    return 'comprador';
+}
+
+function ventas_pregunta_default($tipoPersona) {
+    return $tipoPersona === 'vendedor'
+        ? 'Ingresá el DNI del alumno, docente o responsable que va a realizar el pago.'
+        : 'Escribí nombre y apellido de quien compra.';
+}
+
+function ventas_mensaje_inicio_default($tipoPersona) {
+    return $tipoPersona === 'vendedor'
+        ? 'Indicá la cantidad de paquetes, números o productos vendidos.'
+        : 'Indicá la cantidad que querés comprar.';
+}
+
+function ventas_normalizar_stock($stockRaw) {
+    if ($stockRaw === '' || $stockRaw === null) return null;
+    return max(0, (int)$stockRaw);
+}

@@ -96,6 +96,19 @@ const fmtFechaSeparador = (ts) => {
   return `${dd}/${mm}/${yyyy}`;
 };
 
+
+const fmtFechaEvento = (value) => {
+  const ts = toTs(value);
+  if (!Number.isFinite(ts)) return "";
+  const d = new Date(ts);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+};
+
 const toTs = (value) => {
   if (!value) return null;
   const s = String(value).trim();
@@ -215,6 +228,136 @@ const fmtBytes = (n) => {
 /* =========================
    ✅ MODAL VISOR (IMG / PDF)
 ========================= */
+
+const BotEventosModal = ({
+  open,
+  onClose,
+  eventos,
+  resumen,
+  loading,
+  error,
+  onRefresh,
+  onMarkOne,
+  onMarkAll,
+  onOpenChat,
+}) => {
+  if (!open) return null;
+
+  const pendientes = Number(resumen?.pendientes || 0);
+  const hasEventos = Array.isArray(eventos) && eventos.length > 0;
+
+  return (
+    <div className="wp-events-backdrop" role="dialog" aria-modal="true">
+      <div className="wp-events-panel">
+        <div className="wp-events-head">
+          <div>
+            <div className="wp-events-title">
+              <FontAwesomeIcon icon={faTriangleExclamation} />
+              Alertas del bot
+            </div>
+            <div className="wp-events-sub">
+              {pendientes > 0
+                ? `${pendientes} evento${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"}`
+                : "No hay eventos pendientes"}
+            </div>
+          </div>
+
+          <button type="button" className="wp-events-close" onClick={onClose} aria-label="Cerrar">
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
+        <div className="wp-events-actions">
+          <button type="button" className="wp-events-btn" onClick={onRefresh} disabled={loading}>
+            {loading ? <FontAwesomeIcon icon={faSpinner} spin /> : null}
+            Actualizar
+          </button>
+          <button
+            type="button"
+            className="wp-events-btn wp-events-btn--ok"
+            onClick={onMarkAll}
+            disabled={loading || pendientes <= 0}
+          >
+            Marcar todo revisado
+          </button>
+        </div>
+
+        <div className="wp-events-summary">
+          <span>Errores pendientes: <b>{Number(resumen?.errores_pendientes || 0)}</b></span>
+          <span>Advertencias: <b>{Number(resumen?.warnings_pendientes || 0)}</b></span>
+          <span>Últimos 7 días: <b>{Number(resumen?.total_ultimos_7_dias || 0)}</b></span>
+        </div>
+
+        {error ? (
+          <div className="wp-events-error">
+            <FontAwesomeIcon icon={faTriangleExclamation} />
+            {error}
+          </div>
+        ) : null}
+
+        <div className="wp-events-list">
+          {loading && !hasEventos ? (
+            <div className="wp-events-empty">
+              <FontAwesomeIcon icon={faSpinner} spin /> Cargando alertas…
+            </div>
+          ) : null}
+
+          {!loading && !hasEventos ? (
+            <div className="wp-events-empty">
+              Todo limpio. Si el bot falla al generar un link, enviar WhatsApp, procesar un webhook o subir un archivo, va a aparecer acá.
+            </div>
+          ) : null}
+
+          {hasEventos ? eventos.map((ev) => {
+            const pendiente = ev.estado === "pendiente";
+            const tipo = String(ev.tipo || "error");
+            const ctx = ev.contexto && typeof ev.contexto === "object" ? ev.contexto : {};
+            const ctxEntries = Object.entries(ctx).filter(([, v]) => v !== "" && v !== null && v !== undefined && v !== 0);
+
+            return (
+              <div key={ev.id_evento} className={`wp-event-card wp-event-card--${tipo} ${pendiente ? "is-pending" : "is-reviewed"}`}>
+                <div className="wp-event-top">
+                  <span className="wp-event-badge">{tipo}</span>
+                  <span className="wp-event-module">{ev.modulo || "bot"}</span>
+                  <span className="wp-event-date">{fmtFechaEvento(ev.creado_en)}</span>
+                </div>
+
+                <div className="wp-event-title">{ev.titulo || "Evento del bot"}</div>
+
+                {ev.detalle ? <div className="wp-event-detail">{ev.detalle}</div> : null}
+
+                <div className="wp-event-meta">
+                  {ev.wa_id ? (
+                    <button type="button" className="wp-event-link" onClick={() => onOpenChat?.(ev.wa_id)}>
+                      Abrir chat {ev.wa_id}
+                    </button>
+                  ) : <span>Sin contacto asociado</span>}
+                  <span>Estado: <b>{pendiente ? "pendiente" : "revisado"}</b></span>
+                </div>
+
+                {ctxEntries.length > 0 ? (
+                  <details className="wp-event-context">
+                    <summary>Ver contexto técnico</summary>
+                    <pre>{JSON.stringify(ctx, null, 2)}</pre>
+                  </details>
+                ) : null}
+
+                {pendiente ? (
+                  <div className="wp-event-foot">
+                    <button type="button" className="wp-events-btn wp-events-btn--ok" onClick={() => onMarkOne?.(ev.id_evento)}>
+                      Marcar revisado
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          }) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MediaViewerModal = ({ open, onClose, item }) => {
   const boxRef = useRef(null);
 
@@ -308,6 +451,17 @@ const BotPanel = () => {
 
   const [errorChats, setErrorChats] = useState("");
   const [errorMsgs, setErrorMsgs] = useState("");
+
+  const [eventosOpen, setEventosOpen] = useState(false);
+  const [eventos, setEventos] = useState([]);
+  const [eventosResumen, setEventosResumen] = useState({
+    pendientes: 0,
+    errores_pendientes: 0,
+    warnings_pendientes: 0,
+    total_ultimos_7_dias: 0,
+  });
+  const [loadingEventos, setLoadingEventos] = useState(false);
+  const [errorEventos, setErrorEventos] = useState("");
 
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState("bot");
@@ -485,6 +639,55 @@ const BotPanel = () => {
       setLoadingEtiquetas(false);
     }
   }, [fetchJSON]);
+
+
+  const fetchEventos = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoadingEventos(true);
+      setErrorEventos("");
+      try {
+        const { res, data } = await fetchJSON(
+          `${PANEL_API}/panel_eventos.php?limit=100&_=${Date.now()}`
+        );
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
+        setEventos(Array.isArray(data.eventos) ? data.eventos : []);
+        setEventosResumen({
+          pendientes: Number(data?.resumen?.pendientes || 0),
+          errores_pendientes: Number(data?.resumen?.errores_pendientes || 0),
+          warnings_pendientes: Number(data?.resumen?.warnings_pendientes || 0),
+          total_ultimos_7_dias: Number(data?.resumen?.total_ultimos_7_dias || 0),
+        });
+      } catch (e) {
+        setErrorEventos(e?.message || "No se pudieron cargar las alertas del bot");
+      } finally {
+        if (!silent) setLoadingEventos(false);
+      }
+    },
+    [fetchJSON]
+  );
+
+  const marcarEventoRevisado = useCallback(
+    async (idEvento = 0) => {
+      try {
+        setLoadingEventos(true);
+        const { res, data } = await postJSON(`${PANEL_API}/panel_eventos.php`, {
+          accion: "marcar_revisado",
+          id_evento: Number(idEvento || 0),
+        });
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
+        await fetchEventos(true);
+      } catch (e) {
+        setErrorEventos(e?.message || "No se pudo marcar la alerta como revisada");
+      } finally {
+        setLoadingEventos(false);
+      }
+    },
+    [postJSON, fetchEventos]
+  );
 
   const fetchChats = useCallback(
     async (silent = false) => {
@@ -772,12 +975,13 @@ const BotPanel = () => {
   useEffect(() => {
     fetchChats(false);
     fetchEtiquetas();
+    fetchEventos(true);
 
     (async () => {
       const h = await getGlobalHash();
       globalHashRef.current = h || "";
     })();
-  }, [fetchChats, fetchEtiquetas, getGlobalHash]);
+  }, [fetchChats, fetchEtiquetas, fetchEventos, getGlobalHash]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -806,6 +1010,12 @@ const BotPanel = () => {
     const t = setInterval(() => fetchChats(true), 30000);
     return () => clearInterval(t);
   }, [fetchChats]);
+
+
+  useEffect(() => {
+    const t = setInterval(() => fetchEventos(true), 60000);
+    return () => clearInterval(t);
+  }, [fetchEventos]);
 
   const list = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -1369,6 +1579,24 @@ const BotPanel = () => {
               </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            className={`wp-alertbtn ${Number(eventosResumen?.pendientes || 0) > 0 ? "is-danger" : ""}`}
+            onClick={() => {
+              setEventosOpen(true);
+              fetchEventos(true);
+            }}
+            title="Ver alertas y errores del bot"
+            aria-label="Ver alertas y errores del bot"
+          >
+            <FontAwesomeIcon icon={faTriangleExclamation} />
+            {Number(eventosResumen?.pendientes || 0) > 0 ? (
+              <span className="wp-alertbadge">
+                {Number(eventosResumen?.pendientes || 0) > 99 ? "99+" : Number(eventosResumen?.pendientes || 0)}
+              </span>
+            ) : null}
+          </button>
         </div>
 
         <div className="wp-search">
@@ -1949,6 +2177,22 @@ const BotPanel = () => {
       </main>
 
       <MediaViewerModal open={viewerOpen} onClose={closeViewer} item={viewerItem} />
+
+      <BotEventosModal
+        open={eventosOpen}
+        onClose={() => setEventosOpen(false)}
+        eventos={eventos}
+        resumen={eventosResumen}
+        loading={loadingEventos}
+        error={errorEventos}
+        onRefresh={() => fetchEventos(false)}
+        onMarkOne={(idEvento) => marcarEventoRevisado(idEvento)}
+        onMarkAll={() => marcarEventoRevisado(0)}
+        onOpenChat={(waId) => {
+          setEventosOpen(false);
+          openChat(waId);
+        }}
+      />
 
       <GaleriaModal
         open={galeriaOpen}
