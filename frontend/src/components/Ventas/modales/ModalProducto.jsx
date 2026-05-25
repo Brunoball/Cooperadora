@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSave } from "@fortawesome/free-solid-svg-icons";
+import { faBoxOpen, faDollarSign, faSave } from "@fortawesome/free-solid-svg-icons";
 import ModalBase from "./ModalBase";
 import Toggle from "../Toggle";
 import { asBool } from "../ventasConfig";
@@ -15,41 +15,64 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
       titulo={titulo}
       subtitulo="Cargá el producto al catálogo. Después lo elegís desde la venta o campaña que corresponda."
       onClose={saving ? undefined : onClose}
+      className="ventas-modal--producto"
     >
-      <form className="ventas-form" onSubmit={onSubmit}>
-        <div className="ventas-modal__body">
-          <div className="ventas-admin-note">
-            El producto ya no se relaciona desde acá con una venta. Primero cargás el producto y después, desde Configuración, seleccionás qué producto se va a vender.
+      <form className="ventas-form ventas-producto-form" onSubmit={onSubmit}>
+        <div className="ventas-modal__body ventas-producto-body">
+          <div className="ventas-producto-note">
+            <span className="ventas-producto-note__icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faBoxOpen} />
+            </span>
+            <span>
+              El producto se carga al catálogo y después se selecciona desde Configuración para definir qué se va a vender.
+            </span>
           </div>
 
-          <label>
-            Nombre
-            <input
-              value={form.nombre}
-              onChange={(e) => setField("nombre", e.target.value)}
-              placeholder="Ej: Entrada general"
-              maxLength={150}
-              required
-            />
-          </label>
+          <div className="ventas-producto-card">
+            <div className="ventas-producto-card__head">
+              <span className="ventas-producto-card__icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faBoxOpen} />
+              </span>
+              <div>
+                <h3>Datos del producto</h3>
+                <p>Completá la información principal del catálogo.</p>
+              </div>
+            </div>
 
-          <label>
-            Descripción
-            <textarea value={form.descripcion || ""} rows={3} onChange={(e) => setField("descripcion", e.target.value)} />
-          </label>
+            <label className="ventas-producto-field ventas-producto-field--full">
+              <span>Nombre</span>
+              <input
+                value={form.nombre}
+                onChange={(e) => setField("nombre", e.target.value)}
+                placeholder="Ej: Entrada general"
+                maxLength={150}
+                required
+              />
+            </label>
 
-          <div className="ventas-form-row">
-            <label>
-              Precio
-              <input type="number" min="0" step="0.01" value={form.precio} onChange={(e) => setField("precio", e.target.value)} required />
+            <label className="ventas-producto-field ventas-producto-field--full">
+              <span>Descripción</span>
+              <textarea value={form.descripcion || ""} rows={3} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Detalle opcional del producto" />
             </label>
-            <label>
-              Stock opcional
-              <input type="number" min="0" value={form.stock ?? ""} onChange={(e) => setField("stock", e.target.value)} placeholder="Sin límite" />
-            </label>
+
+            <div className="ventas-form-row ventas-producto-grid">
+              <label className="ventas-producto-field ventas-producto-field--money">
+                <span>Precio</span>
+                <div className="ventas-producto-inputIcon">
+                  <FontAwesomeIcon icon={faDollarSign} />
+                  <input type="number" min="0" step="0.01" value={form.precio} onChange={(e) => setField("precio", e.target.value)} required />
+                </div>
+              </label>
+              <label className="ventas-producto-field">
+                <span>Stock opcional</span>
+                <input type="number" min="0" value={form.stock ?? ""} onChange={(e) => setField("stock", e.target.value)} placeholder="Sin límite" />
+              </label>
+            </div>
           </div>
 
-          <Toggle checked={asBool(form.activo)} label="Producto activo" onChange={(v) => setField("activo", v ? 1 : 0)} />
+          <div className="ventas-producto-status">
+            <Toggle checked={asBool(form.activo)} label="Producto activo" onChange={(v) => setField("activo", v ? 1 : 0)} />
+          </div>
         </div>
 
         <footer className="ventas-modal__footer">

@@ -1,0 +1,459 @@
+/* =========================================================
+   CSS propio del contenido interno de los modales de Ventas
+   ========================================================= */
+
+.ventas-modal .ventas-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.ventas-modal .ventas-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: calc(92vh - 158px);
+  padding: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  scrollbar-width: thin;
+}
+
+.ventas-modal .ventas-modal__footer {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.95);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #f8fafc;
+}
+
+.ventas-modal .ventas-form label,
+.ventas-modal .ventas-filter-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--blue-inst-gray-700, #334155);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ventas-modal .ventas-form input,
+.ventas-modal .ventas-form select,
+.ventas-modal .ventas-form textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: var(--blue-inst-gray-900, #0f172a);
+  background: #ffffff;
+  outline: none;
+  transition: border 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.ventas-modal .ventas-form textarea {
+  resize: vertical;
+  min-height: 76px;
+}
+
+.ventas-modal .ventas-form input:focus,
+.ventas-modal .ventas-form select:focus,
+.ventas-modal .ventas-form textarea:focus {
+  border-color: var(--blue-inst-primary, #1D428A);
+  box-shadow: 0 0 0 4px rgba(29, 66, 138, 0.12);
+}
+
+.ventas-modal .ventas-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ventas-modal .ventas-form-row--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ventas-modal .ventas-flow-preview,
+.ventas-modal .ventas-admin-note,
+.ventas-modal .ventas-simple-box,
+.ventas-modal .ventas-product-config,
+.ventas-modal .ventas-manual-total {
+  margin-bottom: 14px;
+}
+
+
+.ventas-modal .ventas-modal__body > label,
+.ventas-modal .ventas-modal__body > .ventas-form-row,
+.ventas-modal .ventas-modal__body > .ventas-simple-box,
+.ventas-modal .ventas-modal__body > .ventas-toggle-grid {
+  margin-bottom: 14px;
+}
+
+.ventas-modal .ventas-modal__body > :last-child {
+  margin-bottom: 0;
+}
+
+.ventas-modal .ventas-simple-box > .ventas-form-row + .ventas-form-row,
+.ventas-modal .ventas-product-config > .ventas-form-row {
+  margin-top: 12px;
+}
+
+.ventas-modal .ventas-product-config {
+  padding: 16px;
+}
+
+@media (max-width: 760px) {
+  .ventas-modal .ventas-modal__body {
+    max-height: calc(96vh - 170px);
+    padding: 14px;
+  }
+
+  .ventas-modal .ventas-modal__footer {
+    padding: 14px;
+    flex-direction: column-reverse;
+  }
+
+  .ventas-modal .ventas-modal__footer button {
+    width: 100%;
+  }
+
+  .ventas-modal .ventas-form-row,
+  .ventas-modal .ventas-form-row--three {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   Agregar / editar producto: estética propia del modal
+   ========================================================= */
+.ventas-modal--producto {
+  width: min(760px, 100%);
+}
+
+.ventas-producto-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ventas-producto-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid rgba(29, 66, 138, 0.14);
+  background: linear-gradient(135deg, rgba(29, 66, 138, 0.08), rgba(0, 85, 187, 0.04));
+  color: #183b78;
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: .88rem;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+.ventas-producto-note__icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--blue-inst-primary, #1d428a);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.ventas-producto-card {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 20px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+}
+
+.ventas-producto-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.ventas-producto-card__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: var(--blue-inst-primary, #1d428a);
+}
+
+.ventas-producto-card__head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.ventas-producto-card__head p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: .84rem;
+  font-weight: 600;
+}
+
+.ventas-modal .ventas-producto-field {
+  margin-bottom: 13px;
+  gap: 6px;
+}
+
+.ventas-modal .ventas-producto-field > span {
+  color: #334155;
+  font-size: .82rem;
+  font-weight: 750;
+}
+
+.ventas-producto-grid {
+  align-items: end;
+}
+
+.ventas-producto-inputIcon {
+  position: relative;
+}
+
+.ventas-producto-inputIcon > svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: .86rem;
+  pointer-events: none;
+}
+
+.ventas-producto-inputIcon input {
+  padding-left: 32px !important;
+}
+
+.ventas-producto-status {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 12px 14px;
+}
+
+.ventas-modal--producto .ventas-modal__footer .ventas-primary,
+.ventas-modal--producto .ventas-modal__footer .ventas-modal-cancel {
+  min-height: 42px;
+  border-radius: 12px;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .ventas-producto-card {
+    padding: 14px;
+  }
+
+  .ventas-producto-card__head {
+    align-items: flex-start;
+  }
+}
+
+/* =========================================================
+   Ventas registradas: agregar / editar venta manual
+   ========================================================= */
+.ventas-modal--orden {
+  width: min(900px, 100%);
+}
+
+.ventas-modal--orden .ventas-modal__head {
+  padding: 18px 22px;
+}
+
+.ventas-modal--orden .ventas-modal__title h2 {
+  font-size: 1.22rem;
+  letter-spacing: -0.02em;
+}
+
+.ventas-modal--orden .ventas-modal__title p {
+  max-width: 680px;
+  font-size: .88rem;
+}
+
+.ventas-modal .ventas-orden-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.ventas-orden-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid rgba(29, 66, 138, 0.14);
+  background: linear-gradient(135deg, rgba(29, 66, 138, 0.08), rgba(0, 85, 187, 0.035));
+  color: #183b78;
+  border-radius: 18px;
+  padding: 12px 14px;
+  font-size: .88rem;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+.ventas-orden-note__icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: var(--blue-inst-primary, #1d428a);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.ventas-orden-note strong,
+.ventas-orden-note span:not(.ventas-orden-note__icon) {
+  display: block;
+}
+
+.ventas-orden-note strong {
+  margin-bottom: 2px;
+  color: #102e6a;
+  font-size: .92rem;
+}
+
+.ventas-orden-note span:not(.ventas-orden-note__icon) {
+  color: #50627d;
+  font-size: .84rem;
+  font-weight: 600;
+}
+
+.ventas-orden-card {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 16px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.055);
+}
+
+.ventas-orden-card--soft {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+}
+
+.ventas-orden-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 15px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.ventas-orden-card__head--plain {
+  justify-content: flex-start;
+}
+
+.ventas-orden-card__head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+}
+
+.ventas-orden-card__head p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: .84rem;
+  font-weight: 600;
+}
+
+.ventas-orden-card__head > span {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #bbf7d0;
+  font-size: .94rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.ventas-modal .ventas-orden-card .ventas-form-row + .ventas-form-row {
+  margin-top: 12px;
+}
+
+.ventas-modal .ventas-orden-field {
+  gap: 6px;
+}
+
+.ventas-modal .ventas-orden-field > span {
+  color: #334155;
+  font-size: .82rem;
+  font-weight: 750;
+}
+
+.ventas-modal .ventas-orden-field input,
+.ventas-modal .ventas-orden-field select,
+.ventas-modal .ventas-orden-field textarea {
+  min-height: 42px;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.ventas-modal .ventas-orden-field textarea {
+  min-height: 82px;
+}
+
+.ventas-modal .ventas-orden-field--full {
+  margin-top: 12px;
+}
+
+.ventas-manual-total--orden {
+  margin: 14px 0 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+}
+
+.ventas-modal--orden .ventas-modal__footer .ventas-primary,
+.ventas-modal--orden .ventas-modal__footer .ventas-modal-cancel {
+  min-height: 42px;
+  border-radius: 12px;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .ventas-modal .ventas-orden-body {
+    padding: 14px;
+  }
+
+  .ventas-orden-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .ventas-orden-card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ventas-orden-card__head > span {
+    width: 100%;
+  }
+}

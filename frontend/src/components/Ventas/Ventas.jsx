@@ -6,8 +6,6 @@ import {
   faBoxesStacked,
   faChartLine,
   faEye,
-  faReceipt,
-  faRotateRight,
   faTags,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -31,13 +29,13 @@ import {
   emptyOrden,
   emptyProducto,
   money,
-  personaLabel,
   toInputDate,
 } from "./ventasConfig";
 
 const API = `${BASE_URL}/api.php`;
 
 function StatCard({ icon, label, value, small }) {
+
   return (
     <div className="ventas-stat-card">
       <div className="ventas-stat-icon">
@@ -477,25 +475,32 @@ export default function Ventas() {
     }
   };
 
+
+  const tabsControl = (
+    <nav className="ventas-tabs ventas-tabs--in-card" aria-label="Cambiar tabla de ventas">
+      <button type="button" className={tab === "campanias" ? "active" : ""} onClick={() => setTab("campanias")}>
+        Configuración
+      </button>
+      <button type="button" className={tab === "productos" ? "active" : ""} onClick={() => setTab("productos")}>
+        Productos
+      </button>
+      <button type="button" className={tab === "ordenes" ? "active" : ""} onClick={() => setTab("ordenes")}>
+        Ventas registradas
+      </button>
+    </nav>
+  );
+
   return (
     <div className="ventas-page">
       <div className="ventas-shell">
-        <header className="ventas-header">
-          <button type="button" className="ventas-back" onClick={() => navigate("/panel")}>
-            <FontAwesomeIcon icon={faArrowLeft} /> Volver
-          </button>
-
+        <header className="ventas-header ventas-header--section-title">
           <div className="ventas-title-block">
             <span className="ventas-kicker">Cooperadora IPET 50</span>
             <h1>Ventas escolares</h1>
-            <p>
-              Configurá la única venta activa del bot: definí si pide nombre o DNI, elegí un producto del catálogo
-              y dejá listo el flujo para Mercado Pago y comprobantes.
-            </p>
           </div>
 
-          <button type="button" className="ventas-refresh" onClick={cargarTodo} disabled={loading}>
-            <FontAwesomeIcon icon={faRotateRight} /> Actualizar
+          <button type="button" className="ventas-back" onClick={() => navigate("/panel")}>
+            <FontAwesomeIcon icon={faArrowLeft} /> Volver
           </button>
         </header>
 
@@ -506,59 +511,34 @@ export default function Ventas() {
           <StatCard icon={faChartLine} label="Total aprobado" value={money(dashboard?.total_aprobado ?? 0)} small={`${dashboard?.ordenes_aprobadas ?? 0} ventas`} />
         </section>
 
-        <nav className="ventas-tabs">
-          <button className={tab === "campanias" ? "active" : ""} onClick={() => setTab("campanias")}>
-            <FontAwesomeIcon icon={faTags} /> Configuración
-          </button>
-          <button className={tab === "productos" ? "active" : ""} onClick={() => setTab("productos")}>
-            <FontAwesomeIcon icon={faBoxesStacked} /> Productos
-          </button>
-          <button className={tab === "ordenes" ? "active" : ""} onClick={() => setTab("ordenes")}>
-            <FontAwesomeIcon icon={faReceipt} /> Ventas registradas
-          </button>
-        </nav>
-
-        {tab === "ordenes" ? (
-          <div className="ventas-filter-bar">
-            <label>
-              Venta
-              <select value={campaniaSeleccionada} onChange={(e) => cambiarCampaniaGlobal(e.target.value)}>
-                <option value="">Todas las ventas</option>
-                {campanias.map((c) => (
-                  <option key={c.id_campania} value={c.id_campania}>
-                    {c.nombre}{!asBool(c.activo) ? " (inactiva)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {campaniaActual ? (
-              <span className="ventas-campaign-pill">Flujo: {personaLabel(campaniaActual.tipo_persona)}</span>
-            ) : null}
-          </div>
-        ) : null}
 
         {tab === "campanias" ? (
           <CampaniasTab
+            tableTabs={tabsControl}
             campanias={campanias}
             onAdd={abrirNuevaCampania}
             onEdit={abrirEditarCampania}
             onDelete={eliminarCampania}
             onToggleActivo={cambiarEstadoCampania}
+            loading={loading}
           />
         ) : null}
 
         {tab === "productos" ? (
           <ProductosTab
+            tableTabs={tabsControl}
             productos={productos}
             onAdd={abrirNuevoProducto}
             onEdit={abrirEditarProducto}
             onDelete={eliminarProducto}
             onToggleActivo={cambiarEstadoProducto}
+            loading={loading}
           />
         ) : null}
 
         {tab === "ordenes" ? (
           <OrdenesTab
+            tableTabs={tabsControl}
             ordenes={ordenes}
             estado={ordenEstado}
             setEstado={setOrdenEstado}
@@ -567,6 +547,11 @@ export default function Ventas() {
             onBuscar={() => cargarOrdenes()}
             onAdd={abrirNuevaOrden}
             onEdit={abrirEditarOrden}
+            loading={loading}
+            campanias={campanias}
+            campaniaSeleccionada={campaniaSeleccionada}
+            onCambiarCampania={cambiarCampaniaGlobal}
+            campaniaActual={campaniaActual}
           />
         ) : null}
       </div>
@@ -611,7 +596,6 @@ export default function Ventas() {
         onConfirm={ejecutarConfirmacion}
       />
 
-      {loading ? <div className="ventas-loading">Cargando módulo de ventas...</div> : null}
       {toast.mostrar ? (
         <Toast
           tipo={toast.tipo}

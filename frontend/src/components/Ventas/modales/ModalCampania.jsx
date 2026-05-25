@@ -12,6 +12,19 @@ import {
   tiposPersona,
 } from "../ventasConfig";
 
+const abrirCalendario = (event) => {
+  const input = event.currentTarget;
+
+  if (!input || input.disabled || input.readOnly || typeof input.showPicker !== "function") return;
+
+  try {
+    input.showPicker();
+  } catch (_) {
+    // Algunos navegadores solo permiten abrirlo con una acción directa del usuario.
+  }
+};
+
+
 export default function ModalCampania({ abierto, form, setForm, productos = [], saving, onClose, onSubmit }) {
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -204,11 +217,23 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
           <div className="ventas-form-row">
             <label>
               Fecha inicio opcional
-              <input type="date" value={form.fecha_inicio || ""} onChange={(e) => setField("fecha_inicio", e.target.value)} />
+              <input
+                type="date"
+                value={form.fecha_inicio || ""}
+                onClick={abrirCalendario}
+                onFocus={abrirCalendario}
+                onChange={(e) => setField("fecha_inicio", e.target.value)}
+              />
             </label>
             <label>
               Fecha fin opcional
-              <input type="date" value={form.fecha_fin || ""} onChange={(e) => setField("fecha_fin", e.target.value)} />
+              <input
+                type="date"
+                value={form.fecha_fin || ""}
+                onClick={abrirCalendario}
+                onFocus={abrirCalendario}
+                onChange={(e) => setField("fecha_fin", e.target.value)}
+              />
             </label>
           </div>
 

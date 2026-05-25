@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faToggleOff, faToggleOn } from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 export default function Toggle({ checked, label, hint, onChange }) {
   return (
@@ -9,9 +9,12 @@ export default function Toggle({ checked, label, hint, onChange }) {
       className={`ventas-toggle ${checked ? "ventas-toggle--on" : ""}`}
       onClick={() => onChange(!checked)}
       title={hint || label}
+      aria-pressed={checked}
     >
-      <FontAwesomeIcon icon={checked ? faToggleOn : faToggleOff} />
-      <span>{label}</span>
+      <span className="ventas-toggle__box" aria-hidden="true">
+        {checked ? <FontAwesomeIcon icon={faCheck} /> : null}
+      </span>
+      <span className="ventas-toggle__text">{label}</span>
     </button>
   );
 }

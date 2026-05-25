@@ -1,107 +1,135 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
-import { estadosOrden, money, origenLabel, personaLabel } from "../ventasConfig";
+import { faEdit, faEye, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { asBool, estadosOrden, money, origenLabel, personaLabel } from "../ventasConfig";
 
-export default function OrdenesTab({ ordenes, estado, setEstado, busqueda, setBusqueda, onBuscar, onAdd, onEdit }) {
+export default function OrdenesTab({ tableTabs, ordenes, estado, setEstado, busqueda, setBusqueda, onBuscar, onAdd, onEdit, loading = false, campanias = [], campaniaSeleccionada = "", onCambiarCampania = () => {}, campaniaActual = null }) {
   return (
     <section className="ventas-card ventas-table-card ventas-full-card">
       <div className="ventas-card-head ventas-card-head--stack">
-        <div>
-          <h2>Ventas registradas</h2>
-          <p>Acá aparecen las ventas del bot y también las ventas cargadas manualmente por pagos en efectivo u otros medios.</p>
+        <div className="ventas-card-tabs-slot">
+          {tableTabs}
         </div>
         <div className="ventas-header-actions">
-          <button type="button" className="ventas-primary" onClick={onAdd}>
-            <FontAwesomeIcon icon={faPlus} /> Agregar venta
-          </button>
           <div className="ventas-orden-filters">
-            <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-              {estadosOrden.map((e) => (
-                <option key={e.value} value={e.value}>{e.label}</option>
-              ))}
-            </select>
+            <label className="ventas-filter-inline">
+              <span>Venta</span>
+              <select value={campaniaSeleccionada} onChange={(e) => onCambiarCampania(e.target.value)}>
+                <option value="">Todas las ventas</option>
+                {campanias.map((c) => (
+                  <option key={c.id_campania} value={c.id_campania}>
+                    {c.nombre}{!asBool(c.activo) ? " (inactiva)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ventas-filter-inline">
+              <span>Estado</span>
+              <select value={estado} onChange={(e) => setEstado(e.target.value)}>
+                {estadosOrden.map((e) => (
+                  <option key={e.value} value={e.value}>{e.label}</option>
+                ))}
+              </select>
+            </label>
+
             <div className="ventas-search-box">
               <FontAwesomeIcon icon={faSearch} />
               <input
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && onBuscar()}
-                placeholder="Buscar nombre, código, pago o medio"
+                placeholder="Buscar venta"
               />
-              <button type="button" onClick={onBuscar}>Buscar</button>
             </div>
+            <button type="button" className="ventas-primary" onClick={onAdd}>
+              <FontAwesomeIcon icon={faPlus} /> Nueva venta
+            </button>
           </div>
         </div>
       </div>
       <div className="ventas-table-wrap ventas-table-wrap--center">
-        <table className="ventas-table ventas-table--ordenes">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Venta</th>
-              <th>Nombre informado</th>
-              <th>Medio</th>
-              <th>Total</th>
-              <th>Estado</th>
-              <th>Origen</th>
-              <th>PDF</th>
-              <th>Fecha</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {ordenes.length === 0 ? (
-              <tr>
-                <td colSpan="10" className="ventas-empty-cell">Todavía no hay ventas registradas.</td>
-              </tr>
+        <div className="ventas-div-table ventas-div-table--ordenes" role="table" aria-label="Ventas registradas">
+          <div className="ventas-div-head" role="rowgroup">
+            <div className="ventas-div-row ventas-div-row--head" role="row">
+              <div className="ventas-div-cell" role="columnheader">Código</div>
+              <div className="ventas-div-cell" role="columnheader">Venta</div>
+              <div className="ventas-div-cell" role="columnheader">Nombre informado</div>
+              <div className="ventas-div-cell" role="columnheader">Medio</div>
+              <div className="ventas-div-cell" role="columnheader">Total</div>
+              <div className="ventas-div-cell" role="columnheader">Estado</div>
+              <div className="ventas-div-cell" role="columnheader">Origen</div>
+              <div className="ventas-div-cell" role="columnheader">PDF</div>
+              <div className="ventas-div-cell" role="columnheader">Fecha</div>
+              <div className="ventas-div-cell ventas-div-cell--actions" role="columnheader">Acciones</div>
+            </div>
+          </div>
+
+          <div className="ventas-div-body" role="rowgroup">
+            {loading ? (
+              Array.from({ length: 7 }).map((_, i) => (
+                <div key={`skeleton-orden-${i}`} className="ventas-div-row ventas-skeleton-row" role="row" aria-hidden="true">
+                  {Array.from({ length: 10 }).map((__, j) => (
+                    <div key={j} className="ventas-div-cell"><span className="ventas-skeleton-line" /></div>
+                  ))}
+                </div>
+              ))
+            ) : ordenes.length === 0 ? (
+              <div className="ventas-empty-cell" role="row">Todavía no hay ventas registradas.</div>
             ) : (
               ordenes.map((o) => (
-                <tr key={o.id_orden}>
-                  <td>
+                <div key={o.id_orden} className="ventas-div-row" role="row">
+                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.codigo_orden}</strong>
                     <span>{o.payment_id || (o.origen === "manual" ? "Carga manual" : "Sin payment_id")}</span>
-                  </td>
-                  <td>
+                  </div>
+                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.campania_nombre || "Sin venta"}</strong>
                     <span>{o.items_cantidad || 0} producto(s)</span>
-                  </td>
-                  <td>
+                  </div>
+                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.persona_nombre || "Sin nombre"}</strong>
                     <span>{o.persona_detalle || personaLabel(o.persona_tipo)}</span>
-                  </td>
-                  <td>
+                  </div>
+                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.medio_pago || "Sin medio"}</strong>
                     <span>{o.id_medio_pago ? `ID ${o.id_medio_pago}` : "No informado"}</span>
-                  </td>
-                  <td>{money(o.total)}</td>
-                  <td>
+                  </div>
+                  <div className="ventas-div-cell" role="cell">{money(o.total)}</div>
+                  <div className="ventas-div-cell" role="cell">
                     <span className={`ventas-status ${o.estado === "aprobada" ? "ok" : "muted"}`}>
                       {o.estado}
                     </span>
-                  </td>
-                  <td>
+                  </div>
+                  <div className="ventas-div-cell" role="cell">
                     <span className={`ventas-status ${o.origen === "manual" ? "manual" : "muted"}`}>
                       {origenLabel(o.origen)}
                     </span>
-                  </td>
-                  <td>
-                    {o.pdf_url ? <a href={o.pdf_url} target="_blank" rel="noreferrer">Abrir PDF</a> : "Sin PDF"}
-                  </td>
-                  <td>
+                  </div>
+                  <div className="ventas-div-cell ventas-row-actions ventas-pdf-actions" role="cell">
+                    {o.pdf_url ? (
+                      <a href={o.pdf_url} target="_blank" rel="noreferrer" title="Ver PDF" aria-label="Ver PDF">
+                        <FontAwesomeIcon icon={faEye} />
+                      </a>
+                    ) : (
+                      <button type="button" disabled title="Sin PDF" aria-label="Sin PDF">
+                        <FontAwesomeIcon icon={faEye} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.aprobado_en ? String(o.aprobado_en).slice(0, 16) : String(o.creado_en || "").slice(0, 16)}</strong>
                     <span>{o.actualizado_en ? `Actualizado ${String(o.actualizado_en).slice(0, 16)}` : ""}</span>
-                  </td>
-                  <td className="ventas-row-actions">
+                  </div>
+                  <div className="ventas-div-cell ventas-row-actions" role="cell">
                     <button type="button" onClick={() => onEdit(o)} title="Editar venta registrada">
                       <FontAwesomeIcon icon={faEdit} />
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </section>
   );

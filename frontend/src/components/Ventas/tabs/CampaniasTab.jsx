@@ -3,74 +3,80 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faEye, faEyeSlash, faPowerOff, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { asBool, money, personaLabel } from "../ventasConfig";
 
-export default function CampaniasTab({ campanias, onAdd, onEdit, onDelete, onToggleActivo }) {
+export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDelete, onToggleActivo, loading = false }) {
   return (
     <section className="ventas-card ventas-table-card ventas-full-card">
       <div className="ventas-card-head ventas-card-head--stack">
-        <div>
-          <h2>Ventas configuradas</h2>
-          <p>El bot trabaja con una sola venta activa. Acá elegís el flujo y el producto del catálogo que se va a cobrar.</p>
+        <div className="ventas-card-tabs-slot">
+          {tableTabs}
         </div>
         <button type="button" className="ventas-primary" onClick={onAdd}>
-          <FontAwesomeIcon icon={faPlus} /> Agregar venta
+          <FontAwesomeIcon icon={faPlus} /> Nueva venta
         </button>
       </div>
 
       <div className="ventas-table-wrap ventas-table-wrap--center">
-        <table className="ventas-table ventas-table--campanias">
-          <thead>
-            <tr>
-              <th>Venta</th>
-              <th>Flujo</th>
-              <th>Producto / precio</th>
-              <th>Producto</th>
-              <th>Ventas</th>
-              <th>Bot</th>
-              <th>Estado</th>
-              <th>Fechas</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {campanias.length === 0 ? (
-              <tr>
-                <td colSpan="9" className="ventas-empty-cell">No hay ventas cargadas todavía.</td>
-              </tr>
+        <div className="ventas-div-table ventas-div-table--campanias" role="table" aria-label="Ventas configuradas">
+          <div className="ventas-div-head" role="rowgroup">
+            <div className="ventas-div-row ventas-div-row--head" role="row">
+              <div className="ventas-div-cell" role="columnheader">Venta</div>
+              <div className="ventas-div-cell" role="columnheader">Flujo</div>
+              <div className="ventas-div-cell" role="columnheader">Producto / precio</div>
+              <div className="ventas-div-cell" role="columnheader">Producto</div>
+              <div className="ventas-div-cell" role="columnheader">Ventas</div>
+              <div className="ventas-div-cell" role="columnheader">Bot</div>
+              <div className="ventas-div-cell" role="columnheader">Estado</div>
+              <div className="ventas-div-cell" role="columnheader">Fechas</div>
+              <div className="ventas-div-cell ventas-div-cell--actions" role="columnheader">Acciones</div>
+            </div>
+          </div>
+
+          <div className="ventas-div-body" role="rowgroup">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={`skeleton-campania-${i}`} className="ventas-div-row ventas-skeleton-row" role="row" aria-hidden="true">
+                  {Array.from({ length: 9 }).map((__, j) => (
+                    <div key={j} className="ventas-div-cell"><span className="ventas-skeleton-line" /></div>
+                  ))}
+                </div>
+              ))
+            ) : campanias.length === 0 ? (
+              <div className="ventas-empty-cell" role="row">No hay ventas cargadas todavía.</div>
             ) : (
               campanias.map((c) => {
                 const activo = asBool(c.activo);
                 return (
-                  <tr key={c.id_campania} className={!activo ? "ventas-row-muted" : ""}>
-                    <td>
+                  <div key={c.id_campania} className={`ventas-div-row ${!activo ? "ventas-row-muted" : ""}`} role="row">
+                    <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                       <strong>{c.nombre}</strong>
                       <span>Venta #{c.id_campania}</span>
-                    </td>
-                    <td>
+                    </div>
+                    <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                       <strong>{personaLabel(c.tipo_persona)}</strong>
                       <span>{c.pregunta_persona || "Sin pregunta configurada."}</span>
-                    </td>
-                    <td>
+                    </div>
+                    <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                       <strong>{c.producto_principal_nombre || "Sin producto"}</strong>
                       <span>{c.producto_principal_nombre ? money(c.producto_principal_precio) : "Seleccioná un producto para mostrarla en el bot."}</span>
-                    </td>
-                    <td>{c.productos_activos || 0}</td>
-                    <td>{c.ordenes_total || 0}</td>
-                    <td>
+                    </div>
+                    <div className="ventas-div-cell" role="cell">{c.productos_activos || 0}</div>
+                    <div className="ventas-div-cell" role="cell">{c.ordenes_total || 0}</div>
+                    <div className="ventas-div-cell" role="cell">
                       <span className={`ventas-status ${asBool(c.disponible_menu) ? "ok" : "muted"}`}>
                         <FontAwesomeIcon icon={asBool(c.disponible_menu) ? faEye : faEyeSlash} />
                         {asBool(c.disponible_menu) ? "Visible" : "Oculta"}
                       </span>
-                    </td>
-                    <td>
+                    </div>
+                    <div className="ventas-div-cell" role="cell">
                       <span className={`ventas-status ${activo ? "ok" : "muted"}`}>
                         {activo ? "Activa" : "Inactiva"}
                       </span>
-                    </td>
-                    <td>
+                    </div>
+                    <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                       <strong>{c.fecha_inicio ? String(c.fecha_inicio).slice(0, 10) : "Sin inicio"}</strong>
                       <span>{c.fecha_fin ? `Hasta ${String(c.fecha_fin).slice(0, 10)}` : "Sin fin"}</span>
-                    </td>
-                    <td className="ventas-row-actions">
+                    </div>
+                    <div className="ventas-div-cell ventas-row-actions" role="cell">
                       <button type="button" onClick={() => onEdit(c)} title="Editar venta">
                         <FontAwesomeIcon icon={faEdit} />
                       </button>
@@ -85,13 +91,13 @@ export default function CampaniasTab({ campanias, onAdd, onEdit, onDelete, onTog
                       <button type="button" className="danger" onClick={() => onDelete(c)} title="Eliminar venta definitivamente">
                         <FontAwesomeIcon icon={faTrash} />
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </section>
   );

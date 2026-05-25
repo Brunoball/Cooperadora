@@ -3,13 +3,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faPowerOff, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { asBool, money } from "../ventasConfig";
 
-export default function ProductosTab({ productos, onAdd, onEdit, onDelete, onToggleActivo }) {
+export default function ProductosTab({ tableTabs, productos, onAdd, onEdit, onDelete, onToggleActivo, loading = false }) {
   return (
     <section className="ventas-card ventas-table-card ventas-full-card">
       <div className="ventas-card-head ventas-card-head--stack">
-        <div>
-          <h2>Catálogo de productos</h2>
-          <p>{productos.length} registros encontrados. Los productos se cargan una sola vez y después se seleccionan desde cada venta.</p>
+        <div className="ventas-card-tabs-slot">
+          {tableTabs}
         </div>
         <button type="button" className="ventas-primary" onClick={onAdd}>
           <FontAwesomeIcon icon={faPlus} /> Agregar producto
@@ -17,40 +16,47 @@ export default function ProductosTab({ productos, onAdd, onEdit, onDelete, onTog
       </div>
 
       <div className="ventas-table-wrap ventas-table-wrap--center">
-        <table className="ventas-table">
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Usado en ventas</th>
-              <th>Precio</th>
-              <th>Stock</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {productos.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="ventas-empty-cell">Sin productos.</td>
-              </tr>
+        <div className="ventas-div-table ventas-div-table--productos" role="table" aria-label="Catálogo de productos">
+          <div className="ventas-div-head" role="rowgroup">
+            <div className="ventas-div-row ventas-div-row--head" role="row">
+              <div className="ventas-div-cell" role="columnheader">Producto</div>
+              <div className="ventas-div-cell" role="columnheader">Usado en ventas</div>
+              <div className="ventas-div-cell" role="columnheader">Precio</div>
+              <div className="ventas-div-cell" role="columnheader">Stock</div>
+              <div className="ventas-div-cell" role="columnheader">Estado</div>
+              <div className="ventas-div-cell ventas-div-cell--actions" role="columnheader">Acciones</div>
+            </div>
+          </div>
+
+          <div className="ventas-div-body" role="rowgroup">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={`skeleton-producto-${i}`} className="ventas-div-row ventas-skeleton-row" role="row" aria-hidden="true">
+                  {Array.from({ length: 6 }).map((__, j) => (
+                    <div key={j} className="ventas-div-cell"><span className="ventas-skeleton-line" /></div>
+                  ))}
+                </div>
+              ))
+            ) : productos.length === 0 ? (
+              <div className="ventas-empty-cell" role="row">Sin productos.</div>
             ) : (
               productos.map((p) => {
                 const activo = asBool(p.activo);
                 return (
-                  <tr key={p.id_producto} className={!activo ? "ventas-row-muted" : ""}>
-                    <td>
+                  <div key={p.id_producto} className={`ventas-div-row ${!activo ? "ventas-row-muted" : ""}`} role="row">
+                    <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                       <strong>{p.nombre}</strong>
                       <span>{p.descripcion || "Sin descripción."}</span>
-                    </td>
-                    <td>{p.campanias_asociadas || "Sin asignar"}</td>
-                    <td>{money(p.precio)}</td>
-                    <td>{p.stock === null || p.stock === undefined || p.stock === "" ? "Sin límite" : p.stock}</td>
-                    <td>
+                    </div>
+                    <div className="ventas-div-cell" role="cell">{p.campanias_asociadas || "Sin asignar"}</div>
+                    <div className="ventas-div-cell" role="cell">{money(p.precio)}</div>
+                    <div className="ventas-div-cell" role="cell">{p.stock === null || p.stock === undefined || p.stock === "" ? "Sin límite" : p.stock}</div>
+                    <div className="ventas-div-cell" role="cell">
                       <span className={`ventas-status ${activo ? "ok" : "muted"}`}>
                         {activo ? "Activo" : "Inactivo"}
                       </span>
-                    </td>
-                    <td className="ventas-row-actions">
+                    </div>
+                    <div className="ventas-div-cell ventas-row-actions" role="cell">
                       <button type="button" onClick={() => onEdit(p)} title="Editar producto">
                         <FontAwesomeIcon icon={faEdit} />
                       </button>
@@ -65,13 +71,13 @@ export default function ProductosTab({ productos, onAdd, onEdit, onDelete, onTog
                       <button type="button" className="danger" onClick={() => onDelete(p)} title="Eliminar producto definitivamente">
                         <FontAwesomeIcon icon={faTrash} />
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </section>
   );

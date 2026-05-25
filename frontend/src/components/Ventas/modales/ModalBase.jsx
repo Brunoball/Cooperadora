@@ -2,6 +2,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import "./ModalVentas.css";
+import "./ModalVentasForms.css";
 
 export default class ModalBase extends React.PureComponent {
   componentDidMount() {
@@ -40,7 +41,7 @@ export default class ModalBase extends React.PureComponent {
   }
 
   render() {
-    const { abierto, titulo, subtitulo, children, onClose, size = "md" } = this.props;
+    const { abierto, titulo, subtitulo, children, onClose, size = "md", className = "" } = this.props;
 
     if (!abierto) return null;
 
@@ -49,7 +50,7 @@ export default class ModalBase extends React.PureComponent {
     return (
       <div className="ventas-modal-backdrop" onMouseDown={puedeCerrar ? onClose : undefined}>
         <section
-          className={`ventas-modal ${size === "sm" ? "ventas-modal--sm" : ""}`}
+          className={`ventas-modal ${size === "sm" ? "ventas-modal--sm" : ""} ${className}`.trim()}
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => e.stopPropagation()}
