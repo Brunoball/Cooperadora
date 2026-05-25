@@ -1,9 +1,9 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faEye, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
-import { asBool, estadosOrden, money, origenLabel, personaLabel } from "../ventasConfig";
+import { asBool, money, origenLabel, personaLabel } from "../ventasConfig";
 
-export default function OrdenesTab({ tableTabs, ordenes, estado, setEstado, busqueda, setBusqueda, onBuscar, onAdd, onEdit, loading = false, campanias = [], campaniaSeleccionada = "", onCambiarCampania = () => {}, campaniaActual = null }) {
+export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, onBuscar, onAdd, onEdit, loading = false, campanias = [], campaniaSeleccionada = "", onCambiarCampania = () => {}, campaniaActual = null }) {
   return (
     <section className="ventas-card ventas-table-card ventas-full-card">
       <div className="ventas-card-head ventas-card-head--stack">
@@ -23,14 +23,10 @@ export default function OrdenesTab({ tableTabs, ordenes, estado, setEstado, busq
                 ))}
               </select>
             </label>
-            <label className="ventas-filter-inline">
+            <div className="ventas-filter-inline ventas-filter-inline--readonly" title="Solo se muestran ventas con pago aprobado">
               <span>Estado</span>
-              <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-                {estadosOrden.map((e) => (
-                  <option key={e.value} value={e.value}>{e.label}</option>
-                ))}
-              </select>
-            </label>
+              <strong>Solo aprobadas</strong>
+            </div>
 
             <div className="ventas-search-box">
               <FontAwesomeIcon icon={faSearch} />
@@ -74,7 +70,7 @@ export default function OrdenesTab({ tableTabs, ordenes, estado, setEstado, busq
                 </div>
               ))
             ) : ordenes.length === 0 ? (
-              <div className="ventas-empty-cell" role="row">Todavía no hay ventas registradas.</div>
+              <div className="ventas-empty-cell" role="row">Todavía no hay ventas aprobadas.</div>
             ) : (
               ordenes.map((o) => (
                 <div key={o.id_orden} className="ventas-div-row" role="row">

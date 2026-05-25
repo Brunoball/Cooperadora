@@ -74,7 +74,6 @@ export default function Ventas() {
   const [confirmacion, setConfirmacion] = useState(null);
 
   const [campaniaSeleccionada, setCampaniaSeleccionada] = useState("");
-  const [ordenEstado, setOrdenEstado] = useState("");
   const [ordenBusqueda, setOrdenBusqueda] = useState("");
 
   const [toast, setToast] = useState({ mostrar: false, tipo: "", mensaje: "" });
@@ -150,12 +149,14 @@ export default function Ventas() {
         : campaniaSeleccionada;
 
     if (idCampaniaFiltro) params.set("id_campania", idCampaniaFiltro);
-    if (ordenEstado) params.set("estado", ordenEstado);
+    // En Ventas registradas solo se listan ventas realmente pagadas/aprobadas.
+    // Las intenciones de pago pendientes ya no deben mostrarse como ventas.
+    params.set("estado", "aprobada");
     if (ordenBusqueda.trim()) params.set("q", ordenBusqueda.trim());
 
     const data = await request("ventas_ordenes", { query: params.toString() });
     setOrdenes(Array.isArray(data.items) ? data.items : []);
-  }, [campaniaSeleccionada, ordenBusqueda, ordenEstado, request]);
+  }, [campaniaSeleccionada, ordenBusqueda, request]);
 
   const cargarTodo = useCallback(async () => {
     setLoading(true);
@@ -540,8 +541,6 @@ export default function Ventas() {
           <OrdenesTab
             tableTabs={tabsControl}
             ordenes={ordenes}
-            estado={ordenEstado}
-            setEstado={setOrdenEstado}
             busqueda={ordenBusqueda}
             setBusqueda={setOrdenBusqueda}
             onBuscar={() => cargarOrdenes()}

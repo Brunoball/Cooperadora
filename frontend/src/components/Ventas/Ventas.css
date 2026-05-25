@@ -2504,3 +2504,18 @@
     margin-left: 0 !important;
   }
 }
+
+.ventas-filter-inline--readonly strong {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(58, 46, 43, 0.14);
+  background-color: #fff;
+  color: var(--blue-inst-primary, #1D428A);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
