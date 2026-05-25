@@ -14,6 +14,7 @@ export default function ModalConfirmar({ abierto, titulo, mensaje, confirmText =
       onClose={saving ? undefined : onClose}
       size="sm"
       className={`ventas-modal--global-confirm ${esEliminar ? "ventas-modal--confirm-delete" : "ventas-modal--confirm-baja"}`}
+      hideClose
     >
       <div className="ventas-modal__body ventas-global-confirm__body">
         <div className="ventas-global-confirm__icon" aria-hidden="true">

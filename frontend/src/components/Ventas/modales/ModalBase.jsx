@@ -41,14 +41,14 @@ export default class ModalBase extends React.PureComponent {
   }
 
   render() {
-    const { abierto, titulo, subtitulo, children, onClose, size = "md", className = "" } = this.props;
+    const { abierto, titulo, subtitulo, children, onClose, size = "md", className = "", hideClose = false } = this.props;
 
     if (!abierto) return null;
 
     const puedeCerrar = typeof onClose === "function";
 
     return (
-      <div className="ventas-modal-backdrop" onMouseDown={puedeCerrar ? onClose : undefined}>
+      <div className="ventas-modal-backdrop">
         <section
           className={`ventas-modal ${size === "sm" ? "ventas-modal--sm" : ""} ${className}`.trim()}
           role="dialog"
@@ -60,15 +60,17 @@ export default class ModalBase extends React.PureComponent {
               <h2>{titulo}</h2>
               {subtitulo ? <p>{subtitulo}</p> : null}
             </div>
-            <button
-              type="button"
-              className="ventas-modal__close"
-              onClick={puedeCerrar ? onClose : undefined}
-              aria-label="Cerrar"
-              disabled={!puedeCerrar}
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
+            {!hideClose ? (
+              <button
+                type="button"
+                className="ventas-modal__close"
+                onClick={puedeCerrar ? onClose : undefined}
+                aria-label="Cerrar"
+                disabled={!puedeCerrar}
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            ) : null}
           </header>
           {children}
         </section>
