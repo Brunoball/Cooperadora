@@ -1,9 +1,37 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faEye, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
-import { asBool, money, origenLabel, personaLabel } from "../ventasConfig";
+import { faCheckCircle, faEdit, faEye, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { asBool, money, origenLabel } from "../ventasConfig";
 
-export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, onBuscar, onAdd, onEdit, loading = false, campanias = [], campaniaSeleccionada = "", onCambiarCampania = () => {}, campaniaActual = null }) {
+function fechaSolo(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "-";
+
+  const fecha = raw.slice(0, 10);
+  const partes = fecha.split("-");
+  if (partes.length === 3 && partes[0]?.length === 4) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
+  return fecha;
+}
+
+export default function OrdenesTab({
+  tableTabs,
+  ordenes,
+  busqueda,
+  setBusqueda,
+  onBuscar,
+  onAdd,
+  onEdit,
+  onOpenRetiro = () => {},
+  loading = false,
+  campanias = [],
+  campaniaSeleccionada = "",
+  onCambiarCampania = () => {},
+  filtroRetiro = "",
+  onCambiarFiltroRetiro = () => {},
+}) {
   return (
     <section className="ventas-card ventas-table-card ventas-full-card">
       <div className="ventas-card-head ventas-card-head--stack">
@@ -23,10 +51,20 @@ export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, 
                 ))}
               </select>
             </label>
+
             <div className="ventas-filter-inline ventas-filter-inline--readonly" title="Solo se muestran ventas con pago aprobado">
               <span>Estado</span>
               <strong>Solo aprobadas</strong>
             </div>
+
+            <label className="ventas-filter-inline">
+              <span>Retiro</span>
+              <select value={filtroRetiro} onChange={(e) => onCambiarFiltroRetiro(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="retirado">Retirados</option>
+              </select>
+            </label>
 
             <div className="ventas-search-box">
               <FontAwesomeIcon icon={faSearch} />
@@ -43,6 +81,7 @@ export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, 
           </div>
         </div>
       </div>
+
       <div className="ventas-table-wrap ventas-table-wrap--center">
         <div className="ventas-div-table ventas-div-table--ordenes" role="table" aria-label="Ventas registradas">
           <div className="ventas-div-head" role="rowgroup">
@@ -53,6 +92,7 @@ export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, 
               <div className="ventas-div-cell" role="columnheader">Medio</div>
               <div className="ventas-div-cell" role="columnheader">Total</div>
               <div className="ventas-div-cell" role="columnheader">Estado</div>
+              <div className="ventas-div-cell" role="columnheader">Retiro</div>
               <div className="ventas-div-cell" role="columnheader">Origen</div>
               <div className="ventas-div-cell" role="columnheader">PDF</div>
               <div className="ventas-div-cell" role="columnheader">Fecha</div>
@@ -64,7 +104,7 @@ export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, 
             {loading ? (
               Array.from({ length: 7 }).map((_, i) => (
                 <div key={`skeleton-orden-${i}`} className="ventas-div-row ventas-skeleton-row" role="row" aria-hidden="true">
-                  {Array.from({ length: 10 }).map((__, j) => (
+                  {Array.from({ length: 11 }).map((__, j) => (
                     <div key={j} className="ventas-div-cell"><span className="ventas-skeleton-line" /></div>
                   ))}
                 </div>
@@ -76,31 +116,41 @@ export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, 
                 <div key={o.id_orden} className="ventas-div-row" role="row">
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.codigo_orden}</strong>
-                    <span>{o.payment_id || (o.origen === "manual" ? "Carga manual" : "Sin payment_id")}</span>
                   </div>
+
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.campania_nombre || "Sin venta"}</strong>
                     <span>{o.items_cantidad || 0} producto(s)</span>
                   </div>
+
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.persona_nombre || "Sin nombre"}</strong>
-                    <span>{o.persona_detalle || personaLabel(o.persona_tipo)}</span>
                   </div>
+
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.medio_pago || "Sin medio"}</strong>
-                    <span>{o.id_medio_pago ? `ID ${o.id_medio_pago}` : "No informado"}</span>
                   </div>
+
                   <div className="ventas-div-cell" role="cell">{money(o.total)}</div>
+
                   <div className="ventas-div-cell" role="cell">
                     <span className={`ventas-status ${o.estado === "aprobada" ? "ok" : "muted"}`}>
                       {o.estado}
                     </span>
                   </div>
+
+                  <div className="ventas-div-cell ventas-div-cell--main ventas-retire-cell" role="cell">
+                    <span className={`ventas-status ${asBool(o.retirado) ? "ok" : "pending"}`}>
+                      {asBool(o.retirado) ? "Retirado" : "Pendiente"}
+                    </span>
+                  </div>
+
                   <div className="ventas-div-cell" role="cell">
                     <span className={`ventas-status ${o.origen === "manual" ? "manual" : "muted"}`}>
                       {origenLabel(o.origen)}
                     </span>
                   </div>
+
                   <div className="ventas-div-cell ventas-row-actions ventas-pdf-actions" role="cell">
                     {o.pdf_url ? (
                       <a href={o.pdf_url} target="_blank" rel="noreferrer" title="Ver PDF" aria-label="Ver PDF">
@@ -112,12 +162,16 @@ export default function OrdenesTab({ tableTabs, ordenes, busqueda, setBusqueda, 
                       </button>
                     )}
                   </div>
+
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
-                    <strong>{o.aprobado_en ? String(o.aprobado_en).slice(0, 16) : String(o.creado_en || "").slice(0, 16)}</strong>
-                    <span>{o.actualizado_en ? `Actualizado ${String(o.actualizado_en).slice(0, 16)}` : ""}</span>
+                    <strong>{fechaSolo(o.aprobado_en || o.creado_en)}</strong>
                   </div>
+
                   <div className="ventas-div-cell ventas-row-actions" role="cell">
-                    <button type="button" onClick={() => onEdit(o)} title="Editar venta registrada">
+                    <button type="button" onClick={() => onOpenRetiro(o)} title="Cambiar estado de retiro" aria-label="Cambiar estado de retiro">
+                      <FontAwesomeIcon icon={faCheckCircle} />
+                    </button>
+                    <button type="button" onClick={() => onEdit(o)} title="Editar venta registrada" aria-label="Editar venta registrada">
                       <FontAwesomeIcon icon={faEdit} />
                     </button>
                   </div>

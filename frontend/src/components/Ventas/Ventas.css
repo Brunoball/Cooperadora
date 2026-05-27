@@ -2519,3 +2519,199 @@
   font-weight: 800;
   white-space: nowrap;
 }
+
+/* =========================================================
+   Estado de retiro en ventas registradas
+========================================================= */
+.ventas-div-table--ordenes {
+  min-width: 1320px !important;
+}
+
+.ventas-div-table--ordenes .ventas-div-row {
+  grid-template-columns: 0.95fr 1fr 1.12fr 0.9fr 0.68fr 0.65fr 0.98fr 0.68fr 0.42fr 0.92fr 0.5fr !important;
+}
+
+.ventas-status.pending {
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.ventas-retire-cell {
+  gap: 5px !important;
+  align-items: flex-start !important;
+}
+
+.ventas-retire-cell small {
+  color: var(--blue-inst-gray-500, #64748b) !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+}
+
+.ventas-retire-btn {
+  border: 1px solid #bbf7d0 !important;
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+.ventas-retire-btn.is-retired {
+  border-color: #fed7aa !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+}
+
+.ventas-retire-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(0.98);
+}
+
+.ventas-retire-btn:disabled {
+  opacity: 0.55 !important;
+  cursor: wait !important;
+}
+
+/* =========================================================
+   Ajuste final: retiro desde modal + tabla limpia
+========================================================= */
+.ventas-div-table--ordenes {
+  min-width: 1360px !important;
+}
+
+.ventas-div-table--ordenes .ventas-div-row {
+  grid-template-columns: 0.92fr 1.18fr 1.08fr 0.82fr 0.64fr 0.64fr 0.72fr 0.62fr 0.42fr 0.76fr 0.62fr !important;
+}
+
+.ventas-retire-cell {
+  align-items: center !important;
+  gap: 0 !important;
+}
+
+.ventas-row-actions {
+  gap: 4px !important;
+}
+
+.ventas-row-actions button,
+.ventas-row-actions a {
+  flex: 0 0 34px !important;
+}
+
+.ventas-orden-filters {
+  flex-wrap: wrap !important;
+}
+
+.ventas-filter-inline select,
+.ventas-orden-filters select {
+  max-width: 178px !important;
+}
+
+.ventas-retiro-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ventas-retiro-resumen {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.ventas-retiro-resumen div {
+  display: grid;
+  gap: 2px;
+}
+
+.ventas-retiro-resumen span {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ventas-retiro-resumen strong {
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.ventas-retiro-options {
+  display: grid;
+  gap: 10px;
+}
+
+.ventas-retiro-option {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ventas-retiro-option svg {
+  width: 22px;
+  min-width: 22px;
+  color: var(--blue-inst-primary, #1D428A);
+}
+
+.ventas-retiro-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.ventas-retiro-option strong {
+  color: #0f172a;
+  font-size: 0.96rem;
+}
+
+.ventas-retiro-option small {
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ventas-retiro-option.active {
+  border-color: var(--blue-inst-primary, #1D428A);
+  background: #eef4ff;
+  box-shadow: 0 12px 28px rgba(29, 66, 138, 0.12);
+}
+
+.ventas-retiro-option:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.ventas-modal-save {
+  background: var(--blue-inst-primary, #1D428A) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(29, 66, 138, 0.18) !important;
+}
+
+@media (max-width: 760px) {
+  .ventas-div-table--ordenes {
+    min-width: 1180px !important;
+  }
+
+  .ventas-retiro-option {
+    align-items: flex-start;
+  }
+}

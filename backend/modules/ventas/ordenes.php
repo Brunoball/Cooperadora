@@ -108,6 +108,56 @@ try {
         ventas_json(['exito' => true, 'items' => $st->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
+
+    if ($action === 'ventas_orden_retiro') {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $in = ventas_body();
+        $idOrden = (int)($in['id_orden'] ?? 0);
+        $retirado = ventas_bool($in['retirado'] ?? 0, 0);
+
+        if ($idOrden <= 0) {
+            throw new InvalidArgumentException('No se recibió la venta a actualizar.');
+        }
+
+        $st = $pdo->prepare('SELECT id_orden, estado FROM ventas_ordenes WHERE id_orden = :id LIMIT 1');
+        $st->execute([':id' => $idOrden]);
+        $orden = $st->fetch(PDO::FETCH_ASSOC);
+
+        if (!$orden) {
+            throw new InvalidArgumentException('La venta registrada no existe.');
+        }
+
+        if ((string)($orden['estado'] ?? '') !== 'aprobada' && $retirado === 1) {
+            throw new InvalidArgumentException('Solo se puede marcar como retirado un pago aprobado.');
+        }
+
+        $st = $pdo->prepare(" 
+            UPDATE ventas_ordenes
+            SET retirado = :retirado,
+                retirado_en = CASE WHEN :retirado_en_flag = 1 THEN NOW() ELSE NULL END,
+                actualizado_en = NOW()
+            WHERE id_orden = :id_orden
+            LIMIT 1
+        ");
+        $st->execute([
+            ':retirado' => $retirado,
+            ':retirado_en_flag' => $retirado,
+            ':id_orden' => $idOrden,
+        ]);
+
+        $st = $pdo->prepare('SELECT id_orden, retirado, retirado_en, actualizado_en FROM ventas_ordenes WHERE id_orden = :id LIMIT 1');
+        $st->execute([':id' => $idOrden]);
+
+        ventas_json([
+            'exito' => true,
+            'item' => $st->fetch(PDO::FETCH_ASSOC),
+            'mensaje' => $retirado ? 'Producto marcado como retirado.' : 'Producto marcado como pendiente de retiro.',
+        ]);
+    }
+
     if ($action === 'ventas_orden_guardar') {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);

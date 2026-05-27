@@ -232,6 +232,33 @@ function ventas_asegurar_esquema_ordenes_medios_pago($pdo) {
     }
 }
 
+
+function ventas_asegurar_esquema_ordenes_retiro($pdo) {
+    if (!ventas_column_exists($pdo, 'ventas_ordenes', 'retirado')) {
+        $after = ventas_column_exists($pdo, 'ventas_ordenes', 'pdf_url') ? ' AFTER pdf_url' : '';
+        $pdo->exec("ALTER TABLE ventas_ordenes ADD COLUMN retirado TINYINT(1) NOT NULL DEFAULT 0" . $after);
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_ordenes', 'retirado_en')) {
+        $after = ventas_column_exists($pdo, 'ventas_ordenes', 'retirado') ? ' AFTER retirado' : '';
+        $pdo->exec("ALTER TABLE ventas_ordenes ADD COLUMN retirado_en DATETIME NULL DEFAULT NULL" . $after);
+    }
+
+    try {
+        $pdo->exec("UPDATE ventas_ordenes SET retirado = 0 WHERE retirado IS NULL");
+    } catch (Throwable $e) {
+        // No bloqueamos el módulo si una base vieja todavía no permite esta actualización.
+    }
+
+    if (!ventas_index_exists($pdo, 'ventas_ordenes', 'idx_ventas_ordenes_retiro')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_ordenes ADD KEY idx_ventas_ordenes_retiro (retirado, retirado_en)");
+        } catch (Throwable $e) {
+            // El índice no es crítico para operar.
+        }
+    }
+}
+
 function ventas_tablas_verificadas($pdo) {
     if (!($pdo instanceof PDO)) {
         throw new RuntimeException('Conexión PDO no disponible.');
@@ -244,6 +271,7 @@ function ventas_tablas_verificadas($pdo) {
 
     ventas_asegurar_esquema_productos_independientes($pdo);
     ventas_asegurar_esquema_ordenes_medios_pago($pdo);
+    ventas_asegurar_esquema_ordenes_retiro($pdo);
 }
 
 function ventas_tipo_persona($value) {

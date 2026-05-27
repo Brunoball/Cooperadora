@@ -23,6 +23,7 @@ function route_ventas($action) {
 
         case 'ventas_ordenes':
         case 'ventas_orden_guardar':
+        case 'ventas_orden_retiro':
         case 'ventas_medios_pago':
             require __DIR__ . '/ordenes.php';
             return true;

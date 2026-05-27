@@ -22,6 +22,7 @@ import ModalCampania from "./modales/ModalCampania";
 import ModalProducto from "./modales/ModalProducto";
 import ModalOrden from "./modales/ModalOrden";
 import ModalConfirmar from "./modales/ModalConfirmar";
+import ModalRetiro from "./modales/ModalRetiro";
 
 import {
   asBool,
@@ -71,10 +72,13 @@ export default function Ventas() {
   const [modalCampania, setModalCampania] = useState(false);
   const [modalProducto, setModalProducto] = useState(false);
   const [modalOrden, setModalOrden] = useState(false);
+  const [modalRetiro, setModalRetiro] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null);
 
   const [campaniaSeleccionada, setCampaniaSeleccionada] = useState("");
   const [ordenBusqueda, setOrdenBusqueda] = useState("");
+  const [filtroRetiro, setFiltroRetiro] = useState("");
+  const [retiroLoadingId, setRetiroLoadingId] = useState(null);
 
   const [toast, setToast] = useState({ mostrar: false, tipo: "", mensaje: "" });
 
@@ -148,15 +152,21 @@ export default function Ventas() {
         ? filtros.idCampania
         : campaniaSeleccionada;
 
+    const retiroFiltroActual =
+      filtros && Object.prototype.hasOwnProperty.call(filtros, "retiro")
+        ? filtros.retiro
+        : filtroRetiro;
+
     if (idCampaniaFiltro) params.set("id_campania", idCampaniaFiltro);
     // En Ventas registradas solo se listan ventas realmente pagadas/aprobadas.
     // Las intenciones de pago pendientes ya no deben mostrarse como ventas.
     params.set("estado", "aprobada");
+    if (retiroFiltroActual) params.set("retiro", retiroFiltroActual);
     if (ordenBusqueda.trim()) params.set("q", ordenBusqueda.trim());
 
     const data = await request("ventas_ordenes", { query: params.toString() });
     setOrdenes(Array.isArray(data.items) ? data.items : []);
-  }, [campaniaSeleccionada, ordenBusqueda, request]);
+  }, [campaniaSeleccionada, ordenBusqueda, filtroRetiro, request]);
 
   const cargarTodo = useCallback(async () => {
     setLoading(true);
@@ -477,6 +487,33 @@ export default function Ventas() {
   };
 
 
+  const abrirModalRetiroOrden = (orden) => {
+    setModalRetiro(orden || null);
+  };
+
+  const guardarRetiroOrden = async (nuevoRetirado) => {
+    const idOrden = Number(modalRetiro?.id_orden || 0);
+    if (!idOrden) return;
+
+    setRetiroLoadingId(idOrden);
+
+    try {
+      await request("ventas_orden_retiro", {
+        method: "POST",
+        body: { id_orden: idOrden, retirado: Number(nuevoRetirado) === 1 ? 1 : 0 },
+      });
+
+      showToast("exito", Number(nuevoRetirado) === 1 ? "Marcado como retirado." : "Marcado como pendiente de retiro.");
+      setModalRetiro(null);
+      await cargarOrdenes();
+    } catch (err) {
+      showToast("error", err.message);
+    } finally {
+      setRetiroLoadingId(null);
+    }
+  };
+
+
   const tabsControl = (
     <nav className="ventas-tabs ventas-tabs--in-card" aria-label="Cambiar tabla de ventas">
       <button type="button" className={tab === "campanias" ? "active" : ""} onClick={() => setTab("campanias")}>
@@ -546,10 +583,13 @@ export default function Ventas() {
             onBuscar={() => cargarOrdenes()}
             onAdd={abrirNuevaOrden}
             onEdit={abrirEditarOrden}
+            onOpenRetiro={abrirModalRetiroOrden}
             loading={loading}
             campanias={campanias}
             campaniaSeleccionada={campaniaSeleccionada}
             onCambiarCampania={cambiarCampaniaGlobal}
+            filtroRetiro={filtroRetiro}
+            onCambiarFiltroRetiro={setFiltroRetiro}
             campaniaActual={campaniaActual}
           />
         ) : null}
@@ -583,6 +623,14 @@ export default function Ventas() {
         saving={saving}
         onClose={() => setModalOrden(false)}
         onSubmit={guardarOrden}
+      />
+
+      <ModalRetiro
+        abierto={!!modalRetiro}
+        orden={modalRetiro}
+        saving={retiroLoadingId !== null}
+        onClose={() => setModalRetiro(null)}
+        onSubmit={guardarRetiroOrden}
       />
 
       <ModalConfirmar
