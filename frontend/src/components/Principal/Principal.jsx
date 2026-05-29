@@ -1,16 +1,28 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faUsers,
-  faMoneyCheckDollar,
-  faUserPlus,
-  faSignOutAlt,
-  faIdCard,
+  faBars,
+  faBookOpen,
+  faChartPie,
+  faChevronRight,
+  faHouse,
   faLayerGroup,
+  faMoneyCheckDollar,
   faRobot,
   faStore,
+  faSignOutAlt,
+  faUsers,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
+
 import logoRH from "../../imagenes/Escudo.png";
 import "./principal.css";
 import "../Global/roots.css";
@@ -19,71 +31,39 @@ const PANEL_API =
   process.env.REACT_APP_BOT_PANEL_URL ||
   "https://cooperadora.ipet50.edu.ar/api/bot_wp/funciones/Panel/endpoints";
 
-/* =========== Modal cierre de sesión ============= */
-const ConfirmLogoutModal = ({ open, onClose, onConfirm }) => {
-  const cancelBtnRef = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    cancelBtnRef.current?.focus();
-
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const stop = (e) => e.stopPropagation();
-
-  return (
-    <div
-      className="modalprincipal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modalprincipal-title"
-      onMouseDown={onClose}
-    >
-      <div
-        className="modalprincipal-container modalprincipal--danger"
-        onMouseDown={stop}
-      >
-        <div className="modalprincipal__icon" aria-hidden="true">
-          <FontAwesomeIcon icon={faSignOutAlt} />
-        </div>
-
-        <h3 id="modalprincipal-title" className="modalprincipal-title">
-          Confirmar cierre de sesión
-        </h3>
-
-        <p className="modalprincipal-text">
-          ¿Estás seguro de que deseas cerrar la sesión?
-        </p>
-
-        <div className="modalprincipal-buttons">
-          <button
-            type="button"
-            className="modalprincipal-btn modalprincipal-btn--ghost"
-            onClick={onClose}
-            ref={cancelBtnRef}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            className="modalprincipal-btn modalprincipal-btn--solid-danger"
-            onClick={onConfirm}
-          >
-            Confirmar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+const ROUTE_PREFETCH = {
+  "/alumnos": () => import("../Alumnos/Alumno"),
+  "/alumnos/agregar": () => import("../Alumnos/AgregarAlumno"),
+  "/alumnos/baja": () => import("../Alumnos/AlumnoBaja"),
+  "/familias": () => import("../Alumnos/Familias"),
+  "/cuotas": () => import("../Cuotas/Cuotas"),
+  "/ventas": () => import("../Ventas/Ventas"),
+  "/tipos-documentos": () => import("../TiposDocumentos/TiposDocumentos"),
+  "/categorias": () => import("../Categorias/Categorias"),
+  "/registro": () => import("../Login/Registro"),
+  "/contable/libro": () => import("../Contable/LibroContable"),
 };
+
+function prefetchRoute(ruta) {
+  try {
+    const fn = ROUTE_PREFETCH[ruta];
+    if (fn) fn();
+  } catch {}
+}
+
+function safeUsuario() {
+  try {
+    return JSON.parse(localStorage.getItem("usuario")) || null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRol(value) {
+  const v = String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["admin", "administrador", "superadmin", "1"].includes(v)) return "admin";
+  return "usuario";
+}
 
 const toNum = (v) => {
   const n = Number(v);
@@ -119,22 +99,102 @@ const calcularBadgesDesdeChats = (rows) => {
   return { normal, urgent };
 };
 
+const pathMatches = (pathname, paths = []) => {
+  const path = String(pathname || "");
+  return paths.some((ruta) => path === ruta || path.startsWith(`${ruta}/`));
+};
+
+const routeAliases = (ruta) => {
+  if (!ruta || ruta === "/panel") return ["/panel", "/panel/dashboard"];
+  if (ruta.startsWith("/panel")) return [ruta];
+  return [ruta, `/panel${ruta}`];
+};
+
+const StableOutlet = memo(function StableOutlet() {
+  return <Outlet />;
+});
+
+/* =========================
+   Modal cierre sesión
+========================= */
+const ConfirmLogoutModal = memo(function ConfirmLogoutModal({
+  open,
+  onClose,
+  onConfirm,
+  loading = false,
+}) {
+  const cancelBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    cancelBtnRef.current?.focus();
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const stop = (e) => e.stopPropagation();
+
+  return (
+    <div className="pp-modal-overlay" role="dialog" aria-modal="true">
+      <div className="pp-modal" onMouseDown={stop}>
+        <div className="pp-modal__icon" aria-hidden="true">
+          <FontAwesomeIcon icon={faSignOutAlt} />
+        </div>
+
+        <h3 className="pp-modal__title">Confirmar cierre de sesión</h3>
+
+        <p className="pp-modal__text">
+          ¿Estás seguro de que deseas cerrar la sesión?
+        </p>
+
+        <div className="pp-modal__actions">
+          <button
+            type="button"
+            className="pp-btn pp-btn--ghost"
+            onClick={onClose}
+            ref={cancelBtnRef}
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            className="pp-btn pp-btn--danger"
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? "Cerrando..." : "Confirmar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const Principal = () => {
   const navigate = useNavigate();
-  const [showModal, setShowModal] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
+  const location = useLocation();
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [closingUI, setClosingUI] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [openAlumnosSub, setOpenAlumnosSub] = useState(false);
+  const [openAdminSub, setOpenAdminSub] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
   const [normalUnread, setNormalUnread] = useState(0);
   const [urgentUnread, setUrgentUnread] = useState(0);
 
   useEffect(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem("usuario"));
-      setUsuario(u || null);
-    } catch {
-      setUsuario(null);
-    }
+    setUsuario(safeUsuario());
   }, []);
 
   useEffect(() => {
@@ -151,9 +211,7 @@ const Principal = () => {
 
     const hasSession = () => {
       try {
-        return (
-          !!localStorage.getItem("token") || !!localStorage.getItem("usuario")
-        );
+        return !!localStorage.getItem("token") || !!localStorage.getItem("usuario");
       } catch {
         return false;
       }
@@ -191,38 +249,200 @@ const Principal = () => {
     };
   }, []);
 
-  const role = (usuario?.rol || "").toLowerCase();
-  const isAdmin = role === "admin";
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
 
-  const menuItems = [
-    { icon: faUsers, text: "Gestionar Alumnos", ruta: "/alumnos" },
-    { icon: faMoneyCheckDollar, text: "Gestionar Cuotas", ruta: "/cuotas" },
-    { icon: faStore, text: "Ventas Escolares", ruta: "/ventas" },
-    {
-      icon: faIdCard,
-      text: "Tipos de Documento",
-      ruta: "/tipos-documentos",
-    },
-    { icon: faLayerGroup, text: "Categorías", ruta: "/categorias" },
-    { icon: faUserPlus, text: "Registro de Usuarios", ruta: "/registro" },
-    { icon: faMoneyCheckDollar, text: "Contable", ruta: "/contable/libro" },
-  ];
+  useEffect(() => {
+    if (!drawerOpen) return;
 
-  const visibleItems = isAdmin
-    ? menuItems
-    : menuItems.filter((m) => m.ruta === "/alumnos");
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
 
-  const handleItemClick = (item) => {
-    navigate(item.ruta);
-    if (document.activeElement && document.activeElement.blur) {
-      document.activeElement.blur();
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.classList.add("pp-lockScroll");
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.classList.remove("pp-lockScroll");
+    };
+  }, [drawerOpen]);
+
+  const rolUsuario = normalizeRol(usuario?.rol || usuario?.tipo_rol);
+  const isAdmin = rolUsuario === "admin";
+
+  const navItems = useMemo(() => {
+    const base = [
+      {
+        key: "dashboard",
+        label: "Inicio",
+        icon: faHouse,
+        ruta: "/panel",
+      },
+      {
+        key: "alumnos",
+        label: "Alumnos",
+        icon: faUsers,
+        ruta: "/alumnos",
+        children: [
+          { label: "Gestionar alumnos", ruta: "/alumnos" },
+          { label: "Familias", ruta: "/familias" },
+          { label: "Dados de baja", ruta: "/alumnos/baja" },
+        ],
+      },
+      {
+        key: "cuotas",
+        label: "Cuotas",
+        icon: faMoneyCheckDollar,
+        ruta: "/cuotas",
+      },
+      {
+        key: "ventas",
+        label: "Ventas escolares",
+        icon: faStore,
+        ruta: "/ventas",
+      },
+      {
+        key: "administracion",
+        label: "Administración",
+        icon: faLayerGroup,
+        ruta: "/tipos-documentos",
+        children: [
+          { label: "Tipos de documento", ruta: "/tipos-documentos" },
+          { label: "Categorías", ruta: "/categorias" },
+          { label: "Registro de usuarios", ruta: "/registro" },
+        ],
+      },
+      {
+        key: "contable",
+        label: "Contable",
+        icon: faChartPie,
+        ruta: "/contable/libro",
+      },
+    ];
+
+    if (isAdmin) return base;
+
+    return base.filter((item) => ["dashboard", "alumnos"].includes(item.key));
+  }, [isAdmin]);
+
+  const flatNavItems = useMemo(() => {
+    return navItems.flatMap((item) => [item, ...(item.children || [])]);
+  }, [navItems]);
+
+  const activeKey = useMemo(() => {
+    const path = location.pathname;
+
+    if (pathMatches(path, ["/panel", "/panel/dashboard"]) && path === "/panel") {
+      return "dashboard";
     }
-  };
 
-  const handleCerrarSesion = () => setShowModal(true);
+    if (pathMatches(path, ["/alumnos", "/familias", "/panel/alumnos", "/panel/familias"])) {
+      return "alumnos";
+    }
 
-  const confirmarCierreSesion = () => {
-    setIsExiting(true);
+    if (pathMatches(path, ["/cuotas", "/panel/cuotas"])) return "cuotas";
+    if (pathMatches(path, ["/ventas", "/panel/ventas"])) return "ventas";
+
+    if (
+      pathMatches(path, [
+        "/tipos-documentos",
+        "/categorias",
+        "/registro",
+        "/panel/tipos-documentos",
+        "/panel/categorias",
+        "/panel/registro",
+      ])
+    ) {
+      return "administracion";
+    }
+
+    if (pathMatches(path, ["/contable", "/panel/contable"])) return "contable";
+
+    return "dashboard";
+  }, [location.pathname]);
+
+  const activeLabel = useMemo(() => {
+    const foundSub = flatNavItems.find((item) =>
+      pathMatches(location.pathname, routeAliases(item.ruta))
+    );
+
+    if (foundSub?.label) return foundSub.label;
+
+    const foundGroup = navItems.find((item) => item.key === activeKey);
+    return foundGroup?.label || "Inicio";
+  }, [activeKey, flatNavItems, location.pathname, navItems]);
+
+  const closeAllSubs = useCallback(() => {
+    setOpenAlumnosSub(false);
+    setOpenAdminSub(false);
+  }, []);
+
+  const handleNavigate = useCallback(
+    (ruta) => {
+      closeAllSubs();
+      navigate(ruta);
+      setDrawerOpen(false);
+    },
+    [closeAllSubs, navigate]
+  );
+
+  const handleLogoClick = useCallback(() => {
+    handleNavigate("/panel");
+  }, [handleNavigate]);
+
+  const toggleSubmenu = useCallback(
+    (itemKey, isOpen) => {
+      if (isOpen) {
+        closeAllSubs();
+        return;
+      }
+
+      setOpenAlumnosSub(itemKey === "alumnos");
+      setOpenAdminSub(itemKey === "administracion");
+    },
+    [closeAllSubs]
+  );
+
+  const defaultSubRoutes = useMemo(
+    () => ({
+      alumnos: "/alumnos",
+      administracion: "/tipos-documentos",
+    }),
+    []
+  );
+
+  const handleNavItemClick = useCallback(
+    (item, hasSub, isOpen) => {
+      prefetchRoute(item.ruta);
+
+      if (!hasSub) {
+        handleNavigate(item.ruta);
+        return;
+      }
+
+      if (drawerOpen && isOpen) {
+        handleNavigate(defaultSubRoutes[item.key] || item.ruta);
+        return;
+      }
+
+      toggleSubmenu(item.key, isOpen);
+    },
+    [defaultSubRoutes, drawerOpen, handleNavigate, toggleSubmenu]
+  );
+
+  const confirmarCierreSesion = useCallback(() => {
+    setClosingUI(true);
+
     setTimeout(() => {
       try {
         sessionStorage.clear();
@@ -231,78 +451,247 @@ const Principal = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("usuario");
       } catch {}
-      setShowModal(false);
+
+      setShowLogoutModal(false);
+      setClosingUI(false);
       navigate("/", { replace: true });
-    }, 400);
-  };
+    }, 350);
+  }, [navigate]);
 
   const irPanelBot = () => {
     window.open("/bot/panel", "_blank", "noopener,noreferrer");
   };
 
+  const isPanelHome = location.pathname === "/panel" || location.pathname === "/panel/";
+
   return (
-    <div
-      className={`pagina-principal-container ${
-        isExiting ? "slide-fade-out" : ""
-      }`}
-    >
-      <div className="pagina-principal-card">
-        <div className="pagina-principal-header header--row">
-          <div className="header-text">
-            <h1 className="title">
-              Sistema de Gestión{" "}
-              <span className="title-accent">Cooperadora IPET 50</span>
-            </h1>
-            <p className="subtitle">
-              {isAdmin ? "Panel de administración" : "Panel de consulta"}
-            </p>
-          </div>
-
-          <div className="logo-container logo-container--right">
-            <img src={logoRH} alt="Logo IPET 50" className="logo" />
-          </div>
-        </div>
-
-        <div className="menu-container">
-          <div className="menu-grid flex--compact">
-            {visibleItems.map((item, index) => (
-              <button
-                type="button"
-                key={index}
-                className="menu-button card--compact"
-                onClick={() => handleItemClick(item)}
-                aria-label={item.text}
-              >
-                <div className="button-icon icon--sm">
-                  <FontAwesomeIcon icon={item.icon} size="lg" />
-                </div>
-                <span className="button-text text--sm">{item.text}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="logout-button"
-          onClick={handleCerrarSesion}
-        >
-          <FontAwesomeIcon icon={faSignOutAlt} className="logout-icon" />
-          <span className="logout-text-full">Cerrar Sesión</span>
-          <span className="logout-text-short">Salir</span>
-        </button>
-
-        <footer className="pagina-principal-footer">
-          Desarrollado por{" "}
-          <a
-            href="https://3devsnet.com"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="pp-shell">
+      <header className="mov-topbar">
+        <div className="mov-topbar__left">
+          <button
+            className="pp-burger"
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Abrir menú"
+            title="Menú"
           >
-            3devs.solutions
-          </a>
-        </footer>
-      </div>
+            <FontAwesomeIcon icon={faBars} />
+          </button>
+
+          <button
+            className="mov-topbar__logo"
+            type="button"
+            onClick={handleLogoClick}
+            title="Ir al inicio"
+            aria-label="Ir al inicio"
+          >
+            <img src={logoRH} alt="Logo IPET 50" className="mov-topbar__logoImg" />
+          </button>
+
+          <div className="mov-topbar__titles">
+            <div className="mov-topbar__sysname">
+              <span className="mov-topbar__brandName">COOPERADORA IPET 50</span>
+              <span className="mov-topbar__brandDot">•</span>
+              <span className="mov-topbar__brandType">Sistema de Gestión</span>
+            </div>
+
+            <div className="mov-topbar__sysby">
+              Desarrollado por{" "}
+              <a
+                href="https://3devsnet.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mov-topbar__sysbyLink"
+              >
+                3 devs
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="mov-topbar__right">
+          <div className="mov-topbar__section">{activeLabel}</div>
+
+          <button
+            className="pp-topbarLogout"
+            type="button"
+            onClick={() => setShowLogoutModal(true)}
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+          >
+            <FontAwesomeIcon icon={faSignOutAlt} />
+          </button>
+        </div>
+      </header>
+
+      <div
+        className={`pp-drawerOverlay ${drawerOpen ? "is-open" : ""}`}
+        onMouseDown={() => setDrawerOpen(false)}
+      />
+
+      <aside className={`pp-sidebar ${drawerOpen ? "is-drawerOpen" : ""}`}>
+        <div className="pp-drawerHeader">
+          <div
+            className="pp-drawerBrand"
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleLogoClick();
+            }}
+          >
+            <div className="pp-drawerBrand__mark">
+              <img src={logoRH} alt="" className="pp-drawerBrand__img" />
+            </div>
+
+            <div className="pp-drawerBrand__txt">
+              <div className="pp-drawerBrand__t">Cooperadora</div>
+              <div className="pp-drawerBrand__s">Panel</div>
+            </div>
+          </div>
+
+          <button
+            className="pp-drawerClose"
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Cerrar menú"
+            title="Cerrar"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
+        <div
+          className="pp-brand"
+          onClick={handleLogoClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleLogoClick();
+          }}
+        >
+          <div className="pp-brand__mark">
+            <img src={logoRH} alt="" className="pp-brand__img" />
+          </div>
+
+          <div className="pp-brand__text">
+            <div className="pp-brand__title">Cooperadora</div>
+            <div className="pp-brand__subtitle">IPET 50</div>
+          </div>
+        </div>
+
+        <nav className="pp-nav" aria-label="Navegación principal">
+          {navItems.map((item) => {
+            const hasSub = Array.isArray(item.children) && item.children.length > 0;
+            const isOpen =
+              (item.key === "alumnos" && openAlumnosSub) ||
+              (item.key === "administracion" && openAdminSub);
+            const isActive = activeKey === item.key;
+
+            return (
+              <div
+                key={item.key}
+                className={`pp-navGroup ${hasSub ? "has-sub" : ""} ${
+                  isOpen ? "is-open" : ""
+                }`}
+                onMouseEnter={() => prefetchRoute(item.ruta)}
+              >
+                <button
+                  type="button"
+                  className={`pp-nav__item ${isActive ? "is-active" : ""}`}
+                  onClick={() => handleNavItemClick(item, hasSub, isOpen)}
+                  onDoubleClick={() => {
+                    if (!hasSub) return;
+                    handleNavigate(defaultSubRoutes[item.key] || item.ruta);
+                  }}
+                  aria-expanded={hasSub ? isOpen : undefined}
+                  aria-haspopup={hasSub ? "menu" : undefined}
+                >
+                  <span className="pp-nav__icon">
+                    <FontAwesomeIcon icon={item.icon} />
+                  </span>
+
+                  <span className="pp-nav__label">{item.label}</span>
+
+                  {hasSub && (
+                    <span className="pp-nav__chev" aria-hidden="true">
+                      <FontAwesomeIcon icon={faChevronRight} />
+                    </span>
+                  )}
+                </button>
+
+                {hasSub && (
+                  <div className="pp-navSub" role="menu">
+                    {item.children.map((sub) => {
+                      const subActive = pathMatches(
+                        location.pathname,
+                        routeAliases(sub.ruta)
+                      );
+
+                      return (
+                        <button
+                          key={sub.ruta + sub.label}
+                          type="button"
+                          className={`pp-navSub__item ${subActive ? "is-active" : ""}`}
+                          onMouseEnter={() => prefetchRoute(sub.ruta)}
+                          onClick={() => handleNavigate(sub.ruta)}
+                          role="menuitem"
+                        >
+                          <span className="pp-navSub__dot" />
+                          <span className="pp-navSub__label">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <main className="pp-content">
+        <div className="pp-content__inner">
+          {isPanelHome ? (
+            <section className="pp-welcome">
+              <div className="pp-welcome__header">
+                <div className="pp-welcome__icon">
+                  <FontAwesomeIcon icon={faBookOpen} />
+                </div>
+                <div>
+                  <h1>Panel de gestión</h1>
+                  <p>
+                    Seleccioná una sección desde la navegación lateral para comenzar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pp-welcome__grid">
+                {navItems
+                  .filter((item) => item.key !== "dashboard")
+                  .map((item) => (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className="pp-welcomeCard"
+                      onClick={() => handleNavigate(defaultSubRoutes[item.key] || item.ruta)}
+                    >
+                      <span className="pp-welcomeCard__icon">
+                        <FontAwesomeIcon icon={item.icon} />
+                      </span>
+                      <span className="pp-welcomeCard__text">
+                        <strong>{item.label}</strong>
+                        <small>Ingresar a la sección</small>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            </section>
+          ) : (
+            <StableOutlet />
+          )}
+        </div>
+      </main>
 
       <button
         type="button"
@@ -310,33 +699,14 @@ const Principal = () => {
         onClick={irPanelBot}
         aria-label="Abrir panel interno del bot"
         title="Panel interno del Bot (WhatsApp)"
-        style={{ position: "fixed" }}
       >
         <FontAwesomeIcon icon={faRobot} />
 
         {normalUnread > 0 ? (
           <span
+            className="bot-fab-badge bot-fab-badge--normal"
             aria-label={`Notificaciones normales: ${normalUnread}`}
             title={`Normales: ${normalUnread}`}
-            style={{
-              position: "absolute",
-              top: -6,
-              right: -6,
-              minWidth: 22,
-              height: 22,
-              padding: "0 6px",
-              borderRadius: 999,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#22c55e",
-              color: "#ffffff",
-              fontSize: 12,
-              fontWeight: 800,
-              lineHeight: 1,
-              boxShadow: "0 0 0 3px rgba(15,23,42,.35)",
-              zIndex: 3,
-            }}
           >
             {fmtBadge(normalUnread)}
           </span>
@@ -344,27 +714,9 @@ const Principal = () => {
 
         {urgentUnread > 0 ? (
           <span
+            className="bot-fab-badge bot-fab-badge--urgent"
             aria-label={`Notificaciones urgentes: ${urgentUnread}`}
             title={`Urgentes: ${urgentUnread}`}
-            style={{
-              position: "absolute",
-              bottom: -4,
-              right: -8,
-              minWidth: 22,
-              height: 22,
-              padding: "0 6px",
-              borderRadius: 999,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#ef4444",
-              color: "#ffffff",
-              fontSize: 12,
-              fontWeight: 800,
-              lineHeight: 1,
-              boxShadow: "0 0 0 3px rgba(15,23,42,.35)",
-              zIndex: 4,
-            }}
           >
             {fmtBadge(urgentUnread)}
           </span>
@@ -372,9 +724,10 @@ const Principal = () => {
       </button>
 
       <ConfirmLogoutModal
-        open={showModal}
-        onClose={() => setShowModal(false)}
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
         onConfirm={confirmarCierreSesion}
+        loading={closingUI}
       />
     </div>
   );

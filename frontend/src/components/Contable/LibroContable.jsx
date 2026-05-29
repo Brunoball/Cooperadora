@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMoneyBillWave,
@@ -16,6 +17,9 @@ import "./Librocontable.css";
  * Vista con tabs en el header (sin HUB de tarjetas).
  */
 export default function LibroContable({ onBack }) {
+  const navigate = useNavigate();
+  const handleBack = onBack || (() => navigate("/panel"));
+
   // Pestaña por defecto (sin HUB)
   const [tab, setTab] = useState("ingresos");
 
@@ -34,7 +38,7 @@ export default function LibroContable({ onBack }) {
             <button
               type="button"
               className="tab_btn tab_btn--ghost lc_backtab"
-              onClick={onBack}
+              onClick={handleBack}
               title="Volver"
               aria-label="Volver"
             >
