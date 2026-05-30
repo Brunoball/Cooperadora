@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheckCircle, faEdit, faEye, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faEdit, faEye, faPlus, faSearch, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { asBool, money, origenLabel } from "../ventasConfig";
 
 function fechaSolo(value) {
@@ -25,6 +25,7 @@ export default function OrdenesTab({
   onAdd,
   onEdit,
   onOpenRetiro = () => {},
+  onDelete = () => {},
   loading = false,
   campanias = [],
   campaniaSeleccionada = "",
@@ -86,7 +87,6 @@ export default function OrdenesTab({
         <div className="ventas-div-table ventas-div-table--ordenes" role="table" aria-label="Ventas registradas">
           <div className="ventas-div-head" role="rowgroup">
             <div className="ventas-div-row ventas-div-row--head" role="row">
-              <div className="ventas-div-cell" role="columnheader">Código</div>
               <div className="ventas-div-cell" role="columnheader">Venta</div>
               <div className="ventas-div-cell" role="columnheader">Nombre informado</div>
               <div className="ventas-div-cell" role="columnheader">Medio</div>
@@ -104,7 +104,7 @@ export default function OrdenesTab({
             {loading ? (
               Array.from({ length: 7 }).map((_, i) => (
                 <div key={`skeleton-orden-${i}`} className="ventas-div-row ventas-skeleton-row" role="row" aria-hidden="true">
-                  {Array.from({ length: 11 }).map((__, j) => (
+                  {Array.from({ length: 10 }).map((__, j) => (
                     <div key={j} className="ventas-div-cell"><span className="ventas-skeleton-line" /></div>
                   ))}
                 </div>
@@ -115,12 +115,8 @@ export default function OrdenesTab({
               ordenes.map((o) => (
                 <div key={o.id_orden} className="ventas-div-row" role="row">
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
-                    <strong>{o.codigo_orden}</strong>
-                  </div>
-
-                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.campania_nombre || "Sin venta"}</strong>
-                    <span>{o.items_cantidad || 0} producto(s)</span>
+                    <span>{o.items_resumen || `${o.items_cantidad || 0} concepto(s)`}</span>
                   </div>
 
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
@@ -173,6 +169,9 @@ export default function OrdenesTab({
                     </button>
                     <button type="button" onClick={() => onEdit(o)} title="Editar venta registrada" aria-label="Editar venta registrada">
                       <FontAwesomeIcon icon={faEdit} />
+                    </button>
+                    <button type="button" className="danger" onClick={() => onDelete(o)} title="Eliminar venta registrada" aria-label="Eliminar venta registrada">
+                      <FontAwesomeIcon icon={faTrash} />
                     </button>
                   </div>
                 </div>

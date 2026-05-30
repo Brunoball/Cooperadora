@@ -457,3 +457,113 @@
     width: 100%;
   }
 }
+
+.ventas-orden-card--items {
+  background: #f8fafc;
+}
+
+.ventas-secondary {
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: #eff6ff;
+  color: #1d4ed8;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ventas-secondary:hover {
+  background: #dbeafe;
+}
+
+.ventas-items-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.4fr 1.5fr 0.8fr 0.55fr 0.85fr 42px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  margin-bottom: 8px;
+}
+
+.ventas-items-grid--head {
+  background: transparent;
+  border: 0;
+  padding: 0 8px 6px;
+  margin-bottom: 0;
+  color: #64748b;
+  font-size: .76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.ventas-items-grid input,
+.ventas-items-grid select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #dbe3ef;
+  border-radius: 11px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: .86rem;
+  font-weight: 650;
+  outline: none;
+}
+
+.ventas-items-grid input:focus,
+.ventas-items-grid select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+}
+
+.ventas-items-grid strong {
+  color: #0f766e;
+  font-size: .88rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ventas-item-delete {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 11px;
+  background: #fee2e2;
+  color: #b91c1c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ventas-item-delete:hover {
+  background: #fecaca;
+}
+
+@media (max-width: 980px) {
+  .ventas-items-grid,
+  .ventas-items-grid--head {
+    grid-template-columns: 1fr;
+  }
+
+  .ventas-items-grid--head {
+    display: none;
+  }
+
+  .ventas-items-grid strong {
+    text-align: left;
+  }
+
+  .ventas-item-delete {
+    width: 100%;
+  }
+}

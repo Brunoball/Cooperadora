@@ -1,6 +1,7 @@
 <?php
 // backend/modules/ventas/ordenes.php
-// Lista, agrega y edita ventas registradas. Las ventas manuales sirven para pagos en efectivo u otros medios.
+// Lista, agrega y edita ventas registradas. Una venta se guarda como cabecera en ventas_ordenes
+// y sus columnas/conceptos tipo Excel (VEN, GAN, etc.) se guardan en ventas_orden_items.
 
 declare(strict_types=1);
 
@@ -41,6 +42,101 @@ function ventas_estado_orden($value): string {
     return in_array($estado, $permitidos, true) ? $estado : 'aprobada';
 }
 
+function ventas_producto_por_id(PDO $pdo, int $idProducto): ?array {
+    if ($idProducto <= 0) return null;
+    $st = $pdo->prepare('SELECT id_producto, nombre, precio, activo FROM ventas_productos WHERE id_producto = :id LIMIT 1');
+    $st->execute([':id' => $idProducto]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function ventas_normalizar_items_orden(PDO $pdo, array $in, array $campania): array {
+    $rawItems = $in['items'] ?? null;
+    $itemsInput = [];
+
+    if (is_array($rawItems)) {
+        $itemsInput = array_values($rawItems);
+    }
+
+    // Compatibilidad con la versión anterior: si viene cantidad simple, la convertimos a un item VEN.
+    if (!$itemsInput) {
+        $itemsInput[] = [
+            'id_producto' => $in['id_producto'] ?? ($campania['id_producto'] ?? 0),
+            'producto_nombre' => $in['producto_nombre'] ?? ($campania['producto_nombre'] ?? ''),
+            'columna_codigo' => 'VEN',
+            'columna_nombre' => 'Venta',
+            'cantidad' => $in['cantidad'] ?? 1,
+            'precio_unitario' => $in['precio_unitario'] ?? ($campania['producto_precio'] ?? 0),
+        ];
+    }
+
+    $items = [];
+    $orden = 1;
+
+    foreach ($itemsInput as $idx => $item) {
+        if (!is_array($item)) continue;
+
+        $cantidad = (int)($item['cantidad'] ?? 0);
+        if ($cantidad <= 0) continue;
+
+        $idProducto = (int)($item['id_producto'] ?? 0);
+        $productoDb = ventas_producto_por_id($pdo, $idProducto);
+        if ($idProducto > 0 && !$productoDb) {
+            throw new InvalidArgumentException('Uno de los productos/conceptos seleccionados no existe.');
+        }
+
+        $productoNombre = $productoDb
+            ? ventas_text($productoDb['nombre'] ?? '', 150, false)
+            : ventas_text($item['producto_nombre'] ?? '', 150, false);
+
+        if ($productoNombre === '') {
+            throw new InvalidArgumentException('Cada concepto de la venta debe tener producto o nombre.');
+        }
+
+        $precioUnitario = array_key_exists('precio_unitario', $item) && $item['precio_unitario'] !== ''
+            ? ventas_decimal($item['precio_unitario'])
+            : ventas_decimal($productoDb['precio'] ?? 0);
+
+        if ($precioUnitario < 0) {
+            throw new InvalidArgumentException('El precio unitario no puede ser negativo.');
+        }
+
+        $codigoDefault = $idx === 0 ? 'VEN' : 'ITEM';
+        $codigo = ventas_text($item['columna_codigo'] ?? $codigoDefault, 30, true);
+        if ($codigo === '') $codigo = $codigoDefault;
+
+        $nombreColumna = ventas_nullable_text($item['columna_nombre'] ?? $productoNombre, 120, false);
+        $subtotal = round($cantidad * $precioUnitario, 2);
+
+        $metadata = null;
+        if (isset($item['metadata_json']) && is_string($item['metadata_json']) && trim($item['metadata_json']) !== '') {
+            $metadata = trim($item['metadata_json']);
+        } elseif (isset($item['metadata']) && is_array($item['metadata'])) {
+            $metadata = json_encode($item['metadata'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $items[] = [
+            'id_producto' => $productoDb ? (int)$productoDb['id_producto'] : null,
+            'producto_nombre' => $productoNombre,
+            'columna_codigo' => $codigo,
+            'columna_nombre' => $nombreColumna,
+            'orden_columna' => $orden,
+            'cantidad' => $cantidad,
+            'precio_unitario' => $precioUnitario,
+            'subtotal' => $subtotal,
+            'metadata_json' => $metadata,
+        ];
+
+        $orden++;
+    }
+
+    if (!$items) {
+        throw new InvalidArgumentException('Cargá al menos un concepto con cantidad mayor a cero.');
+    }
+
+    return $items;
+}
+
 try {
     $pdo = ventas_pdo();
     ventas_tablas_verificadas($pdo);
@@ -58,6 +154,7 @@ try {
     if ($action === 'ventas_ordenes' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $idCampania = isset($_GET['id_campania']) ? (int)$_GET['id_campania'] : 0;
         $estado = ventas_text($_GET['estado'] ?? '', 30, false);
+        $retiro = ventas_text($_GET['retiro'] ?? '', 30, false);
         $q = ventas_text($_GET['q'] ?? '', 120, false);
 
         $where = [];
@@ -71,8 +168,26 @@ try {
             $where[] = 'o.estado = :estado';
             $params[':estado'] = $estado;
         }
+        if ($retiro === 'pendiente') {
+            $where[] = '(o.retirado IS NULL OR o.retirado = 0)';
+        } elseif ($retiro === 'retirado') {
+            $where[] = 'o.retirado = 1';
+        }
         if ($q !== '') {
-            $where[] = '(o.codigo_orden LIKE :q OR o.persona_nombre LIKE :q OR o.persona_detalle LIKE :q OR o.comprador_telefono LIKE :q OR o.payment_id LIKE :q OR mp.medio_pago LIKE :q)';
+            $where[] = '(
+                o.codigo_orden LIKE :q
+                OR o.persona_nombre LIKE :q
+                OR o.persona_detalle LIKE :q
+                OR o.comprador_telefono LIKE :q
+                OR o.payment_id LIKE :q
+                OR mp.medio_pago LIKE :q
+                OR EXISTS (
+                    SELECT 1
+                    FROM ventas_orden_items qi
+                    WHERE qi.id_orden = o.id_orden
+                      AND (qi.producto_nombre LIKE :q OR qi.columna_codigo LIKE :q OR qi.columna_nombre LIKE :q)
+                )
+            )';
             $params[':q'] = '%' . $q . '%';
         }
 
@@ -85,9 +200,23 @@ try {
                 mp.medio_pago,
                 i.id_producto,
                 i.producto_nombre,
+                i.columna_codigo,
+                i.columna_nombre,
                 i.cantidad,
                 i.precio_unitario,
-                (SELECT COUNT(*) FROM ventas_orden_items ix WHERE ix.id_orden = o.id_orden) AS items_cantidad
+                (SELECT COUNT(*) FROM ventas_orden_items ix WHERE ix.id_orden = o.id_orden) AS items_cantidad,
+                (
+                    SELECT GROUP_CONCAT(
+                        CONCAT(
+                            COALESCE(NULLIF(ix.columna_codigo, ''), ix.producto_nombre),
+                            ' x', ix.cantidad
+                        )
+                        ORDER BY ix.orden_columna ASC, ix.id_item ASC
+                        SEPARATOR ' · '
+                    )
+                    FROM ventas_orden_items ix
+                    WHERE ix.id_orden = o.id_orden
+                ) AS items_resumen
             FROM ventas_ordenes o
             LEFT JOIN ventas_campanias c ON c.id_campania = o.id_campania
             LEFT JOIN medio_pago mp ON mp.id_medio_pago = o.id_medio_pago
@@ -95,7 +224,7 @@ try {
                 SELECT ii.id_item
                 FROM ventas_orden_items ii
                 WHERE ii.id_orden = o.id_orden
-                ORDER BY ii.id_item ASC
+                ORDER BY ii.orden_columna ASC, ii.id_item ASC
                 LIMIT 1
             )
             $whereSql
@@ -105,9 +234,41 @@ try {
 
         $st = $pdo->prepare($sql);
         $st->execute($params);
-        ventas_json(['exito' => true, 'items' => $st->fetchAll(PDO::FETCH_ASSOC)]);
-    }
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
+        $ids = array_values(array_filter(array_map(static fn($r) => (int)($r['id_orden'] ?? 0), $rows)));
+        if ($ids) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stItems = $pdo->prepare("
+                SELECT
+                    id_item,
+                    id_orden,
+                    id_producto,
+                    producto_nombre,
+                    columna_codigo,
+                    columna_nombre,
+                    orden_columna,
+                    cantidad,
+                    precio_unitario,
+                    subtotal,
+                    metadata_json
+                FROM ventas_orden_items
+                WHERE id_orden IN ($placeholders)
+                ORDER BY id_orden DESC, orden_columna ASC, id_item ASC
+            ");
+            $stItems->execute($ids);
+            $itemsByOrden = [];
+            foreach ($stItems->fetchAll(PDO::FETCH_ASSOC) as $it) {
+                $itemsByOrden[(int)$it['id_orden']][] = $it;
+            }
+            foreach ($rows as &$row) {
+                $row['items'] = $itemsByOrden[(int)$row['id_orden']] ?? [];
+            }
+            unset($row);
+        }
+
+        ventas_json(['exito' => true, 'items' => $rows]);
+    }
 
     if ($action === 'ventas_orden_retiro') {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
@@ -158,6 +319,41 @@ try {
         ]);
     }
 
+    if ($action === 'ventas_orden_eliminar') {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $in = ventas_body();
+        $idOrden = (int)($in['id_orden'] ?? 0);
+
+        if ($idOrden <= 0) {
+            throw new InvalidArgumentException('No se recibió la venta a eliminar.');
+        }
+
+        $st = $pdo->prepare('SELECT id_orden FROM ventas_ordenes WHERE id_orden = :id LIMIT 1');
+        $st->execute([':id' => $idOrden]);
+        if (!$st->fetchColumn()) {
+            throw new InvalidArgumentException('La venta registrada no existe o ya fue eliminada.');
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('DELETE FROM ventas_orden_items WHERE id_orden = :id_orden');
+            $st->execute([':id_orden' => $idOrden]);
+
+            $st = $pdo->prepare('DELETE FROM ventas_ordenes WHERE id_orden = :id_orden LIMIT 1');
+            $st->execute([':id_orden' => $idOrden]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+
+        ventas_json(['exito' => true, 'mensaje' => 'Venta eliminada correctamente.']);
+    }
+
     if ($action === 'ventas_orden_guardar') {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
@@ -167,7 +363,6 @@ try {
         $idOrden = (int)($in['id_orden'] ?? 0);
         $idCampania = (int)($in['id_campania'] ?? 0);
         $idMedioPago = (int)($in['id_medio_pago'] ?? 0);
-        $cantidad = max(1, (int)($in['cantidad'] ?? 1));
         $estado = ventas_estado_orden($in['estado'] ?? 'aprobada');
         $fechaVenta = ventas_fecha_venta_sql($in['fecha_venta'] ?? null);
 
@@ -187,13 +382,13 @@ try {
                 p.nombre AS producto_nombre,
                 p.precio AS producto_precio
             FROM ventas_campanias c
-            INNER JOIN ventas_productos p ON p.id_producto = c.id_producto_principal
+            LEFT JOIN ventas_productos p ON p.id_producto = c.id_producto_principal
             WHERE c.id_campania = :id
             LIMIT 1
         ");
         $st->execute([':id' => $idCampania]);
         $campania = $st->fetch(PDO::FETCH_ASSOC);
-        if (!$campania) throw new InvalidArgumentException('La venta seleccionada no existe o no tiene producto asignado.');
+        if (!$campania) throw new InvalidArgumentException('La venta seleccionada no existe.');
 
         $personaNombre = ventas_text($in['persona_nombre'] ?? '', 160, true);
         $personaDetalle = ventas_nullable_text($in['persona_detalle'] ?? '', 160, true);
@@ -201,8 +396,10 @@ try {
         $observacion = ventas_nullable_text($in['observacion'] ?? '', 5000, false);
         if ($personaNombre === '') throw new InvalidArgumentException('Ingresá el nombre informado para la venta.');
 
-        $precioUnitario = ventas_decimal($campania['producto_precio'] ?? 0);
-        $total = round($precioUnitario * $cantidad, 2);
+        $items = ventas_normalizar_items_orden($pdo, $in, $campania);
+        $total = round(array_sum(array_map(static fn($it) => (float)$it['subtotal'], $items)), 2);
+        if ($total <= 0) throw new InvalidArgumentException('El total de la venta debe ser mayor a cero.');
+
         $aprobadoEn = $estado === 'aprobada' ? $fechaVenta : null;
         $canceladoEn = in_array($estado, ['cancelada', 'fallida', 'vencida'], true) ? $fechaVenta : null;
 
@@ -277,20 +474,29 @@ try {
                 $idOrden = (int)$pdo->lastInsertId();
             }
 
-            $st = $pdo->prepare(" 
+            $stItem = $pdo->prepare(" 
                 INSERT INTO ventas_orden_items
-                (id_orden, id_producto, producto_nombre, cantidad, precio_unitario, subtotal)
+                (id_orden, id_producto, producto_nombre, columna_codigo, columna_nombre, orden_columna,
+                 cantidad, precio_unitario, subtotal, metadata_json)
                 VALUES
-                (:id_orden, :id_producto, :producto_nombre, :cantidad, :precio_unitario, :subtotal)
+                (:id_orden, :id_producto, :producto_nombre, :columna_codigo, :columna_nombre, :orden_columna,
+                 :cantidad, :precio_unitario, :subtotal, :metadata_json)
             ");
-            $st->execute([
-                ':id_orden' => $idOrden,
-                ':id_producto' => (int)$campania['id_producto'],
-                ':producto_nombre' => (string)$campania['producto_nombre'],
-                ':cantidad' => $cantidad,
-                ':precio_unitario' => $precioUnitario,
-                ':subtotal' => $total,
-            ]);
+
+            foreach ($items as $item) {
+                $stItem->execute([
+                    ':id_orden' => $idOrden,
+                    ':id_producto' => $item['id_producto'],
+                    ':producto_nombre' => $item['producto_nombre'],
+                    ':columna_codigo' => $item['columna_codigo'],
+                    ':columna_nombre' => $item['columna_nombre'],
+                    ':orden_columna' => $item['orden_columna'],
+                    ':cantidad' => $item['cantidad'],
+                    ':precio_unitario' => $item['precio_unitario'],
+                    ':subtotal' => $item['subtotal'],
+                    ':metadata_json' => $item['metadata_json'],
+                ]);
+            }
 
             $pdo->commit();
         } catch (Throwable $e) {

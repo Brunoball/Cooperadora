@@ -22,10 +22,20 @@ function route_ventas($action) {
             return true;
 
         case 'ventas_ordenes':
+        case 'ventas_orden_detalle':
         case 'ventas_orden_guardar':
         case 'ventas_orden_retiro':
+        case 'ventas_orden_eliminar':
         case 'ventas_medios_pago':
             require __DIR__ . '/ordenes.php';
+            return true;
+
+        case 'ventas_planillas_cursos':
+            require __DIR__ . '/planillas.php';
+            return true;
+
+        case 'ventas_importar_planilla':
+            require __DIR__ . '/importar_planilla.php';
             return true;
 
         // Endpoint preparado para que el bot consulte si debe mostrar la opción del menú.

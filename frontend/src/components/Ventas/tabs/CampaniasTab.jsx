@@ -21,8 +21,8 @@ export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDe
             <div className="ventas-div-row ventas-div-row--head" role="row">
               <div className="ventas-div-cell" role="columnheader">Venta</div>
               <div className="ventas-div-cell" role="columnheader">Flujo</div>
-              <div className="ventas-div-cell" role="columnheader">Producto / precio</div>
-              <div className="ventas-div-cell" role="columnheader">Producto</div>
+              <div className="ventas-div-cell" role="columnheader">Principal / precio</div>
+              <div className="ventas-div-cell" role="columnheader">Conceptos</div>
               <div className="ventas-div-cell" role="columnheader">Ventas</div>
               <div className="ventas-div-cell" role="columnheader">Bot</div>
               <div className="ventas-div-cell" role="columnheader">Estado</div>

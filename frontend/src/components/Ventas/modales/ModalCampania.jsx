@@ -80,15 +80,15 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
             <div>
               <strong>Flujo fijo del bot</strong>
               <span>
-                Al elegir la opción de ventas, el bot abre directamente esta venta activa. Acá solo se elige el flujo,
-                el producto del catálogo y si la venta queda activa o visible en WhatsApp.
+                Al elegir la opción de ventas, el bot abre directamente esta venta activa. Acá se elige el flujo,
+                el producto principal sugerido y si la venta queda activa o visible en WhatsApp.
               </span>
             </div>
           </div>
 
           <div className="ventas-admin-note">
             Solo puede haber <strong>una venta activa para el bot</strong>. Los productos se cargan aparte en la pestaña Productos;
-            desde esta pantalla únicamente elegís cuál se va a vender.
+            esta pantalla define el producto principal, pero las ventas registradas pueden tener varios conceptos como VEN, GAN, etc.
           </div>
 
           <label>
@@ -133,7 +133,7 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
 
           <div className="ventas-simple-box ventas-product-config">
             <h3>
-              <FontAwesomeIcon icon={faBoxOpen} /> Producto que se va a vender
+              <FontAwesomeIcon icon={faBoxOpen} /> Producto principal de la venta
             </h3>
 
             <label className="ventas-product-selector">
@@ -209,7 +209,7 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
               </p>
             ) : (
               <p className="ventas-flow-help">
-                La venta usa un solo producto seleccionado del catálogo. Esta pantalla no modifica datos del producto.
+                Este producto queda como concepto principal/sugerido. Al registrar una venta manual podés sumar más conceptos sin crear tablas nuevas.
               </p>
             )}
           </div>

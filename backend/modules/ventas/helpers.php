@@ -259,6 +259,48 @@ function ventas_asegurar_esquema_ordenes_retiro($pdo) {
     }
 }
 
+
+function ventas_asegurar_esquema_items_excel($pdo) {
+    // No se crea una tabla nueva para las columnas tipo Excel.
+    // Cada columna de cantidad (VEN, GAN, etc.) se guarda como un item de la venta.
+    try {
+        $col = ventas_column_exists($pdo, 'ventas_orden_items', 'id_producto');
+        if ($col && strtoupper((string)($col['Null'] ?? 'NO')) === 'NO') {
+            $pdo->exec("ALTER TABLE ventas_orden_items MODIFY id_producto INT UNSIGNED NULL DEFAULT NULL");
+        }
+    } catch (Throwable $e) {
+        // Si por una FK vieja no permite modificar, el sistema igual funciona usando productos existentes.
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_orden_items', 'columna_codigo')) {
+        $after = ventas_column_exists($pdo, 'ventas_orden_items', 'producto_nombre') ? ' AFTER producto_nombre' : '';
+        $pdo->exec("ALTER TABLE ventas_orden_items ADD COLUMN columna_codigo VARCHAR(30) NULL DEFAULT NULL" . $after);
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_orden_items', 'columna_nombre')) {
+        $after = ventas_column_exists($pdo, 'ventas_orden_items', 'columna_codigo') ? ' AFTER columna_codigo' : '';
+        $pdo->exec("ALTER TABLE ventas_orden_items ADD COLUMN columna_nombre VARCHAR(120) NULL DEFAULT NULL" . $after);
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_orden_items', 'orden_columna')) {
+        $after = ventas_column_exists($pdo, 'ventas_orden_items', 'columna_nombre') ? ' AFTER columna_nombre' : '';
+        $pdo->exec("ALTER TABLE ventas_orden_items ADD COLUMN orden_columna INT NOT NULL DEFAULT 1" . $after);
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_orden_items', 'metadata_json')) {
+        $after = ventas_column_exists($pdo, 'ventas_orden_items', 'subtotal') ? ' AFTER subtotal' : '';
+        $pdo->exec("ALTER TABLE ventas_orden_items ADD COLUMN metadata_json LONGTEXT NULL DEFAULT NULL" . $after);
+    }
+
+    if (!ventas_index_exists($pdo, 'ventas_orden_items', 'idx_ventas_items_columna')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_orden_items ADD KEY idx_ventas_items_columna (columna_codigo, orden_columna)");
+        } catch (Throwable $e) {
+            // El índice ayuda pero no es obligatorio.
+        }
+    }
+}
+
 function ventas_tablas_verificadas($pdo) {
     if (!($pdo instanceof PDO)) {
         throw new RuntimeException('Conexión PDO no disponible.');
@@ -272,6 +314,7 @@ function ventas_tablas_verificadas($pdo) {
     ventas_asegurar_esquema_productos_independientes($pdo);
     ventas_asegurar_esquema_ordenes_medios_pago($pdo);
     ventas_asegurar_esquema_ordenes_retiro($pdo);
+    ventas_asegurar_esquema_items_excel($pdo);
 }
 
 function ventas_tipo_persona($value) {

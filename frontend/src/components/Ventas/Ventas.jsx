@@ -7,6 +7,7 @@ import {
   faChartLine,
   faEye,
   faTags,
+  faClipboardList,
 } from "@fortawesome/free-solid-svg-icons";
 
 import BASE_URL from "../../config/config";
@@ -17,6 +18,7 @@ import "./Ventas.css";
 import CampaniasTab from "./tabs/CampaniasTab";
 import ProductosTab from "./tabs/ProductosTab";
 import OrdenesTab from "./tabs/OrdenesTab";
+import PlanillasTab from "./tabs/PlanillasTab";
 
 import ModalCampania from "./modales/ModalCampania";
 import ModalProducto from "./modales/ModalProducto";
@@ -414,20 +416,34 @@ export default function Ventas() {
   const abrirNuevaOrden = async () => {
     try {
       const medios = mediosPago.length ? mediosPago : await cargarMediosPago();
-      const tieneProducto = (c) => !!(c?.id_producto_principal || c?.producto_principal_nombre);
+      const productosCatalogo = productos.length ? productos : await cargarProductosCatalogo();
+      if (!productos.length) setProductos(productosCatalogo);
+
       const ventaBase =
-        (campaniaActual && tieneProducto(campaniaActual) ? campaniaActual : null) ||
-        campanias.find((c) => asBool(c.activo) && tieneProducto(c)) ||
-        campanias.find((c) => tieneProducto(c)) ||
+        campaniaActual ||
+        campanias.find((c) => asBool(c.activo)) ||
+        campanias[0] ||
         null;
       const medioEfectivo = medios.find((m) => String(m.medio_pago || "").trim().toUpperCase() === "EFECTIVO")?.id_medio_pago || medios[0]?.id_medio_pago || "";
+
+      const itemBase = {
+        id_producto: ventaBase?.id_producto_principal || "",
+        producto_nombre: ventaBase?.producto_principal_nombre || "",
+        columna_codigo: "VEN",
+        columna_nombre: ventaBase?.producto_principal_nombre || "Venta",
+        cantidad: 1,
+        precio_unitario: ventaBase?.producto_principal_precio ?? "",
+      };
 
       setOrdenForm({
         ...emptyOrden,
         id_campania: ventaBase?.id_campania || "",
-        id_producto: ventaBase?.id_producto_principal || "",
-        producto_nombre: ventaBase?.producto_principal_nombre || "",
-        precio_unitario: ventaBase?.producto_principal_precio ?? "",
+        id_producto: itemBase.id_producto,
+        producto_nombre: itemBase.producto_nombre,
+        precio_unitario: itemBase.precio_unitario,
+        columna_codigo: "VEN",
+        columna_nombre: itemBase.columna_nombre,
+        items: [itemBase],
         persona_tipo: ventaBase?.tipo_persona || "comprador",
         id_medio_pago: medioEfectivo,
         fecha_venta: hoyInput(),
@@ -442,6 +458,27 @@ export default function Ventas() {
   const abrirEditarOrden = async (o) => {
     try {
       if (mediosPago.length === 0) await cargarMediosPago();
+      const productosCatalogo = productos.length ? productos : await cargarProductosCatalogo();
+      if (!productos.length) setProductos(productosCatalogo);
+
+      const itemsOrden = Array.isArray(o.items) && o.items.length
+        ? o.items.map((item, index) => ({
+            id_producto: item.id_producto || "",
+            producto_nombre: item.producto_nombre || "",
+            columna_codigo: item.columna_codigo || (index === 0 ? "VEN" : "ITEM"),
+            columna_nombre: item.columna_nombre || item.producto_nombre || "",
+            cantidad: item.cantidad || 1,
+            precio_unitario: item.precio_unitario ?? "",
+          }))
+        : [{
+            id_producto: o.id_producto || "",
+            producto_nombre: o.producto_nombre || "",
+            columna_codigo: o.columna_codigo || "VEN",
+            columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
+            cantidad: o.cantidad || 1,
+            precio_unitario: o.precio_unitario ?? "",
+          }];
+
       setOrdenForm({
         ...emptyOrden,
         ...o,
@@ -451,6 +488,9 @@ export default function Ventas() {
         producto_nombre: o.producto_nombre || "",
         precio_unitario: o.precio_unitario ?? "",
         cantidad: o.cantidad || 1,
+        columna_codigo: o.columna_codigo || "VEN",
+        columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
+        items: itemsOrden,
         persona_tipo: o.persona_tipo || "comprador",
         persona_nombre: o.persona_nombre || "",
         persona_detalle: o.persona_detalle || "",
@@ -513,6 +553,23 @@ export default function Ventas() {
     }
   };
 
+  const eliminarOrden = (orden) => {
+    const nombre = orden?.persona_nombre || orden?.codigo_orden || "esta venta";
+    pedirConfirmacion({
+      titulo: "Eliminar venta registrada",
+      mensaje: `¿Eliminar definitivamente la venta de "${nombre}"? Se borrará el registro y sus conceptos asociados. Esta acción no se puede deshacer.`,
+      confirmText: "Eliminar",
+      accion: async () => {
+        await request("ventas_orden_eliminar", {
+          method: "POST",
+          body: { id_orden: orden?.id_orden },
+        });
+        showToast("exito", "Venta eliminada correctamente.");
+        await Promise.all([cargarDashboard(), cargarOrdenes()]);
+      },
+    });
+  };
+
 
   const tabsControl = (
     <nav className="ventas-tabs ventas-tabs--in-card" aria-label="Cambiar tabla de ventas">
@@ -524,6 +581,9 @@ export default function Ventas() {
       </button>
       <button type="button" className={tab === "ordenes" ? "active" : ""} onClick={() => setTab("ordenes")}>
         Ventas registradas
+      </button>
+      <button type="button" className={tab === "planillas" ? "active" : ""} onClick={() => setTab("planillas")}>
+        <FontAwesomeIcon icon={faClipboardList} /> Planillas
       </button>
     </nav>
   );
@@ -584,6 +644,7 @@ export default function Ventas() {
             onAdd={abrirNuevaOrden}
             onEdit={abrirEditarOrden}
             onOpenRetiro={abrirModalRetiroOrden}
+            onDelete={eliminarOrden}
             loading={loading}
             campanias={campanias}
             campaniaSeleccionada={campaniaSeleccionada}
@@ -591,6 +652,14 @@ export default function Ventas() {
             filtroRetiro={filtroRetiro}
             onCambiarFiltroRetiro={setFiltroRetiro}
             campaniaActual={campaniaActual}
+          />
+        ) : null}
+
+        {tab === "planillas" ? (
+          <PlanillasTab
+            tableTabs={tabsControl}
+            campanias={campanias}
+            apiUrl={API}
           />
         ) : null}
       </div>
@@ -619,6 +688,7 @@ export default function Ventas() {
         form={ordenForm}
         setForm={setOrdenForm}
         campanias={campanias}
+        productos={productos}
         mediosPago={mediosPago}
         saving={saving}
         onClose={() => setModalOrden(false)}

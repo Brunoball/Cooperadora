@@ -571,7 +571,7 @@
 }
 
 .ventas-div-table--ordenes .ventas-div-row {
-  grid-template-columns: 1fr 1fr 1.15fr 0.95fr 0.72fr 0.72fr 0.72fr 0.72fr 1fr 0.55fr;
+  grid-template-columns: 1.15fr 1.15fr 0.95fr 0.72fr 0.72fr 0.72fr 0.72fr 0.42fr 1fr 0.55fr;
 }
 
 .ventas-div-cell {
@@ -1556,7 +1556,7 @@
 }
 
 .ventas-div-table--ordenes .ventas-div-row {
-  grid-template-columns: 1fr 1fr 1.15fr 0.95fr 0.72fr 0.72fr 0.72fr 0.40fr 1fr 0.55fr;
+  grid-template-columns: 1.18fr 1.08fr 0.82fr 0.64fr 0.64fr 0.72fr 0.62fr 0.42fr 0.76fr 0.62fr;
 }
 
 .ventas-div-row--head {
@@ -2524,11 +2524,11 @@
    Estado de retiro en ventas registradas
 ========================================================= */
 .ventas-div-table--ordenes {
-  min-width: 1320px !important;
+  min-width: 1220px !important;
 }
 
 .ventas-div-table--ordenes .ventas-div-row {
-  grid-template-columns: 0.95fr 1fr 1.12fr 0.9fr 0.68fr 0.65fr 0.98fr 0.68fr 0.42fr 0.92fr 0.5fr !important;
+  grid-template-columns: 1fr 1.12fr 0.9fr 0.68fr 0.65fr 0.98fr 0.68fr 0.42fr 0.92fr 0.5fr !important;
 }
 
 .ventas-status.pending {
@@ -2584,11 +2584,11 @@
    Ajuste final: retiro desde modal + tabla limpia
 ========================================================= */
 .ventas-div-table--ordenes {
-  min-width: 1360px !important;
+  min-width: 1240px !important;
 }
 
 .ventas-div-table--ordenes .ventas-div-row {
-  grid-template-columns: 0.92fr 1.18fr 1.08fr 0.82fr 0.64fr 0.64fr 0.72fr 0.62fr 0.42fr 0.76fr 0.62fr !important;
+  grid-template-columns: 1.18fr 1.08fr 0.82fr 0.64fr 0.64fr 0.72fr 0.62fr 0.42fr 0.76fr 0.62fr !important;
 }
 
 .ventas-retire-cell {
@@ -2708,10 +2708,293 @@
 
 @media (max-width: 760px) {
   .ventas-div-table--ordenes {
-    min-width: 1180px !important;
+    min-width: 1080px !important;
   }
 
   .ventas-retiro-option {
+    align-items: flex-start;
+  }
+}
+
+/* Importación de planillas Excel en Ventas */
+.ventas-import-btn {
+  min-height: 42px;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.ventas-import-btn input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ventas-import-btn.is-disabled input[type="file"] {
+  cursor: wait;
+}
+
+.ventas-div-table--ordenes .ventas-div-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ventas-page .ventas-secondary {
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e3a8a;
+  min-height: 42px;
+  border-radius: 13px;
+  padding: 0 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ventas-page .ventas-secondary:hover:not(.is-disabled) {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.ventas-page .ventas-secondary.is-disabled {
+  opacity: 0.65;
+  cursor: wait;
+  transform: none;
+}
+
+/* =========================================================
+   Planillas imprimibles para docentes
+========================================================= */
+.ventas-planillas-card {
+  overflow: hidden;
+}
+
+.ventas-planillas-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.ventas-planillas-panel {
+  border: 1px solid #dbe7f5;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.ventas-planillas-panel--main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 55%, #ecfdf5 100%);
+}
+
+.ventas-planillas-icon {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1d428a;
+  color: #ffffff;
+  font-size: 24px;
+  box-shadow: 0 14px 28px rgba(29, 66, 138, 0.22);
+}
+
+.ventas-planillas-panel h3 {
+  margin: 4px 0 8px;
+  color: #102e6a;
+  font-size: 24px;
+}
+
+.ventas-planillas-panel p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.ventas-planillas-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ventas-planillas-field select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 13px;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: border 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ventas-planillas-field select:focus {
+  border-color: #1d428a;
+  box-shadow: 0 0 0 4px rgba(29, 66, 138, 0.12);
+}
+
+.ventas-planillas-resumen {
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  border-radius: 16px;
+  color: #065f46;
+}
+
+.ventas-planillas-resumen strong,
+.ventas-planillas-resumen span {
+  display: block;
+}
+
+.ventas-planillas-resumen strong {
+  margin-bottom: 5px;
+  color: #064e3b;
+}
+
+.ventas-planillas-resumen span {
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.ventas-planillas-resumen--warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.ventas-planillas-resumen--warning strong {
+  color: #9a3412;
+}
+
+.ventas-planillas-check {
+  margin: 14px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ventas-planillas-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #1d428a;
+}
+
+.ventas-planillas-export {
+  width: 100%;
+}
+
+.ventas-planillas-help {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.ventas-planillas-help svg {
+  margin-top: 2px;
+}
+
+.ventas-planillas-help p {
+  margin: 0;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.ventas-planillas-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ventas-planillas-steps > div {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 15px;
+}
+
+.ventas-planillas-steps span {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1d428a;
+  color: #ffffff;
+  font-weight: 900;
+  margin-bottom: 9px;
+}
+
+.ventas-planillas-steps strong {
+  display: block;
+  color: #102e6a;
+  margin-bottom: 4px;
+}
+
+.ventas-planillas-steps p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.4;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ventas-planillas-note {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+@media (max-width: 960px) {
+  .ventas-planillas-layout,
+  .ventas-planillas-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .ventas-planillas-panel--main {
+    flex-direction: column;
+  }
+
+  .ventas-planillas-note {
+    border-radius: 16px;
     align-items: flex-start;
   }
 }
