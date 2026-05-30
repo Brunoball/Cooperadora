@@ -34,7 +34,7 @@ export default function OrdenesTab({
   onCambiarFiltroRetiro = () => {},
 }) {
   return (
-    <section className="ventas-card ventas-table-card ventas-full-card">
+    <section className="ventas-card ventas-table-card ventas-full-card ventas-ordenes-card">
       <div className="ventas-card-head ventas-card-head--stack">
         <div className="ventas-card-tabs-slot">
           {tableTabs}
@@ -53,12 +53,8 @@ export default function OrdenesTab({
               </select>
             </label>
 
-            <div className="ventas-filter-inline ventas-filter-inline--readonly" title="Solo se muestran ventas con pago aprobado">
-              <span>Estado</span>
-              <strong>Solo aprobadas</strong>
-            </div>
 
-            <label className="ventas-filter-inline">
+            <label className="ventas-filter-inline ventas-filter-inlineretiro">
               <span>Retiro</span>
               <select value={filtroRetiro} onChange={(e) => onCambiarFiltroRetiro(e.target.value)}>
                 <option value="">Todos</option>
@@ -180,6 +176,12 @@ export default function OrdenesTab({
           </div>
         </div>
       </div>
+
+      <footer className="ventas-ordenes-footer" aria-label="Estado de ventas registradas">
+        <span className="ventas-ordenes-footer__label">Estado</span>
+        <span className="ventas-ordenes-footer__dot" aria-hidden="true" />
+        <span className="ventas-ordenes-footer__value">Solo aprobadas</span>
+      </footer>
     </section>
   );
 }
