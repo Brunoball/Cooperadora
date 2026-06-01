@@ -1932,14 +1932,14 @@
 
 .ventas-filter-inline {
   position: relative;
-  padding-top: 8px;
+  padding-top: 0;
   gap: 0 !important;
 }
 
 .ventas-filter-inline > span {
   position: absolute;
   left: 14px;
-  top: 8px;
+  top: 2px;
   transform: translateY(-50%);
   z-index: 3;
   background: #fff;
