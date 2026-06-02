@@ -1,84 +1,104 @@
 /* src/components/BotPanel/BotPanel.css */
 
 /* ======================================================
-   ✅ THEME SYSTEM
-   Default: DARK (como estaba)
-   Light: Paleta Azul Institucional (usa --blue-inst-*)
+   SISTEMA DE TEMA · IDENTIDAD WHATSAPP
+   Dark: superficies originales de WhatsApp Web.
+   Light: verdes WhatsApp con contraste limpio y profesional.
    Se activa con: <html data-botpanel-theme="light">
 ====================================================== */
 
 /* ===== Variables DARK (default) ===== */
 :root{
+  --wp-brand-primary: #00a884;
+  --wp-brand-primary-hover: #008f72;
+  --wp-brand-strong: #075e54;
+  --wp-brand-bright: #25d366;
+  --wp-brand-soft: rgba(0,168,132,.14);
+  --wp-brand-ring: rgba(0,168,132,.22);
+  --wp-brand-shadow: 0 12px 24px -13px rgba(0,168,132,.70);
+  --wp-title: #e9edef;
+  --wp-muted: #8696a0;
+
   --wp-bg: #0b141a;
+  --wp-chat-bg: #0b141a;
   --wp-text: #e9edef;
 
   --wp-sidebar-bg: #111b21;
-  --wp-topbar-bg: rgba(17,27,33,.9);
-  --wp-composer-bg: rgba(17,27,33,.95);
+  --wp-topbar-bg: rgba(32,44,51,.96);
+  --wp-composer-bg: rgba(32,44,51,.98);
 
   --wp-card: rgba(255,255,255,.06);
-  --wp-card-2: rgba(255,255,255,.08);
+  --wp-card-2: rgba(255,255,255,.09);
 
   --wp-border: rgba(255,255,255,.08);
   --wp-border-soft: rgba(255,255,255,.06);
 
-  --wp-accent: rgba(45,212,191,.22);
-  --wp-accent-2: rgba(45,212,191,.12);
-  --wp-accent-3: rgba(45,212,191,.16);
-  --wp-accent-text: #bfffe2;
+  --wp-accent: rgba(0,168,132,.34);
+  --wp-accent-2: rgba(0,168,132,.16);
+  --wp-accent-3: rgba(0,168,132,.25);
+  --wp-accent-text: #d9fdd3;
 
-  --wp-success: rgba(34,197,94,.18);
-  --wp-success-bg: rgba(34,197,94,.16);
-
-  --wp-online: #22c55e;
+  --wp-success: rgba(37,211,102,.23);
+  --wp-success-bg: rgba(0,92,75,.88);
+  --wp-online: #25d366;
 
   --wp-danger: rgba(255,60,60,.35);
   --wp-danger-bg: rgba(255,60,60,.12);
 
   --wp-shadow: 0 10px 22px rgba(0,0,0,.22);
 
-  --wp-doc-bg: rgba(0,0,0,0.20);
-  --wp-doc-border: rgba(255,255,255,0.12);
+  --wp-doc-bg: rgba(0,0,0,.20);
+  --wp-doc-border: rgba(255,255,255,.12);
 
-  --wp-reply-bg: #1f2a36;
-  --wp-reply-border: #4ea1ff;
+  --wp-reply-bg: #1f2c33;
+  --wp-reply-border: #00a884;
 }
 
-/* ===== Variables LIGHT (usa tu paleta azul) ===== */
+/* ===== Variables LIGHT · WhatsApp ===== */
 :root[data-botpanel-theme="light"]{
-  --wp-bg: var(--blue-inst-light);
-  --wp-text: var(--blue-inst-dark);
+  --wp-brand-primary: #00a884;
+  --wp-brand-primary-hover: #008f72;
+  --wp-brand-strong: #075e54;
+  --wp-brand-bright: #25d366;
+  --wp-brand-soft: rgba(0,168,132,.10);
+  --wp-brand-ring: rgba(0,168,132,.20);
+  --wp-brand-shadow: 0 12px 23px -13px rgba(0,168,132,.62);
+  --wp-title: #111b21;
+  --wp-muted: #54656f;
+
+  --wp-bg: #f0f2f5;
+  --wp-chat-bg: #efeae2;
+  --wp-text: #111b21;
 
   --wp-sidebar-bg: #ffffff;
-  --wp-topbar-bg: rgba(248,250,252,.92);     /* var(--blue-inst-light) con alpha */
-  --wp-composer-bg: rgba(255,255,255,.92);
+  --wp-topbar-bg: rgba(240,242,245,.96);
+  --wp-composer-bg: rgba(240,242,245,.98);
 
-  --wp-card: rgba(29,66,138,.06);            /* primary suave */
-  --wp-card-2: rgba(29,66,138,.10);
+  --wp-card: rgba(17,27,33,.055);
+  --wp-card-2: rgba(17,27,33,.085);
 
-  --wp-border: rgba(15,23,42,.14);
-  --wp-border-soft: rgba(15,23,42,.10);
+  --wp-border: rgba(17,27,33,.12);
+  --wp-border-soft: rgba(17,27,33,.08);
 
-  --wp-accent: rgba(29,66,138,.22);          /* --blue-inst-primary */
-  --wp-accent-2: rgba(29,66,138,.14);
-  --wp-accent-3: rgba(29,66,138,.18);
-  --wp-accent-text: #ffffff;
+  --wp-accent: rgba(0,168,132,.25);
+  --wp-accent-2: rgba(0,168,132,.11);
+  --wp-accent-3: rgba(0,168,132,.18);
+  --wp-accent-text: #006b5b;
 
-  --wp-success: rgba(16,185,129,.28);
-  --wp-success-bg: rgba(16,185,129,.14);
-
-  --wp-online: var(--blue-inst-success);
+  --wp-success: rgba(0,168,132,.20);
+  --wp-success-bg: #d9fdd3;
+  --wp-online: #25d366;
 
   --wp-danger: rgba(211,47,47,.28);
   --wp-danger-bg: rgba(211,47,47,.10);
 
-  --wp-shadow: var(--blue-inst-shadow-md);
+  --wp-shadow: 0 7px 22px rgba(17,27,33,.08);
 
-  --wp-doc-bg: rgba(29,66,138,.06);
-  --wp-doc-border: rgba(15,23,42,.14);
+  --wp-doc-bg: rgba(0,168,132,.065);
+  --wp-doc-border: rgba(0,168,132,.18);
 
-  --wp-reply-bg: rgba(29,66,138,.07);
-  --wp-reply-border: var(--blue-inst-secondary);
+  --wp-reply-bg: rgba(0,168,132,.07);
+  --wp-reply-border: #00a884;
 }
 
 /* ===== Shell ===== */
@@ -298,8 +318,8 @@
   border: 1px solid var(--wp-border-soft);
   opacity: .95;
 }
-.wp-tag--socio{ background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.22); }
-.wp-tag--prospecto{ background: rgba(11,94,215,.10); border-color: rgba(11,94,215,.20); }
+.wp-tag--socio{ background: rgba(37,211,102,.12); border-color: rgba(37,211,102,.22); }
+.wp-tag--prospecto{ background: rgba(0,168,132,.10); border-color: rgba(0,168,132,.20); }
 .wp-tag--sin{ background: var(--wp-card); border-color: var(--wp-border-soft); }
 
 .wp-empty{
@@ -312,8 +332,8 @@
 .wp-main{
   background:
     radial-gradient(900px 500px at 20% 10%, var(--wp-accent-2), transparent 55%),
-    radial-gradient(900px 500px at 90% 80%, rgba(16,185,129,.06), transparent 55%),
-    var(--wp-bg);
+    radial-gradient(900px 500px at 90% 80%, rgba(37,211,102,.07), transparent 55%),
+    var(--wp-chat-bg, var(--wp-bg));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -344,7 +364,7 @@
   display: grid;
   place-items: center;
   margin: 0 auto 10px;
-  background: linear-gradient(135deg, var(--wp-accent-2), rgba(16,185,129,.12));
+  background: linear-gradient(135deg, var(--wp-accent-2), rgba(37,211,102,.12));
   color: var(--wp-text);
   font-size: 22px;
 }
@@ -652,8 +672,8 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
-  background: #26d07c;
-  color: #0b1f14;
+  background: #25d366;
+  color: #075e54;
   box-shadow: 0 6px 16px rgba(0,0,0,.25);
 }
 
@@ -897,7 +917,7 @@
   letter-spacing: 0.2px;
   white-space: nowrap;
 
-  color: #dbeafe;
+  color: #d9fdd3;
   background: rgba(17, 24, 39, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
@@ -909,7 +929,7 @@
 
 /* tema claro */
 :root[data-botpanel-theme="light"] .wp-date-separator span {
-  color: #334155;
+  color: #54656f;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow:
@@ -1202,4 +1222,233 @@
     width: 38px;
     height: 38px;
   }
+}
+
+/* ======================================================
+   MODO CLARO · CONTRASTE Y LEGIBILIDAD
+   Ajustes exclusivos del Bot Panel: no afectan el tema oscuro.
+====================================================== */
+.wp-consulta-flag{
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.wp-chip--manual{
+  background: rgba(239,68,68,.14);
+  border-color: rgba(239,68,68,.35);
+  color: #fecaca;
+}
+
+.wp-manual-banner{
+  margin: 10px 14px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(239,68,68,.28);
+  background: rgba(239,68,68,.08);
+  color: #fecaca;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wp-bubble--consulta{
+  border: 1px solid rgba(251,191,36,.60);
+  box-shadow: 0 0 0 1px rgba(251,191,36,.18) inset;
+  background: rgba(251,191,36,.10);
+}
+
+.wp-consulta-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(251,191,36,.16);
+  border: 1px solid rgba(251,191,36,.32);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+:root[data-botpanel-theme="light"] .wp-shell{
+  --wp-text: var(--wp-title, #111b21);
+  --wp-shadow: 0 8px 22px rgba(15,23,42,.08);
+}
+
+:root[data-botpanel-theme="light"] .wp-brand-ico{
+  background: linear-gradient(135deg, var(--wp-brand-strong), var(--wp-brand-primary));
+  border: 1px solid rgba(7,94,84,.15);
+  box-shadow: 0 8px 18px rgba(0,168,132,.22);
+  color: #fff;
+}
+
+:root[data-botpanel-theme="light"] .wp-brand-title,
+:root[data-botpanel-theme="light"] .wp-chat-top-name{
+  color: var(--wp-title, #111b21);
+}
+
+:root[data-botpanel-theme="light"] .wp-brand-sub,
+:root[data-botpanel-theme="light"] .wp-chatlast,
+:root[data-botpanel-theme="light"] .wp-chattime,
+:root[data-botpanel-theme="light"] .wp-chat-top-id{
+  color: var(--wp-muted, #54656f);
+  opacity: 1;
+}
+
+:root[data-botpanel-theme="light"] .wp-back,
+:root[data-botpanel-theme="light"] .wp-opts,
+:root[data-botpanel-theme="light"] .wp-alertbtn,
+:root[data-botpanel-theme="light"] .wp-themebtn,
+:root[data-botpanel-theme="light"] .wp-avatar{
+  color: var(--wp-title, #111b21);
+}
+
+:root[data-botpanel-theme="light"] .wp-search{
+  background: #fff;
+  border-color: rgba(17,27,33,.10);
+}
+
+:root[data-botpanel-theme="light"] .wp-search-ico{
+  color: var(--wp-muted, #54656f);
+  opacity: 1;
+}
+
+:root[data-botpanel-theme="light"] .wp-search-input::placeholder,
+:root[data-botpanel-theme="light"] .wp-input::placeholder{
+  color: var(--wp-muted, #54656f);
+  opacity: 1;
+}
+
+:root[data-botpanel-theme="light"] .wp-chatitem:hover{
+  background: rgba(0,168,132,.065);
+}
+
+:root[data-botpanel-theme="light"] .wp-chatitem.is-active{
+  background: rgba(0,168,132,.11);
+  outline-color: rgba(0,168,132,.18);
+}
+
+:root[data-botpanel-theme="light"] .wp-modebtn.is-active,
+:root[data-botpanel-theme="light"] .wp-emoji-btn.is-open{
+  background: var(--wp-brand-primary, #00a884);
+  border-color: var(--wp-brand-primary, #00a884);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,168,132,.22);
+}
+
+:root[data-botpanel-theme="light"] .wp-send{
+  background: linear-gradient(135deg, var(--wp-brand-strong), var(--wp-brand-primary));
+  border-color: var(--wp-brand-primary, #00a884);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(0,168,132,.25);
+}
+
+:root[data-botpanel-theme="light"] .wp-chip--tag{
+  color: var(--wp-title, #111b21);
+  border-color: rgba(0,168,132,.25);
+  background: rgba(0,168,132,.09);
+}
+
+:root[data-botpanel-theme="light"] .wp-window.is-expired,
+:root[data-botpanel-theme="light"] .wp-window-expiredline,
+:root[data-botpanel-theme="light"] .wp-alertbtn.is-danger,
+:root[data-botpanel-theme="light"] .wp-chip--manual,
+:root[data-botpanel-theme="light"] .wp-manual-banner{
+  color: #991b1b;
+}
+
+:root[data-botpanel-theme="light"] .wp-consulta-flag,
+:root[data-botpanel-theme="light"] .wp-consulta-pill{
+  color: #92400e;
+}
+
+:root[data-botpanel-theme="light"] .wp-bubble--consulta{
+  border-color: rgba(217,119,6,.35);
+  box-shadow: 0 0 0 1px rgba(217,119,6,.08) inset;
+  background: #fffbeb;
+}
+
+:root[data-botpanel-theme="light"] .wp-consulta-pill{
+  background: #fef3c7;
+  border-color: rgba(217,119,6,.24);
+}
+
+
+
+/* ======================================================
+   ACABADO WHATSAPP · SOLO PRESENTACIÓN
+   Conserva tamaños, scrolls y comportamiento de la sección.
+====================================================== */
+.wp-brand-ico{
+  box-shadow: 0 9px 18px rgba(0,168,132,.19);
+}
+
+.wp-chatitem.is-active{
+  position: relative;
+}
+
+.wp-chatitem.is-active::before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--wp-brand-primary);
+}
+
+.wp-search:focus-within,
+.wp-input:focus{
+  border-color: var(--wp-brand-primary);
+  box-shadow: 0 0 0 3px var(--wp-brand-ring);
+}
+
+.wp-send{
+  background: linear-gradient(135deg, var(--wp-brand-primary), var(--wp-brand-bright));
+  border-color: var(--wp-brand-primary);
+  color: #fff;
+  box-shadow: var(--wp-brand-shadow);
+}
+
+.wp-send:hover{
+  background: linear-gradient(135deg, var(--wp-brand-primary-hover), var(--wp-brand-primary));
+}
+
+.wp-unread{
+  background: var(--wp-brand-bright);
+  color: #075e54;
+}
+
+:root[data-botpanel-theme="light"] .wp-main{
+  background:
+    radial-gradient(680px 420px at 15% 8%, rgba(0,168,132,.075), transparent 58%),
+    radial-gradient(720px 440px at 90% 88%, rgba(37,211,102,.075), transparent 58%),
+    var(--wp-chat-bg);
+}
+
+:root[data-botpanel-theme="light"] .wp-msg--right .wp-bubble{
+  background: #d9fdd3;
+  border-color: rgba(0,168,132,.16);
+}
+
+:root[data-botpanel-theme="light"] .wp-msg--rightbot .wp-bubble{
+  background: #e7f8f3;
+  border-color: rgba(0,168,132,.13);
+}
+
+:root[data-botpanel-theme="light"] .wp-day span,
+:root[data-botpanel-theme="light"] .wp-date-separator span{
+  color: #54656f;
+  background: rgba(255,255,255,.88);
+  border-color: rgba(17,27,33,.08);
+}
+
+:root[data-botpanel-theme="light"] .wp-chat-top,
+:root[data-botpanel-theme="light"] .wp-composer{
+  border-color: rgba(17,27,33,.09);
 }

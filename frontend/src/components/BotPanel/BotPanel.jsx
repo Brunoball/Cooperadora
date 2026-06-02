@@ -1774,14 +1774,7 @@ const BotPanel = () => {
                         </span>
                       ) : null}
                       {Number(c.consultasPendientes || 0) > 0 ? (
-                        <span
-                          style={{
-                            marginLeft: 8,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "#fbbf24",
-                          }}
-                        >
+                        <span className="wp-consulta-flag">
                           • CONSULTA
                         </span>
                       ) : null}
@@ -1955,14 +1948,7 @@ const BotPanel = () => {
                 </button>
 
                 {mode === "manual" ? (
-                  <span
-                    className="wp-chip"
-                    style={{
-                      background: "rgba(239,68,68,.14)",
-                      border: "1px solid rgba(239,68,68,.35)",
-                      color: "#fecaca",
-                    }}
-                  >
+                  <span className="wp-chip wp-chip--manual">
                     Manual activo • bot pausado
                   </span>
                 ) : null}
@@ -1987,18 +1973,7 @@ const BotPanel = () => {
             ) : null}
 
             {mode === "manual" ? (
-              <div
-                style={{
-                  margin: "10px 14px 0",
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(239,68,68,.28)",
-                  background: "rgba(239,68,68,.08)",
-                  color: "#fecaca",
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
+              <div className="wp-manual-banner">
                 ✋ Conversación manual activa: el bot no va a responder automáticamente
                 hasta que vuelvas a modo bot.
               </div>
@@ -2049,34 +2024,9 @@ const BotPanel = () => {
                         className={`wp-bubble ${danger ? "wp-bubble--danger" : ""} ${
                           isPendingConsult ? "wp-bubble--consulta" : ""
                         }`}
-                        style={
-                          isPendingConsult
-                            ? {
-                                border: "1px solid rgba(251,191,36,.60)",
-                                boxShadow: "0 0 0 1px rgba(251,191,36,.18) inset",
-                                background: "rgba(251,191,36,.10)",
-                              }
-                            : undefined
-                        }
                       >
                         {isPendingConsult ? (
-                          <div
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              marginBottom: 8,
-                              padding: "4px 8px",
-                              borderRadius: 999,
-                              background: "rgba(251,191,36,.16)",
-                              border: "1px solid rgba(251,191,36,.32)",
-                              color: "#fbbf24",
-                              fontSize: 11,
-                              fontWeight: 800,
-                              textTransform: "uppercase",
-                              letterSpacing: ".04em",
-                            }}
-                          >
+                          <div className="wp-consulta-pill">
                             👩‍💼 Consulta pendiente
                           </div>
                         ) : null}
@@ -2198,7 +2148,7 @@ const BotPanel = () => {
                         data={data}
                         previewPosition="none"
                         navPosition="bottom"
-                        theme="dark"
+                        theme={theme}
                         onEmojiSelect={(e) => {
                           const emoji = e?.native || "";
                           if (!emoji) return;

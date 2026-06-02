@@ -23,12 +23,12 @@
 }
 
 .chatopts-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--wp-card, rgba(255, 255, 255, 0.08));
   opacity: 1;
 }
 
 .chatopts-btn.is-open {
-  background: rgba(255, 255, 255, 0.10);
+  background: var(--wp-card-2, rgba(255, 255, 255, 0.10));
   opacity: 1;
 }
 
@@ -36,11 +36,12 @@
 .chatopts-menu {
   position: fixed;
   z-index: 999999;
-  background: #1f2c33;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: var(--wp-sidebar-bg, #1f2c33);
+  color: var(--wp-text, #e9edef);
+  border: 1px solid var(--wp-border, rgba(255, 255, 255, 0.10));
   border-radius: 12px;
   padding: 6px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--wp-shadow, 0 12px 30px rgba(0, 0, 0, 0.35));
 }
 
 .chatopts-item {
@@ -49,16 +50,21 @@
   border: 0;
   cursor: pointer;
   background: transparent;
-  color: #e9edef;
+  color: var(--wp-text, #e9edef);
   padding: 10px 10px;
   border-radius: 10px;
   font-size: 14px;
 }
 
 .chatopts-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--wp-card, rgba(255, 255, 255, 0.08));
 }
 
 .chatopts-item--danger {
   color: #ff8a8a;
 }
+
+:root[data-botpanel-theme="light"] .chatopts-item--danger {
+  color: var(--blue-inst-danger, #D32F2F);
+}
+

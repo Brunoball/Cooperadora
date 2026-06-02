@@ -10,10 +10,10 @@
 
 .m-card{
   width: min(520px, 100%);
-  background: #111b21;
-  color: #e9edef;
+  background: var(--wp-sidebar-bg, #111b21);
+  color: var(--wp-text, #e9edef);
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--wp-border, rgba(255,255,255,0.08));
   box-shadow: 0 14px 40px rgba(0,0,0,0.4);
 }
 
@@ -22,7 +22,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 14px 10px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--wp-border-soft, rgba(255,255,255,0.08));
 }
 
 .m-title{
@@ -41,7 +41,7 @@
 }
 
 .m-x:hover{
-  background: rgba(255,255,255,0.08);
+  background: var(--wp-card-2, rgba(255,255,255,0.08));
 }
 
 .m-body{
@@ -67,9 +67,9 @@
 .m-input{
   width: 100%;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.06);
-  color: #e9edef;
+  border: 1px solid var(--wp-border, rgba(255,255,255,0.10));
+  background: var(--wp-card, rgba(255,255,255,0.06));
+  color: var(--wp-text, #e9edef);
   padding: 11px 12px;
   outline: none;
 }
@@ -100,18 +100,18 @@
   border-radius: 12px;
   padding: 10px 12px;
   font-weight: 700;
-  color: #e9edef;
-  background: rgba(255,255,255,0.08);
+  color: var(--wp-text, #e9edef);
+  background: var(--wp-card-2, rgba(255,255,255,0.08));
 }
 
 .m-btn--ghost{
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid var(--wp-border, rgba(255,255,255,0.12));
 }
 
 .m-btn--primary{
-  background: rgba(0, 168, 132, 0.30);
-  border: 1px solid rgba(0, 168, 132, 0.35);
+  background: var(--wp-brand-primary, #00a884);
+  border: 1px solid var(--wp-brand-primary, #00a884);
 }
 
 .m-btn--danger{
@@ -138,7 +138,7 @@ select.m-input option {
 
 /* Cuando está seleccionado en la lista */
 select.m-input option:checked {
-  background: #0b57d0 !important;
+  background: #00a884 !important;
   color: #ffffff !important;
 }
 

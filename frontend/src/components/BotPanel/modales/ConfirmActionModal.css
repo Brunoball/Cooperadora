@@ -20,7 +20,7 @@
   border:1px solid var(--wp-border, rgba(15,23,42,.12));
   border-radius:var(--blue-inst-radius-xl, 24px);
   background:var(--wp-sidebar-bg, #fff);
-  color:var(--wp-text, #102e6a);
+  color:var(--wp-text, #111b21);
   box-shadow:0 30px 72px -28px rgba(2,8,23,.5), var(--blue-inst-shadow-md, 0 6px 18px rgba(0,0,0,.10));
   animation:bpConfirmRise .2s cubic-bezier(.2,.8,.2,1) both;
 }
@@ -32,7 +32,7 @@
   justify-content:space-between;
   gap:15px;
   border-bottom:1px solid var(--wp-border-soft, rgba(15,23,42,.08));
-  background:linear-gradient(180deg, var(--wp-card, rgba(29,66,138,.05)), transparent);
+  background:linear-gradient(180deg, var(--wp-card, rgba(0,168,132,.05)), transparent);
 }
 .bp-confirm-card.is-danger .bp-confirm-head{
   background:linear-gradient(180deg, var(--wp-danger-bg, rgba(211,47,47,.1)), transparent);
@@ -41,7 +41,7 @@
 .bp-confirm-eyebrow{
   display:block;
   margin-bottom:6px;
-  color:var(--blue-inst-secondary, #0B5ED7);
+  color:var(--wp-brand-primary, #00a884);
   font-size:10.5px;
   font-weight:700;
   letter-spacing:.1em;
@@ -62,13 +62,13 @@
   place-items:center;
   border:1px solid var(--wp-border-soft, rgba(15,23,42,.08));
   border-radius:12px;
-  background:var(--wp-card, rgba(29,66,138,.06));
+  background:var(--wp-card, rgba(0,168,132,.06));
   color:inherit;
   font:inherit;
   cursor:pointer;
   transition:transform .16s ease, background .16s ease, border-color .16s ease;
 }
-.bp-confirm-close:hover{ transform:translateY(-1px); background:var(--wp-card-2, rgba(29,66,138,.1)); border-color:var(--wp-border, rgba(15,23,42,.14)); }
+.bp-confirm-close:hover{ transform:translateY(-1px); background:var(--wp-card-2, rgba(0,168,132,.1)); border-color:var(--wp-border, rgba(15,23,42,.14)); }
 .bp-confirm-body{ padding:18px 20px 20px; }
 .bp-confirm-message{
   display:grid;
@@ -78,7 +78,7 @@
   padding:14px;
   border:1px solid var(--wp-border-soft, rgba(15,23,42,.08));
   border-radius:15px;
-  background:var(--wp-card, rgba(29,66,138,.05));
+  background:var(--wp-card, rgba(0,168,132,.05));
 }
 .bp-confirm-card.is-danger .bp-confirm-message{
   border-color:var(--wp-danger, rgba(211,47,47,.28));
@@ -90,8 +90,8 @@
   display:grid;
   place-items:center;
   border-radius:12px;
-  background:var(--wp-accent-2, rgba(29,66,138,.12));
-  color:var(--blue-inst-secondary, #0B5ED7);
+  background:var(--wp-accent-2, rgba(0,168,132,.12));
+  color:var(--wp-brand-primary, #00a884);
   font-size:19px;
   font-weight:750;
 }
@@ -101,7 +101,7 @@
 }
 .bp-confirm-description{
   padding-top:1px;
-  color:color-mix(in srgb, var(--wp-text, #102e6a) 78%, transparent);
+  color:color-mix(in srgb, var(--wp-text, #111b21) 78%, transparent);
   font-size:13.5px;
   line-height:1.58;
 }
@@ -112,7 +112,7 @@
   border-left:3px solid var(--blue-inst-danger, #D32F2F);
   border-radius:12px;
   background:var(--wp-danger-bg, rgba(211,47,47,.1));
-  color:color-mix(in srgb, var(--blue-inst-danger, #D32F2F) 82%, var(--wp-text, #102e6a));
+  color:color-mix(in srgb, var(--blue-inst-danger, #D32F2F) 82%, var(--wp-text, #111b21));
   font-size:13px;
 }
 .bp-confirm-actions{
@@ -138,18 +138,18 @@
 .bp-confirm-btn:hover:not(:disabled){ transform:translateY(-1px); }
 .bp-confirm-btn:disabled{ opacity:.54; cursor:not-allowed; }
 .bp-confirm-btn--ghost{ background:var(--wp-sidebar-bg, #fff); border-color:var(--wp-border, rgba(15,23,42,.14)); }
-.bp-confirm-btn--ghost:hover:not(:disabled){ background:var(--wp-card, rgba(29,66,138,.05)); }
+.bp-confirm-btn--ghost:hover:not(:disabled){ background:var(--wp-card, rgba(0,168,132,.05)); }
 .bp-confirm-btn--primary{
-  background:var(--blue-inst-primary, #1D428A);
+  background:var(--wp-brand-primary, #00a884);
   color:#fff;
-  box-shadow:0 12px 20px -13px rgba(29,66,138,.62);
+  box-shadow:0 12px 20px -13px rgba(0,168,132,.62);
 }
 .bp-confirm-btn--danger{
   background:var(--blue-inst-danger, #D32F2F);
   color:#fff;
   box-shadow:0 12px 20px -13px rgba(211,47,47,.65);
 }
-.bp-confirm-btn:focus-visible,.bp-confirm-close:focus-visible{ outline:3px solid rgba(11,94,215,.2); outline-offset:1px; }
+.bp-confirm-btn:focus-visible,.bp-confirm-close:focus-visible{ outline:3px solid var(--wp-brand-ring, rgba(0,168,132,.20)); outline-offset:1px; }
 @keyframes bpConfirmFade{ from{opacity:0;} to{opacity:1;} }
 @keyframes bpConfirmRise{ from{opacity:0;transform:translateY(8px) scale(.987);} to{opacity:1;transform:translateY(0) scale(1);} }
 @media (max-width:520px){
