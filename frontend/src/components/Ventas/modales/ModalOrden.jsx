@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faInfoCircle, faPlus, faSave, faTrash } from "@fortawesome/free-solid-svg-icons";
 import ModalBase from "./ModalBase";
+import "./ModalOrden.css";
 import {
   asBool,
   estadosOrden,
@@ -190,14 +191,22 @@ export default function ModalOrden({
       }
     };
 
-    document.addEventListener("mousedown", cerrarSiHaceClickAfuera);
-    document.addEventListener("touchstart", cerrarSiHaceClickAfuera);
+    // Captura mouse y tactil antes que cualquier elemento interno pueda frenar el evento.
+    document.addEventListener("pointerdown", cerrarSiHaceClickAfuera, true);
 
     return () => {
-      document.removeEventListener("mousedown", cerrarSiHaceClickAfuera);
-      document.removeEventListener("touchstart", cerrarSiHaceClickAfuera);
+      document.removeEventListener("pointerdown", cerrarSiHaceClickAfuera, true);
     };
   }, [abierto]);
+
+  const cerrarSelectorConTeclado = (event) => {
+    if (event.key !== "Enter" && event.key !== "Escape") return;
+
+    // Evita que Enter dispare el submit del formulario mientras se esta buscando.
+    event.preventDefault();
+    setSelectorActivo("");
+    event.currentTarget.blur();
+  };
 
   const aplicarAlumno = (alumno) => {
     const dni = limpiarDni(alumno?.dni || alumno?.num_documento);
@@ -266,7 +275,8 @@ export default function ModalOrden({
     [items]
   );
 
-  const titulo = form?.id_orden ? "Editar venta registrada" : "Agregar venta manual";
+  const esEdicion = Boolean(form?.id_orden);
+  const titulo = esEdicion ? "Editar venta registrada" : "Nueva venta registrada";
 
   const guardarItems = (nuevosItems) => {
     setForm((prev) => ({ ...prev, items: nuevosItems }));
@@ -352,35 +362,40 @@ export default function ModalOrden({
     <ModalBase
       abierto={abierto}
       titulo={titulo}
-      subtitulo="Registrá ventas cobradas fuera del bot con estructura de columnas tipo Excel: VEN, GAN u otros conceptos."
+      subtitulo={esEdicion
+        ? "Actualizá los datos de la venta registrada sin perder sus conceptos asociados."
+        : "Registrá una venta cobrada manualmente y vinculala con una persona o alumno."}
       onClose={saving ? undefined : onClose}
       className="ventas-modal--orden"
     >
       <form className="ventas-form" onSubmit={onSubmit}>
         <div className="ventas-modal__body ventas-orden-body">
-          <div className="ventas-orden-note">
+          <div className="ventas-orden-note" role="note">
             <span className="ventas-orden-note__icon">
               <FontAwesomeIcon icon={faInfoCircle} />
             </span>
-            <div>
-              <strong>Estructura tipo planilla</strong>
+            <div className="ventas-orden-note__copy">
+              <strong>{esEdicion ? "Edición de venta" : "Carga manual"}</strong>
               <span>
-                La cabecera se guarda en ventas_ordenes y cada columna/concepto de cantidad se guarda en ventas_orden_items.
-                No se importan registros del Excel.
+                Asociá el cobro a un DNI y cargá los productos o conceptos incluidos en la venta.
               </span>
             </div>
+            <span className="ventas-orden-note__tag">Venta registrada</span>
           </div>
 
-          <div className="ventas-orden-card">
+          <section className="ventas-orden-card ventas-orden-card--datos" aria-label="Datos principales de la venta">
             <div className="ventas-orden-card__head">
               <div>
                 <h3>Datos de la venta</h3>
-                <p>Seleccioná la venta/campaña, el medio de pago y cargá los conceptos.</p>
+                <p>Definí el origen del cobro, su medio de pago y la fecha de registro.</p>
               </div>
-              <span>{money(total)}</span>
+              <div className="ventas-orden-head-total">
+                <small>Total actual</small>
+                <strong>{money(total)}</strong>
+              </div>
             </div>
 
-            <div className="ventas-form-row">
+            <div className="ventas-orden-main-grid">
               <label className="ventas-orden-field">
                 <span>Venta / campaña</span>
                 <select value={form.id_campania || ""} onChange={(e) => seleccionarCampania(e.target.value)} required>
@@ -392,6 +407,7 @@ export default function ModalOrden({
                   ))}
                 </select>
               </label>
+
               <label className="ventas-orden-field">
                 <span>Medio de pago</span>
                 <select value={form.id_medio_pago || ""} onChange={(e) => setField("id_medio_pago", e.target.value)} required>
@@ -401,18 +417,41 @@ export default function ModalOrden({
                   ))}
                 </select>
               </label>
-            </div>
-          </div>
 
-          <div className="ventas-orden-card ventas-orden-card--items">
+              <label className="ventas-orden-field">
+                <span>Fecha de venta</span>
+                <input
+                  type="date"
+                  value={form.fecha_venta || today()}
+                  onClick={abrirCalendario}
+                  onFocus={abrirCalendario}
+                  onChange={(e) => setField("fecha_venta", e.target.value)}
+                />
+              </label>
+
+              <label className="ventas-orden-field">
+                <span>Estado</span>
+                <select value={form.estado || "aprobada"} onChange={(e) => setField("estado", e.target.value)}>
+                  {estadosOrden.filter((e) => e.value).map((e) => (
+                    <option key={e.value} value={e.value}>{e.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section className="ventas-orden-card ventas-orden-card--items" aria-label="Productos y conceptos de la venta">
             <div className="ventas-orden-card__head ventas-orden-card__head--plain">
               <div>
-                <h3>Conceptos de la venta</h3>
-                <p>Usá códigos como VEN, GAN, RIFA, BONO, etc. Esos códigos funcionan como las columnas del Excel.</p>
+                <h3>Productos y conceptos</h3>
+                <p>Agregá productos del catálogo o conceptos manuales, con su cantidad y precio correspondiente.</p>
               </div>
-              <button type="button" className="ventas-secondary" onClick={agregarItem}>
-                <FontAwesomeIcon icon={faPlus} /> Agregar concepto
-              </button>
+              <div className="ventas-orden-items-actions">
+                <span className="ventas-orden-count-chip">{items.length} {items.length === 1 ? "concepto" : "conceptos"}</span>
+                <button type="button" className="ventas-secondary" onClick={agregarItem}>
+                  <FontAwesomeIcon icon={faPlus} /> Agregar concepto
+                </button>
+              </div>
             </div>
 
             <div className="ventas-items-scroll" aria-label="Conceptos cargados en la venta">
@@ -434,62 +473,76 @@ export default function ModalOrden({
 
                 return (
                   <div className="ventas-items-grid" key={`item-${index}`}>
-                    <input
-                      value={item.columna_codigo || ""}
-                      onChange={(e) => actualizarItem(index, { columna_codigo: e.target.value.toUpperCase() })}
-                      placeholder="VEN"
-                      maxLength={30}
-                      required
-                    />
+                    <label className="ventas-item-field" data-label="Columna">
+                      <input
+                        value={item.columna_codigo || ""}
+                        onChange={(e) => actualizarItem(index, { columna_codigo: e.target.value.toUpperCase() })}
+                        placeholder="VEN"
+                        maxLength={30}
+                        required
+                      />
+                    </label>
 
-                    <select value={item.id_producto || ""} onChange={(e) => seleccionarProductoEnItem(index, e.target.value)}>
-                      <option value="">Manual / sin catálogo</option>
-                      {productos.map((p) => (
-                        <option key={p.id_producto} value={p.id_producto}>
-                          {p.nombre} - Ant. {money(precioProductoPorTipo(p, "anticipada"))} / Puerta {money(precioProductoPorTipo(p, "puerta"))}{Number(p.activo) === 1 ? "" : " (inactivo)"}
-                        </option>
-                      ))}
-                    </select>
+                    <label className="ventas-item-field" data-label="Producto / concepto">
+                      <select value={item.id_producto || ""} onChange={(e) => seleccionarProductoEnItem(index, e.target.value)}>
+                        <option value="">Manual / sin catálogo</option>
+                        {productos.map((p) => (
+                          <option key={p.id_producto} value={p.id_producto}>
+                            {p.nombre} - Ant. {money(precioProductoPorTipo(p, "anticipada"))} / Puerta {money(precioProductoPorTipo(p, "puerta"))}{Number(p.activo) === 1 ? "" : " (inactivo)"}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                    <input
-                      value={item.producto_nombre || ""}
-                      onChange={(e) => actualizarItem(index, { producto_nombre: e.target.value, columna_nombre: e.target.value })}
-                      placeholder="Ej: Pan dulce / Ganancia"
-                      maxLength={150}
-                      required
-                    />
+                    <label className="ventas-item-field" data-label="Nombre visible">
+                      <input
+                        value={item.producto_nombre || ""}
+                        onChange={(e) => actualizarItem(index, { producto_nombre: e.target.value, columna_nombre: e.target.value })}
+                        placeholder="Ej: Entrada / Bono"
+                        maxLength={150}
+                        required
+                      />
+                    </label>
 
-                    <select
-                      value={normalizarTipoPrecio(item.precio_tipo)}
-                      onChange={(e) => seleccionarTipoPrecioEnItem(index, e.target.value)}
-                      title={`Precio ${precioTipoLabel(item.precio_tipo)}`}
-                    >
-                      {tiposPrecioProducto.map((tipo) => (
-                        <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-                      ))}
-                    </select>
+                    <label className="ventas-item-field" data-label="Tipo precio">
+                      <select
+                        value={normalizarTipoPrecio(item.precio_tipo)}
+                        onChange={(e) => seleccionarTipoPrecioEnItem(index, e.target.value)}
+                        title={`Precio ${precioTipoLabel(item.precio_tipo)}`}
+                      >
+                        {tiposPrecioProducto.map((tipo) => (
+                          <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
+                        ))}
+                      </select>
+                    </label>
 
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.precio_unitario ?? ""}
-                      onChange={(e) => actualizarItem(index, { precio_unitario: e.target.value })}
-                      required
-                    />
+                    <label className="ventas-item-field" data-label="Precio">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.precio_unitario ?? ""}
+                        onChange={(e) => actualizarItem(index, { precio_unitario: e.target.value })}
+                        required
+                      />
+                    </label>
 
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={item.cantidad ?? 0}
-                      onChange={(e) => actualizarItem(index, { cantidad: e.target.value })}
-                      required
-                    />
+                    <label className="ventas-item-field" data-label="Cantidad">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={item.cantidad ?? 0}
+                        onChange={(e) => actualizarItem(index, { cantidad: e.target.value })}
+                        required
+                      />
+                    </label>
 
-                    <strong>{money(subtotal)}</strong>
+                    <div className="ventas-item-subtotal" data-label="Subtotal">
+                      <strong>{money(subtotal)}</strong>
+                    </div>
 
-                    <button type="button" className="ventas-item-delete" onClick={() => quitarItem(index)} title="Quitar concepto">
+                    <button type="button" className="ventas-item-delete" onClick={() => quitarItem(index)} title="Quitar concepto" aria-label="Quitar concepto">
                       <FontAwesomeIcon icon={faTrash} />
                     </button>
                   </div>
@@ -497,32 +550,33 @@ export default function ModalOrden({
               })}
             </div>
 
-            <div className="ventas-manual-total ventas-manual-total--orden">
-              <span>Conceptos: {items.length}</span>
-              <strong>Total: {money(total)}</strong>
+            <div className="ventas-orden-summary">
+              <span className="ventas-orden-summary__chip">
+                Conceptos <strong>{items.length}</strong>
+              </span>
+              <span className="ventas-orden-summary__chip ventas-orden-summary__chip--total">
+                Total de la venta <strong>{money(total)}</strong>
+              </span>
             </div>
-          </div>
+          </section>
 
-          <div className="ventas-orden-card ventas-orden-card--soft">
+          <section className="ventas-orden-card ventas-orden-card--soft" aria-label="Comprador o alumno">
             <div className="ventas-orden-card__head ventas-orden-card__head--plain">
               <div>
-                <h3>Datos de la persona/alumno</h3>
-                <p>El sistema siempre identifica la venta por DNI. Si el DNI ya está en alumnos o ventas_personas, el backend usa ese nombre.</p>
+                <h3>Comprador o alumno</h3>
+                <p>Buscá una persona existente para completar sus datos o ingresalos manualmente.</p>
               </div>
             </div>
 
             <div className="ventas-persona-selector-box">
               <div className="ventas-persona-selector-box__head">
                 <strong>Buscar persona ya cargada</strong>
-                <span>
-                  Elegí un alumno o una persona de ventas y se completan automáticamente DNI, nombre y referencia.
-                  Si no aparece, cargalo a mano abajo.
-                </span>
+                <span>Seleccioná una coincidencia y el DNI, nombre y referencia se completarán automáticamente.</span>
               </div>
 
               <div className="ventas-form-row ventas-persona-search-grid">
                 <label className="ventas-orden-field ventas-search-combo" ref={alumnoComboRef}>
-                  <span>Buscar alumno por DNI o nombre</span>
+                  <span>Alumno por DNI o nombre</span>
                   <input
                     value={alumnoBusqueda}
                     onChange={(e) => {
@@ -530,10 +584,8 @@ export default function ModalOrden({
                       setSelectorActivo("alumnos");
                     }}
                     onFocus={() => setSelectorActivo("alumnos")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") setSelectorActivo("");
-                    }}
-                    placeholder={personasCatalogoLoading ? "Cargando alumnos..." : "Escribí DNI, apellido o nombre del alumno"}
+                    onKeyDown={cerrarSelectorConTeclado}
+                    placeholder={personasCatalogoLoading ? "Cargando alumnos..." : "Escribí DNI, apellido o nombre"}
                     disabled={personasCatalogoLoading}
                     autoComplete="off"
                   />
@@ -557,7 +609,7 @@ export default function ModalOrden({
                 </label>
 
                 <label className="ventas-orden-field ventas-search-combo" ref={personaComboRef}>
-                  <span>Buscar persona de ventas</span>
+                  <span>Persona de ventas</span>
                   <input
                     value={personaBusqueda}
                     onChange={(e) => {
@@ -565,10 +617,8 @@ export default function ModalOrden({
                       setSelectorActivo("personas");
                     }}
                     onFocus={() => setSelectorActivo("personas")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") setSelectorActivo("");
-                    }}
-                    placeholder={personasCatalogoLoading ? "Cargando personas..." : "Escribí DNI o nombre ya registrado"}
+                    onKeyDown={cerrarSelectorConTeclado}
+                    placeholder={personasCatalogoLoading ? "Cargando personas..." : "Escribí DNI o nombre registrado"}
                     disabled={personasCatalogoLoading}
                     autoComplete="off"
                   />
@@ -593,7 +643,7 @@ export default function ModalOrden({
               </div>
             </div>
 
-            <div className="ventas-form-row">
+            <div className="ventas-orden-persona-grid">
               <label className="ventas-orden-field">
                 <span>DNI de la persona/alumno</span>
                 <input
@@ -608,6 +658,7 @@ export default function ModalOrden({
                   required
                 />
               </label>
+
               <label className="ventas-orden-field">
                 <span>Nombre y apellido</span>
                 <input
@@ -618,60 +669,38 @@ export default function ModalOrden({
                   required
                 />
               </label>
-            </div>
 
-            <div className="ventas-form-row">
-              <label className="ventas-orden-field">
+              <label className="ventas-orden-field ventas-orden-field--wide">
                 <span>Detalle / referencia opcional</span>
                 <input
                   value={form.persona_detalle || ""}
                   onChange={(e) => setField("persona_detalle", e.target.value)}
-                  placeholder="Curso, alumno, observación o referencia"
+                  placeholder="Curso, alumno u otra referencia"
                   maxLength={160}
                 />
               </label>
             </div>
 
-            <div className="ventas-form-row">
-              <label className="ventas-orden-field">
-                <span>Estado</span>
-                <select value={form.estado || "aprobada"} onChange={(e) => setField("estado", e.target.value)}>
-                  {estadosOrden.filter((e) => e.value).map((e) => (
-                    <option key={e.value} value={e.value}>{e.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="ventas-orden-field">
-                <span>Fecha de venta</span>
-                <input
-                  type="date"
-                  value={form.fecha_venta || today()}
-                  onClick={abrirCalendario}
-                  onFocus={abrirCalendario}
-                  onChange={(e) => setField("fecha_venta", e.target.value)}
-                />
-              </label>
-            </div>
-
-            <div className="ventas-manual-total ventas-manual-total--orden">
-              <span>Identificación: DNI persona/alumno</span>
-              <strong>Total: {money(total)}</strong>
-            </div>
-
-            <label className="ventas-orden-field ventas-orden-field--full">
+            <label className="ventas-orden-field ventas-orden-field--full ventas-orden-observation">
               <span>Observación opcional</span>
-              <textarea value={form.observacion || ""} rows={3} onChange={(e) => setField("observacion", e.target.value)} placeholder="Ej: transferencia, pagó en secretaría, recibió comprobante manual, etc." />
+              <textarea value={form.observacion || ""} rows={3} onChange={(e) => setField("observacion", e.target.value)} placeholder="Ej: transferencia, pagó en secretaría o recibió comprobante manual." />
             </label>
-          </div>
+          </section>
         </div>
 
-        <footer className="ventas-modal__footer">
-          <button type="button" className="ventas-modal-cancel" onClick={onClose} disabled={saving}>
-            Cancelar
-          </button>
-          <button className="ventas-primary" type="submit" disabled={saving || total <= 0}>
-            <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : "Guardar venta"}
-          </button>
+        <footer className="ventas-modal__footer ventas-orden-footer">
+          <div className="ventas-orden-footer__total">
+            <span>Total</span>
+            <strong>{money(total)}</strong>
+          </div>
+          <div className="ventas-orden-footer__actions">
+            <button type="button" className="ventas-modal-cancel" onClick={onClose} disabled={saving}>
+              Cancelar
+            </button>
+            <button className="ventas-primary" type="submit" disabled={saving || total <= 0}>
+              <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : esEdicion ? "Actualizar venta" : "Guardar venta"}
+            </button>
+          </div>
         </footer>
       </form>
     </ModalBase>

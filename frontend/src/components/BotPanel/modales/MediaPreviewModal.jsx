@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import "./Modals.css";
+import "./MediaPreviewModal.css";
 
 const MediaPreviewModal = ({ open, onClose, media }) => {
   const closeRef = useRef(null);
@@ -21,13 +21,13 @@ const MediaPreviewModal = ({ open, onClose, media }) => {
   const isPdf = media.media_mime === "application/pdf";
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal modal--media">
-        <div className="modal-header">
+    <div className="bp-preview-backdrop">
+      <div className="bp-preview-modal">
+        <div className="bp-preview-head">
           <h3>{media.media_name || "Archivo"}</h3>
           <button
             ref={closeRef}
-            className="modal-close"
+            className="bp-preview-close"
             onClick={onClose}
             aria-label="Cerrar"
           >
@@ -35,29 +35,18 @@ const MediaPreviewModal = ({ open, onClose, media }) => {
           </button>
         </div>
 
-        <div className="modal-body modal-body--media">
+        <div className="bp-preview-body">
           {isImage ? (
             <img
               src={media.media_url}
               alt={media.media_name || "imagen"}
-              style={{
-                maxWidth: "100%",
-                maxHeight: "70vh",
-                borderRadius: 10,
-                display: "block",
-                margin: "0 auto",
-              }}
+              className="bp-preview-image"
             />
           ) : isPdf ? (
             <iframe
               src={media.media_url}
               title="PDF"
-              style={{
-                width: "100%",
-                height: "70vh",
-                border: "none",
-                borderRadius: 8,
-              }}
+              className="bp-preview-frame"
             />
           ) : (
             <p>No se puede previsualizar este archivo.</p>

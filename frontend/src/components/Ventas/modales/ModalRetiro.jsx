@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faClock, faSave } from "@fortawesome/free-solid-svg-icons";
 import ModalBase from "./ModalBase";
+import "./ModalRetiro.css";
 import { asBool } from "../ventasConfig";
 
 export default function ModalRetiro({ abierto, orden, saving, onClose, onSubmit }) {

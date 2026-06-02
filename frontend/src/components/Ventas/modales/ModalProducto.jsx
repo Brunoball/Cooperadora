@@ -2,6 +2,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faDollarSign, faSave } from "@fortawesome/free-solid-svg-icons";
 import ModalBase from "./ModalBase";
+import "./ModalProducto.css";
 import Toggle from "../Toggle";
 import { asBool } from "../ventasConfig";
 
@@ -14,7 +15,7 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
     <ModalBase
       abierto={abierto}
       titulo={titulo}
-      subtitulo="Cargá el producto al catálogo. Después lo elegís desde la venta o campaña que corresponda."
+      subtitulo="Definí la información, los precios y la disponibilidad del producto para tus ventas."
       onClose={saving ? undefined : onClose}
       className="ventas-modal--producto"
     >
@@ -24,76 +25,120 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
             <span className="ventas-producto-note__icon" aria-hidden="true">
               <FontAwesomeIcon icon={faBoxOpen} />
             </span>
-            <span>
-              El producto tiene dos precios: <strong>anticipada</strong> y <strong>en puerta</strong>. El bot siempre usa anticipada; en ventas manuales podés elegir cualquiera.
-            </span>
-          </div>
-
-          <div className="ventas-producto-card">
-            <div className="ventas-producto-card__head">
-              <span className="ventas-producto-card__icon" aria-hidden="true">
-                <FontAwesomeIcon icon={faBoxOpen} />
+            <div>
+              <strong>Precios de venta</strong>
+              <span>
+                El bot utiliza el precio anticipada. En las ventas manuales también podés elegir el precio en puerta.
               </span>
-              <div>
-                <h3>Datos del producto</h3>
-                <p>Completá la información principal del catálogo.</p>
-              </div>
-            </div>
-
-            <label className="ventas-producto-field ventas-producto-field--full">
-              <span>Nombre</span>
-              <input
-                value={form.nombre}
-                onChange={(e) => setField("nombre", e.target.value)}
-                placeholder="Ej: Entrada general"
-                maxLength={150}
-                required
-              />
-            </label>
-
-            <label className="ventas-producto-field ventas-producto-field--full">
-              <span>Descripción</span>
-              <textarea value={form.descripcion || ""} rows={3} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Detalle opcional del producto" />
-            </label>
-
-            <div className="ventas-form-row ventas-producto-grid">
-              <label className="ventas-producto-field ventas-producto-field--money">
-                <span>Precio anticipada</span>
-                <div className="ventas-producto-inputIcon">
-                  <FontAwesomeIcon icon={faDollarSign} />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.precio_anticipada ?? form.precio ?? ""}
-                    onChange={(e) => setPrecioAnticipada(e.target.value)}
-                    required
-                  />
-                </div>
-              </label>
-              <label className="ventas-producto-field ventas-producto-field--money">
-                <span>Precio en puerta</span>
-                <div className="ventas-producto-inputIcon">
-                  <FontAwesomeIcon icon={faDollarSign} />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.precio_puerta ?? ""}
-                    onChange={(e) => setField("precio_puerta", e.target.value)}
-                    required
-                  />
-                </div>
-              </label>
-              <label className="ventas-producto-field">
-                <span>Stock opcional</span>
-                <input type="number" min="0" value={form.stock ?? ""} onChange={(e) => setField("stock", e.target.value)} placeholder="Sin límite" />
-              </label>
             </div>
           </div>
 
-          <div className="ventas-producto-status">
-            <Toggle checked={asBool(form.activo)} label="Producto activo" onChange={(v) => setField("activo", v ? 1 : 0)} />
+          <div className="ventas-producto-sections">
+            <section className="ventas-producto-panel ventas-producto-panel--identity">
+              <div className="ventas-producto-panel__head">
+                <span className="ventas-producto-panel__icon" aria-hidden="true">
+                  <FontAwesomeIcon icon={faBoxOpen} />
+                </span>
+                <div>
+                  <h3>Información del producto</h3>
+                  <p>Nombre y detalle que identificarán la venta.</p>
+                </div>
+              </div>
+
+              <label className="ventas-producto-field">
+                <span>Nombre del producto</span>
+                <input
+                  value={form.nombre}
+                  onChange={(e) => setField("nombre", e.target.value)}
+                  placeholder="Ej: Entrada general"
+                  maxLength={150}
+                  required
+                />
+              </label>
+
+              <label className="ventas-producto-field ventas-producto-field--description">
+                <span>Descripción</span>
+                <textarea
+                  value={form.descripcion || ""}
+                  rows={4}
+                  onChange={(e) => setField("descripcion", e.target.value)}
+                  placeholder="Detalle opcional del producto"
+                />
+                <small>Podés indicar condiciones, sector o una referencia interna.</small>
+              </label>
+            </section>
+
+            <section className="ventas-producto-panel ventas-producto-panel--commercial">
+              <div className="ventas-producto-panel__head">
+                <span className="ventas-producto-panel__icon ventas-producto-panel__icon--price" aria-hidden="true">
+                  <FontAwesomeIcon icon={faDollarSign} />
+                </span>
+                <div>
+                  <h3>Precios y disponibilidad</h3>
+                  <p>Configurá cómo se venderá y si estará disponible.</p>
+                </div>
+              </div>
+
+              <div className="ventas-producto-commercial-grid">
+                <label className="ventas-producto-price-card">
+                  <span className="ventas-producto-price-card__title">
+                    <strong>Precio anticipada</strong>
+                    <em>Bot</em>
+                  </span>
+                  <div className="ventas-producto-inputIcon">
+                    <FontAwesomeIcon icon={faDollarSign} />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.precio_anticipada ?? form.precio ?? ""}
+                      onChange={(e) => setPrecioAnticipada(e.target.value)}
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
+                  <small>Precio principal de la venta.</small>
+                </label>
+
+                <label className="ventas-producto-price-card ventas-producto-price-card--door">
+                  <span className="ventas-producto-price-card__title">
+                    <strong>Precio en puerta</strong>
+                    <em>Manual</em>
+                  </span>
+                  <div className="ventas-producto-inputIcon">
+                    <FontAwesomeIcon icon={faDollarSign} />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.precio_puerta ?? ""}
+                      onChange={(e) => setField("precio_puerta", e.target.value)}
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
+                  <small>Alternativa para ventas presenciales.</small>
+                </label>
+
+                <label className="ventas-producto-stock-card">
+                  <span>Stock disponible</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.stock ?? ""}
+                    onChange={(e) => setField("stock", e.target.value)}
+                    placeholder="Sin límite"
+                  />
+                  <small>Dejá vacío para no limitar unidades.</small>
+                </label>
+
+                <div className="ventas-producto-status-card">
+                  <span className="ventas-producto-status-card__title">Visibilidad</span>
+                  <Toggle checked={asBool(form.activo)} label="Producto activo" onChange={(v) => setField("activo", v ? 1 : 0)} />
+                  <small>Activo permite utilizarlo en nuevas ventas.</small>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 

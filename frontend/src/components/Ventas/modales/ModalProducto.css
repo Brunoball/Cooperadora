@@ -1,0 +1,379 @@
+/* =========================================================
+   Nuevo / editar producto: diseño propio del catálogo
+   ========================================================= */
+.ventas-modal--producto {
+  width: min(1050px, 100%);
+}
+
+.ventas-modal--producto .ventas-modal__head {
+  padding: 19px 22px;
+}
+
+.ventas-modal--producto .ventas-modal__title h2 {
+  letter-spacing: -.015em;
+}
+
+.ventas-modal .ventas-producto-body {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 16px 18px;
+  background: #f8fbff;
+}
+
+.ventas-producto-note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid #c9daf4;
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: #193e7e;
+  background: #f2f7ff;
+}
+
+.ventas-producto-note__icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--blue-inst-primary, #1d428a);
+  background: #ffffff;
+  box-shadow: 0 5px 15px rgba(29, 66, 138, .08);
+}
+
+.ventas-producto-note div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ventas-producto-note strong {
+  font-size: .82rem;
+  font-weight: 760;
+}
+
+.ventas-producto-note div > span {
+  color: #496487;
+  font-size: .78rem;
+  line-height: 1.4;
+  font-weight: 540;
+}
+
+.ventas-producto-sections {
+  display: grid;
+  grid-template-columns: minmax(275px, .92fr) minmax(390px, 1.3fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ventas-producto-panel {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 17px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 7px 22px rgba(15, 23, 42, .035);
+}
+
+.ventas-producto-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-bottom: 14px;
+}
+
+.ventas-producto-panel__icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 12px;
+  color: var(--blue-inst-primary, #1d428a);
+  background: #edf4ff;
+}
+
+.ventas-producto-panel__icon--price {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.ventas-producto-panel__head h3 {
+  margin: 0;
+  color: #11263f;
+  font-size: .92rem;
+  font-weight: 730;
+  line-height: 1.2;
+}
+
+.ventas-producto-panel__head p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: .75rem;
+  line-height: 1.3;
+  font-weight: 520;
+}
+
+.ventas-modal--producto .ventas-producto-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ventas-modal--producto .ventas-producto-field:last-child {
+  margin-bottom: 0;
+}
+
+.ventas-modal--producto .ventas-producto-field > span,
+.ventas-modal--producto .ventas-producto-stock-card > span,
+.ventas-producto-status-card__title {
+  color: #334155;
+  font-size: .78rem;
+  font-weight: 720;
+}
+
+.ventas-modal--producto .ventas-form input,
+.ventas-modal--producto .ventas-form textarea {
+  min-height: 44px;
+  border-color: #d5dfec;
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: #17243b;
+  font-weight: 510;
+  background: #ffffff;
+}
+
+.ventas-modal--producto .ventas-form textarea {
+  min-height: 103px;
+  line-height: 1.45;
+  resize: vertical;
+  background: #fbfdff;
+}
+
+.ventas-modal--producto .ventas-form input::placeholder,
+.ventas-modal--producto .ventas-form textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 450;
+}
+
+.ventas-modal--producto .ventas-form input:focus,
+.ventas-modal--producto .ventas-form textarea:focus {
+  border-color: var(--blue-inst-primary, #1d428a);
+  box-shadow: 0 0 0 3px rgba(29, 66, 138, .1);
+}
+
+.ventas-producto-field small,
+.ventas-producto-price-card small,
+.ventas-producto-stock-card small,
+.ventas-producto-status-card small {
+  color: #64748b;
+  font-size: .72rem;
+  line-height: 1.35;
+  font-weight: 520;
+}
+
+.ventas-producto-commercial-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ventas-modal--producto .ventas-producto-price-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 145px;
+  border: 1px solid #c9daf4;
+  border-radius: 13px;
+  padding: 10px;
+  background: #f5f9ff;
+}
+
+.ventas-modal--producto .ventas-producto-price-card--door {
+  border-color: #dce5f0;
+  background: #f8fafc;
+}
+
+.ventas-producto-price-card__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ventas-producto-price-card__title strong {
+  color: #193e7e;
+  font-size: .76rem;
+  font-weight: 740;
+}
+
+.ventas-producto-price-card--door .ventas-producto-price-card__title strong {
+  color: #334155;
+}
+
+.ventas-producto-price-card__title em {
+  border-radius: 20px;
+  padding: 3px 7px;
+  color: #1d428a;
+  background: #ffffff;
+  font-size: .63rem;
+  font-weight: 760;
+  font-style: normal;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ventas-producto-price-card--door .ventas-producto-price-card__title em {
+  color: #475569;
+}
+
+.ventas-producto-inputIcon {
+  position: relative;
+}
+
+.ventas-producto-inputIcon > svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: .82rem;
+  pointer-events: none;
+}
+
+.ventas-modal--producto .ventas-producto-inputIcon input {
+  padding-left: 31px;
+  font-size: .94rem;
+  font-weight: 620;
+}
+
+.ventas-modal--producto .ventas-producto-stock-card,
+.ventas-producto-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  min-height: 145px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.ventas-modal--producto .ventas-producto-stock-card input {
+  min-height: 42px;
+}
+
+.ventas-producto-status-card {
+  background: #fbfcfe;
+}
+
+.ventas-producto-price-card small,
+.ventas-producto-stock-card small,
+.ventas-producto-status-card small {
+  margin-top: auto;
+}
+
+.ventas-modal--producto .ventas-producto-status-card .ventas-toggle {
+  min-height: 42px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 9px 10px;
+  color: #475569;
+  background: #ffffff;
+  font-size: .8rem;
+  font-weight: 690;
+}
+
+.ventas-modal--producto .ventas-producto-status-card .ventas-toggle:hover {
+  background: #f5f9ff;
+}
+
+.ventas-modal--producto .ventas-producto-status-card .ventas-toggle--on {
+  border-color: #bfdfce;
+  color: #047857;
+  background: #f1faf5;
+}
+
+.ventas-modal--producto .ventas-modal__footer {
+  padding: 13px 20px;
+  background: #ffffff;
+}
+
+.ventas-modal--producto .ventas-modal__footer .ventas-primary,
+.ventas-modal--producto .ventas-modal__footer .ventas-modal-cancel {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 11px 18px;
+  font-size: .88rem;
+  font-weight: 720;
+}
+
+.ventas-modal--producto .ventas-modal__footer .ventas-modal-cancel {
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.ventas-modal--producto .ventas-modal__footer .ventas-primary {
+  box-shadow: 0 10px 20px rgba(29, 66, 138, .18);
+}
+
+@media (max-width: 860px) {
+  .ventas-producto-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .ventas-modal--producto .ventas-form textarea {
+    min-height: 88px;
+  }
+}
+
+@media (max-width: 760px) {
+  .ventas-modal--producto .ventas-modal__head {
+    padding: 16px 15px;
+  }
+
+  .ventas-modal .ventas-producto-body {
+    padding: 11px;
+    gap: 11px;
+  }
+
+  .ventas-producto-note {
+    align-items: flex-start;
+    padding: 10px;
+  }
+
+  .ventas-producto-panel {
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .ventas-producto-panel__head {
+    margin-bottom: 12px;
+  }
+
+  .ventas-producto-commercial-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ventas-modal--producto .ventas-producto-price-card,
+  .ventas-modal--producto .ventas-producto-stock-card,
+  .ventas-producto-status-card {
+    min-height: auto;
+  }
+
+  .ventas-modal--producto .ventas-modal__footer {
+    padding: 12px;
+  }
+}

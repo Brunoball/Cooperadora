@@ -21,7 +21,7 @@ export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDe
             <div className="ventas-div-row ventas-div-row--head" role="row">
               <div className="ventas-div-cell" role="columnheader">Venta</div>
               <div className="ventas-div-cell" role="columnheader">Identificación</div>
-              <div className="ventas-div-cell" role="columnheader">Principal / precios</div>
+              <div className="ventas-div-cell ventas-div-cell--principal-precios" role="columnheader">Principal / precios</div>
               <div className="ventas-div-cell" role="columnheader">Conceptos</div>
               <div className="ventas-div-cell" role="columnheader">Ventas</div>
               <div className="ventas-div-cell" role="columnheader">Bot</div>
@@ -55,7 +55,7 @@ export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDe
                       <strong>DNI persona/alumno</strong>
                       <span>{c.pregunta_persona || "Sin pregunta configurada."}</span>
                     </div>
-                    <div className="ventas-div-cell ventas-div-cell--main" role="cell">
+                    <div className="ventas-div-cell ventas-div-cell--main ventas-div-cell--principal-precios" role="cell">
                       <strong>{c.producto_principal_nombre || "Sin producto"}</strong>
                       <span>
                         {c.producto_principal_nombre

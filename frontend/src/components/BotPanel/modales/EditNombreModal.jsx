@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "./Modals.css";
+import "./EditNombreModal.css";
 
 const norm = (v) => String(v ?? "").trim();
 
@@ -31,37 +31,43 @@ const EditNombreModal = ({
   };
 
   return (
-    <div className="m-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
-      <div className="m-card" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="m-head">
-          <div className="m-title">Editar nombre</div>
-          <button className="m-x" type="button" onClick={onClose}>✕</button>
+    <div className="bp-name-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
+      <div className="bp-name-card" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="bp-name-head">
+          <div className="bp-name-heading">
+            <span className="bp-name-eyebrow">Contacto</span>
+            <div className="bp-name-title">Editar nombre</div>
+            <p className="bp-name-subtitle">Actualizá la identificación visible de la conversación.</p>
+          </div>
+          <button className="bp-name-close" type="button" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
-        <div className="m-body">
-          <div className="m-sub">
-            Número: <b>{waId}</b>
+        <div className="bp-name-body">
+          <div className="bp-name-contact">
+            <span className="bp-name-contact-label">Número vinculado</span>
+            <b>{waId}</b>
           </div>
 
-          <form onSubmit={submit} className="m-form">
-            <label className="m-label">Nombre</label>
+          <form onSubmit={submit} className="bp-name-form">
+            <label className="bp-name-label" htmlFor="bp-name-input">Nombre del contacto</label>
             <input
+              id="bp-name-input"
               ref={inputRef}
-              className="m-input"
+              className="bp-name-input"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="Ej: Juan Pérez"
               maxLength={80}
             />
 
-            {error ? <div className="m-err">{error}</div> : null}
+            {error ? <div className="bp-name-error">{error}</div> : null}
 
-            <div className="m-actions">
-              <button type="button" className="m-btn m-btn--ghost" onClick={onClose}>
+            <div className="bp-name-actions">
+              <button type="button" className="bp-name-btn bp-name-btn--ghost" onClick={onClose}>
                 Cancelar
               </button>
 
-              <button type="submit" className="m-btn m-btn--primary" disabled={!!loading}>
+              <button type="submit" className="bp-name-btn bp-name-btn--primary" disabled={!!loading}>
                 {loading ? "Guardando…" : "Guardar"}
               </button>
             </div>

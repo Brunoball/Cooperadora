@@ -1,0 +1,376 @@
+/* =========================================================
+   Nueva venta / Editar venta - pestaña Configuración
+   Diseño propio del modal, sin afectar los demás modales.
+   ========================================================= */
+.ventas-modal--campania {
+  width: min(920px, 100%);
+  border-color: rgba(29, 66, 138, 0.16);
+}
+
+.ventas-modal--campania .ventas-modal__head {
+  padding: 21px 24px 20px;
+}
+
+.ventas-modal--campania .ventas-modal__title h2 {
+  font-size: 1.32rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.ventas-modal--campania .ventas-modal__title p {
+  max-width: 560px;
+  margin-top: 6px;
+  font-size: .9rem;
+}
+
+.ventas-modal .ventas-campania-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  background: #f5f7fb;
+}
+
+.ventas-campania-panel {
+  padding: 16px;
+  border: 1px solid rgba(226, 232, 240, .95);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .028);
+}
+
+.ventas-campania-panel--product {
+  border-color: rgba(29, 66, 138, .17);
+  background: linear-gradient(145deg, rgba(29, 66, 138, .035) 0%, #ffffff 42%);
+}
+
+.ventas-campania-panel__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 15px;
+}
+
+.ventas-campania-panel__head h3 {
+  margin: 1px 0 3px;
+  color: #102e6a;
+  font-size: .96rem;
+  font-weight: 760;
+  letter-spacing: -.01em;
+}
+
+.ventas-campania-panel__head p {
+  margin: 0;
+  color: #64748b;
+  font-size: .81rem;
+  line-height: 1.4;
+  font-weight: 560;
+}
+
+.ventas-campania-step {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  border-radius: 10px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--blue-inst-primary, #1d428a);
+  background: #edf3ff;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.ventas-campania-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ventas-modal .ventas-campania-field {
+  gap: 7px;
+  font-size: .79rem;
+  font-weight: 740;
+  color: #334155;
+}
+
+.ventas-campania-field > span {
+  padding-left: 2px;
+}
+
+.ventas-modal--campania .ventas-form input,
+.ventas-modal--campania .ventas-form select,
+.ventas-modal--campania .ventas-form textarea {
+  border-color: #d5dfec;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 11px 13px;
+  color: #17243b;
+  font-weight: 500;
+  background: #ffffff;
+}
+
+.ventas-modal--campania .ventas-form textarea {
+  min-height: 82px;
+  line-height: 1.45;
+  resize: vertical;
+  background: #fbfdff;
+}
+
+.ventas-modal--campania .ventas-form input::placeholder,
+.ventas-modal--campania .ventas-form textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 450;
+}
+
+.ventas-modal--campania .ventas-form input:focus,
+.ventas-modal--campania .ventas-form select:focus,
+.ventas-modal--campania .ventas-form textarea:focus {
+  border-color: var(--blue-inst-primary, #1d428a);
+  box-shadow: 0 0 0 3px rgba(29, 66, 138, .1);
+}
+
+.ventas-modal--campania .ventas-product-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ventas-product-selector__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 2px;
+  color: #193e7e;
+  font-size: .8rem;
+  font-weight: 760;
+}
+
+.ventas-product-selector__label svg {
+  color: var(--blue-inst-primary, #1d428a);
+}
+
+.ventas-modal--campania .ventas-product-selector small {
+  color: #64748b;
+  padding-left: 2px;
+  font-size: .78rem;
+  line-height: 1.38;
+  font-weight: 540;
+}
+
+.ventas-product-resume {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.55fr) repeat(3, minmax(112px, .72fr));
+  align-items: stretch;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.ventas-product-resume__main,
+.ventas-price-chip,
+.ventas-stock-chip {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 70px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  padding: 11px 12px;
+  background: #f8fafc;
+}
+
+.ventas-product-resume__main span,
+.ventas-price-chip span,
+.ventas-stock-chip span {
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: .7rem;
+  line-height: 1.2;
+  font-weight: 760;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ventas-product-resume__main strong,
+.ventas-price-chip strong,
+.ventas-stock-chip strong {
+  color: #0f2747;
+  font-size: .89rem;
+  line-height: 1.2;
+  font-weight: 720;
+}
+
+.ventas-product-resume__main small {
+  overflow: hidden;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: .75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ventas-price-chip {
+  border-color: #c9daf4;
+  background: #f2f7ff;
+}
+
+.ventas-price-chip strong {
+  color: var(--blue-inst-primary, #1d428a);
+  font-size: .96rem;
+}
+
+.ventas-stock-chip {
+  border-color: #d9e9df;
+  background: #f4fbf7;
+}
+
+.ventas-stock-chip strong {
+  color: #047857;
+}
+
+.ventas-product-empty {
+  border: 1px dashed #cbd5e1;
+  border-radius: 13px;
+  padding: 16px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: .83rem;
+  font-weight: 560;
+  text-align: center;
+}
+
+.ventas-modal--campania .ventas-admin-note {
+  margin: 0 0 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 13px;
+  padding: 11px 13px;
+  color: #9a3412;
+  background: #fff7ed;
+  font-size: .82rem;
+  line-height: 1.42;
+  font-weight: 590;
+}
+
+.ventas-modal--campania .ventas-flow-help {
+  margin: 11px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: .8rem;
+  line-height: 1.42;
+  font-weight: 650;
+}
+
+.ventas-modal--campania .ventas-flow-help--danger {
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.ventas-campania-dates {
+  margin-bottom: 12px;
+}
+
+.ventas-modal--campania .ventas-toggle-grid--simple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.ventas-modal--campania .ventas-toggle {
+  min-height: 45px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 680;
+}
+
+.ventas-modal--campania .ventas-toggle--on {
+  background: #edf3ff;
+  color: #102e6a;
+}
+
+.ventas-modal--campania .ventas-modal__footer {
+  padding: 13px 20px;
+  background: #ffffff;
+}
+
+.ventas-modal--campania .ventas-modal__footer .ventas-primary,
+.ventas-modal--campania .ventas-modal__footer .ventas-modal-cancel {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 11px 18px;
+  font-size: .88rem;
+  font-weight: 720;
+}
+
+.ventas-modal--campania .ventas-modal__footer .ventas-modal-cancel {
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.ventas-modal--campania .ventas-modal__footer .ventas-primary {
+  box-shadow: 0 10px 20px rgba(29, 66, 138, .18);
+}
+
+@media (max-width: 880px) {
+  .ventas-product-resume {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ventas-product-resume__main {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .ventas-modal--campania .ventas-modal__head {
+    padding: 16px 15px;
+  }
+
+  .ventas-modal .ventas-campania-body {
+    padding: 11px;
+    gap: 11px;
+  }
+
+  .ventas-campania-panel {
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .ventas-campania-panel__head {
+    margin-bottom: 12px;
+  }
+
+  .ventas-modal--campania .ventas-toggle-grid--simple {
+    grid-template-columns: 1fr;
+  }
+
+  .ventas-product-resume {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ventas-stock-chip {
+    grid-column: 1 / -1;
+  }
+
+  .ventas-modal--campania .ventas-modal__footer {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .ventas-product-resume {
+    grid-template-columns: 1fr;
+  }
+
+  .ventas-product-resume__main,
+  .ventas-price-chip,
+  .ventas-stock-chip {
+    grid-column: 1;
+  }
+}

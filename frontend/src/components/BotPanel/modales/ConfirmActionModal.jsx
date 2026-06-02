@@ -1,5 +1,5 @@
 import React from "react";
-import "./Modals.css";
+import "./ConfirmActionModal.css";
 
 const ConfirmActionModal = ({
   open,
@@ -16,26 +16,32 @@ const ConfirmActionModal = ({
   if (!open) return null;
 
   return (
-    <div className="m-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
-      <div className="m-card" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="m-head">
-          <div className="m-title">{title}</div>
-          <button className="m-x" type="button" onClick={onClose}>✕</button>
+    <div className="bp-confirm-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
+      <div className={`bp-confirm-card ${danger ? "is-danger" : ""}`} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="bp-confirm-head">
+          <div className="bp-confirm-heading">
+            <span className="bp-confirm-eyebrow">{danger ? "Acción delicada" : "Confirmación"}</span>
+            <div className="bp-confirm-title">{title}</div>
+          </div>
+          <button className="bp-confirm-close" type="button" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
-        <div className="m-body">
-          <div className="m-sub">{description}</div>
+        <div className="bp-confirm-body">
+          <div className="bp-confirm-message">
+            <span className="bp-confirm-mark" aria-hidden="true">{danger ? "!" : "✓"}</span>
+            <div className="bp-confirm-description">{description}</div>
+          </div>
 
-          {error ? <div className="m-err">{error}</div> : null}
+          {error ? <div className="bp-confirm-error">{error}</div> : null}
 
-          <div className="m-actions">
-            <button type="button" className="m-btn m-btn--ghost" onClick={onClose}>
+          <div className="bp-confirm-actions">
+            <button type="button" className="bp-confirm-btn bp-confirm-btn--ghost" onClick={onClose}>
               {cancelText}
             </button>
 
             <button
               type="button"
-              className={`m-btn ${danger ? "m-btn--danger" : "m-btn--primary"}`}
+              className={`bp-confirm-btn ${danger ? "bp-confirm-btn--danger" : "bp-confirm-btn--primary"}`}
               onClick={onConfirm}
               disabled={!!loading}
             >

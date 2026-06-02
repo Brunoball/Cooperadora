@@ -36,10 +36,14 @@ const GaleriaModal = ({ open, onClose, items, onOpenItem, title }) => {
     <div className="wp-gal-backdrop" role="dialog" aria-label="Galería del chat">
       <div className="wp-gal-modal" ref={boxRef}>
         <div className="wp-gal-top">
-          <div className="wp-gal-title">
-            <FontAwesomeIcon icon={faImages} />{" "}
-            <span>{title || "Galería"}</span>
-            <span className="wp-gal-count">{arr.length}</span>
+          <div className="wp-gal-heading">
+            <span className="wp-gal-eyebrow">Archivos del chat</span>
+            <div className="wp-gal-title">
+              <FontAwesomeIcon icon={faImages} />{" "}
+              <span>{title || "Galería"}</span>
+              <span className="wp-gal-count">{arr.length}</span>
+            </div>
+            <p>Imágenes y documentos compartidos en esta conversación.</p>
           </div>
 
           <button className="wp-gal-close" type="button" onClick={onClose} aria-label="Cerrar">

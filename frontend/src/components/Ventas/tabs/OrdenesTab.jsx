@@ -120,7 +120,7 @@ export default function OrdenesTab({
                     <span>{o.persona_dni ? `DNI: ${o.persona_dni}` : (o.persona_detalle || "Sin DNI")}</span>
                   </div>
 
-                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
+                  <div className="ventas-div-cell ventas-div-cell--main ventas-orden-cell--medio" role="cell">
                     <strong>{o.medio_pago || "Sin medio"}</strong>
                   </div>
 
@@ -156,7 +156,7 @@ export default function OrdenesTab({
                     )}
                   </div>
 
-                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
+                  <div className="ventas-div-cell ventas-div-cell--main ventas-orden-cell--fecha" role="cell">
                     <strong>{fechaSolo(o.aprobado_en || o.creado_en)}</strong>
                   </div>
 

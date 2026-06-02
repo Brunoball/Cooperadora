@@ -1,6 +1,6 @@
 // src/components/BotPanel/modales/EditEtiquetaModal.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "./Modals.css";
+import "./EditEtiquetaModal.css";
 
 const EditEtiquetaModal = ({
   open,
@@ -109,22 +109,26 @@ const EditEtiquetaModal = ({
 
   return (
     <div
-      className="m-overlay"
+      className="bp-tag-overlay"
       role="dialog"
       aria-modal="true"
       onKeyDown={onKeyDown}
       tabIndex={-1}
       onMouseDown={(e) => {
-        if (e.target?.classList?.contains("m-overlay")) onClose?.();
+        if (e.target?.classList?.contains("bp-tag-overlay")) onClose?.();
       }}
     >
-      <div className="m-card" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="m-head">
-          <div className="m-title">Cambiar etiqueta</div>
+      <div className="bp-tag-card" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="bp-tag-head">
+          <div className="bp-tag-heading">
+            <span className="bp-tag-eyebrow">Organización</span>
+            <div className="bp-tag-title">Cambiar etiqueta</div>
+            <p className="bp-tag-subtitle">Clasificá el contacto o creá una nueva categoría.</p>
+          </div>
 
           <button
             type="button"
-            className="m-x"
+            className="bp-tag-close"
             onClick={onClose}
             aria-label="Cerrar"
             title="Cerrar"
@@ -134,18 +138,24 @@ const EditEtiquetaModal = ({
           </button>
         </div>
 
-        <div className="m-body">
-          <div className="m-sub">
-            Contacto: <b>{waId}</b>
-            <br />
-            Actual: <b>{currentEtiquetaNombre || "sin etiqueta"}</b>
+        <div className="bp-tag-body">
+          <div className="bp-tag-contact">
+            <div className="bp-tag-detail">
+              <span>Contacto</span>
+              <b>{waId}</b>
+            </div>
+            <div className="bp-tag-detail">
+              <span>Etiqueta actual</span>
+              <b>{currentEtiquetaNombre || "Sin etiqueta"}</b>
+            </div>
           </div>
 
-          <div className="m-form">
-            <label className="m-label">Etiqueta</label>
+          <div className="bp-tag-form">
+            <label className="bp-tag-label" htmlFor="bp-tag-select">Etiqueta asignada</label>
 
             <select
-              className="m-input"
+              id="bp-tag-select"
+              className="bp-tag-input"
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
               disabled={loading || creating}
@@ -160,23 +170,24 @@ const EditEtiquetaModal = ({
             </select>
 
             {/* ✅ BLOQUE: crear etiqueta */}
-            <div style={{ marginTop: 8 }}>
-              <div className="m-label" style={{ marginBottom: 6 }}>
-                Agregar etiqueta
+            <div className="bp-tag-create">
+              <div className="bp-tag-create-head">
+                <div className="bp-tag-label bp-tag-label--create">Nueva etiqueta</div>
+                <p>Agregala a la lista y quedará seleccionada automáticamente.</p>
               </div>
 
               <input
-                className="m-input"
+                className="bp-tag-input"
                 value={nuevoNombre}
                 onChange={(e) => setNuevoNombre(e.target.value)}
                 placeholder="Ej: Pagó / Urgente / Nuevo..."
                 disabled={loading || creating}
               />
 
-              <div className="m-actions" style={{ marginTop: 8 }}>
+              <div className="bp-tag-actions bp-tag-actions--create">
                 <button
                   type="button"
-                  className="m-btn"
+                  className="bp-tag-btn"
                   onClick={createEtiqueta}
                   disabled={loading || creating || !nuevoNombre.trim()}
                   title="Crear etiqueta"
@@ -185,16 +196,16 @@ const EditEtiquetaModal = ({
                 </button>
               </div>
 
-              {createErr ? <div className="m-err">{createErr}</div> : null}
+              {createErr ? <div className="bp-tag-error">{createErr}</div> : null}
             </div>
 
-            {error ? <div className="m-err">{error}</div> : null}
+            {error ? <div className="bp-tag-error">{error}</div> : null}
 
-            <div className="m-actions">
+            <div className="bp-tag-actions">
               <button
                 ref={cancelRef}
                 type="button"
-                className="m-btn m-btn--ghost"
+                className="bp-tag-btn bp-tag-btn--ghost"
                 onClick={onClose}
                 disabled={loading || creating}
               >
@@ -203,7 +214,7 @@ const EditEtiquetaModal = ({
 
               <button
                 type="button"
-                className="m-btn m-btn--primary"
+                className="bp-tag-btn bp-tag-btn--primary"
                 onClick={doSave}
                 disabled={loading || creating}
               >

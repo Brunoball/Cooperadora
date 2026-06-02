@@ -2,6 +2,7 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPowerOff, faTrash } from "@fortawesome/free-solid-svg-icons";
 import ModalBase from "./ModalBase";
+import "./ModalConfirmar.css";
 
 export default function ModalConfirmar({ abierto, titulo, mensaje, confirmText = "Confirmar", saving, onClose, onConfirm }) {
   const esEliminar = String(titulo || confirmText).toLowerCase().includes("eliminar");

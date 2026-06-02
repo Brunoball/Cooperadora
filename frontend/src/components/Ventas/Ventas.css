@@ -902,84 +902,12 @@
   color: #047857;
 }
 
-.ventas-toggle-grid--simple {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 @media (max-width: 760px) {
-  .ventas-persona-options,
-  .ventas-toggle-grid--simple {
+  .ventas-persona-options {
     grid-template-columns: 1fr;
   }
 }
 
-/* =========================================================
-   Venta activa única + producto principal
-========================================================= */
-.ventas-admin-note {
-  margin: 12px 0;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1e3a8a;
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-size: 0.88rem;
-  line-height: 1.45;
-}
-
-.ventas-flow-help {
-  margin: 10px 0 0;
-  color: #64748b;
-  font-size: 0.84rem;
-  line-height: 1.45;
-  font-weight: 700;
-}
-
-.ventas-product-config h3 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ventas-product-config h3 svg {
-  color: #1d428a;
-}
-
-.ventas-product-selector {
-  margin-bottom: 12px;
-}
-
-.ventas-product-selector span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-/* Productos independientes: en la venta solo se muestran los datos del catálogo. */
-.ventas-form input.ventas-readonly-field,
-.ventas-form textarea.ventas-readonly-field {
-  background: #f8fafc;
-  color: #475569;
-  border-style: dashed;
-  cursor: not-allowed;
-}
-
-.ventas-form input.ventas-readonly-field:focus,
-.ventas-form textarea.ventas-readonly-field:focus {
-  border-color: #cbd5e1;
-  box-shadow: none;
-}
-
-.ventas-admin-note--warning {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #9a3412;
-}
-
-.ventas-flow-help--danger {
-  color: #b91c1c;
-}
 
 /* =========================================================
    Ventas manuales + medio de pago
@@ -993,34 +921,6 @@
   color: #1d428a;
 }
 
-.ventas-manual-total {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid #bbf7d0;
-  background: #ecfdf5;
-  color: #047857;
-  border-radius: 16px;
-  padding: 13px 15px;
-  font-weight: 900;
-}
-
-.ventas-manual-total span {
-  color: #047857;
-  font-size: 13px;
-}
-
-.ventas-manual-total strong {
-  font-size: 18px;
-}
-
-@media (max-width: 760px) {
-  .ventas-manual-total {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
 
 /* =========================================================
    Estética alineada a Alumnos
@@ -2598,106 +2498,12 @@
   max-width: 120px !important;
 }
 
-.ventas-retiro-modal__body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.ventas-retiro-resumen {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-
-.ventas-retiro-resumen div {
-  display: grid;
-  gap: 2px;
-}
-
-.ventas-retiro-resumen span {
-  color: #64748b;
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ventas-retiro-resumen strong {
-  color: #0f172a;
-  font-size: 0.95rem;
-}
-
-.ventas-retiro-options {
-  display: grid;
-  gap: 10px;
-}
-
-.ventas-retiro-option {
-  width: 100%;
-  border: 1.5px solid #e2e8f0;
-  background: #ffffff;
-  color: #1e293b;
-  border-radius: 16px;
-  padding: 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.ventas-retiro-option svg {
-  width: 22px;
-  min-width: 22px;
-  color: var(--blue-inst-primary, #1D428A);
-}
-
-.ventas-retiro-option span {
-  display: grid;
-  gap: 2px;
-}
-
-.ventas-retiro-option strong {
-  color: #0f172a;
-  font-size: 0.96rem;
-}
-
-.ventas-retiro-option small {
-  color: #64748b;
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-.ventas-retiro-option.active {
-  border-color: var(--blue-inst-primary, #1D428A);
-  background: #eef4ff;
-  box-shadow: 0 12px 28px rgba(29, 66, 138, 0.12);
-}
-
-.ventas-retiro-option:disabled {
-  opacity: 0.65;
-  cursor: wait;
-}
-
-.ventas-modal-save {
-  background: var(--blue-inst-primary, #1D428A) !important;
-  color: #ffffff !important;
-  box-shadow: 0 14px 28px rgba(29, 66, 138, 0.18) !important;
-}
 
 @media (max-width: 760px) {
   .ventas-div-table--ordenes {
     min-width: 1080px !important;
   }
 
-  .ventas-retiro-option {
-    align-items: flex-start;
-  }
 }
 
 /* Importación de planillas Excel en Ventas */
@@ -3370,4 +3176,64 @@
     min-height: 44px;
     justify-content: flex-start;
   }
+}
+
+
+/* =========================================================
+   Ventas registradas: centrar Medio, Retiro y Fecha
+   ========================================================= */
+.ventas-div-table--ordenes .ventas-orden-cell--medio,
+.ventas-div-table--ordenes .ventas-retire-cell,
+.ventas-div-table--ordenes .ventas-orden-cell--fecha {
+  text-align: center !important;
+}
+
+.ventas-div-table--ordenes .ventas-retire-cell .ventas-status {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto !important;
+}
+
+/* =========================================================
+   Tablas: alinear a la izquierda las primeras dos columnas
+   Incluye encabezados y registros de las tres grillas.
+   ========================================================= */
+.ventas-div-table--productos .ventas-div-row .ventas-div-cell:nth-child(-n + 2),
+.ventas-div-table--campanias .ventas-div-row .ventas-div-cell:nth-child(-n + 2),
+.ventas-div-table--ordenes .ventas-div-row .ventas-div-cell:nth-child(-n + 2) {
+  text-align: left !important;
+}
+
+
+/* =========================================================
+   Configuración de ventas: alinear a la izquierda Principal / precios
+   Incluye el encabezado y los registros.
+   ========================================================= */
+.ventas-div-table--campanias .ventas-div-cell--principal-precios {
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left !important;
+}
+
+.ventas-div-table--campanias .ventas-div-cell--principal-precios strong,
+.ventas-div-table--campanias .ventas-div-cell--principal-precios span {
+  width: 100%;
+  text-align: left !important;
+}
+
+/* =========================================================
+   Configuración de ventas: centrar columna Fechas
+   Incluye el encabezado y los registros.
+   ========================================================= */
+.ventas-div-table--campanias .ventas-div-row .ventas-div-cell:nth-child(8) {
+  align-items: center;
+  justify-content: center;
+  text-align: center !important;
+}
+
+.ventas-div-table--campanias .ventas-div-row .ventas-div-cell:nth-child(8) strong,
+.ventas-div-table--campanias .ventas-div-row .ventas-div-cell:nth-child(8) span {
+  width: 100%;
+  text-align: center !important;
 }

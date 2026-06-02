@@ -27,6 +27,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./BotPanel.css";
+import "./modales/BotEventosModal.css";
+import "./modales/MediaViewerModal.css";
 import notificationSound from "./notificacion/notificacion.mp3";
 
 // ✅ emoji-mart (v5)
@@ -253,6 +255,7 @@ const BotEventosModal = ({
       <div className="wp-events-panel">
         <div className="wp-events-head">
           <div>
+            <div className="wp-events-eyebrow">Actividad del sistema</div>
             <div className="wp-events-title">
               <FontAwesomeIcon icon={faTriangleExclamation} />
               Alertas del bot
@@ -285,9 +288,9 @@ const BotEventosModal = ({
         </div>
 
         <div className="wp-events-summary">
-          <span>Errores pendientes: <b>{Number(resumen?.errores_pendientes || 0)}</b></span>
-          <span>Advertencias: <b>{Number(resumen?.warnings_pendientes || 0)}</b></span>
-          <span>Últimos 7 días: <b>{Number(resumen?.total_ultimos_7_dias || 0)}</b></span>
+          <div className="wp-events-stat"><span>Errores pendientes</span><b>{Number(resumen?.errores_pendientes || 0)}</b></div>
+          <div className="wp-events-stat"><span>Advertencias</span><b>{Number(resumen?.warnings_pendientes || 0)}</b></div>
+          <div className="wp-events-stat"><span>Últimos 7 días</span><b>{Number(resumen?.total_ultimos_7_dias || 0)}</b></div>
         </div>
 
         {error ? (
@@ -416,15 +419,12 @@ const MediaViewerModal = ({ open, onClose, item }) => {
     <div className="wp-media-backdrop" role="dialog" aria-label="Visor de archivo">
       <div className="wp-media-modal" ref={boxRef}>
         <div className="wp-media-top">
-          <div className="wp-media-title">
-            {isPdf ? (
-              <>
-                <FontAwesomeIcon icon={faFilePdf} />{" "}
-                <span>{item.name || "Documento PDF"}</span>
-              </>
-            ) : (
-              <span>{item.name || "Imagen"}</span>
-            )}
+          <div className="wp-media-heading">
+            <span className="wp-media-eyebrow">Vista previa</span>
+            <div className="wp-media-title">
+              {isPdf ? <FontAwesomeIcon icon={faFilePdf} /> : null}
+              <span>{item.name || (isPdf ? "Documento PDF" : "Imagen")}</span>
+            </div>
           </div>
 
           <div className="wp-media-actions">
