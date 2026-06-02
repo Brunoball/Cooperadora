@@ -204,6 +204,49 @@ function ventas_asegurar_esquema_productos_independientes($pdo) {
     }
 }
 
+
+function ventas_asegurar_esquema_precios_producto($pdo) {
+    // Nuevo esquema: cada producto tiene precio anticipada y precio en puerta.
+    // La columna legacy `precio` queda como espejo de anticipada para compatibilidad.
+    if (!ventas_column_exists($pdo, 'ventas_productos', 'precio_anticipada')) {
+        $after = ventas_column_exists($pdo, 'ventas_productos', 'precio') ? ' AFTER precio' : '';
+        $pdo->exec("ALTER TABLE ventas_productos ADD COLUMN precio_anticipada DECIMAL(12,2) NOT NULL DEFAULT 0.00" . $after);
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_productos', 'precio_puerta')) {
+        $after = ventas_column_exists($pdo, 'ventas_productos', 'precio_anticipada') ? ' AFTER precio_anticipada' : '';
+        $pdo->exec("ALTER TABLE ventas_productos ADD COLUMN precio_puerta DECIMAL(12,2) NOT NULL DEFAULT 0.00" . $after);
+    }
+
+    try {
+        if (ventas_column_exists($pdo, 'ventas_productos', 'precio')) {
+            $pdo->exec("
+                UPDATE ventas_productos
+                SET precio_anticipada = precio
+                WHERE id_producto > 0
+                  AND (precio_anticipada IS NULL OR precio_anticipada = 0)
+                  AND precio IS NOT NULL
+                  AND precio > 0
+            ");
+
+            $pdo->exec("
+                UPDATE ventas_productos
+                SET precio_puerta = CASE
+                    WHEN precio_anticipada IS NOT NULL AND precio_anticipada > 0 THEN precio_anticipada
+                    ELSE precio
+                END
+                WHERE id_producto > 0
+                  AND (precio_puerta IS NULL OR precio_puerta = 0)
+                  AND ((precio_anticipada IS NOT NULL AND precio_anticipada > 0) OR (precio IS NOT NULL AND precio > 0))
+            ");
+
+            $pdo->exec("UPDATE ventas_productos SET precio = precio_anticipada WHERE id_producto > 0 AND precio_anticipada IS NOT NULL");
+        }
+    } catch (Throwable $e) {
+        // La migración de datos no debe bloquear la pantalla si una base vieja tiene datos atípicos.
+    }
+}
+
 function ventas_asegurar_esquema_ordenes_medios_pago($pdo) {
     if (!ventas_column_exists($pdo, 'ventas_ordenes', 'id_medio_pago')) {
         $pdo->exec("ALTER TABLE ventas_ordenes ADD COLUMN id_medio_pago INT UNSIGNED NOT NULL DEFAULT 2 AFTER total");
@@ -301,6 +344,163 @@ function ventas_asegurar_esquema_items_excel($pdo) {
     }
 }
 
+
+function ventas_normalizar_dni($value) {
+    return preg_replace('/\D+/', '', (string)($value ?? '')) ?: '';
+}
+
+function ventas_asegurar_esquema_personas($pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ventas_personas (
+        id_persona INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        dni VARCHAR(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+        nombre_apellido VARCHAR(160) COLLATE utf8mb4_unicode_ci NOT NULL,
+        id_alumno INT NULL DEFAULT NULL,
+        origen ENUM('alumno','bot','manual') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual',
+        observacion VARCHAR(255) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+        creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id_persona),
+        UNIQUE KEY uq_ventas_personas_dni (dni),
+        KEY idx_ventas_personas_nombre (nombre_apellido),
+        KEY idx_ventas_personas_alumno (id_alumno)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Migración de limpieza: el WhatsApp se guarda en bot_contactos y en ventas_ordenes,
+    // no en ventas_personas. Si viene de una versión anterior, se elimina la columna duplicada.
+    if (ventas_column_exists($pdo, 'ventas_personas', 'wa_id')) {
+        try {
+            if (ventas_index_exists($pdo, 'ventas_personas', 'idx_ventas_personas_wa')) {
+                $pdo->exec("ALTER TABLE ventas_personas DROP INDEX idx_ventas_personas_wa");
+            }
+        } catch (Throwable $e) {}
+        try {
+            $pdo->exec("ALTER TABLE ventas_personas DROP COLUMN wa_id");
+        } catch (Throwable $e) {}
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_ordenes', 'id_venta_persona')) {
+        $after = ventas_column_exists($pdo, 'ventas_ordenes', 'persona_detalle') ? ' AFTER persona_detalle' : '';
+        $pdo->exec("ALTER TABLE ventas_ordenes ADD COLUMN id_venta_persona INT UNSIGNED NULL DEFAULT NULL" . $after);
+    }
+
+    if (!ventas_column_exists($pdo, 'ventas_ordenes', 'persona_dni')) {
+        $after = ventas_column_exists($pdo, 'ventas_ordenes', 'id_venta_persona') ? ' AFTER id_venta_persona' : '';
+        $pdo->exec("ALTER TABLE ventas_ordenes ADD COLUMN persona_dni VARCHAR(20) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL" . $after);
+    }
+
+    if (!ventas_index_exists($pdo, 'ventas_ordenes', 'idx_ventas_ordenes_persona_dni')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_ordenes ADD KEY idx_ventas_ordenes_persona_dni (persona_dni)");
+        } catch (Throwable $e) {}
+    }
+
+    if (!ventas_index_exists($pdo, 'ventas_ordenes', 'idx_ventas_ordenes_persona_ref')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_ordenes ADD KEY idx_ventas_ordenes_persona_ref (id_venta_persona)");
+        } catch (Throwable $e) {}
+    }
+
+    if (!ventas_constraint_exists($pdo, 'ventas_ordenes', 'fk_ventas_ordenes_persona')) {
+        try {
+            $pdo->exec("ALTER TABLE ventas_ordenes ADD CONSTRAINT fk_ventas_ordenes_persona FOREIGN KEY (id_venta_persona) REFERENCES ventas_personas (id_persona) ON DELETE SET NULL ON UPDATE CASCADE");
+        } catch (Throwable $e) {
+            // La relación ayuda, pero si el hosting o datos viejos no permiten crearla, el módulo igual funciona.
+        }
+    }
+}
+
+function ventas_nombre_alumno_desde_row($alumno) {
+    if (!is_array($alumno)) return '';
+    $apellido = ventas_text($alumno['apellido'] ?? '', 80, true);
+    $nombre = ventas_text($alumno['nombre'] ?? '', 80, true);
+    return trim($apellido . ' ' . $nombre);
+}
+
+function ventas_buscar_alumno_por_dni($pdo, $dni) {
+    $dni = ventas_normalizar_dni($dni);
+    if ($dni === '') return null;
+
+    $st = $pdo->prepare('SELECT id_alumno, apellido, nombre, num_documento FROM alumnos WHERE num_documento = :dni LIMIT 1');
+    $st->execute([':dni' => $dni]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function ventas_guardar_persona_venta($pdo, $dni, $nombre, $idAlumno = null, $waId = null, $origen = 'manual') {
+    $dni = ventas_normalizar_dni($dni);
+    $nombre = ventas_text($nombre, 160, true);
+    $idAlumno = $idAlumno !== null && (int)$idAlumno > 0 ? (int)$idAlumno : null;
+    // $waId queda solo por compatibilidad de firma. No se guarda en ventas_personas:
+    // el vínculo WhatsApp ↔ DNI pertenece a bot_contactos, y la orden conserva ventas_ordenes.wa_id.
+    unset($waId);
+    $origen = in_array($origen, ['alumno', 'bot', 'manual'], true) ? $origen : 'manual';
+
+    if ($dni === '') {
+        throw new InvalidArgumentException('Ingresá el DNI de la persona.');
+    }
+    if ($nombre === '') {
+        throw new InvalidArgumentException('Ingresá el nombre y apellido de la persona.');
+    }
+
+    $st = $pdo->prepare("INSERT INTO ventas_personas
+        (dni, nombre_apellido, id_alumno, origen, creado_en, actualizado_en)
+        VALUES (:dni, :nombre, :id_alumno, :origen, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+          nombre_apellido = VALUES(nombre_apellido),
+          id_alumno = COALESCE(VALUES(id_alumno), id_alumno),
+          origen = VALUES(origen),
+          actualizado_en = NOW()");
+    $st->execute([
+        ':dni' => $dni,
+        ':nombre' => $nombre,
+        ':id_alumno' => $idAlumno,
+        ':origen' => $origen,
+    ]);
+
+    $st = $pdo->prepare('SELECT id_persona, dni, nombre_apellido, id_alumno, origen FROM ventas_personas WHERE dni = :dni LIMIT 1');
+    $st->execute([':dni' => $dni]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        throw new RuntimeException('No se pudo guardar la persona de la venta.');
+    }
+
+    return $row;
+}
+
+function ventas_resolver_persona_venta($pdo, $dni, $nombreInformado = '', $waId = null, $origen = 'manual') {
+    ventas_asegurar_esquema_personas($pdo);
+
+    $dni = ventas_normalizar_dni($dni);
+    $nombreInformado = ventas_text($nombreInformado, 160, true);
+    if ($dni === '') {
+        throw new InvalidArgumentException('Ingresá el DNI de la persona.');
+    }
+
+    $alumno = ventas_buscar_alumno_por_dni($pdo, $dni);
+    if ($alumno) {
+        $nombreAlumno = ventas_nombre_alumno_desde_row($alumno);
+        $nombreFinal = $nombreInformado !== '' ? $nombreInformado : $nombreAlumno;
+        $persona = ventas_guardar_persona_venta($pdo, $dni, $nombreFinal, (int)$alumno['id_alumno'], $waId, 'alumno');
+        $persona['id_alumno'] = (int)$alumno['id_alumno'];
+        $persona['nombre_apellido'] = $nombreFinal;
+        return $persona;
+    }
+
+    $st = $pdo->prepare('SELECT id_persona, dni, nombre_apellido, id_alumno, origen FROM ventas_personas WHERE dni = :dni LIMIT 1');
+    $st->execute([':dni' => $dni]);
+    $persona = $st->fetch(PDO::FETCH_ASSOC);
+
+    if ($persona && $nombreInformado === '') {
+        return $persona;
+    }
+
+    if ($nombreInformado === '') {
+        throw new InvalidArgumentException('No encontré ese DNI en alumnos ni en personas de ventas. Ingresá nombre y apellido para registrarlo.');
+    }
+
+    return ventas_guardar_persona_venta($pdo, $dni, $nombreInformado, $persona['id_alumno'] ?? null, $waId, $origen);
+}
+
 function ventas_tablas_verificadas($pdo) {
     if (!($pdo instanceof PDO)) {
         throw new RuntimeException('Conexión PDO no disponible.');
@@ -312,29 +512,25 @@ function ventas_tablas_verificadas($pdo) {
     }
 
     ventas_asegurar_esquema_productos_independientes($pdo);
+    ventas_asegurar_esquema_precios_producto($pdo);
     ventas_asegurar_esquema_ordenes_medios_pago($pdo);
     ventas_asegurar_esquema_ordenes_retiro($pdo);
+    ventas_asegurar_esquema_personas($pdo);
     ventas_asegurar_esquema_items_excel($pdo);
 }
 
 function ventas_tipo_persona($value) {
-    $v = strtolower(trim((string)($value ?? '')));
-    if (in_array($v, array('vendedor', 'responsable', 'responsable_dni', 'dni_responsable'), true)) {
-        return 'vendedor';
-    }
-    return 'comprador';
+    // Flujo unificado: todas las ventas escolares identifican a la persona por DNI.
+    // Se conserva el valor interno 'vendedor' por compatibilidad con el enum existente.
+    return 'vendedor';
 }
 
 function ventas_pregunta_default($tipoPersona) {
-    return $tipoPersona === 'vendedor'
-        ? 'Ingresá el DNI del alumno, docente o responsable que va a realizar el pago.'
-        : 'Escribí nombre y apellido de quien compra.';
+    return 'Ingresá el DNI de la persona/alumno que va a realizar la compra o pago.';
 }
 
 function ventas_mensaje_inicio_default($tipoPersona) {
-    return $tipoPersona === 'vendedor'
-        ? 'Indicá la cantidad de paquetes, números o productos vendidos.'
-        : 'Indicá la cantidad que querés comprar.';
+    return 'Indicá la cantidad que querés comprar o registrar.';
 }
 
 function ventas_normalizar_stock($stockRaw) {

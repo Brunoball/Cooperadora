@@ -117,6 +117,7 @@ export default function OrdenesTab({
 
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.persona_nombre || "Sin nombre"}</strong>
+                    <span>{o.persona_dni ? `DNI: ${o.persona_dni}` : (o.persona_detalle || "Sin DNI")}</span>
                   </div>
 
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">

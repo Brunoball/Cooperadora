@@ -53,18 +53,22 @@ try {
         $id = (int)($in['id_producto'] ?? 0);
         $nombre = ventas_text($in['nombre'] ?? '', 150, false);
         $descripcion = ventas_nullable_text($in['descripcion'] ?? '', 2000, false);
-        $precio = ventas_decimal($in['precio'] ?? 0);
+        $precioAnticipada = ventas_decimal($in['precio_anticipada'] ?? ($in['precio'] ?? 0));
+        $precioPuerta = ventas_decimal($in['precio_puerta'] ?? ($in['precio'] ?? $precioAnticipada));
+        $precio = $precioAnticipada; // Compatibilidad con la columna legacy.
         $stock = ventas_normalizar_stock($in['stock'] ?? null);
         $tieneColumnaCampaniaLegacy = (bool)ventas_column_exists($pdo, 'ventas_productos', 'id_campania');
 
         if ($nombre === '') throw new InvalidArgumentException('El nombre del producto es obligatorio.');
-        if ($precio < 0) throw new InvalidArgumentException('El precio no puede ser negativo.');
+        if ($precioAnticipada < 0 || $precioPuerta < 0) throw new InvalidArgumentException('Los precios no pueden ser negativos.');
 
         $activo = ventas_bool($in['activo'] ?? 1, 1);
         $data = [
             ':nombre' => $nombre,
             ':descripcion' => $descripcion,
             ':precio' => $precio,
+            ':precio_anticipada' => $precioAnticipada,
+            ':precio_puerta' => $precioPuerta,
             ':stock' => $stock,
             ':activo' => $activo,
         ];
@@ -78,6 +82,8 @@ try {
                     nombre = :nombre,
                     descripcion = :descripcion,
                     precio = :precio,
+                    precio_anticipada = :precio_anticipada,
+                    precio_puerta = :precio_puerta,
                     stock = :stock,
                     activo = :activo
                 WHERE id_producto = :id
@@ -89,16 +95,16 @@ try {
             if ($tieneColumnaCampaniaLegacy) {
                 $sql = "
                     INSERT INTO ventas_productos
-                    (id_campania, nombre, descripcion, precio, stock, activo)
+                    (id_campania, nombre, descripcion, precio, precio_anticipada, precio_puerta, stock, activo)
                     VALUES
-                    (NULL, :nombre, :descripcion, :precio, :stock, :activo)
+                    (NULL, :nombre, :descripcion, :precio, :precio_anticipada, :precio_puerta, :stock, :activo)
                 ";
             } else {
                 $sql = "
                     INSERT INTO ventas_productos
-                    (nombre, descripcion, precio, stock, activo)
+                    (nombre, descripcion, precio, precio_anticipada, precio_puerta, stock, activo)
                     VALUES
-                    (:nombre, :descripcion, :precio, :stock, :activo)
+                    (:nombre, :descripcion, :precio, :precio_anticipada, :precio_puerta, :stock, :activo)
                 ";
             }
             $st = $pdo->prepare($sql);

@@ -1,7 +1,7 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faEye, faEyeSlash, faPowerOff, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { asBool, money, personaLabel } from "../ventasConfig";
+import { asBool, money } from "../ventasConfig";
 
 export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDelete, onToggleActivo, loading = false }) {
   return (
@@ -20,8 +20,8 @@ export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDe
           <div className="ventas-div-head" role="rowgroup">
             <div className="ventas-div-row ventas-div-row--head" role="row">
               <div className="ventas-div-cell" role="columnheader">Venta</div>
-              <div className="ventas-div-cell" role="columnheader">Flujo</div>
-              <div className="ventas-div-cell" role="columnheader">Principal / precio</div>
+              <div className="ventas-div-cell" role="columnheader">Identificación</div>
+              <div className="ventas-div-cell" role="columnheader">Principal / precios</div>
               <div className="ventas-div-cell" role="columnheader">Conceptos</div>
               <div className="ventas-div-cell" role="columnheader">Ventas</div>
               <div className="ventas-div-cell" role="columnheader">Bot</div>
@@ -52,12 +52,16 @@ export default function CampaniasTab({ tableTabs, campanias, onAdd, onEdit, onDe
                       <span>Venta #{c.id_campania}</span>
                     </div>
                     <div className="ventas-div-cell ventas-div-cell--main" role="cell">
-                      <strong>{personaLabel(c.tipo_persona)}</strong>
+                      <strong>DNI persona/alumno</strong>
                       <span>{c.pregunta_persona || "Sin pregunta configurada."}</span>
                     </div>
                     <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                       <strong>{c.producto_principal_nombre || "Sin producto"}</strong>
-                      <span>{c.producto_principal_nombre ? money(c.producto_principal_precio) : "Seleccioná un producto para mostrarla en el bot."}</span>
+                      <span>
+                        {c.producto_principal_nombre
+                          ? `Ant. ${money(c.producto_principal_precio_anticipada ?? c.producto_principal_precio)} · Puerta ${money(c.producto_principal_precio_puerta ?? c.producto_principal_precio)}`
+                          : "Seleccioná un producto para mostrarla en el bot."}
+                      </span>
                     </div>
                     <div className="ventas-div-cell" role="cell">{c.productos_activos || 0}</div>
                     <div className="ventas-div-cell" role="cell">{c.ordenes_total || 0}</div>

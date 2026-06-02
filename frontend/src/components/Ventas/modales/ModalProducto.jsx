@@ -7,6 +7,7 @@ import { asBool } from "../ventasConfig";
 
 export default function ModalProducto({ abierto, form, setForm, saving, onClose, onSubmit }) {
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const setPrecioAnticipada = (value) => setForm((prev) => ({ ...prev, precio_anticipada: value, precio: value }));
   const titulo = form?.id_producto ? "Editar producto" : "Nuevo producto";
 
   return (
@@ -24,7 +25,7 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
               <FontAwesomeIcon icon={faBoxOpen} />
             </span>
             <span>
-              El producto se carga al catálogo y después se selecciona desde Configuración para definir qué se va a vender.
+              El producto tiene dos precios: <strong>anticipada</strong> y <strong>en puerta</strong>. El bot siempre usa anticipada; en ventas manuales podés elegir cualquiera.
             </span>
           </div>
 
@@ -57,10 +58,31 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
 
             <div className="ventas-form-row ventas-producto-grid">
               <label className="ventas-producto-field ventas-producto-field--money">
-                <span>Precio</span>
+                <span>Precio anticipada</span>
                 <div className="ventas-producto-inputIcon">
                   <FontAwesomeIcon icon={faDollarSign} />
-                  <input type="number" min="0" step="0.01" value={form.precio} onChange={(e) => setField("precio", e.target.value)} required />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.precio_anticipada ?? form.precio ?? ""}
+                    onChange={(e) => setPrecioAnticipada(e.target.value)}
+                    required
+                  />
+                </div>
+              </label>
+              <label className="ventas-producto-field ventas-producto-field--money">
+                <span>Precio en puerta</span>
+                <div className="ventas-producto-inputIcon">
+                  <FontAwesomeIcon icon={faDollarSign} />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.precio_puerta ?? ""}
+                    onChange={(e) => setField("precio_puerta", e.target.value)}
+                    required
+                  />
                 </div>
               </label>
               <label className="ventas-producto-field">

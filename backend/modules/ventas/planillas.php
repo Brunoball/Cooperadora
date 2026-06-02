@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 
+const VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT = '3564 665050';
+
 function ventas_planillas_h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
@@ -227,7 +229,7 @@ final class VentasPlanillasPdfVertical
     private array $pages = [];
     private array $cmd = [];
 
-    public function drawCourseSheet(array $grupo, array $campania, ?array $productoGan): void
+    public function drawCourseSheet(array $grupo, array $campania, ?array $productoGan, string $numeroBot = ''): void
     {
         $this->addPage();
 
@@ -243,11 +245,13 @@ final class VentasPlanillasPdfVertical
         $campaniaNombre = ventas_planillas_upper(trim((string)($campania['nombre'] ?? 'Venta escolar')));
         $precioVenTxt = ventas_planillas_money($campania['producto_principal_precio'] ?? 0);
         $precioGanTxt = $productoGan ? ventas_planillas_money($productoGan['precio'] ?? 0) : '';
+        $numeroBotTxt = trim($numeroBot) !== '' ? trim($numeroBot) : VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT;
 
         $metaY = $H - 7.9 * $mm;
         $xLeft = 2.8 * $mm;
         $xRight = $W - 2.8 * $mm;
         $this->text('Curso: ' . $cursoCompleto . ' · Alumnos: ' . $cantidad, $xLeft, $metaY, 6.5, false, 'left');
+        $this->text('Número bot: ' . $numeroBotTxt, $W / 2, $metaY, 6.5, true, 'center');
         $this->text('Docente responsable: _______________________________', $xRight, $metaY, 6.5, false, 'right');
 
         $marginX = 5 * $mm;
@@ -465,7 +469,7 @@ final class VentasPlanillasPdfVertical
     }
 }
 
-function ventas_planillas_render_cursos($campania, $grupos, $productoGan, $soloActivos) {
+function ventas_planillas_render_cursos($campania, $grupos, $productoGan, $soloActivos, string $numeroBot = VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT) {
     $campaniaNombre = trim((string)($campania['nombre'] ?? 'Venta escolar')) ?: 'Venta escolar';
     $totalCursos = count($grupos);
 
@@ -475,7 +479,7 @@ function ventas_planillas_render_cursos($campania, $grupos, $productoGan, $soloA
 
     $pdf = new VentasPlanillasPdfVertical();
     foreach ($grupos as $grupo) {
-        $pdf->drawCourseSheet($grupo, $campania, $productoGan);
+        $pdf->drawCourseSheet($grupo, $campania, $productoGan, $numeroBot);
     }
 
     $filename = 'planillas_' . ventas_planillas_slug($campaniaNombre) . '_vertical.pdf';
@@ -500,13 +504,15 @@ try {
         $soloActivos = isset($_GET['solo_activos']) ? ventas_bool($_GET['solo_activos'], 1) === 1 : true;
         $idAnio = isset($_GET['id_anio']) ? (int)$_GET['id_anio'] : 0;
         $idDivision = isset($_GET['id_division']) ? (int)$_GET['id_division'] : 0;
+        $numeroBot = trim((string)($_GET['numero_bot'] ?? VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT));
+        $numeroBot = preg_replace('/[^0-9+()\s.-]/', '', $numeroBot) ?: VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT;
 
         $campania = ventas_planillas_obtener_campania($pdo, $idCampania);
         $productoGan = ventas_planillas_producto_gan($pdo, isset($campania['id_producto_principal']) ? (int)$campania['id_producto_principal'] : null);
         $alumnos = ventas_planillas_obtener_alumnos($pdo, $soloActivos, $idAnio, $idDivision);
         $grupos = ventas_planillas_agrupar_por_curso($alumnos);
 
-        ventas_planillas_render_cursos($campania, $grupos, $productoGan, $soloActivos);
+        ventas_planillas_render_cursos($campania, $grupos, $productoGan, $soloActivos, $numeroBot);
     }
 
     ventas_json(['exito' => false, 'mensaje' => 'Acción de planillas no válida.'], 404);

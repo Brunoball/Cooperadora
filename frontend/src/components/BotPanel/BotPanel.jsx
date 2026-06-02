@@ -240,6 +240,8 @@ const BotEventosModal = ({
   onMarkOne,
   onMarkAll,
   onOpenChat,
+  onAprobarComprobante,
+  onRechazarComprobante,
 }) => {
   if (!open) return null;
 
@@ -313,6 +315,8 @@ const BotEventosModal = ({
             const tipo = String(ev.tipo || "error");
             const ctx = ev.contexto && typeof ev.contexto === "object" ? ev.contexto : {};
             const ctxEntries = Object.entries(ctx).filter(([, v]) => v !== "" && v !== null && v !== undefined && v !== 0);
+            const idComprobante = Number(ctx?.id_comprobante || 0);
+            const esComprobanteVenta = String(ev.modulo || "") === "ventas_comprobante" && idComprobante > 0;
 
             return (
               <div key={ev.id_evento} className={`wp-event-card wp-event-card--${tipo} ${pendiente ? "is-pending" : "is-reviewed"}`}>
@@ -344,9 +348,29 @@ const BotEventosModal = ({
 
                 {pendiente ? (
                   <div className="wp-event-foot">
-                    <button type="button" className="wp-events-btn wp-events-btn--ok" onClick={() => onMarkOne?.(ev.id_evento)}>
-                      Marcar revisado
-                    </button>
+                    {esComprobanteVenta ? (
+                      <>
+                        <button
+                          type="button"
+                          className="wp-events-btn wp-events-btn--approve"
+                          onClick={() => onAprobarComprobante?.(idComprobante, ev.id_evento)}
+                        >
+                          Aprobar
+                        </button>
+                        <button
+                          type="button"
+                          className="wp-events-btn wp-events-btn--reject"
+                          onClick={() => onRechazarComprobante?.(idComprobante, ev.id_evento)}
+                        >
+                          Rechazar
+                        </button>
+                      </>
+                    ) : null}
+                    {!esComprobanteVenta ? (
+                      <button type="button" className="wp-events-btn wp-events-btn--ok" onClick={() => onMarkOne?.(ev.id_evento)}>
+                        Marcar revisado
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -462,6 +486,15 @@ const BotPanel = () => {
   });
   const [loadingEventos, setLoadingEventos] = useState(false);
   const [errorEventos, setErrorEventos] = useState("");
+
+  const [comprobanteConfirm, setComprobanteConfirm] = useState({
+    open: false,
+    accion: "",
+    idComprobante: 0,
+    idEvento: 0,
+  });
+  const [comprobanteConfirmLoading, setComprobanteConfirmLoading] = useState(false);
+  const [comprobanteConfirmError, setComprobanteConfirmError] = useState("");
 
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState("bot");
@@ -647,7 +680,7 @@ const BotPanel = () => {
       setErrorEventos("");
       try {
         const { res, data } = await fetchJSON(
-          `${PANEL_API}/panel_eventos.php?limit=100&_=${Date.now()}`
+          `${PANEL_API}/panel_eventos.php?estado=pendiente&limit=100&_=${Date.now()}`
         );
         if (!res.ok || !data?.success) {
           throw new Error(data?.error || `Error HTTP ${res.status}`);
@@ -798,6 +831,79 @@ const BotPanel = () => {
     setViewerOpen(false);
     setViewerItem(null);
   };
+
+  const abrirConfirmacionComprobante = useCallback((accion, idComprobante = 0, idEvento = 0) => {
+    const tipo = accion === "rechazar" ? "rechazar" : "aprobar";
+    setComprobanteConfirm({
+      open: true,
+      accion: tipo,
+      idComprobante: Number(idComprobante || 0),
+      idEvento: Number(idEvento || 0),
+    });
+    setComprobanteConfirmError("");
+  }, []);
+
+  const cerrarConfirmacionComprobante = useCallback(() => {
+    if (comprobanteConfirmLoading) return;
+    setComprobanteConfirm({ open: false, accion: "", idComprobante: 0, idEvento: 0 });
+    setComprobanteConfirmError("");
+  }, [comprobanteConfirmLoading]);
+
+  const ejecutarAccionComprobante = useCallback(
+    async () => {
+      const accion = comprobanteConfirm.accion === "rechazar" ? "rechazar" : "aprobar";
+      const idComprobante = Number(comprobanteConfirm.idComprobante || 0);
+      const idEvento = Number(comprobanteConfirm.idEvento || 0);
+
+      if (idComprobante <= 0) {
+        setComprobanteConfirmError("Falta el comprobante a procesar.");
+        return;
+      }
+
+      try {
+        setComprobanteConfirmLoading(true);
+        setLoadingEventos(true);
+        setErrorEventos("");
+        setComprobanteConfirmError("");
+
+        const { res, data } = await postJSON(`${PANEL_API}/panel_ventas_comprobante_transferencia.php`, {
+          accion: accion === "rechazar" ? "rechazar_comprobante" : "aprobar_comprobante",
+          id_comprobante: idComprobante,
+          id_evento: idEvento,
+        });
+
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
+
+        setComprobanteConfirm({ open: false, accion: "", idComprobante: 0, idEvento: 0 });
+        await fetchEventos(true);
+        await fetchChats(true);
+      } catch (e) {
+        const msg = e?.message || (comprobanteConfirm.accion === "rechazar" ? "No se pudo rechazar el comprobante" : "No se pudo aprobar el comprobante");
+        setComprobanteConfirmError(msg);
+        setErrorEventos(msg);
+      } finally {
+        setComprobanteConfirmLoading(false);
+        setLoadingEventos(false);
+      }
+    },
+    [comprobanteConfirm, postJSON, fetchEventos, fetchChats]
+  );
+
+  const aprobarComprobanteVenta = useCallback(
+    (idComprobante = 0, idEvento = 0) => {
+      abrirConfirmacionComprobante("aprobar", idComprobante, idEvento);
+    },
+    [abrirConfirmacionComprobante]
+  );
+
+  const rechazarComprobanteVenta = useCallback(
+    (idComprobante = 0, idEvento = 0) => {
+      abrirConfirmacionComprobante("rechazar", idComprobante, idEvento);
+    },
+    [abrirConfirmacionComprobante]
+  );
 
   const fetchMensajes = useCallback(
     async (waId, { silent = false } = {}) => {
@@ -2188,10 +2294,29 @@ const BotPanel = () => {
         onRefresh={() => fetchEventos(false)}
         onMarkOne={(idEvento) => marcarEventoRevisado(idEvento)}
         onMarkAll={() => marcarEventoRevisado(0)}
+        onAprobarComprobante={(idComprobante, idEvento) => aprobarComprobanteVenta(idComprobante, idEvento)}
+        onRechazarComprobante={(idComprobante, idEvento) => rechazarComprobanteVenta(idComprobante, idEvento)}
         onOpenChat={(waId) => {
           setEventosOpen(false);
           openChat(waId);
         }}
+      />
+
+      <ConfirmActionModal
+        open={comprobanteConfirm.open}
+        title={comprobanteConfirm.accion === "rechazar" ? "Rechazar comprobante" : "Aprobar comprobante"}
+        description={
+          comprobanteConfirm.accion === "rechazar"
+            ? "Vas a rechazar este comprobante. El comprador recibirá un mensaje indicando que el pago no pudo ser aprobado. No se registrará la venta."
+            : "Vas a aprobar este comprobante. Se registrará la venta en Cooperadora y el comprador recibirá el aviso de pago aprobado."
+        }
+        confirmText={comprobanteConfirm.accion === "rechazar" ? "Sí, rechazar" : "Sí, aprobar"}
+        cancelText="Cancelar"
+        danger={comprobanteConfirm.accion === "rechazar"}
+        loading={comprobanteConfirmLoading}
+        error={comprobanteConfirmError}
+        onClose={cerrarConfirmacionComprobante}
+        onConfirm={ejecutarAccionComprobante}
       />
 
       <GaleriaModal

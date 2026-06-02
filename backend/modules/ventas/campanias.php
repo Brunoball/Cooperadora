@@ -17,8 +17,8 @@ try {
         $sql = "
             SELECT
                 c.*,
-                CASE WHEN c.tipo_persona = 'vendedor' THEN 'responsable_dni' ELSE 'comprador_nombre' END AS tipo_flujo,
-                CASE WHEN c.tipo_persona = 'vendedor' THEN 'dni' ELSE 'nombre' END AS dato_requerido,
+                'dni_persona' AS tipo_flujo,
+                'dni' AS dato_requerido,
                 CASE
                   WHEN c.activo = 1
                    AND c.visible_menu = 1
@@ -34,7 +34,9 @@ try {
                 c.id_producto_principal AS id_producto_principal,
                 pp.nombre AS producto_principal_nombre,
                 pp.descripcion AS producto_principal_descripcion,
-                pp.precio AS producto_principal_precio,
+                COALESCE(pp.precio_anticipada, pp.precio) AS producto_principal_precio,
+                COALESCE(pp.precio_anticipada, pp.precio) AS producto_principal_precio_anticipada,
+                COALESCE(pp.precio_puerta, pp.precio_anticipada, pp.precio) AS producto_principal_precio_puerta,
                 pp.stock AS producto_principal_stock,
                 pp.activo AS producto_principal_activo
             FROM ventas_campanias c
@@ -44,6 +46,12 @@ try {
         ";
 
         $items = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($items as &$item) {
+            $item['tipo_persona'] = 'vendedor';
+            $item['tipo_flujo'] = 'dni_persona';
+            $item['dato_requerido'] = 'dni';
+        }
+        unset($item);
         ventas_json(['exito' => true, 'items' => $items]);
     }
 
@@ -55,7 +63,7 @@ try {
         $in = ventas_body();
         $id = (int)($in['id_campania'] ?? 0);
         $nombre = ventas_text($in['nombre'] ?? '', 150, false);
-        $tipoPersona = ventas_tipo_persona($in['tipo_persona'] ?? 'comprador');
+        $tipoPersona = 'vendedor'; // Flujo unificado: siempre se pide DNI.
         $idProductoPrincipal = (int)($in['id_producto_principal'] ?? 0);
 
         if ($nombre === '') {
@@ -65,7 +73,7 @@ try {
             throw new InvalidArgumentException('Seleccioná el producto que se va a vender. Los productos se cargan desde la pestaña Productos.');
         }
 
-        $stProducto = $pdo->prepare('SELECT id_producto, nombre, activo FROM ventas_productos WHERE id_producto = :id LIMIT 1');
+        $stProducto = $pdo->prepare('SELECT id_producto, nombre, activo, COALESCE(precio_anticipada, precio) AS precio_anticipada FROM ventas_productos WHERE id_producto = :id LIMIT 1');
         $stProducto->execute([':id' => $idProductoPrincipal]);
         $producto = $stProducto->fetch(PDO::FETCH_ASSOC);
         if (!$producto) {
@@ -82,6 +90,9 @@ try {
         $visibleMenu = ventas_bool($in['visible_menu'] ?? 1, 1);
         if ($activo === 1 && $visibleMenu === 1 && (int)$producto['activo'] !== 1) {
             throw new InvalidArgumentException('El producto seleccionado está inactivo. Activá el producto desde la pestaña Productos o elegí otro.');
+        }
+        if ($activo === 1 && $visibleMenu === 1 && (float)($producto['precio_anticipada'] ?? 0) <= 0) {
+            throw new InvalidArgumentException('Para mostrar esta venta en el bot, el producto debe tener precio anticipada mayor a cero.');
         }
 
         $preguntaDefault = ventas_pregunta_default($tipoPersona);
@@ -166,7 +177,7 @@ try {
         $activo = ventas_bool($in['activo'] ?? 0);
         if ($id <= 0) throw new InvalidArgumentException('ID de venta inválido.');
 
-        $st = $pdo->prepare("SELECT c.id_campania, c.nombre, c.id_producto_principal, p.activo AS producto_activo FROM ventas_campanias c LEFT JOIN ventas_productos p ON p.id_producto = c.id_producto_principal WHERE c.id_campania = :id LIMIT 1");
+        $st = $pdo->prepare("SELECT c.id_campania, c.nombre, c.id_producto_principal, p.activo AS producto_activo, COALESCE(p.precio_anticipada, p.precio) AS producto_precio_anticipada FROM ventas_campanias c LEFT JOIN ventas_productos p ON p.id_producto = c.id_producto_principal WHERE c.id_campania = :id LIMIT 1");
         $st->execute([':id' => $id]);
         $campania = $st->fetch(PDO::FETCH_ASSOC);
         if (!$campania) throw new InvalidArgumentException('La venta no existe.');
@@ -174,6 +185,9 @@ try {
         if ($activo === 1) {
             if (empty($campania['id_producto_principal']) || (int)$campania['producto_activo'] !== 1) {
                 throw new InvalidArgumentException('Para activar la venta, primero seleccioná un producto activo.');
+            }
+            if ((float)($campania['producto_precio_anticipada'] ?? 0) <= 0) {
+                throw new InvalidArgumentException('Para activar la venta en el bot, el producto debe tener precio anticipada mayor a cero.');
             }
 
             $pdo->beginTransaction();

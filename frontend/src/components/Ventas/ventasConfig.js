@@ -3,9 +3,9 @@ export const emptyCampania = {
   nombre: "",
   activo: 1,
   visible_menu: 1,
-  tipo_persona: "comprador",
-  pregunta_persona: "Escribí nombre y apellido de quien compra.",
-  mensaje_inicio: "Indicá la cantidad que querés pagar.",
+  tipo_persona: "vendedor",
+  pregunta_persona: "Ingresá el DNI de la persona o alumno que va a realizar la compra/pago.",
+  mensaje_inicio: "Indicá la cantidad que querés comprar.",
   mensaje_aprobado: "Pago aprobado. Te enviamos el comprobante en PDF.",
   fecha_inicio: "",
   fecha_fin: "",
@@ -13,6 +13,8 @@ export const emptyCampania = {
   producto_nombre: "",
   producto_descripcion: "",
   producto_precio: "",
+  producto_precio_anticipada: "",
+  producto_precio_puerta: "",
   producto_stock: "",
 };
 
@@ -21,30 +23,22 @@ export const emptyProducto = {
   nombre: "",
   descripcion: "",
   precio: "",
+  precio_anticipada: "",
+  precio_puerta: "",
   stock: "",
   activo: 1,
 };
 
 export const tiposPersona = [
   {
-    value: "comprador",
-    label: "Pedir nombre del comprador",
-    shortLabel: "Comprador por nombre",
-    menuLabel: "Nombre del comprador",
-    pregunta: "Escribí nombre y apellido de quien compra.",
-    mensajeInicio: "Indicá la cantidad que querés comprar.",
-    ejemplo: "Entradas, baile escolar, bono o venta libre.",
-    resumen: "El bot pide nombre y apellido del comprador, luego cantidad y link de pago.",
-  },
-  {
     value: "vendedor",
-    label: "Pedir DNI del responsable",
-    shortLabel: "Responsable por DNI",
-    menuLabel: "DNI del responsable",
-    pregunta: "Ingresá el DNI del alumno, docente o responsable que va a realizar el pago.",
-    mensajeInicio: "Indicá la cantidad de paquetes, números o productos vendidos.",
-    ejemplo: "Talitas, rifas o ventas cargadas a un alumno/docente.",
-    resumen: "El bot pide DNI, busca al responsable, confirma con Sí/No y luego pide cantidad vendida.",
+    label: "Pedir DNI de la persona/alumno",
+    shortLabel: "DNI persona/alumno",
+    menuLabel: "DNI persona/alumno",
+    pregunta: "Ingresá el DNI de la persona o alumno que va a realizar la compra/pago.",
+    mensajeInicio: "Indicá la cantidad que querés comprar.",
+    ejemplo: "Todas las ventas: entradas, rifas, talitas, bonos o venta general.",
+    resumen: "El bot siempre pide DNI, busca en alumnos y personas de ventas, confirma el nombre y luego pide cantidad.",
   },
 ];
 
@@ -65,6 +59,35 @@ export const money = (value) => {
     maximumFractionDigits: 0,
   });
 };
+
+export const tiposPrecioProducto = [
+  { value: "anticipada", label: "Anticipada" },
+  { value: "puerta", label: "En puerta" },
+];
+
+const normalizarNumero = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+export const precioProductoAnticipada = (producto) => {
+  if (!producto) return 0;
+  return normalizarNumero(producto.precio_anticipada ?? producto.precio ?? 0);
+};
+
+export const precioProductoPuerta = (producto) => {
+  if (!producto) return 0;
+  return normalizarNumero(producto.precio_puerta ?? producto.precio_anticipada ?? producto.precio ?? 0);
+};
+
+export const normalizarTipoPrecio = (tipo) => (tipo === "puerta" ? "puerta" : "anticipada");
+
+export const precioProductoPorTipo = (producto, tipo = "anticipada") => (
+  normalizarTipoPrecio(tipo) === "puerta" ? precioProductoPuerta(producto) : precioProductoAnticipada(producto)
+);
+
+export const precioTipoLabel = (tipo) => (normalizarTipoPrecio(tipo) === "puerta" ? "En puerta" : "Anticipada");
+
 
 export const asBool = (v) => Number(v) === 1 || v === true || v === "1";
 
@@ -96,11 +119,14 @@ export const emptyOrden = {
   id_producto: "",
   producto_nombre: "",
   precio_unitario: "",
+  precio_tipo: "anticipada",
   cantidad: 1,
   columna_codigo: "VEN",
   columna_nombre: "Venta",
   items: [],
-  persona_tipo: "comprador",
+  persona_tipo: "vendedor",
+  persona_dni: "",
+  dni: "",
   persona_nombre: "",
   persona_detalle: "",
   comprador_telefono: "",

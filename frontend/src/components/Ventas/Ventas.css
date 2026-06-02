@@ -539,7 +539,7 @@
 }
 
 .ventas-div-table--productos {
-  min-width: 860px;
+  min-width: 980px;
 }
 
 .ventas-div-row {
@@ -563,7 +563,7 @@
 }
 
 .ventas-div-table--productos .ventas-div-row {
-  grid-template-columns: 1.5fr 1fr 0.75fr 0.65fr 0.75fr 0.8fr;
+  grid-template-columns: 1.45fr 0.95fr 0.72fr 0.72fr 0.62fr 0.68fr 0.78fr;
 }
 
 .ventas-div-table--campanias .ventas-div-row {
@@ -1529,7 +1529,7 @@
 }
 
 .ventas-div-table--productos {
-  min-width: 860px;
+  min-width: 980px;
 }
 
 .ventas-div-table--campanias {
@@ -1548,7 +1548,7 @@
 }
 
 .ventas-div-table--productos .ventas-div-row {
-  grid-template-columns: 1.5fr 1fr 0.75fr 0.65fr 0.75fr 0.8fr;
+  grid-template-columns: 1.45fr 0.95fr 0.72fr 0.72fr 0.62fr 0.68fr 0.78fr;
 }
 
 .ventas-div-table--campanias .ventas-div-row {

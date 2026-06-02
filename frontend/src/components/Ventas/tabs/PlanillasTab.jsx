@@ -13,6 +13,8 @@ const abrirEnNuevaPestana = (url) => {
   if (nuevaVentana) nuevaVentana.opener = null;
 };
 
+const NUMERO_BOT_PLANILLAS = "3564 665050";
+
 export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
   const [idCampania, setIdCampania] = useState(() => obtenerCampaniaInicial(campanias));
   const [soloActivos, setSoloActivos] = useState(true);
@@ -44,6 +46,7 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
     params.set("orientacion", "vertical");
     params.set("formato_hoja", "vertical");
     params.set("estilo", "calcado");
+    params.set("numero_bot", NUMERO_BOT_PLANILLAS);
 
     abrirEnNuevaPestana(`${apiUrl}?${params.toString()}`);
   };
@@ -87,7 +90,7 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
             <span>Observaciones</span>
           </div>
 
-          <p className="ventas-planillas-note">Preparada para entregar a cada docente responsable.</p>
+          <p className="ventas-planillas-note">Preparada para entregar a cada docente responsable. Número bot: <strong>{NUMERO_BOT_PLANILLAS}</strong></p>
         </div>
 
         <div className="ventas-planillas-panel ventas-planillas-panel--controls">

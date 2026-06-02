@@ -1,7 +1,7 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faPowerOff, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { asBool, money } from "../ventasConfig";
+import { asBool, money, precioProductoAnticipada, precioProductoPuerta } from "../ventasConfig";
 
 export default function ProductosTab({ tableTabs, productos, onAdd, onEdit, onDelete, onToggleActivo, loading = false }) {
   return (
@@ -21,7 +21,8 @@ export default function ProductosTab({ tableTabs, productos, onAdd, onEdit, onDe
             <div className="ventas-div-row ventas-div-row--head" role="row">
               <div className="ventas-div-cell" role="columnheader">Producto</div>
               <div className="ventas-div-cell" role="columnheader">Usado en ventas</div>
-              <div className="ventas-div-cell" role="columnheader">Precio</div>
+              <div className="ventas-div-cell" role="columnheader">Anticipada</div>
+              <div className="ventas-div-cell" role="columnheader">En puerta</div>
               <div className="ventas-div-cell" role="columnheader">Stock</div>
               <div className="ventas-div-cell" role="columnheader">Estado</div>
               <div className="ventas-div-cell ventas-div-cell--actions" role="columnheader">Acciones</div>
@@ -32,7 +33,7 @@ export default function ProductosTab({ tableTabs, productos, onAdd, onEdit, onDe
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={`skeleton-producto-${i}`} className="ventas-div-row ventas-skeleton-row" role="row" aria-hidden="true">
-                  {Array.from({ length: 6 }).map((__, j) => (
+                  {Array.from({ length: 7 }).map((__, j) => (
                     <div key={j} className="ventas-div-cell"><span className="ventas-skeleton-line" /></div>
                   ))}
                 </div>
@@ -49,7 +50,8 @@ export default function ProductosTab({ tableTabs, productos, onAdd, onEdit, onDe
                       <span>{p.descripcion || "Sin descripción."}</span>
                     </div>
                     <div className="ventas-div-cell" role="cell">{p.campanias_asociadas || "Sin asignar"}</div>
-                    <div className="ventas-div-cell" role="cell">{money(p.precio)}</div>
+                    <div className="ventas-div-cell" role="cell">{money(precioProductoAnticipada(p))}</div>
+                    <div className="ventas-div-cell" role="cell">{money(precioProductoPuerta(p))}</div>
                     <div className="ventas-div-cell" role="cell">{p.stock === null || p.stock === undefined || p.stock === "" ? "Sin límite" : p.stock}</div>
                     <div className="ventas-div-cell" role="cell">
                       <span className={`ventas-status ${activo ? "ok" : "muted"}`}>

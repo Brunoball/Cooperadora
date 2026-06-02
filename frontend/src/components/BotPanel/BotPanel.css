@@ -1326,3 +1326,29 @@
   .wp-events-summary span{ width: 100%; }
   .wp-event-date{ margin-left: 0; }
 }
+
+/* Bot: aprobación manual de comprobantes de ventas */
+.wp-events-btn--approve{
+  background: rgba(59,130,246,.16);
+  border-color: rgba(59,130,246,.36);
+  color: #bfdbfe;
+}
+.wp-events-btn--approve:hover:not(:disabled){
+  filter: brightness(1.12);
+}
+:root[data-botpanel-theme="light"] .wp-events-btn--approve{
+  color: #1d4ed8;
+}
+
+/* Bot: rechazo manual de comprobantes de ventas */
+.wp-events-btn--reject{
+  background: rgba(239,68,68,.16);
+  border-color: rgba(239,68,68,.38);
+  color: #fecaca;
+}
+.wp-events-btn--reject:hover:not(:disabled){
+  filter: brightness(1.12);
+}
+:root[data-botpanel-theme="light"] .wp-events-btn--reject{
+  color: #b91c1c;
+}

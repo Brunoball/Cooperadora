@@ -44,10 +44,44 @@ function ventas_estado_orden($value): string {
 
 function ventas_producto_por_id(PDO $pdo, int $idProducto): ?array {
     if ($idProducto <= 0) return null;
-    $st = $pdo->prepare('SELECT id_producto, nombre, precio, activo FROM ventas_productos WHERE id_producto = :id LIMIT 1');
+    $st = $pdo->prepare('SELECT id_producto, nombre, precio, COALESCE(precio_anticipada, precio) AS precio_anticipada, COALESCE(precio_puerta, precio_anticipada, precio) AS precio_puerta, activo FROM ventas_productos WHERE id_producto = :id LIMIT 1');
     $st->execute([':id' => $idProducto]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
     return $row ?: null;
+}
+
+function ventas_tipo_precio_producto($value): string {
+    return strtolower(trim((string)($value ?? 'anticipada'))) === 'puerta' ? 'puerta' : 'anticipada';
+}
+
+function ventas_precio_producto_por_tipo(?array $producto, string $tipo): float {
+    if (!$producto) return 0.0;
+    $tipo = ventas_tipo_precio_producto($tipo);
+    if ($tipo === 'puerta') {
+        return ventas_decimal($producto['precio_puerta'] ?? ($producto['precio_anticipada'] ?? ($producto['precio'] ?? 0)));
+    }
+    return ventas_decimal($producto['precio_anticipada'] ?? ($producto['precio'] ?? 0));
+}
+
+function ventas_metadata_item_precio($metadataRaw, string $precioTipo, ?array $productoDb): string {
+    $metadata = [];
+
+    if (is_string($metadataRaw) && trim($metadataRaw) !== '') {
+        $decoded = json_decode($metadataRaw, true);
+        if (is_array($decoded)) $metadata = $decoded;
+    } elseif (is_array($metadataRaw)) {
+        $metadata = $metadataRaw;
+    }
+
+    $metadata['precio_tipo'] = ventas_tipo_precio_producto($precioTipo);
+    $metadata['precio_label'] = $metadata['precio_tipo'] === 'puerta' ? 'En puerta' : 'Anticipada';
+
+    if ($productoDb) {
+        $metadata['precio_anticipada_catalogo'] = ventas_decimal($productoDb['precio_anticipada'] ?? ($productoDb['precio'] ?? 0));
+        $metadata['precio_puerta_catalogo'] = ventas_decimal($productoDb['precio_puerta'] ?? ($productoDb['precio_anticipada'] ?? ($productoDb['precio'] ?? 0)));
+    }
+
+    return json_encode($metadata, JSON_UNESCAPED_UNICODE);
 }
 
 function ventas_normalizar_items_orden(PDO $pdo, array $in, array $campania): array {
@@ -93,9 +127,10 @@ function ventas_normalizar_items_orden(PDO $pdo, array $in, array $campania): ar
             throw new InvalidArgumentException('Cada concepto de la venta debe tener producto o nombre.');
         }
 
+        $precioTipo = ventas_tipo_precio_producto($item['precio_tipo'] ?? 'anticipada');
         $precioUnitario = array_key_exists('precio_unitario', $item) && $item['precio_unitario'] !== ''
             ? ventas_decimal($item['precio_unitario'])
-            : ventas_decimal($productoDb['precio'] ?? 0);
+            : ventas_precio_producto_por_tipo($productoDb, $precioTipo);
 
         if ($precioUnitario < 0) {
             throw new InvalidArgumentException('El precio unitario no puede ser negativo.');
@@ -108,12 +143,8 @@ function ventas_normalizar_items_orden(PDO $pdo, array $in, array $campania): ar
         $nombreColumna = ventas_nullable_text($item['columna_nombre'] ?? $productoNombre, 120, false);
         $subtotal = round($cantidad * $precioUnitario, 2);
 
-        $metadata = null;
-        if (isset($item['metadata_json']) && is_string($item['metadata_json']) && trim($item['metadata_json']) !== '') {
-            $metadata = trim($item['metadata_json']);
-        } elseif (isset($item['metadata']) && is_array($item['metadata'])) {
-            $metadata = json_encode($item['metadata'], JSON_UNESCAPED_UNICODE);
-        }
+        $metadataRaw = $item['metadata_json'] ?? ($item['metadata'] ?? null);
+        $metadata = ventas_metadata_item_precio($metadataRaw, $precioTipo, $productoDb);
 
         $items[] = [
             'id_producto' => $productoDb ? (int)$productoDb['id_producto'] : null,
@@ -151,6 +182,72 @@ try {
         ventas_json(['exito' => true, 'items' => $items]);
     }
 
+    if ($action === 'ventas_personas_catalogo') {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+            ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $q = ventas_text($_GET['q'] ?? '', 120, false);
+        $like = '%' . $q . '%';
+
+        $whereAlumnos = "WHERE a.num_documento IS NOT NULL AND TRIM(a.num_documento) <> ''";
+        $paramsAlumnos = [];
+        if ($q !== '') {
+            $whereAlumnos .= " AND (a.apellido LIKE :q OR a.nombre LIKE :q OR a.num_documento LIKE :q OR an.`nombre_año` LIKE :q OR d.nombre_division LIKE :q)";
+            $paramsAlumnos[':q'] = $like;
+        }
+
+        $stAlumnos = $pdo->prepare(" 
+            SELECT
+                a.id_alumno,
+                a.apellido,
+                a.nombre,
+                a.num_documento AS dni,
+                a.telefono,
+                a.activo,
+                an.`nombre_año`,
+                d.nombre_division
+            FROM alumnos a
+            LEFT JOIN anio an ON an.`id_año` = a.`id_año`
+            LEFT JOIN division d ON d.id_division = a.id_division
+            $whereAlumnos
+            ORDER BY a.activo DESC, a.apellido ASC, a.nombre ASC, a.id_alumno ASC
+            LIMIT 5000
+        ");
+        $stAlumnos->execute($paramsAlumnos);
+        $alumnos = $stAlumnos->fetchAll(PDO::FETCH_ASSOC);
+
+        $wherePersonas = "WHERE vp.dni IS NOT NULL AND TRIM(vp.dni) <> ''";
+        $paramsPersonas = [];
+        if ($q !== '') {
+            $wherePersonas .= " AND (vp.nombre_apellido LIKE :q OR vp.dni LIKE :q OR vp.origen LIKE :q OR vp.observacion LIKE :q)";
+            $paramsPersonas[':q'] = $like;
+        }
+
+        $stPersonas = $pdo->prepare(" 
+            SELECT
+                vp.id_persona,
+                vp.dni,
+                vp.nombre_apellido,
+                vp.id_alumno,
+                vp.origen,
+                vp.observacion,
+                vp.actualizado_en
+            FROM ventas_personas vp
+            $wherePersonas
+            ORDER BY vp.actualizado_en DESC, vp.nombre_apellido ASC, vp.id_persona DESC
+            LIMIT 5000
+        ");
+        $stPersonas->execute($paramsPersonas);
+        $personas = $stPersonas->fetchAll(PDO::FETCH_ASSOC);
+
+        ventas_json([
+            'exito' => true,
+            'alumnos' => $alumnos,
+            'personas' => $personas,
+        ]);
+    }
+
     if ($action === 'ventas_ordenes' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $idCampania = isset($_GET['id_campania']) ? (int)$_GET['id_campania'] : 0;
         $estado = ventas_text($_GET['estado'] ?? '', 30, false);
@@ -178,6 +275,7 @@ try {
                 o.codigo_orden LIKE :q
                 OR o.persona_nombre LIKE :q
                 OR o.persona_detalle LIKE :q
+                OR o.persona_dni LIKE :q
                 OR o.comprador_telefono LIKE :q
                 OR o.payment_id LIKE :q
                 OR mp.medio_pago LIKE :q
@@ -380,7 +478,9 @@ try {
                 c.tipo_persona,
                 p.id_producto,
                 p.nombre AS producto_nombre,
-                p.precio AS producto_precio
+                COALESCE(p.precio_anticipada, p.precio) AS producto_precio,
+                COALESCE(p.precio_anticipada, p.precio) AS producto_precio_anticipada,
+                COALESCE(p.precio_puerta, p.precio_anticipada, p.precio) AS producto_precio_puerta
             FROM ventas_campanias c
             LEFT JOIN ventas_productos p ON p.id_producto = c.id_producto_principal
             WHERE c.id_campania = :id
@@ -390,11 +490,25 @@ try {
         $campania = $st->fetch(PDO::FETCH_ASSOC);
         if (!$campania) throw new InvalidArgumentException('La venta seleccionada no existe.');
 
+        $personaDni = ventas_normalizar_dni($in['persona_dni'] ?? ($in['dni'] ?? ''));
         $personaNombre = ventas_text($in['persona_nombre'] ?? '', 160, true);
         $personaDetalle = ventas_nullable_text($in['persona_detalle'] ?? '', 160, true);
         $telefono = ventas_nullable_text($in['comprador_telefono'] ?? '', 40, false);
         $observacion = ventas_nullable_text($in['observacion'] ?? '', 5000, false);
+
+        if ($personaDni === '' || strlen($personaDni) < 6) {
+            throw new InvalidArgumentException('Ingresá el DNI de la persona/alumno, solo números, con mínimo 6 dígitos.');
+        }
+
+        $personaVenta = ventas_resolver_persona_venta($pdo, $personaDni, $personaNombre, $telefono, 'manual');
+        $idVentaPersona = (int)($personaVenta['id_persona'] ?? 0);
+        $idAlumnoPersona = (int)($personaVenta['id_alumno'] ?? 0);
+        $personaNombre = ventas_text($personaVenta['nombre_apellido'] ?? $personaNombre, 160, true);
+
         if ($personaNombre === '') throw new InvalidArgumentException('Ingresá el nombre informado para la venta.');
+        if ($personaDetalle === null || $personaDetalle === '') {
+            $personaDetalle = 'DNI: ' . $personaDni . ($idAlumnoPersona > 0 ? ' | Alumno ID: ' . $idAlumnoPersona : '');
+        }
 
         $items = ventas_normalizar_items_orden($pdo, $in, $campania);
         $total = round(array_sum(array_map(static fn($it) => (float)$it['subtotal'], $items)), 2);
@@ -418,6 +532,8 @@ try {
                         persona_tipo = :persona_tipo,
                         persona_nombre = :persona_nombre,
                         persona_detalle = :persona_detalle,
+                        id_venta_persona = :id_venta_persona,
+                        persona_dni = :persona_dni,
                         estado = :estado,
                         id_medio_pago = :id_medio_pago,
                         total = :total,
@@ -431,9 +547,11 @@ try {
                 $st->execute([
                     ':id_campania' => $idCampania,
                     ':comprador_telefono' => $telefono,
-                    ':persona_tipo' => $campania['tipo_persona'],
+                    ':persona_tipo' => 'vendedor',
                     ':persona_nombre' => $personaNombre,
                     ':persona_detalle' => $personaDetalle,
+                    ':id_venta_persona' => $idVentaPersona > 0 ? $idVentaPersona : null,
+                    ':persona_dni' => $personaDni,
                     ':estado' => $estado,
                     ':id_medio_pago' => $idMedioPago,
                     ':total' => $total,
@@ -450,18 +568,20 @@ try {
                 $st = $pdo->prepare(" 
                     INSERT INTO ventas_ordenes
                     (codigo_orden, id_campania, comprador_telefono, persona_tipo, persona_nombre, persona_detalle,
-                     estado, id_medio_pago, total, mp_status, origen, observacion, creado_en, aprobado_en, cancelado_en)
+                     id_venta_persona, persona_dni, estado, id_medio_pago, total, mp_status, origen, observacion, creado_en, aprobado_en, cancelado_en)
                     VALUES
                     (:codigo_orden, :id_campania, :comprador_telefono, :persona_tipo, :persona_nombre, :persona_detalle,
-                     :estado, :id_medio_pago, :total, :mp_status, 'manual', :observacion, :creado_en, :aprobado_en, :cancelado_en)
+                     :id_venta_persona, :persona_dni, :estado, :id_medio_pago, :total, :mp_status, 'manual', :observacion, :creado_en, :aprobado_en, :cancelado_en)
                 ");
                 $st->execute([
                     ':codigo_orden' => $codigo,
                     ':id_campania' => $idCampania,
                     ':comprador_telefono' => $telefono,
-                    ':persona_tipo' => $campania['tipo_persona'],
+                    ':persona_tipo' => 'vendedor',
                     ':persona_nombre' => $personaNombre,
                     ':persona_detalle' => $personaDetalle,
+                    ':id_venta_persona' => $idVentaPersona > 0 ? $idVentaPersona : null,
+                    ':persona_dni' => $personaDni,
                     ':estado' => $estado,
                     ':id_medio_pago' => $idMedioPago,
                     ':total' => $total,

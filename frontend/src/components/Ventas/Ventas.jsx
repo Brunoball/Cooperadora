@@ -66,6 +66,8 @@ export default function Ventas() {
   const [productosCampaniaModal, setProductosCampaniaModal] = useState([]);
   const [ordenes, setOrdenes] = useState([]);
   const [mediosPago, setMediosPago] = useState([]);
+  const [personasCatalogo, setPersonasCatalogo] = useState({ alumnos: [], personas: [] });
+  const [personasCatalogoLoading, setPersonasCatalogoLoading] = useState(false);
 
   const [campaniaForm, setCampaniaForm] = useState(emptyCampania);
   const [productoForm, setProductoForm] = useState(emptyProducto);
@@ -147,6 +149,21 @@ export default function Ventas() {
     return rows;
   }, [request]);
 
+  const cargarPersonasCatalogo = useCallback(async () => {
+    setPersonasCatalogoLoading(true);
+    try {
+      const data = await request("ventas_personas_catalogo");
+      const catalogo = {
+        alumnos: Array.isArray(data.alumnos) ? data.alumnos : [],
+        personas: Array.isArray(data.personas) ? data.personas : [],
+      };
+      setPersonasCatalogo(catalogo);
+      return catalogo;
+    } finally {
+      setPersonasCatalogoLoading(false);
+    }
+  }, [request]);
+
   const cargarOrdenes = useCallback(async (filtros = null) => {
     const params = new URLSearchParams();
     const idCampaniaFiltro =
@@ -175,14 +192,14 @@ export default function Ventas() {
     try {
       const tareas = [cargarDashboard(), cargarCampanias()];
       if (tab === "productos") tareas.push(cargarProductos());
-      if (tab === "ordenes") tareas.push(cargarOrdenes(), cargarMediosPago());
+      if (tab === "ordenes") tareas.push(cargarOrdenes(), cargarMediosPago(), cargarPersonasCatalogo());
       await Promise.all(tareas);
     } catch (e) {
       showToast("error", e.message);
     } finally {
       setLoading(false);
     }
-  }, [cargarCampanias, cargarDashboard, cargarMediosPago, cargarOrdenes, cargarProductos, showToast, tab]);
+  }, [cargarCampanias, cargarDashboard, cargarMediosPago, cargarOrdenes, cargarPersonasCatalogo, cargarProductos, showToast, tab]);
 
   useEffect(() => {
     cargarTodo();
@@ -193,8 +210,9 @@ export default function Ventas() {
     if (tab === "ordenes") {
       cargarOrdenes().catch((e) => showToast("error", e.message));
       cargarMediosPago().catch((e) => showToast("error", e.message));
+      cargarPersonasCatalogo().catch((e) => showToast("error", e.message));
     }
-  }, [tab, campaniaSeleccionada, cargarMediosPago, cargarProductos, cargarOrdenes, showToast]);
+  }, [tab, campaniaSeleccionada, cargarMediosPago, cargarPersonasCatalogo, cargarProductos, cargarOrdenes, showToast]);
 
   const campaniaActual = useMemo(
     () => campanias.find((c) => String(c.id_campania) === String(campaniaSeleccionada)),
@@ -211,10 +229,10 @@ export default function Ventas() {
     // La acción puede afectar más de una pestaña: por ejemplo, eliminar un producto
     // impacta en Productos y también en Configuración si una venta lo usaba.
     if (tab === "productos") tareas.push(cargarProductos());
-    if (tab === "ordenes") tareas.push(cargarOrdenes(), cargarMediosPago());
+    if (tab === "ordenes") tareas.push(cargarOrdenes(), cargarMediosPago(), cargarPersonasCatalogo());
 
     await Promise.all(tareas);
-  }, [cargarCampanias, cargarDashboard, cargarMediosPago, cargarOrdenes, cargarProductos, tab]);
+  }, [cargarCampanias, cargarDashboard, cargarMediosPago, cargarOrdenes, cargarPersonasCatalogo, cargarProductos, tab]);
 
   const refrescarDespuesDeGuardar = async () => {
     await recargarVistaActual();
@@ -243,14 +261,16 @@ export default function Ventas() {
       fecha_fin: toInputDate(c.fecha_fin),
       activo: Number(c.activo || 0),
       visible_menu: Number(c.visible_menu || 0),
-      tipo_persona: c.tipo_persona || "comprador",
+      tipo_persona: "vendedor",
       pregunta_persona: c.pregunta_persona || emptyCampania.pregunta_persona,
       mensaje_inicio: c.mensaje_inicio || emptyCampania.mensaje_inicio,
       mensaje_aprobado: c.mensaje_aprobado || emptyCampania.mensaje_aprobado,
       id_producto_principal: c.id_producto_principal || "",
       producto_nombre: c.producto_principal_nombre || "",
       producto_descripcion: c.producto_principal_descripcion || "",
-      producto_precio: c.producto_principal_precio ?? "",
+      producto_precio: c.producto_principal_precio_anticipada ?? c.producto_principal_precio ?? "",
+      producto_precio_anticipada: c.producto_principal_precio_anticipada ?? c.producto_principal_precio ?? "",
+      producto_precio_puerta: c.producto_principal_precio_puerta ?? c.producto_principal_precio ?? "",
       producto_stock: c.producto_principal_stock ?? "",
     });
     setModalCampania(true);
@@ -269,6 +289,7 @@ export default function Ventas() {
     try {
       const payload = {
         ...campaniaForm,
+        tipo_persona: "vendedor",
         id_producto_principal: campaniaForm.id_producto_principal || "",
       };
       await request("ventas_campania_guardar", { method: "POST", body: payload });
@@ -294,7 +315,9 @@ export default function Ventas() {
       ...emptyProducto,
       ...p,
       id_producto: p.id_producto || "",
-      precio: p.precio ?? "",
+      precio: p.precio_anticipada ?? p.precio ?? "",
+      precio_anticipada: p.precio_anticipada ?? p.precio ?? "",
+      precio_puerta: p.precio_puerta ?? p.precio_anticipada ?? p.precio ?? "",
       stock: p.stock ?? "",
       activo: Number(p.activo || 0),
     });
@@ -418,6 +441,7 @@ export default function Ventas() {
       const medios = mediosPago.length ? mediosPago : await cargarMediosPago();
       const productosCatalogo = productos.length ? productos : await cargarProductosCatalogo();
       if (!productos.length) setProductos(productosCatalogo);
+      await cargarPersonasCatalogo();
 
       const ventaBase =
         campaniaActual ||
@@ -432,7 +456,8 @@ export default function Ventas() {
         columna_codigo: "VEN",
         columna_nombre: ventaBase?.producto_principal_nombre || "Venta",
         cantidad: 1,
-        precio_unitario: ventaBase?.producto_principal_precio ?? "",
+        precio_tipo: "anticipada",
+        precio_unitario: ventaBase?.producto_principal_precio_anticipada ?? ventaBase?.producto_principal_precio ?? "",
       };
 
       setOrdenForm({
@@ -440,11 +465,12 @@ export default function Ventas() {
         id_campania: ventaBase?.id_campania || "",
         id_producto: itemBase.id_producto,
         producto_nombre: itemBase.producto_nombre,
+        precio_tipo: "anticipada",
         precio_unitario: itemBase.precio_unitario,
         columna_codigo: "VEN",
         columna_nombre: itemBase.columna_nombre,
         items: [itemBase],
-        persona_tipo: ventaBase?.tipo_persona || "comprador",
+        persona_tipo: "vendedor",
         id_medio_pago: medioEfectivo,
         fecha_venta: hoyInput(),
         estado: "aprobada",
@@ -460,6 +486,7 @@ export default function Ventas() {
       if (mediosPago.length === 0) await cargarMediosPago();
       const productosCatalogo = productos.length ? productos : await cargarProductosCatalogo();
       if (!productos.length) setProductos(productosCatalogo);
+      await cargarPersonasCatalogo();
 
       const itemsOrden = Array.isArray(o.items) && o.items.length
         ? o.items.map((item, index) => ({
@@ -468,6 +495,14 @@ export default function Ventas() {
             columna_codigo: item.columna_codigo || (index === 0 ? "VEN" : "ITEM"),
             columna_nombre: item.columna_nombre || item.producto_nombre || "",
             cantidad: item.cantidad || 1,
+            precio_tipo: (() => {
+              try {
+                const metadata = typeof item.metadata_json === "string" && item.metadata_json.trim() !== "" ? JSON.parse(item.metadata_json) : item.metadata;
+                return metadata?.precio_tipo === "puerta" ? "puerta" : "anticipada";
+              } catch (_) {
+                return "anticipada";
+              }
+            })(),
             precio_unitario: item.precio_unitario ?? "",
           }))
         : [{
@@ -476,6 +511,7 @@ export default function Ventas() {
             columna_codigo: o.columna_codigo || "VEN",
             columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
             cantidad: o.cantidad || 1,
+            precio_tipo: "anticipada",
             precio_unitario: o.precio_unitario ?? "",
           }];
 
@@ -486,12 +522,15 @@ export default function Ventas() {
         id_campania: o.id_campania || "",
         id_producto: o.id_producto || "",
         producto_nombre: o.producto_nombre || "",
+        precio_tipo: "anticipada",
         precio_unitario: o.precio_unitario ?? "",
         cantidad: o.cantidad || 1,
         columna_codigo: o.columna_codigo || "VEN",
         columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
         items: itemsOrden,
-        persona_tipo: o.persona_tipo || "comprador",
+        persona_tipo: "vendedor",
+        persona_dni: o.persona_dni || o.dni || "",
+        dni: o.persona_dni || o.dni || "",
         persona_nombre: o.persona_nombre || "",
         persona_detalle: o.persona_detalle || "",
         comprador_telefono: o.comprador_telefono || "",
@@ -510,7 +549,7 @@ export default function Ventas() {
     e.preventDefault();
     setSaving(true);
     try {
-      await request("ventas_orden_guardar", { method: "POST", body: ordenForm });
+      await request("ventas_orden_guardar", { method: "POST", body: { ...ordenForm, persona_tipo: "vendedor" } });
       showToast("exito", ordenForm.id_orden ? "Venta actualizada correctamente." : "Venta manual agregada correctamente.");
       setModalOrden(false);
       setOrdenForm(emptyOrden);
@@ -518,7 +557,7 @@ export default function Ventas() {
       // Después de guardar una venta manual, mostramos el listado completo para que no quede
       // oculta por un filtro de campaña anterior.
       setCampaniaSeleccionada("");
-      await Promise.all([cargarDashboard(), cargarOrdenes({ idCampania: "" })]);
+      await Promise.all([cargarDashboard(), cargarOrdenes({ idCampania: "" }), cargarPersonasCatalogo()]);
     } catch (err) {
       showToast("error", err.message);
     } finally {
@@ -690,6 +729,9 @@ export default function Ventas() {
         campanias={campanias}
         productos={productos}
         mediosPago={mediosPago}
+        alumnosCatalogo={personasCatalogo.alumnos}
+        personasCatalogo={personasCatalogo.personas}
+        personasCatalogoLoading={personasCatalogoLoading}
         saving={saving}
         onClose={() => setModalOrden(false)}
         onSubmit={guardarOrden}

@@ -27,6 +27,7 @@ function route_ventas($action) {
         case 'ventas_orden_retiro':
         case 'ventas_orden_eliminar':
         case 'ventas_medios_pago':
+        case 'ventas_personas_catalogo':
             require __DIR__ . '/ordenes.php';
             return true;
 
