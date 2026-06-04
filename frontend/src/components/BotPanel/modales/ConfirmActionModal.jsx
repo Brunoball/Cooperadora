@@ -1,4 +1,5 @@
 import React from "react";
+import { useModalEscapeStack } from "./useModalEscapeStack";
 import "./ConfirmActionModal.css";
 
 const ConfirmActionModal = ({
@@ -13,6 +14,8 @@ const ConfirmActionModal = ({
   onClose,
   onConfirm,
 }) => {
+  useModalEscapeStack(open, onClose);
+
   if (!open) return null;
 
   return (

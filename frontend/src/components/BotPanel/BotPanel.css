@@ -52,6 +52,10 @@
 
   --wp-reply-bg: #1f2c33;
   --wp-reply-border: #00a884;
+
+  /* Patrón decorativo sutil del fondo de conversación. */
+  --wp-chat-pattern: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22284%22%20height=%22196%22%20viewBox=%220%200%20284%20196%22%3E%3Cg%20fill=%22none%22%20stroke=%22%238a98a1%22%20stroke-opacity=%22.15%22%20stroke-width=%221.65%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Cpath%20d=%22M18%2027h29a8%208%200%200%201%208%208v12a8%208%200%200%201-8%208H32l-10%208%203-8h-7a8%208%200%200%201-8-8V35a8%208%200%200%201%208-8Z%22/%3E%3Cpath%20d=%22M105%2017%20126%2029l-21%2012%205-12-5-12Z%22/%3E%3Cpath%20d=%22m110%2029%2012%200%22/%3E%3Ccircle%20cx=%22208%22%20cy=%2236%22%20r=%2213%22/%3E%3Cpath%20d=%22M202%2034h.1M214%2034h.1M202%2041c4%204%208%204%2012%200%22/%3E%3Cpath%20d=%22M250%2078c-8-7-15%204-8%2010l8%207%208-7c7-6%200-17-8-10Z%22/%3E%3Cpath%20d=%22M72%2098h24a7%207%200%200%201%207%207v20a7%207%200%200%201-7%207H72a7%207%200%200%201-7-7v-20a7%207%200%200%201%207-7Z%22/%3E%3Cpath%20d=%22m70%20121%208-9%207%207%205-5%209%209%22/%3E%3Ccircle%20cx=%2292%22%20cy=%22106%22%20r=%222%22/%3E%3Cpath%20d=%22M151%2095c-3%202-4%205-3%208%202%208%2010%2016%2018%2018%203%201%206%200%208-3l3-5-9-5-4%204c-4-2-7-5-9-9l4-4-5-9-3%205Z%22/%3E%3Cpath%20d=%22M25%20157h35M25%20165h23%22/%3E%3Cpath%20d=%22M121%20157a11%2011%200%200%201%2020-6%2011%2011%200%200%201-20%206Z%22/%3E%3Cpath%20d=%22M131%20141v8M205%20157l7-8%207%208-7%208-7-8Z%22/%3E%3Cpath%20d=%22M263%20145v27M253%20158h20%22/%3E%3C/g%3E%3C/svg%3E");
+  --wp-chat-pattern-size: 196px 136px;
 }
 
 /* ===== Variables LIGHT · WhatsApp ===== */
@@ -99,6 +103,8 @@
 
   --wp-reply-bg: rgba(0,168,132,.07);
   --wp-reply-border: #00a884;
+
+  --wp-chat-pattern: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22284%22%20height=%22196%22%20viewBox=%220%200%20284%20196%22%3E%3Cg%20fill=%22none%22%20stroke=%22%2353636b%22%20stroke-opacity=%22.105%22%20stroke-width=%221.65%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Cpath%20d=%22M18%2027h29a8%208%200%200%201%208%208v12a8%208%200%200%201-8%208H32l-10%208%203-8h-7a8%208%200%200%201-8-8V35a8%208%200%200%201%208-8Z%22/%3E%3Cpath%20d=%22M105%2017%20126%2029l-21%2012%205-12-5-12Z%22/%3E%3Cpath%20d=%22m110%2029%2012%200%22/%3E%3Ccircle%20cx=%22208%22%20cy=%2236%22%20r=%2213%22/%3E%3Cpath%20d=%22M202%2034h.1M214%2034h.1M202%2041c4%204%208%204%2012%200%22/%3E%3Cpath%20d=%22M250%2078c-8-7-15%204-8%2010l8%207%208-7c7-6%200-17-8-10Z%22/%3E%3Cpath%20d=%22M72%2098h24a7%207%200%200%201%207%207v20a7%207%200%200%201-7%207H72a7%207%200%200%201-7-7v-20a7%207%200%200%201%207-7Z%22/%3E%3Cpath%20d=%22m70%20121%208-9%207%207%205-5%209%209%22/%3E%3Ccircle%20cx=%2292%22%20cy=%22106%22%20r=%222%22/%3E%3Cpath%20d=%22M151%2095c-3%202-4%205-3%208%202%208%2010%2016%2018%2018%203%201%206%200%208-3l3-5-9-5-4%204c-4-2-7-5-9-9l4-4-5-9-3%205Z%22/%3E%3Cpath%20d=%22M25%20157h35M25%20165h23%22/%3E%3Cpath%20d=%22M121%20157a11%2011%200%200%201%2020-6%2011%2011%200%200%201-20%206Z%22/%3E%3Cpath%20d=%22M131%20141v8M205%20157l7-8%207%208-7%208-7-8Z%22/%3E%3Cpath%20d=%22M263%20145v27M253%20158h20%22/%3E%3C/g%3E%3C/svg%3E");
 }
 
 /* ===== Shell ===== */
@@ -502,6 +508,10 @@
   flex: 1;
   overflow: auto;
   padding: 16px 18px 10px;
+  background-image: var(--wp-chat-pattern);
+  background-size: var(--wp-chat-pattern-size);
+  background-position: 0 0;
+  background-repeat: repeat;
 }
 
 .wp-day{
@@ -1177,6 +1187,7 @@
 
   .wp-messages{
     padding: 12px 11px 8px;
+    background-size: 172px 119px;
   }
 
   .wp-bubble{
@@ -1466,4 +1477,169 @@
 :root[data-botpanel-theme="light"] .wp-chat-top,
 :root[data-botpanel-theme="light"] .wp-composer{
   border-color: rgba(17,27,33,.09);
+}
+
+/* ======================================================
+   ENCABEZADO DE CHAT · BOTONERA DE USUARIO
+   Agrupa controles y estados con una lectura más limpia.
+====================================================== */
+.wp-chat-top-right{
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:9px;
+}
+.wp-chat-actions{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:4px;
+  border:1px solid var(--wp-border-soft);
+  border-radius:17px;
+  background:color-mix(in srgb, var(--wp-card) 72%, transparent);
+  box-shadow:0 11px 26px -22px rgba(0,0,0,.55);
+}
+.wp-chat-status{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.wp-mode{
+  gap:3px;
+  padding:0;
+  border:0;
+  border-radius:13px;
+  background:transparent;
+}
+.wp-window{
+  width:auto;
+  min-width:48px;
+  height:38px;
+  margin-right:3px;
+  padding:0 9px;
+  border-radius:12px;
+  box-shadow:none;
+  font-size:12px;
+}
+.wp-modebtn{
+  width:38px;
+  height:38px;
+  border:1px solid transparent;
+  border-radius:12px;
+}
+.wp-modebtn:hover{
+  border-color:var(--wp-border-soft);
+}
+.wp-modebtn.is-active{
+  box-shadow:0 7px 16px -10px rgba(0,168,132,.68);
+}
+.wp-themebtn{
+  position:relative;
+  height:38px;
+  padding:0 11px;
+  border-radius:12px;
+  border-color:transparent;
+  background:transparent;
+}
+.wp-themebtn::before{
+  content:"";
+  position:absolute;
+  left:-4px;
+  top:9px;
+  bottom:9px;
+  width:1px;
+  background:var(--wp-border-soft);
+}
+.wp-themebtn:hover{
+  border-color:var(--wp-border-soft);
+}
+.wp-chip{
+  min-height:34px;
+  padding:0 11px;
+  font-weight:570;
+}
+:root[data-botpanel-theme="light"] .wp-chat-actions{
+  background:rgba(255,255,255,.78);
+  border-color:rgba(17,27,33,.09);
+  box-shadow:0 13px 28px -25px rgba(15,23,42,.42);
+}
+@media (max-width:1080px){
+  .wp-chat-top-right{
+    margin-left:auto;
+  }
+  .wp-chat-status{
+    width:100%;
+  }
+}
+@media (max-width:560px){
+  .wp-chat-top-right{
+    display:block;
+    overflow-x:visible;
+    padding-bottom:0;
+  }
+  .wp-chat-actions{
+    width:max-content;
+    max-width:100%;
+  }
+  .wp-chat-status{
+    width:100%;
+    margin-top:8px;
+    justify-content:flex-start;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:thin;
+  }
+  .wp-themebtn-txt{
+    display:none;
+  }
+  .wp-themebtn{
+    width:38px;
+    padding:0;
+    justify-content:center;
+  }
+}
+
+
+/* ======================================================
+   HEADER LATERAL · COLOR EN MODO CLARO
+   Franja de marca para Panel Bot WhatsApp y su botonera.
+====================================================== */
+:root[data-botpanel-theme="light"] .wp-side-top{
+  background: linear-gradient(135deg, var(--wp-brand-strong, #075e54) 0%, var(--wp-brand-primary, #00a884) 100%);
+  border-bottom: 1px solid rgba(7,94,84,.20);
+  box-shadow: 0 7px 18px rgba(7,94,84,.12);
+}
+
+:root[data-botpanel-theme="light"] .wp-side-top .wp-brand-title{
+  color: #fff;
+}
+
+:root[data-botpanel-theme="light"] .wp-side-top .wp-brand-ico{
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.23);
+  box-shadow: none;
+  color: #fff;
+}
+
+:root[data-botpanel-theme="light"] .wp-side-top .wp-back,
+:root[data-botpanel-theme="light"] .wp-side-top .wp-opts,
+:root[data-botpanel-theme="light"] .wp-side-top .wp-alertbtn{
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+}
+
+:root[data-botpanel-theme="light"] .wp-side-top .wp-back:hover,
+:root[data-botpanel-theme="light"] .wp-side-top .wp-opts:hover,
+:root[data-botpanel-theme="light"] .wp-side-top .wp-alertbtn:hover{
+  background: rgba(255,255,255,.20);
+  border-color: rgba(255,255,255,.30);
+}
+
+:root[data-botpanel-theme="light"] .wp-side-top .wp-alertbtn.is-danger{
+  background: rgba(220,38,38,.24);
+  border-color: rgba(254,202,202,.75);
+  color: #fff;
 }

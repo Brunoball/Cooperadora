@@ -1,4 +1,5 @@
 import React from "react";
+import { useModalEscapeStack } from "./useModalEscapeStack";
 import "./ComprobanteRevisionModal.css";
 
 const money = (value) => {
@@ -31,6 +32,8 @@ const ComprobanteRevisionModal = ({
   onClose,
   onConfirm,
 }) => {
+  useModalEscapeStack(open, onClose);
+
   if (!open) return null;
 
   const esRechazo = accion === "rechazar";

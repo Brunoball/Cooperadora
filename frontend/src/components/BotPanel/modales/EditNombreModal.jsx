@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useModalEscapeStack } from "./useModalEscapeStack";
 import "./EditNombreModal.css";
 
 const norm = (v) => String(v ?? "").trim();
@@ -14,6 +15,8 @@ const EditNombreModal = ({
 }) => {
   const inputRef = useRef(null);
   const [value, setValue] = useState("");
+
+  useModalEscapeStack(open, onClose);
 
   const initial = useMemo(() => norm(currentName), [currentName]);
 

@@ -1,5 +1,6 @@
 // src/components/BotPanel/modales/EditEtiquetaModal.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useModalEscapeStack } from "./useModalEscapeStack";
 import "./EditEtiquetaModal.css";
 
 const EditEtiquetaModal = ({
@@ -19,6 +20,8 @@ const EditEtiquetaModal = ({
   onRefreshEtiquetas,
 }) => {
   const cancelRef = useRef(null);
+
+  useModalEscapeStack(open, onClose);
 
   const [selectedId, setSelectedId] = useState("");
 
@@ -50,7 +53,6 @@ const EditEtiquetaModal = ({
   };
 
   const onKeyDown = (e) => {
-    if (e.key === "Escape") onClose?.();
     if (e.key === "Enter") {
       e.preventDefault();
       doSave();

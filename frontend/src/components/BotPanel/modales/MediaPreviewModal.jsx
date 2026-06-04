@@ -1,19 +1,16 @@
 import React, { useEffect, useRef } from "react";
+import { useModalEscapeStack } from "./useModalEscapeStack";
 import "./MediaPreviewModal.css";
 
 const MediaPreviewModal = ({ open, onClose, media }) => {
   const closeRef = useRef(null);
 
+  useModalEscapeStack(open, onClose);
+
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
-
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || !media) return null;
 
@@ -35,7 +32,7 @@ const MediaPreviewModal = ({ open, onClose, media }) => {
           </button>
         </div>
 
-        <div className="bp-preview-body">
+        <div className={`bp-preview-body ${isImage ? "bp-preview-body--image" : ""}`}>
           {isImage ? (
             <img
               src={media.media_url}

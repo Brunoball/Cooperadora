@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEllipsisVertical } from "@fortawesome/free-solid-svg-icons";
+import { faBroom, faEllipsisVertical, faImages, faPen, faTag, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import "./ChatOptionsMenu.css";
 
-const MENU_W = 190;
+const MENU_W = 218;
 const GAP = 8;
 
 const ChatOptionsMenu = ({
@@ -34,7 +34,7 @@ const ChatOptionsMenu = ({
     if (left > maxLeft) left = maxLeft;
     if (left < 8) left = 8;
 
-    const menuH = 230; // ✅ un poco más alto por "Ver galería"
+    const menuH = 250; // ✅ un poco más alto por "Ver galería"
     const maxTop = window.innerHeight - menuH - 8;
     if (top > maxTop) top = Math.max(8, r.top - menuH - GAP);
 
@@ -97,7 +97,7 @@ const ChatOptionsMenu = ({
       </button>
 
       {open ? (
-        <div className="chatopts-menu" style={{ top: pos.top, left: pos.left, width: MENU_W }}>
+        <div className="chatopts-menu" role="menu" aria-label="Opciones del chat" style={{ top: pos.top, left: pos.left, width: MENU_W }}>
           <button
             type="button"
             className="chatopts-item"
@@ -106,7 +106,8 @@ const ChatOptionsMenu = ({
               onEditarNombre?.();
             }}
           >
-            Editar nombre
+            <span className="chatopts-item-ico"><FontAwesomeIcon icon={faPen} /></span>
+            <span>Editar nombre</span>
           </button>
 
           <button
@@ -117,19 +118,21 @@ const ChatOptionsMenu = ({
               onCambiarEtiqueta?.();
             }}
           >
-            Cambiar etiqueta
+            <span className="chatopts-item-ico"><FontAwesomeIcon icon={faTag} /></span>
+            <span>Cambiar etiqueta</span>
           </button>
 
           {/* ✅ NUEVO */}
           <button
             type="button"
-            className="chatopts-item"
+            className="chatopts-item chatopts-item--gallery"
             onClick={() => {
               onClose?.();
               onVerGaleria?.();
             }}
           >
-            Ver galería
+            <span className="chatopts-item-ico"><FontAwesomeIcon icon={faImages} /></span>
+            <span>Ver galería</span>
           </button>
 
           <button
@@ -140,7 +143,8 @@ const ChatOptionsMenu = ({
               onVaciarChat?.();
             }}
           >
-            Vaciar chat
+            <span className="chatopts-item-ico"><FontAwesomeIcon icon={faBroom} /></span>
+            <span>Vaciar chat</span>
           </button>
 
           <button
@@ -151,7 +155,8 @@ const ChatOptionsMenu = ({
               onEliminarContacto?.();
             }}
           >
-            Eliminar contacto
+            <span className="chatopts-item-ico"><FontAwesomeIcon icon={faTrashCan} /></span>
+            <span>Eliminar contacto</span>
           </button>
         </div>
       ) : null}

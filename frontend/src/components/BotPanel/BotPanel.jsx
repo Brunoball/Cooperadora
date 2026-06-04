@@ -46,6 +46,7 @@ import ComprobanteRevisionModal from "./modales/ComprobanteRevisionModal";
 
 // ✅ NUEVO: modal galería
 import GaleriaModal from "./modales/GaleriaModal";
+import { useModalEscapeStack } from "./modales/useModalEscapeStack";
 
 const PANEL_API =
   process.env.REACT_APP_BOT_PANEL_URL ||
@@ -273,6 +274,8 @@ const BotEventosModal = ({
   onAprobarComprobante,
   onRechazarComprobante,
 }) => {
+  useModalEscapeStack(open, onClose);
+
   if (!open) return null;
 
   const pendientes = Number(resumen?.pendientes || 0);
@@ -400,12 +403,10 @@ const BotEventosModal = ({
 const MediaViewerModal = ({ open, onClose, item }) => {
   const boxRef = useRef(null);
 
+  useModalEscapeStack(open, onClose);
+
   useEffect(() => {
     if (!open) return;
-
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
 
     const onDown = (e) => {
       const box = boxRef.current;
@@ -413,10 +414,8 @@ const MediaViewerModal = ({ open, onClose, item }) => {
       if (!box.contains(e.target)) onClose?.();
     };
 
-    document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onDown);
     return () => {
-      document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onDown);
     };
   }, [open, onClose]);
@@ -454,7 +453,7 @@ const MediaViewerModal = ({ open, onClose, item }) => {
           </div>
         </div>
 
-        <div className="wp-media-body">
+        <div className={`wp-media-body ${isImg ? "wp-media-body--image" : ""}`}>
           {isImg ? (
             <img className="wp-media-img" src={item.url} alt={item.name || "imagen"} />
           ) : isPdf ? (
@@ -839,7 +838,6 @@ const BotPanel = () => {
 
   const openViewer = (item) => {
     if (!item?.url) return;
-    setGaleriaOpen(false);
     setViewerItem(item);
     setViewerOpen(true);
   };
@@ -1754,10 +1752,7 @@ const BotPanel = () => {
   const closeGaleria = () => setGaleriaOpen(false);
 
   const onOpenGalleryItem = (it) => {
-    setGaleriaOpen(false);
-    setTimeout(() => {
-      openViewer({ url: it.url, mime: it.mime, name: it.name });
-    }, 50);
+    openViewer({ url: it.url, mime: it.mime, name: it.name });
   };
 
   return (
@@ -1782,13 +1777,6 @@ const BotPanel = () => {
             </span>
             <div className="wp-brand-txt">
               <div className="wp-brand-title">Panel Bot WhatsApp</div>
-              <div className="wp-brand-sub">
-                {loadingChats
-                  ? "Cargando…"
-                  : refreshingChats
-                  ? "Actualizando…"
-                  : ""}
-              </div>
             </div>
           </div>
 
@@ -1975,96 +1963,95 @@ const BotPanel = () => {
               </div>
 
               <div className="wp-chat-top-right">
-                <div className="wp-mode">
-                  <div
-                    className={`wp-window ${isWindowExpired ? "is-expired" : ""}`}
-                    title={
-                      isWindowExpired
-                        ? "Ventana de 24hs expirada"
-                        : `Quedan ${selectedWindow.remainingHours}h`
-                    }
-                    aria-label="Ventana 24 horas"
-                  >
-                    {isWindowExpired ? (
-                      <span className="wp-window-x" aria-hidden="true">
-                        <FontAwesomeIcon icon={faXmark} />
-                      </span>
-                    ) : (
-                      <span className="wp-window-h">
-                        {selectedWindow.remainingHours}hs
-                      </span>
-                    )}
+                <div className="wp-chat-actions" aria-label="Acciones de la conversación">
+                  <div className="wp-mode">
+                    <div
+                      className={`wp-window ${isWindowExpired ? "is-expired" : ""}`}
+                      title={
+                        isWindowExpired
+                          ? "Ventana de 24hs expirada"
+                          : `Quedan ${selectedWindow.remainingHours}h`
+                      }
+                      aria-label="Ventana 24 horas"
+                    >
+                      {isWindowExpired ? (
+                        <span className="wp-window-x" aria-hidden="true">
+                          <FontAwesomeIcon icon={faXmark} />
+                        </span>
+                      ) : (
+                        <span className="wp-window-h">
+                          {selectedWindow.remainingHours}hs
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`wp-modebtn ${mode === "bot" ? "is-active" : ""}`}
+                      onClick={() => setModeDB("bot")}
+                      title="Modo Bot (respuestas automáticas activas)"
+                      aria-label="Modo Bot"
+                    >
+                      <FontAwesomeIcon icon={faRobot} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`wp-modebtn ${mode === "manual" ? "is-active" : ""}`}
+                      onClick={() => setModeDB("manual")}
+                      title={
+                        isWindowExpired
+                          ? "Modo Manual (pero ventana expirada: no se puede enviar)"
+                          : "Modo Manual (el bot queda inhabilitado)"
+                      }
+                      aria-label="Modo Manual"
+                    >
+                      <FontAwesomeIcon icon={faHand} />
+                    </button>
+
+                    <ChatOptionsMenu
+                      anchorRef={headerMenuBtnRef}
+                      open={openMenu}
+                      onOpen={() => setOpenMenu(true)}
+                      onClose={() => setOpenMenu(false)}
+                      onEditarNombre={() => openEditarNombre(selectedId)}
+                      onCambiarEtiqueta={() => openCambiarEtiqueta(selectedId)}
+                      onVerGaleria={() => openGaleria()}
+                      onVaciarChat={() => openVaciarChat(selectedId)}
+                      onEliminarContacto={() => openEliminarContacto(selectedId)}
+                    />
                   </div>
 
                   <button
                     type="button"
-                    className={`wp-modebtn ${mode === "bot" ? "is-active" : ""}`}
-                    onClick={() => setModeDB("bot")}
-                    title="Modo Bot (respuestas automáticas activas)"
-                    aria-label="Modo Bot"
-                  >
-                    <FontAwesomeIcon icon={faRobot} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`wp-modebtn ${mode === "manual" ? "is-active" : ""}`}
-                    onClick={() => setModeDB("manual")}
+                    className="wp-themebtn"
+                    onClick={toggleTheme}
                     title={
-                      isWindowExpired
-                        ? "Modo Manual (pero ventana expirada: no se puede enviar)"
-                        : "Modo Manual (el bot queda inhabilitado)"
+                      theme === "dark"
+                        ? "Cambiar a modo claro"
+                        : "Cambiar a modo oscuro"
                     }
-                    aria-label="Modo Manual"
+                    aria-label="Cambiar tema"
                   >
-                    <FontAwesomeIcon icon={faHand} />
+                    <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
+                    <span className="wp-themebtn-txt">
+                      {theme === "dark" ? "Claro" : "Oscuro"}
+                    </span>
                   </button>
-
-                  <ChatOptionsMenu
-                    anchorRef={headerMenuBtnRef}
-                    open={openMenu}
-                    onOpen={() => setOpenMenu(true)}
-                    onClose={() => setOpenMenu(false)}
-                    onEditarNombre={() => openEditarNombre(selectedId)}
-                    onCambiarEtiqueta={() => openCambiarEtiqueta(selectedId)}
-                    onVerGaleria={() => openGaleria()}
-                    onVaciarChat={() => openVaciarChat(selectedId)}
-                    onEliminarContacto={() => openEliminarContacto(selectedId)}
-                  />
                 </div>
 
-                <button
-                  type="button"
-                  className="wp-themebtn"
-                  onClick={toggleTheme}
-                  title={
-                    theme === "dark"
-                      ? "Cambiar a modo claro"
-                      : "Cambiar a modo oscuro"
-                  }
-                  aria-label="Cambiar tema"
-                >
-                  <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
-                  <span className="wp-themebtn-txt">
-                    {theme === "dark" ? "Claro" : "Oscuro"}
-                  </span>
-                </button>
+                <div className="wp-chat-status">
+                  {mode === "manual" ? (
+                    <span className="wp-chip wp-chip--manual">
+                      Manual activo • bot pausado
+                    </span>
+                  ) : null}
 
-                {mode === "manual" ? (
-                  <span className="wp-chip wp-chip--manual">
-                    Manual activo • bot pausado
+                  <span className="wp-chip wp-chip--tag">
+                    {selected?.etiqueta || "sin etiqueta"}
                   </span>
-                ) : null}
 
-                <span className="wp-chip wp-chip--tag">
-                  {selected?.etiqueta || "sin etiqueta"}
-                </span>
-
-                {loadingMsgs ? (
-                  <span className="wp-chip">
-                    <FontAwesomeIcon icon={faSpinner} spin /> Cargando…
-                  </span>
-                ) : null}
+                </div>
               </div>
             </div>
 
@@ -2379,6 +2366,7 @@ const BotPanel = () => {
 
       <GaleriaModal
         open={galeriaOpen}
+        inactive={viewerOpen}
         onClose={closeGaleria}
         items={galleryItems}
         title={`Galería • ${selected?.nombre || "Sin nombre"}`}
