@@ -666,17 +666,6 @@ export default function ModalOrden({
               </label>
 
               <label className="ventas-orden-field ventas-floating-field">
-                <span className="ventas-floating-label">Nombre y apellido</span>
-                <input
-                  value={form.persona_nombre || ""}
-                  onChange={(e) => setField("persona_nombre", e.target.value)}
-                  placeholder="Nombre y apellido"
-                  maxLength={160}
-                  required
-                />
-              </label>
-
-              <label className="ventas-orden-field ventas-orden-field--wide ventas-floating-field">
                 <span className="ventas-floating-label">Detalle / referencia opcional</span>
                 <input
                   value={form.persona_detalle || ""}

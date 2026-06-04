@@ -681,7 +681,6 @@ const Principal = () => {
                       </span>
                       <span className="pp-welcomeCard__text">
                         <strong>{item.label}</strong>
-                        <small>Ingresar a la sección</small>
                       </span>
                     </button>
                   ))}

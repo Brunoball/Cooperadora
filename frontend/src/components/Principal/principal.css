@@ -637,17 +637,13 @@ button{ font-weight:500; }
   min-width:0;
 }
 .pp-welcomeCard__text strong{
-  font-size:13px;
-  font-weight:500;
+  font-size:16px;
+  font-weight:600;
   color:var(--coop-text);
   line-height:1.22;
   letter-spacing:-.01em;
 }
-.pp-welcomeCard__text small{
-  font-size:12px;
-  font-weight:300;
-  color:var(--coop-muted);
-}
+
 
 /* =========================
    MODAL LOGOUT
