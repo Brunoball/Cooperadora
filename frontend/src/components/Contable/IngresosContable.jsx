@@ -245,6 +245,7 @@ export default function IngresosContable() {
   const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
 
   const [catFiltro, setCatFiltro] = useState("");
+  const [alertasImportes, setAlertasImportes] = useState([]);
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -309,6 +310,74 @@ export default function IngresosContable() {
     return data;
   }, []);
 
+  const getPagoDetalleKey = (r, idx) => {
+    const idPago = r?.id_pago ?? r?.Id_pago ?? r?.ID_PAGO ?? r?.pago_id ?? r?.idPago;
+    if (idPago !== undefined && idPago !== null && String(idPago).trim() !== "") {
+      return `PAGO|${idPago}`;
+    }
+
+    return [
+      r?.fecha_pago ?? "",
+      r?.Alumno ?? "",
+      r?.Mes_pagado_id ?? r?.id_mes ?? r?.Mes_pagado ?? "",
+      r?.Monto ?? r?.monto_pago ?? r?.importe ?? "",
+      r?.Medio ?? r?.medio ?? "",
+      idx,
+    ].join("|");
+  };
+
+  const deduplicarDetallePagos = (items = []) => {
+    const map = new Map();
+    items.forEach((item, idx) => {
+      const key = getPagoDetalleKey(item, idx);
+      if (!map.has(key)) map.set(key, item);
+    });
+    return Array.from(map.values());
+  };
+
+  const detectarImportesSospechosos = (rows = []) => {
+    const grupos = new Map();
+
+    rows.forEach((r) => {
+      const key = [r.fecha, r.alumno, r.categoria, r.medio].join("|");
+      const actual = grupos.get(key) || [];
+      actual.push(r);
+      grupos.set(key, actual);
+    });
+
+    const alertas = [];
+    grupos.forEach((items) => {
+      const meses = new Set(items.map((x) => Number(x.mesPagadoId || 0)).filter(Boolean));
+      if (items.length < 2 || meses.size < 2) return;
+
+      const montos = items.map((x) => Number(x.monto || 0)).filter((n) => Number.isFinite(n) && n > 0);
+      if (montos.length !== items.length) return;
+
+      const min = Math.min(...montos);
+      const max = Math.max(...montos);
+      if (min !== max) return;
+
+      const dividido = min / items.length;
+      const pareceTotalRepetido =
+        min >= 20000 &&
+        dividido >= 1000 &&
+        Number.isInteger(dividido) &&
+        dividido % 500 === 0;
+
+      if (!pareceTotalRepetido) return;
+
+      alertas.push({
+        alumno: items[0].alumno,
+        fecha: items[0].fecha,
+        cantidad: items.length,
+        monto: min,
+        posibleUnitario: dividido,
+      });
+    });
+
+    return alertas.slice(0, 5);
+  };
+
   /* ✅ Cargar meses especiales (FIJO, sin backend) */
   const loadMesesEspeciales = useCallback(() => {
     // Esto evita el 404 de /api.php?action=meses_list y mantiene Contable estable.
@@ -353,15 +422,17 @@ export default function IngresosContable() {
         }
       });
 
+      const detalleSinDuplicados = deduplicarDetallePagos(todosLosDatos);
+
       // ✅ Orden: más nuevo arriba (fecha DESC)
-      todosLosDatos.sort((a, b) => {
+      detalleSinDuplicados.sort((a, b) => {
         const ta = new Date(a?.fecha_pago || 0).getTime();
         const tb = new Date(b?.fecha_pago || 0).getTime();
         return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
       });
 
-      const rows = todosLosDatos.map((r, i) => ({
-        id: `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Monto || 0}|${i}`,
+      const rows = detalleSinDuplicados.map((r, i) => ({
+        id: r?.id_pago ? `PAGO|${r.id_pago}` : `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Mes_pagado_id || r?.id_mes || ""}|${r?.Monto || 0}|${i}`,
         fecha: r?.fecha_pago ?? "",
         alumno: r?.Alumno ?? "",
         categoria: r?.Categoria ?? "-",
@@ -372,9 +443,11 @@ export default function IngresosContable() {
       }));
 
       setFilas(rows);
+      setAlertasImportes(detectarImportesSospechosos(rows));
     } catch (e) {
       console.error("Error al cargar ingresos alumnos:", e);
       setFilas([]);
+      setAlertasImportes([]);
     } finally {
       setCargando(false);
     }
@@ -428,6 +501,9 @@ export default function IngresosContable() {
           medio: medioText,
           denominacion: categoriaText,
           descripcion: imputacionText,
+          origenContable: r.origen_contable || (r.id_venta_orden ? "venta" : "manual"),
+          idVentaOrden: r.id_venta_orden ? Number(r.id_venta_orden) : null,
+          ventaCodigo: r.venta_codigo || "",
         };
       });
       setFilasIngresos(rows);
@@ -514,6 +590,7 @@ export default function IngresosContable() {
           (f.categoria || "").toLowerCase().includes(q) ||
           (f.imputacion || f.descripcion || "").toLowerCase().includes(q) ||
           (f.proveedor || "").toLowerCase().includes(q) ||
+          (f.ventaCodigo || "").toLowerCase().includes(q) ||
           (f.fecha || "").toLowerCase().includes(q) ||
           (String(f.importe) || "").toLowerCase().includes(q) ||
           (f.medio || "").toLowerCase().includes(q)
@@ -563,10 +640,12 @@ export default function IngresosContable() {
     } else {
       rows = base.map((r) => ({
         Fecha: formatFechaDMY(r.fecha),
-        Proveedor: r.proveedor || "",
+        "Persona / Proveedor": r.proveedor || "",
+        Categoría: r.categoria || "-",
         Imputación: r.imputacion || r.descripcion || "",
         Importe: r.importe,
         Medio: r.medio,
+        Origen: r.origenContable === "venta" ? "Venta" : "Ingreso manual",
       }));
     }
 
@@ -729,6 +808,17 @@ export default function IngresosContable() {
                 </div>
               </div>
             </div>
+
+            {innerTab === "alumnos" && alertasImportes.length > 0 && (
+              <div className="ing-alerta-contable" role="alert">
+                <strong>Revisar importes:</strong> hay pagos de varios períodos con el mismo importe repetido.
+                {alertasImportes.slice(0, 3).map((a, idx) => (
+                  <div key={`${a.alumno}-${a.fecha}-${idx}`}>
+                    {a.alumno} · {formatFechaDMY(a.fecha)} · {a.cantidad} períodos · figura {fmtMonto(a.monto)} por período.
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="ing-divider" />
 
@@ -897,7 +987,7 @@ export default function IngresosContable() {
                   <div className="ing-row h" role="row">
                     <div className="c-fecha">Fecha</div>
                     <div className="c-medio">Medio</div>
-                    <div className="c-proveedor">Proveedor</div>
+                    <div className="c-proveedor">Persona / Proveedor</div>
                     <div className="c-cat c-cat-aling">Categoría</div>
                     <div className="c-imputacion">Imputación</div>
                     <div className="c-importe">Importe</div>
@@ -913,7 +1003,9 @@ export default function IngresosContable() {
                     >
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
                       <div className="c-medio">{f.medio}</div>
-                      <div className="c-proveedor">{f.proveedor || "-"}</div>
+                      <div className="c-proveedor">
+                        <div>{f.proveedor || "-"}</div>
+                      </div>
                       <div className="c-cat c-cat-aling">
                         <span className="pill">{f.categoria || "-"}</span>
                       </div>
@@ -922,9 +1014,11 @@ export default function IngresosContable() {
                         <span className="num strong-amount">{fmtMonto(f.importe)}</span>
                       </div>
                       <div className="c-actions center">
-                        <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
-                          <FontAwesomeIcon icon={faEdit} />
-                        </button>
+                        {f.origenContable !== "venta" && (
+                          <button className="act-btn is-edit" title="Editar" onClick={() => onEdit(f)}>
+                            <FontAwesomeIcon icon={faEdit} />
+                          </button>
+                        )}
                         <button className="act-btn is-del" title="Eliminar" onClick={() => askDelete(f)}>
                           <FontAwesomeIcon icon={faTrash} />
                         </button>

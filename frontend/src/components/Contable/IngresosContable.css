@@ -674,3 +674,19 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-field.fl.is-disabled label{
   opacity: .6;
 }
+/* Alerta preventiva: importes de cuotas posiblemente repetidos como total de operación */
+.ing-alerta-contable {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.10);
+  color: #7c2d12;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.ing-alerta-contable strong {
+  display: block;
+  margin-bottom: 4px;
+}

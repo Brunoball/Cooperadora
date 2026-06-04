@@ -16,6 +16,21 @@ function fechaSolo(value) {
   return fecha;
 }
 
+const resumenItemsVenta = (orden) => {
+  const items = Array.isArray(orden?.items) ? orden.items : [];
+  if (items.length > 0) {
+    return items
+      .map((item) => {
+        const nombre = String(item.producto_nombre || item.columna_nombre || item.columna_codigo || "Concepto").trim();
+        const cantidad = Number(item.cantidad || 0);
+        return `${nombre || "Concepto"} x${cantidad || 0}`;
+      })
+      .join(" · ");
+  }
+
+  return orden?.items_resumen || `${orden?.items_cantidad || 0} concepto(s)`;
+};
+
 export default function OrdenesTab({
   tableTabs,
   ordenes,
@@ -112,7 +127,7 @@ export default function OrdenesTab({
                 <div key={o.id_orden} className="ventas-div-row" role="row">
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">
                     <strong>{o.campania_nombre || "Sin venta"}</strong>
-                    <span>{o.items_resumen || `${o.items_cantidad || 0} concepto(s)`}</span>
+                    <span>{resumenItemsVenta(o)}</span>
                   </div>
 
                   <div className="ventas-div-cell ventas-div-cell--main" role="cell">

@@ -2771,6 +2771,20 @@
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
+
+.ventas-planillas-filtros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.ventas-planillas-field select:disabled {
+  cursor: wait;
+  background: var(--blue-inst-gray-100, #f1f5f9);
+  color: var(--blue-inst-gray-500, #64748b);
+}
+
 .ventas-planillas-field select:focus {
   border-color: var(--blue-inst-primary, #1d428a);
   box-shadow: 0 0 0 3px rgba(29, 66, 138, 0.1);
@@ -3025,6 +3039,12 @@
   .ventas-planillas-meta {
     grid-template-columns: 1fr;
     gap: 7px;
+  }
+
+
+  .ventas-planillas-filtros {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .ventas-planillas-actions {

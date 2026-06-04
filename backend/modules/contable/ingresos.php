@@ -30,6 +30,15 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
 
+    // Mantener ventas aprobadas sincronizadas con ingresos contables.
+    $ventasHelper = __DIR__ . '/../ventas/helpers.php';
+    if (is_file($ventasHelper)) {
+        require_once $ventasHelper;
+        if (function_exists('ventas_sincronizar_contable_ventas_aprobadas')) {
+            ventas_sincronizar_contable_ventas_aprobadas($pdo);
+        }
+    }
+
     /* ========================= Helpers ========================= */
     $op = $_GET['op'] ?? $_POST['op'] ?? '';
 
@@ -157,6 +166,15 @@ try {
         if ($op === 'update') {
             $idIngreso = (int)($in['id_ingreso'] ?? 0);
             if ($idIngreso <= 0) $json_err('id_ingreso inválido', 400);
+
+            if (function_exists('ventas_table_exists') && ventas_table_exists($pdo, 'ventas_ordenes') && function_exists('ventas_column_exists') && ventas_column_exists($pdo, 'ventas_ordenes', 'id_ingreso')) {
+                $qVenta = $pdo->prepare('SELECT codigo_orden FROM ventas_ordenes WHERE id_ingreso = :id LIMIT 1');
+                $qVenta->execute([':id' => $idIngreso]);
+                $codigoVenta = $qVenta->fetchColumn();
+                if ($codigoVenta) {
+                    $json_err('Este ingreso fue generado automáticamente por la venta ' . $codigoVenta . '. Editá la venta desde el módulo Ventas.', 400);
+                }
+            }
 
             $st = $pdo->prepare("
                 UPDATE ingresos

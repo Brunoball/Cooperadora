@@ -205,6 +205,8 @@ try {
                 a.num_documento AS dni,
                 a.telefono,
                 a.activo,
+                a.`id_año`,
+                a.id_division,
                 an.`nombre_año`,
                 d.nombre_division
             FROM alumnos a
@@ -306,7 +308,7 @@ try {
                 (
                     SELECT GROUP_CONCAT(
                         CONCAT(
-                            COALESCE(NULLIF(ix.columna_codigo, ''), ix.producto_nombre),
+                            COALESCE(NULLIF(ix.producto_nombre, ''), NULLIF(ix.columna_nombre, ''), NULLIF(ix.columna_codigo, ''), 'Concepto'),
                             ' x', ix.cantidad
                         )
                         ORDER BY ix.orden_columna ASC, ix.id_item ASC
@@ -429,14 +431,17 @@ try {
             throw new InvalidArgumentException('No se recibió la venta a eliminar.');
         }
 
-        $st = $pdo->prepare('SELECT id_orden FROM ventas_ordenes WHERE id_orden = :id LIMIT 1');
+        $st = $pdo->prepare('SELECT id_orden, id_ingreso FROM ventas_ordenes WHERE id_orden = :id LIMIT 1');
         $st->execute([':id' => $idOrden]);
-        if (!$st->fetchColumn()) {
+        $ordenEliminar = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$ordenEliminar) {
             throw new InvalidArgumentException('La venta registrada no existe o ya fue eliminada.');
         }
 
         $pdo->beginTransaction();
         try {
+            ventas_contable_eliminar_ingreso_vinculado($pdo, $idOrden);
+
             $st = $pdo->prepare('DELETE FROM ventas_orden_items WHERE id_orden = :id_orden');
             $st->execute([':id_orden' => $idOrden]);
 
@@ -493,24 +498,53 @@ try {
         $personaDni = ventas_normalizar_dni($in['persona_dni'] ?? ($in['dni'] ?? ''));
         $personaNombre = ventas_text($in['persona_nombre'] ?? '', 160, true);
         $personaDetalle = ventas_nullable_text($in['persona_detalle'] ?? '', 160, true);
+        $cursoManual = ventas_nullable_text($in['curso_manual'] ?? '', 80, true);
         $telefono = ventas_nullable_text($in['comprador_telefono'] ?? '', 40, false);
         $observacion = ventas_nullable_text($in['observacion'] ?? '', 5000, false);
 
-        if ($personaDni === '' || strlen($personaDni) < 6) {
-            throw new InvalidArgumentException('Ingresá el DNI de la persona/alumno, solo números, con mínimo 6 dígitos.');
-        }
-
-        $personaVenta = ventas_resolver_persona_venta($pdo, $personaDni, $personaNombre, $telefono, 'manual');
-        $idVentaPersona = (int)($personaVenta['id_persona'] ?? 0);
-        $idAlumnoPersona = (int)($personaVenta['id_alumno'] ?? 0);
-        $personaNombre = ventas_text($personaVenta['nombre_apellido'] ?? $personaNombre, 160, true);
-
-        if ($personaNombre === '') throw new InvalidArgumentException('Ingresá el nombre informado para la venta.');
-        if ($personaDetalle === null || $personaDetalle === '') {
-            $personaDetalle = 'DNI: ' . $personaDni . ($idAlumnoPersona > 0 ? ' | Alumno ID: ' . $idAlumnoPersona : '');
+        if ($cursoManual !== null && $cursoManual !== '' && ($personaDetalle === null || $personaDetalle === '')) {
+            $personaDetalle = 'Curso: ' . $cursoManual;
         }
 
         $items = ventas_normalizar_items_orden($pdo, $in, $campania);
+        $esVentaEnPuerta = true;
+        foreach ($items as $itemPuerta) {
+            $metadataPuerta = [];
+            if (isset($itemPuerta['metadata_json']) && is_string($itemPuerta['metadata_json'])) {
+                $decodedPuerta = json_decode($itemPuerta['metadata_json'], true);
+                if (is_array($decodedPuerta)) $metadataPuerta = $decodedPuerta;
+            }
+            if (($metadataPuerta['precio_tipo'] ?? 'anticipada') !== 'puerta') {
+                $esVentaEnPuerta = false;
+                break;
+            }
+        }
+
+        $idVentaPersona = null;
+        $idAlumnoPersona = 0;
+
+        if ($esVentaEnPuerta && $personaDni === '') {
+            // Las entradas vendidas en puerta no necesitan datos personales.
+            $personaNombre = $personaNombre !== '' ? $personaNombre : 'VENTA EN PUERTA';
+            if ($personaDetalle === null || $personaDetalle === '') {
+                $personaDetalle = $cursoManual ? ('Curso: ' . $cursoManual) : 'Venta en puerta';
+            }
+        } else {
+            if ($personaDni === '' || strlen($personaDni) < 6) {
+                throw new InvalidArgumentException('Ingresá el DNI de la persona/alumno, solo números, con mínimo 6 dígitos.');
+            }
+
+            $personaVenta = ventas_resolver_persona_venta($pdo, $personaDni, $personaNombre, $telefono, 'manual');
+            $idVentaPersona = (int)($personaVenta['id_persona'] ?? 0);
+            $idAlumnoPersona = (int)($personaVenta['id_alumno'] ?? 0);
+            $personaNombre = ventas_text($personaVenta['nombre_apellido'] ?? $personaNombre, 160, true);
+
+            if ($personaNombre === '') throw new InvalidArgumentException('Ingresá el nombre informado para la venta.');
+            if ($personaDetalle === null || $personaDetalle === '') {
+                $personaDetalle = 'DNI: ' . $personaDni . ($idAlumnoPersona > 0 ? ' | Alumno ID: ' . $idAlumnoPersona : '');
+            }
+        }
+
         $total = round(array_sum(array_map(static fn($it) => (float)$it['subtotal'], $items)), 2);
         if ($total <= 0) throw new InvalidArgumentException('El total de la venta debe ser mayor a cero.');
 
@@ -550,8 +584,8 @@ try {
                     ':persona_tipo' => 'vendedor',
                     ':persona_nombre' => $personaNombre,
                     ':persona_detalle' => $personaDetalle,
-                    ':id_venta_persona' => $idVentaPersona > 0 ? $idVentaPersona : null,
-                    ':persona_dni' => $personaDni,
+                    ':id_venta_persona' => $idVentaPersona !== null && $idVentaPersona > 0 ? $idVentaPersona : null,
+                    ':persona_dni' => $personaDni !== '' ? $personaDni : null,
                     ':estado' => $estado,
                     ':id_medio_pago' => $idMedioPago,
                     ':total' => $total,
@@ -580,8 +614,8 @@ try {
                     ':persona_tipo' => 'vendedor',
                     ':persona_nombre' => $personaNombre,
                     ':persona_detalle' => $personaDetalle,
-                    ':id_venta_persona' => $idVentaPersona > 0 ? $idVentaPersona : null,
-                    ':persona_dni' => $personaDni,
+                    ':id_venta_persona' => $idVentaPersona !== null && $idVentaPersona > 0 ? $idVentaPersona : null,
+                    ':persona_dni' => $personaDni !== '' ? $personaDni : null,
                     ':estado' => $estado,
                     ':id_medio_pago' => $idMedioPago,
                     ':total' => $total,
@@ -617,6 +651,8 @@ try {
                     ':metadata_json' => $item['metadata_json'],
                 ]);
             }
+
+            ventas_sincronizar_orden_contable($pdo, $idOrden);
 
             $pdo->commit();
         } catch (Throwable $e) {

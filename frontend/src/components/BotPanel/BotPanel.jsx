@@ -42,6 +42,7 @@ import ChatOptionsMenu from "./ChatOptionsMenu";
 import EditNombreModal from "./modales/EditNombreModal";
 import EditEtiquetaModal from "./modales/EditEtiquetaModal";
 import ConfirmActionModal from "./modales/ConfirmActionModal";
+import ComprobanteRevisionModal from "./modales/ComprobanteRevisionModal";
 
 // ✅ NUEVO: modal galería
 import GaleriaModal from "./modales/GaleriaModal";
@@ -227,6 +228,34 @@ const fmtBytes = (n) => {
   return `${x.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
 };
 
+const parseMoneyInput = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  let s = raw.replace(/[^0-9,.]/g, "");
+  if (!s) return null;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+
+  if (hasComma && hasDot) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (hasComma) {
+    const parts = s.split(",");
+    const last = parts[parts.length - 1] || "";
+    if (last.length === 2) s = s.replace(/\./g, "").replace(",", ".");
+    else s = s.replace(/,/g, "");
+  } else if (hasDot) {
+    const parts = s.split(".");
+    const last = parts[parts.length - 1] || "";
+    if (last.length === 3 && parts.length > 1) s = s.replace(/\./g, "");
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+};
+
+
 /* =========================
    ✅ MODAL VISOR (IMG / PDF)
 ========================= */
@@ -240,7 +269,6 @@ const BotEventosModal = ({
   error,
   onRefresh,
   onMarkOne,
-  onMarkAll,
   onOpenChat,
   onAprobarComprobante,
   onRechazarComprobante,
@@ -277,14 +305,6 @@ const BotEventosModal = ({
             {loading ? <FontAwesomeIcon icon={faSpinner} spin /> : null}
             Actualizar
           </button>
-          <button
-            type="button"
-            className="wp-events-btn wp-events-btn--ok"
-            onClick={onMarkAll}
-            disabled={loading || pendientes <= 0}
-          >
-            Marcar todo revisado
-          </button>
         </div>
 
         <div className="wp-events-summary">
@@ -317,7 +337,6 @@ const BotEventosModal = ({
             const pendiente = ev.estado === "pendiente";
             const tipo = String(ev.tipo || "error");
             const ctx = ev.contexto && typeof ev.contexto === "object" ? ev.contexto : {};
-            const ctxEntries = Object.entries(ctx).filter(([, v]) => v !== "" && v !== null && v !== undefined && v !== 0);
             const idComprobante = Number(ctx?.id_comprobante || 0);
             const esComprobanteVenta = String(ev.modulo || "") === "ventas_comprobante" && idComprobante > 0;
 
@@ -341,13 +360,6 @@ const BotEventosModal = ({
                   ) : <span>Sin contacto asociado</span>}
                   <span>Estado: <b>{pendiente ? "pendiente" : "revisado"}</b></span>
                 </div>
-
-                {ctxEntries.length > 0 ? (
-                  <details className="wp-event-context">
-                    <summary>Ver contexto técnico</summary>
-                    <pre>{JSON.stringify(ctx, null, 2)}</pre>
-                  </details>
-                ) : null}
 
                 {pendiente ? (
                   <div className="wp-event-foot">
@@ -492,6 +504,11 @@ const BotPanel = () => {
     accion: "",
     idComprobante: 0,
     idEvento: 0,
+    motivo: "",
+    montoManual: "",
+    cantidadManual: "",
+    detalle: null,
+    loadingDetalle: false,
   });
   const [comprobanteConfirmLoading, setComprobanteConfirmLoading] = useState(false);
   const [comprobanteConfirmError, setComprobanteConfirmError] = useState("");
@@ -834,18 +851,70 @@ const BotPanel = () => {
 
   const abrirConfirmacionComprobante = useCallback((accion, idComprobante = 0, idEvento = 0) => {
     const tipo = accion === "rechazar" ? "rechazar" : "aprobar";
-    setComprobanteConfirm({
+    const baseState = {
       open: true,
       accion: tipo,
       idComprobante: Number(idComprobante || 0),
       idEvento: Number(idEvento || 0),
-    });
+      motivo: "",
+      montoManual: "",
+      cantidadManual: "",
+      detalle: null,
+      loadingDetalle: true,
+    };
+
+    setComprobanteConfirm(baseState);
     setComprobanteConfirmError("");
-  }, []);
+
+    (async () => {
+      try {
+        const { res, data } = await postJSON(`${PANEL_API}/panel_ventas_comprobante_transferencia.php`, {
+          accion: "detalle_comprobante",
+          id_comprobante: Number(idComprobante || 0),
+          id_evento: Number(idEvento || 0),
+        });
+
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
+
+        const cantidad = Number(data?.cantidad_sugerida || data?.cantidad_estimada || 1);
+        const monto = data?.monto_detectado ?? data?.monto_confirmado ?? "";
+
+        setComprobanteConfirm((prev) => {
+          if (!prev.open || Number(prev.idComprobante || 0) !== Number(idComprobante || 0)) return prev;
+          return {
+            ...prev,
+            detalle: data,
+            loadingDetalle: false,
+            cantidadManual: cantidad > 0 ? String(cantidad) : "1",
+            montoManual: monto !== "" && monto !== null && monto !== undefined ? String(monto) : "",
+          };
+        });
+      } catch (e) {
+        const msg = e?.message || "No se pudo cargar el detalle del comprobante.";
+        setComprobanteConfirm((prev) => {
+          if (!prev.open || Number(prev.idComprobante || 0) !== Number(idComprobante || 0)) return prev;
+          return { ...prev, loadingDetalle: false };
+        });
+        setComprobanteConfirmError(msg);
+      }
+    })();
+  }, [postJSON]);
 
   const cerrarConfirmacionComprobante = useCallback(() => {
     if (comprobanteConfirmLoading) return;
-    setComprobanteConfirm({ open: false, accion: "", idComprobante: 0, idEvento: 0 });
+    setComprobanteConfirm({
+      open: false,
+      accion: "",
+      idComprobante: 0,
+      idEvento: 0,
+      motivo: "",
+      montoManual: "",
+      cantidadManual: "",
+      detalle: null,
+      loadingDetalle: false,
+    });
     setComprobanteConfirmError("");
   }, [comprobanteConfirmLoading]);
 
@@ -860,23 +929,50 @@ const BotPanel = () => {
         return;
       }
 
+      const payload = {
+        accion: accion === "rechazar" ? "rechazar_comprobante" : "aprobar_comprobante",
+        id_comprobante: idComprobante,
+        id_evento: idEvento,
+      };
+
+      if (accion === "rechazar") {
+        payload.motivo = String(comprobanteConfirm.motivo || "").trim();
+      } else {
+        const cantidadManual = Number.parseInt(String(comprobanteConfirm.cantidadManual || ""), 10);
+        const montoManual = parseMoneyInput(comprobanteConfirm.montoManual);
+
+        if (!Number.isFinite(cantidadManual) || cantidadManual <= 0) {
+          setComprobanteConfirmError("Ingresá una cantidad de entradas válida.");
+          return;
+        }
+
+        payload.cantidad_manual = cantidadManual;
+        if (montoManual !== null) payload.monto_manual = montoManual;
+      }
+
       try {
         setComprobanteConfirmLoading(true);
         setLoadingEventos(true);
         setErrorEventos("");
         setComprobanteConfirmError("");
 
-        const { res, data } = await postJSON(`${PANEL_API}/panel_ventas_comprobante_transferencia.php`, {
-          accion: accion === "rechazar" ? "rechazar_comprobante" : "aprobar_comprobante",
-          id_comprobante: idComprobante,
-          id_evento: idEvento,
-        });
+        const { res, data } = await postJSON(`${PANEL_API}/panel_ventas_comprobante_transferencia.php`, payload);
 
         if (!res.ok || !data?.success) {
           throw new Error(data?.error || `Error HTTP ${res.status}`);
         }
 
-        setComprobanteConfirm({ open: false, accion: "", idComprobante: 0, idEvento: 0 });
+        setComprobanteConfirm({
+          open: false,
+          accion: "",
+          idComprobante: 0,
+          idEvento: 0,
+          motivo: "",
+          montoManual: "",
+          cantidadManual: "",
+          detalle: null,
+          loadingDetalle: false,
+        });
         await fetchEventos(true);
         await fetchChats(true);
       } catch (e) {
@@ -891,6 +987,10 @@ const BotPanel = () => {
     [comprobanteConfirm, postJSON, fetchEventos, fetchChats]
   );
 
+  const setCampoComprobanteConfirm = useCallback((campo, valor) => {
+    setComprobanteConfirm((prev) => ({ ...prev, [campo]: valor }));
+  }, []);
+
   const aprobarComprobanteVenta = useCallback(
     (idComprobante = 0, idEvento = 0) => {
       abrirConfirmacionComprobante("aprobar", idComprobante, idEvento);
@@ -904,6 +1004,11 @@ const BotPanel = () => {
     },
     [abrirConfirmacionComprobante]
   );
+
+  const abrirPanelAlertas = useCallback(() => {
+    setEventosOpen(true);
+    fetchEventos(true);
+  }, [fetchEventos]);
 
   const fetchMensajes = useCallback(
     async (waId, { silent = false } = {}) => {
@@ -1038,9 +1143,10 @@ const BotPanel = () => {
       if (newHash && newHash !== globalHashRef.current) {
         globalHashRef.current = newHash;
         if (!refreshingChats && !loadingChats) fetchChats(true);
+        fetchEventos(true);
       }
     } catch {}
-  }, [fetchChats, getGlobalHash, refreshingChats, loadingChats]);
+  }, [fetchChats, fetchEventos, getGlobalHash, refreshingChats, loadingChats]);
 
   const setModeDB = useCallback(
     async (nextMode) => {
@@ -1119,7 +1225,7 @@ const BotPanel = () => {
 
 
   useEffect(() => {
-    const t = setInterval(() => fetchEventos(true), 60000);
+    const t = setInterval(() => fetchEventos(true), 2000);
     return () => clearInterval(t);
   }, [fetchEventos]);
 
@@ -1689,10 +1795,7 @@ const BotPanel = () => {
           <button
             type="button"
             className={`wp-alertbtn ${Number(eventosResumen?.pendientes || 0) > 0 ? "is-danger" : ""}`}
-            onClick={() => {
-              setEventosOpen(true);
-              fetchEventos(true);
-            }}
+            onClick={abrirPanelAlertas}
             title="Ver alertas y errores del bot"
             aria-label="Ver alertas y errores del bot"
           >
@@ -2026,9 +2129,17 @@ const BotPanel = () => {
                         }`}
                       >
                         {isPendingConsult ? (
-                          <div className="wp-consulta-pill">
+                          <button
+                            type="button"
+                            className="wp-consulta-pill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              abrirPanelAlertas();
+                            }}
+                            title="Ver pendientes"
+                          >
                             👩‍💼 Consulta pendiente
-                          </div>
+                          </button>
                         ) : null}
                         
                         {hasMedia ? (
@@ -2243,7 +2354,6 @@ const BotPanel = () => {
         error={errorEventos}
         onRefresh={() => fetchEventos(false)}
         onMarkOne={(idEvento) => marcarEventoRevisado(idEvento)}
-        onMarkAll={() => marcarEventoRevisado(0)}
         onAprobarComprobante={(idComprobante, idEvento) => aprobarComprobanteVenta(idComprobante, idEvento)}
         onRechazarComprobante={(idComprobante, idEvento) => rechazarComprobanteVenta(idComprobante, idEvento)}
         onOpenChat={(waId) => {
@@ -2252,19 +2362,17 @@ const BotPanel = () => {
         }}
       />
 
-      <ConfirmActionModal
+      <ComprobanteRevisionModal
         open={comprobanteConfirm.open}
-        title={comprobanteConfirm.accion === "rechazar" ? "Rechazar comprobante" : "Aprobar comprobante"}
-        description={
-          comprobanteConfirm.accion === "rechazar"
-            ? "Vas a rechazar este comprobante. El comprador recibirá un mensaje indicando que el pago no pudo ser aprobado. No se registrará la venta."
-            : "Vas a aprobar este comprobante. Se registrará la venta en Cooperadora y el comprador recibirá el aviso de pago aprobado."
-        }
-        confirmText={comprobanteConfirm.accion === "rechazar" ? "Sí, rechazar" : "Sí, aprobar"}
-        cancelText="Cancelar"
-        danger={comprobanteConfirm.accion === "rechazar"}
+        accion={comprobanteConfirm.accion}
+        detalle={comprobanteConfirm.detalle}
+        loadingDetalle={comprobanteConfirm.loadingDetalle}
+        motivo={comprobanteConfirm.motivo}
+        montoManual={comprobanteConfirm.montoManual}
+        cantidadManual={comprobanteConfirm.cantidadManual}
         loading={comprobanteConfirmLoading}
         error={comprobanteConfirmError}
+        onChangeCampo={setCampoComprobanteConfirm}
         onClose={cerrarConfirmacionComprobante}
         onConfirm={ejecutarAccionComprobante}
       />

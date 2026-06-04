@@ -436,6 +436,16 @@ export default function Ventas() {
 
   const hoyInput = () => new Date().toISOString().slice(0, 10);
 
+  const cursoDesdeDetalleVenta = (detalle = "") => {
+    const txt = String(detalle || "").trim();
+    if (!txt) return "";
+    return txt
+      .replace(/^Alumno\s*-\s*/i, "")
+      .replace(/^Curso:\s*/i, "")
+      .replace(/^Curso\s*-\s*/i, "")
+      .trim();
+  };
+
   const abrirNuevaOrden = async () => {
     try {
       const medios = mediosPago.length ? mediosPago : await cargarMediosPago();
@@ -533,6 +543,7 @@ export default function Ventas() {
         dni: o.persona_dni || o.dni || "",
         persona_nombre: o.persona_nombre || "",
         persona_detalle: o.persona_detalle || "",
+        curso_manual: o.curso_manual || cursoDesdeDetalleVenta(o.persona_detalle),
         comprador_telefono: o.comprador_telefono || "",
         estado: o.estado || "aprobada",
         id_medio_pago: o.id_medio_pago || obtenerMedioPorDefecto(o.origen === "manual" ? "EFECTIVO" : "TRANSFERENCIA"),

@@ -840,3 +840,20 @@
     width: 100%;
   }
 }
+
+.ventas-modal--orden .ventas-puerta-info {
+  margin-bottom: 13px;
+  padding: 12px 14px;
+  border: 1px solid rgba(8, 117, 88, 0.16);
+  border-radius: 16px;
+  background: #f2fbf7;
+  color: #315b50;
+  font-size: 0.82rem;
+  font-weight: 540;
+  line-height: 1.45;
+}
+
+.ventas-modal--orden .ventas-puerta-info strong {
+  color: #087558;
+  font-weight: 760;
+}

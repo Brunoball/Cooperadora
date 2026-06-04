@@ -129,6 +129,7 @@ export const emptyOrden = {
   dni: "",
   persona_nombre: "",
   persona_detalle: "",
+  curso_manual: "",
   comprador_telefono: "",
   estado: "aprobada",
   id_medio_pago: "",

@@ -31,19 +31,48 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
 
+    // Sincroniza automáticamente las ventas aprobadas con la tabla ingresos.
+    // Así el módulo Contable refleja también los ingresos por ventas escolares.
+    $ventasHelper = __DIR__ . '/../ventas/helpers.php';
+    if (is_file($ventasHelper)) {
+        require_once $ventasHelper;
+        if (function_exists('ventas_sincronizar_contable_ventas_aprobadas')) {
+            ventas_sincronizar_contable_ventas_aprobadas($pdo);
+        }
+    }
+
+    $hayVentasOrdenes = function_exists('ventas_table_exists')
+        && ventas_table_exists($pdo, 'ventas_ordenes')
+        && function_exists('ventas_column_exists')
+        && ventas_column_exists($pdo, 'ventas_ordenes', 'id_ingreso');
+
     /* =======================
        GET: listar ingresos
     ======================== */
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $year  = isset($_GET['year'])  ? (int)$_GET['year']  : (int)date('Y');
         $month = isset($_GET['month']) ? (int)$_GET['month'] : 0;
+        $start = isset($_GET['start']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$_GET['start']) ? (string)$_GET['start'] : '';
+        $end   = isset($_GET['end'])   && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$_GET['end'])   ? (string)$_GET['end']   : '';
 
-        $where  = "YEAR(i.fecha) = :y";
-        $params = [':y' => $year];
-        if ($month >= 1 && $month <= 12) {
-            $where .= " AND MONTH(i.fecha) = :m";
-            $params[':m'] = $month;
+        if ($start !== '' && $end !== '') {
+            $where = "i.fecha BETWEEN :start AND :end";
+            $params = [':start' => $start, ':end' => $end];
+        } else {
+            $where  = "YEAR(i.fecha) = :y";
+            $params = [':y' => $year];
+            if ($month >= 1 && $month <= 12) {
+                $where .= " AND MONTH(i.fecha) = :m";
+                $params[':m'] = $month;
+            }
         }
+
+        $selectVenta = $hayVentasOrdenes
+            ? "vo.id_orden AS id_venta_orden, vo.codigo_orden AS venta_codigo, CASE WHEN vo.id_orden IS NULL THEN 'manual' ELSE 'venta' END AS origen_contable"
+            : "NULL AS id_venta_orden, NULL AS venta_codigo, 'manual' AS origen_contable";
+        $joinVenta = $hayVentasOrdenes
+            ? "LEFT JOIN ventas_ordenes vo ON vo.id_ingreso = i.id_ingreso"
+            : "";
 
         $sql = "
             SELECT
@@ -57,12 +86,14 @@ try {
                 cd.nombre_descripcion    AS descripcion,
                 i.id_medio_pago,
                 mp.medio_pago,
-                i.importe
+                i.importe,
+                $selectVenta
             FROM ingresos i
             LEFT JOIN contable_categoria   cc ON cc.id_cont_categoria   = i.id_cont_categoria
             LEFT JOIN contable_proveedor   cp ON cp.id_cont_proveedor   = i.id_cont_proveedor
             LEFT JOIN contable_descripcion cd ON cd.id_cont_descripcion = i.id_cont_descripcion
             INNER JOIN medio_pago          mp ON mp.id_medio_pago       = i.id_medio_pago
+            $joinVenta
             WHERE $where
             ORDER BY i.fecha ASC, i.id_ingreso ASC
         ";

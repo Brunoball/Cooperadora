@@ -167,6 +167,77 @@ function ventas_planillas_obtener_alumnos($pdo, $soloActivos, $idAnio = 0, $idDi
     return $st->fetchAll(PDO::FETCH_ASSOC);
 }
 
+
+function ventas_planillas_obtener_opciones(PDO $pdo): array
+{
+    $anios = [];
+    $divisiones = [];
+    $totalDocentes = 0;
+
+    try {
+        $st = $pdo->query("SELECT `id_año` AS id_anio, nombre_año AS nombre FROM anio ORDER BY `id_año` ASC");
+        $anios = $st ? $st->fetchAll(PDO::FETCH_ASSOC) : [];
+    } catch (Throwable $e) {
+        $anios = [];
+    }
+
+    try {
+        $st = $pdo->query("SELECT id_division, nombre_division AS nombre FROM division ORDER BY id_division ASC");
+        $divisiones = $st ? $st->fetchAll(PDO::FETCH_ASSOC) : [];
+    } catch (Throwable $e) {
+        $divisiones = [];
+    }
+
+    try {
+        $st = $pdo->query("SELECT COUNT(*) FROM docentes WHERE activo = 1");
+        $totalDocentes = (int)($st ? $st->fetchColumn() : 0);
+    } catch (Throwable $e) {
+        $totalDocentes = 0;
+    }
+
+    return [
+        'exito' => true,
+        'anios' => array_map(static function ($row) {
+            return [
+                'id_anio' => (int)($row['id_anio'] ?? 0),
+                'nombre' => (string)($row['nombre'] ?? ''),
+            ];
+        }, $anios),
+        'divisiones' => array_map(static function ($row) {
+            return [
+                'id_division' => (int)($row['id_division'] ?? 0),
+                'nombre' => (string)($row['nombre'] ?? ''),
+            ];
+        }, $divisiones),
+        'total_docentes' => $totalDocentes,
+    ];
+}
+
+function ventas_planillas_obtener_docentes(PDO $pdo, bool $soloActivos): array
+{
+    $stExiste = $pdo->query("SHOW TABLES LIKE 'docentes'");
+    if (!$stExiste || !$stExiste->fetchColumn()) {
+        throw new RuntimeException('No existe la tabla docentes. Primero cargá la tabla nueva de docentes en la base de Cooperadora.');
+    }
+
+    $where = $soloActivos ? 'WHERE activo = 1' : '';
+    $sql = "
+        SELECT id_docente, docente, dni, email, activo
+        FROM docentes
+        $where
+        ORDER BY docente ASC, id_docente ASC
+    ";
+
+    $st = $pdo->query($sql);
+    return $st ? $st->fetchAll(PDO::FETCH_ASSOC) : [];
+}
+
+function ventas_planillas_chunk(array $items, int $size): array
+{
+    $size = max(1, $size);
+    return array_chunk(array_values($items), $size);
+}
+
 function ventas_planillas_agrupar_por_curso($alumnos) {
     $grupos = [];
     foreach ($alumnos as $alumno) {
@@ -348,17 +419,125 @@ final class VentasPlanillasPdfVertical
         // Borde inferior más marcado de la tabla principal.
         $this->line($x0, $y, $x1, $y, 1.05);
 
-        // Totales.
-        $gap = 2.5 * $mm;
+        // Total final: solo se deja el total cobrado.
         $totY = max(5.5 * $mm, $y - 14 * $mm);
         $totH = 11 * $mm;
-        $boxW = ($tableW - 2 * $gap) / 3;
-        $labels = ['TOTAL VEN: __________________', 'TOTAL GAN: __________________', 'TOTAL COBRADO: ______________'];
-        for ($i = 0; $i < 3; $i++) {
-            $bx = $x0 + $i * ($boxW + $gap);
-            $this->rect($bx, $totY, $boxW, $totH, 0.55);
-            $this->text($labels[$i], $bx + 3.0, $totY + $totH / 2 - 2.0, 6.0, true, 'left');
+        $boxW = min(74 * $mm, $tableW * 0.44);
+        $bx = $x1 - $boxW;
+        $this->rect($bx, $totY, $boxW, $totH, 0.55);
+        $this->text('TOTAL COBRADO: ______________', $bx + 3.0, $totY + $totH / 2 - 2.0, 6.0, true, 'left');
+    }
+
+
+    public function drawTeachersSheet(array $docentes, array $campania, string $numeroBot = '', int $pagina = 1, int $totalPaginas = 1): void
+    {
+        $this->addPage();
+
+        $mm = self::MM;
+        $W = self::W;
+        $H = self::H;
+
+        $campaniaNombre = ventas_planillas_upper(trim((string)($campania['nombre'] ?? 'Venta escolar')));
+        $productoNombre = trim((string)($campania['producto_principal_nombre'] ?? 'Producto')) ?: 'Producto';
+        $precioTxt = ventas_planillas_money($campania['producto_principal_precio'] ?? 0);
+        $numeroBotTxt = trim($numeroBot) !== '' ? trim($numeroBot) : VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT;
+        $cantidad = count($docentes);
+
+        $metaY = $H - 7.9 * $mm;
+        $xLeft = 2.8 * $mm;
+        $xRight = $W - 2.8 * $mm;
+        $this->text('Listado de docentes · Página ' . $pagina . ' de ' . $totalPaginas, $xLeft, $metaY, 6.5, false, 'left');
+        $this->text('Número bot: ' . $numeroBotTxt, $W / 2, $metaY, 6.5, true, 'center');
+        $this->text('Docentes en esta hoja: ' . $cantidad, $xRight, $metaY, 6.5, false, 'right');
+
+        $marginX = 5 * $mm;
+        $tableW = $W - 2 * $marginX;
+        $top = $H - 13 * $mm;
+        $x0 = $marginX;
+        $x1 = $x0 + $tableW;
+        $y = $top;
+
+        $hSchool = 7.2 * $mm;
+        $hTop = 6.7 * $mm;
+        $hInfo = 6.5 * $mm;
+        $hCols = 12.2 * $mm;
+
+        // Columnas de la planilla de docentes.
+        // Antes OBSERVACIONES quedaba muy angosta porque recibía solo el sobrante.
+        // Se achican apenas ORDEN/DOCENTE/DNI/CANT./COBRADO y se deja un ancho real
+        // para que OBSERVACIONES no quede cortado en el PDF ni al imprimir.
+        $colMm = [11, 80, 25, 17, 26];
+        $widths = [];
+        $used = 0.0;
+        foreach ($colMm as $c) {
+            $widths[] = $c * $mm;
+            $used += $c * $mm;
         }
+        $widths[] = $tableW - $used;
+        $xs = [$x0];
+        foreach ($widths as $w) $xs[] = end($xs) + $w;
+
+        $this->rect($x0, $y - $hSchool, $tableW, $hSchool, 0.9);
+        $this->text('I.P.E.T. Nº 50 "Ing.Emilio F. Olmos"', ($x0 + $x1) / 2, $y - $hSchool / 2 - 2.3, 9.2, true, 'center');
+        $y -= $hSchool;
+
+        $this->rect($x0, $y - $hTop, $tableW, $hTop, 0.55);
+        $split1 = $x0 + 0.35 * $tableW;
+        $split2 = $x0 + 0.85 * $tableW;
+        $this->line($split1, $y, $split1, $y - $hTop, 0.55);
+        $this->line($split2, $y, $split2, $y - $hTop, 0.55);
+        $this->text('PROFESORES / DOCENTES', ($x0 + $split1) / 2, $y - $hTop / 2 - 2.1, 7.7, true, 'center');
+        $this->text($this->fit($campaniaNombre ?: 'VENTA ESCOLAR', 7.7, $split2 - $split1 - 4), ($split1 + $split2) / 2, $y - $hTop / 2 - 2.1, 7.7, true, 'center');
+        $this->text(date('Y'), ($split2 + $x1) / 2, $y - $hTop / 2 - 2.1, 7.7, true, 'center');
+        $y -= $hTop;
+
+        $this->rect($x0, $y - $hInfo, $tableW, $hInfo, 0.55);
+        $splitProducto = $x0 + 0.58 * $tableW;
+        $this->line($splitProducto, $y, $splitProducto, $y - $hInfo, 0.55);
+        $this->text('PRODUCTO: ' . $this->fit(ventas_planillas_upper($productoNombre), 6.4, $splitProducto - $x0 - 34), $x0 + 4.0, $y - $hInfo / 2 - 2.0, 6.4, true, 'left');
+        $this->text('PRECIO UNITARIO: ' . ($precioTxt ?: '____________'), $splitProducto + 4.0, $y - $hInfo / 2 - 2.0, 6.4, true, 'left');
+        $y -= $hInfo;
+
+        $this->rect($x0, $y - $hCols, $tableW, $hCols, 0.6);
+        foreach (array_slice($xs, 1, -1) as $x) {
+            $this->line($x, $y, $x, $y - $hCols, 0.55);
+        }
+        $this->text('ORDEN', ($xs[0] + $xs[1]) / 2, $y - $hCols / 2 - 2.0, 6.1, true, 'center');
+        $this->text('DOCENTE', ($xs[1] + $xs[2]) / 2, $y - $hCols / 2 - 2.0, 6.1, true, 'center');
+        $this->text('DNI', ($xs[2] + $xs[3]) / 2, $y - $hCols / 2 - 2.0, 6.1, true, 'center');
+        $this->text('CANT.', ($xs[3] + $xs[4]) / 2, $y - $hCols / 2 - 2.0, 6.1, true, 'center');
+        $this->text('COBRADO', ($xs[4] + $xs[5]) / 2, $y - $hCols / 2 - 2.0, 6.1, true, 'center');
+        $this->text($this->fit('OBSERVACIONES', 5.8, ($xs[6] - $xs[5]) - 4), ($xs[5] + $xs[6]) / 2, $y - $hCols / 2 - 2.0, 5.8, true, 'center');
+        $y -= $hCols;
+
+        $bottomReserved = 22 * $mm + 12 * $mm + 3 * $mm;
+        $available = max(20.0, $y - $bottomReserved);
+        $rowH = min(5.8 * $mm, max(4.95 * $mm, $available / max(1, $cantidad)));
+        $fs = $rowH < 15 ? 5.5 : 5.9;
+        $offset = ($pagina - 1) * 42;
+
+        foreach ($docentes as $idx => $docente) {
+            $this->rect($x0, $y - $rowH, $tableW, $rowH, 0.45);
+            foreach (array_slice($xs, 1, -1) as $x) {
+                $this->line($x, $y, $x, $y - $rowH, 0.45);
+            }
+
+            $nombreDocente = trim((string)($docente['docente'] ?? '')) ?: 'Sin nombre';
+            $dni = trim((string)($docente['dni'] ?? ''));
+            $this->text((string)($offset + $idx + 1), ($xs[0] + $xs[1]) / 2, $y - $rowH / 2 - 1.9, $fs, false, 'center');
+            $this->text($this->fit($nombreDocente, $fs, ($xs[2] - $xs[1]) - 4), $xs[1] + 3.0, $y - $rowH / 2 - 1.9, $fs, true, 'left');
+            $this->text($dni, ($xs[2] + $xs[3]) / 2, $y - $rowH / 2 - 1.9, $fs, false, 'center');
+            $y -= $rowH;
+        }
+
+        $this->line($x0, $y, $x1, $y, 1.05);
+
+        $totY = max(5.5 * $mm, $y - 14 * $mm);
+        $totH = 11 * $mm;
+        $boxW = min(74 * $mm, $tableW * 0.44);
+        $bx = $x1 - $boxW;
+        $this->rect($bx, $totY, $boxW, $totH, 0.55);
+        $this->text('TOTAL COBRADO: ______________', $bx + 3.0, $totY + $totH / 2 - 2.0, 6.0, true, 'left');
     }
 
     private function addPage(): void
@@ -490,10 +669,43 @@ function ventas_planillas_render_cursos($campania, $grupos, $productoGan, $soloA
     exit;
 }
 
+
+function ventas_planillas_render_docentes($campania, array $docentes, string $numeroBot = VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT): void
+{
+    $campaniaNombre = trim((string)($campania['nombre'] ?? 'Venta escolar')) ?: 'Venta escolar';
+
+    if (count($docentes) <= 0) {
+        throw new RuntimeException('No se encontraron docentes para generar la planilla.');
+    }
+
+    $pdf = new VentasPlanillasPdfVertical();
+    $chunks = ventas_planillas_chunk($docentes, 42);
+    $totalPaginas = count($chunks);
+
+    foreach ($chunks as $idx => $chunk) {
+        $pdf->drawTeachersSheet($chunk, $campania, $numeroBot, $idx + 1, $totalPaginas);
+    }
+
+    $filename = 'planilla_docentes_' . ventas_planillas_slug($campaniaNombre) . '.pdf';
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="' . $filename . '"');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    echo $pdf->output();
+    exit;
+}
+
 try {
     $pdo = ventas_pdo();
     ventas_tablas_verificadas($pdo);
     $action = (string)($_GET['action'] ?? 'ventas_planillas_cursos');
+
+    if ($action === 'ventas_planillas_opciones') {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+            ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        ventas_json(ventas_planillas_obtener_opciones($pdo));
+    }
 
     if ($action === 'ventas_planillas_cursos') {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
@@ -501,6 +713,7 @@ try {
         }
 
         $idCampania = isset($_GET['id_campania']) ? (int)$_GET['id_campania'] : 0;
+        $tipoPlanilla = strtolower(trim((string)($_GET['tipo'] ?? 'cursos')));
         $soloActivos = isset($_GET['solo_activos']) ? ventas_bool($_GET['solo_activos'], 1) === 1 : true;
         $idAnio = isset($_GET['id_anio']) ? (int)$_GET['id_anio'] : 0;
         $idDivision = isset($_GET['id_division']) ? (int)$_GET['id_division'] : 0;
@@ -508,6 +721,12 @@ try {
         $numeroBot = preg_replace('/[^0-9+()\s.-]/', '', $numeroBot) ?: VENTAS_PLANILLAS_NUMERO_BOT_DEFAULT;
 
         $campania = ventas_planillas_obtener_campania($pdo, $idCampania);
+
+        if ($tipoPlanilla === 'docentes' || $tipoPlanilla === 'profesores') {
+            $docentes = ventas_planillas_obtener_docentes($pdo, $soloActivos);
+            ventas_planillas_render_docentes($campania, $docentes, $numeroBot);
+        }
+
         $productoGan = ventas_planillas_producto_gan($pdo, isset($campania['id_producto_principal']) ? (int)$campania['id_producto_principal'] : null);
         $alumnos = ventas_planillas_obtener_alumnos($pdo, $soloActivos, $idAnio, $idDivision);
         $grupos = ventas_planillas_agrupar_por_curso($alumnos);

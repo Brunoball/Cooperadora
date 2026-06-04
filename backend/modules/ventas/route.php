@@ -31,6 +31,7 @@ function route_ventas($action) {
             require __DIR__ . '/ordenes.php';
             return true;
 
+        case 'ventas_planillas_opciones':
         case 'ventas_planillas_cursos':
             require __DIR__ . '/planillas.php';
             return true;

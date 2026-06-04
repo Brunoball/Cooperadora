@@ -15,9 +15,21 @@ const abrirEnNuevaPestana = (url) => {
 
 const NUMERO_BOT_PLANILLAS = "3564 665050";
 
+const opcionesIniciales = {
+  anios: [],
+  divisiones: [],
+  total_docentes: 0,
+};
+
 export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
   const [idCampania, setIdCampania] = useState(() => obtenerCampaniaInicial(campanias));
+  const [tipoPlanilla, setTipoPlanilla] = useState("cursos");
+  const [idAnio, setIdAnio] = useState("");
+  const [idDivision, setIdDivision] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
+  const [opciones, setOpciones] = useState(opcionesIniciales);
+  const [cargandoOpciones, setCargandoOpciones] = useState(false);
+  const [errorOpciones, setErrorOpciones] = useState("");
 
   useEffect(() => {
     if (!campanias.length) {
@@ -31,9 +43,60 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
     }
   }, [campanias, idCampania]);
 
+  useEffect(() => {
+    if (!apiUrl) return;
+
+    let cancelado = false;
+    const cargarOpciones = async () => {
+      setCargandoOpciones(true);
+      setErrorOpciones("");
+
+      try {
+        const params = new URLSearchParams();
+        params.set("action", "ventas_planillas_opciones");
+        const res = await fetch(`${apiUrl}?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || data?.exito === false) {
+          throw new Error(data?.mensaje || "No se pudieron cargar los filtros de planillas.");
+        }
+
+        if (!cancelado) {
+          setOpciones({
+            anios: Array.isArray(data.anios) ? data.anios : [],
+            divisiones: Array.isArray(data.divisiones) ? data.divisiones : [],
+            total_docentes: Number(data.total_docentes || 0),
+          });
+        }
+      } catch (err) {
+        if (!cancelado) {
+          setOpciones(opcionesIniciales);
+          setErrorOpciones(err?.message || "No se pudieron cargar los filtros de planillas.");
+        }
+      } finally {
+        if (!cancelado) setCargandoOpciones(false);
+      }
+    };
+
+    cargarOpciones();
+    return () => {
+      cancelado = true;
+    };
+  }, [apiUrl]);
+
   const campaniaSeleccionada = useMemo(
     () => campanias.find((c) => String(c.id_campania) === String(idCampania)) || null,
     [campanias, idCampania]
+  );
+
+  const anioSeleccionado = useMemo(
+    () => opciones.anios.find((anio) => String(anio.id_anio) === String(idAnio)) || null,
+    [opciones.anios, idAnio]
+  );
+
+  const divisionSeleccionada = useMemo(
+    () => opciones.divisiones.find((division) => String(division.id_division) === String(idDivision)) || null,
+    [opciones.divisiones, idDivision]
   );
 
   const exportarPlanillas = () => {
@@ -41,6 +104,7 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
 
     const params = new URLSearchParams();
     params.set("action", "ventas_planillas_cursos");
+    params.set("tipo", tipoPlanilla);
     params.set("id_campania", idCampania);
     params.set("solo_activos", soloActivos ? "1" : "0");
     params.set("orientacion", "vertical");
@@ -48,10 +112,20 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
     params.set("estilo", "calcado");
     params.set("numero_bot", NUMERO_BOT_PLANILLAS);
 
+    if (tipoPlanilla === "cursos") {
+      if (idAnio) params.set("id_anio", idAnio);
+      if (idDivision) params.set("id_division", idDivision);
+    }
+
     abrirEnNuevaPestana(`${apiUrl}?${params.toString()}`);
   };
 
   const campaniaActiva = campaniaSeleccionada && asBool(campaniaSeleccionada.activo);
+  const esPlanillaDocentes = tipoPlanilla === "docentes";
+  const tituloPlanilla = esPlanillaDocentes ? "Listado completo de profesores" : "Una hoja por curso y división";
+  const descripcionPlanilla = esPlanillaDocentes
+    ? "Incluye todos los docentes de la tabla nueva para anotar cuántas entradas o productos vende cada profesor."
+    : "Incluye el listado de alumnos y espacios para registrar la venta manualmente.";
 
   return (
     <section className="ventas-card ventas-full-card ventas-planillas-card">
@@ -60,7 +134,7 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
       <div className="ventas-planillas-head">
         <div className="ventas-planillas-heading">
           <h2>Planillas para docentes</h2>
-          <p>Exportá hojas por curso y división listas para imprimir y completar.</p>
+          <p>Exportá hojas filtradas por curso/división o un listado general de profesores para completar ventas.</p>
         </div>
 
         <span className="ventas-planillas-format">
@@ -78,19 +152,35 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
 
             <div>
               <span className="ventas-planillas-eyebrow">Exportación masiva</span>
-              <h3>Una hoja por curso y división</h3>
-              <p>Incluye el listado de alumnos y espacios para registrar la venta manualmente.</p>
+              <h3>{tituloPlanilla}</h3>
+              <p>{descripcionPlanilla}</p>
             </div>
           </div>
 
           <div className="ventas-planillas-columns" aria-label="Columnas de la planilla">
-            <span>VEN</span>
-            <span>GAN</span>
-            <span>Cobrado</span>
-            <span>Observaciones</span>
+            {esPlanillaDocentes ? (
+              <>
+                <span>Docente</span>
+                <span>Cantidad</span>
+                <span>Cobrado</span>
+                <span>Observaciones</span>
+              </>
+            ) : (
+              <>
+                <span>VEN</span>
+                <span>GAN</span>
+                <span>Cobrado</span>
+                <span>Observaciones</span>
+              </>
+            )}
           </div>
 
-          <p className="ventas-planillas-note">Preparada para entregar a cada docente responsable. Número bot: <strong>{NUMERO_BOT_PLANILLAS}</strong></p>
+          <p className="ventas-planillas-note">
+            {esPlanillaDocentes
+              ? `Se toma desde la tabla docentes. Total cargado: ${opciones.total_docentes || 0} docentes. Número bot: `
+              : "Preparada para entregar a cada docente responsable. Número bot: "}
+            <strong>{NUMERO_BOT_PLANILLAS}</strong>
+          </p>
         </div>
 
         <div className="ventas-planillas-panel ventas-planillas-panel--controls">
@@ -105,6 +195,45 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
               ))}
             </select>
           </label>
+
+          <label className="ventas-planillas-field">
+            <span>Tipo de planilla</span>
+            <select value={tipoPlanilla} onChange={(e) => setTipoPlanilla(e.target.value)}>
+              <option value="cursos">Cursos / alumnos</option>
+              <option value="docentes">Profesores / docentes</option>
+            </select>
+          </label>
+
+          {tipoPlanilla === "cursos" ? (
+            <div className="ventas-planillas-filtros">
+              <label className="ventas-planillas-field">
+                <span>Año</span>
+                <select value={idAnio} onChange={(e) => setIdAnio(e.target.value)} disabled={cargandoOpciones}>
+                  <option value="">Todos los años</option>
+                  {opciones.anios.map((anio) => (
+                    <option key={anio.id_anio} value={anio.id_anio}>{anio.nombre}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="ventas-planillas-field">
+                <span>División</span>
+                <select value={idDivision} onChange={(e) => setIdDivision(e.target.value)} disabled={cargandoOpciones}>
+                  <option value="">Todas las divisiones</option>
+                  {opciones.divisiones.map((division) => (
+                    <option key={division.id_division} value={division.id_division}>{division.nombre}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
+          {errorOpciones ? (
+            <div className="ventas-planillas-resumen ventas-planillas-resumen--warning">
+              <strong>No se cargaron los filtros</strong>
+              <p>{errorOpciones}</p>
+            </div>
+          ) : null}
 
           {campaniaSeleccionada ? (
             <div className="ventas-planillas-resumen">
@@ -124,6 +253,16 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
                   <small>Precio VEN</small>
                   {campaniaSeleccionada.producto_principal_precio ? money(campaniaSeleccionada.producto_principal_precio) : "Sin precio"}
                 </span>
+                <span>
+                  <small>Planilla</small>
+                  {esPlanillaDocentes ? "Profesores" : "Cursos / alumnos"}
+                </span>
+                <span>
+                  <small>Filtro</small>
+                  {esPlanillaDocentes
+                    ? `${soloActivos ? "Docentes activos" : "Todos los docentes"}`
+                    : `${anioSeleccionado?.nombre || "Todos los años"} · ${divisionSeleccionada?.nombre || "Todas las divisiones"}`}
+                </span>
               </div>
             </div>
           ) : (
@@ -142,7 +281,9 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
               />
               <span className="ventas-planillas-checkmark" aria-hidden="true" />
               <span className="ventas-planillas-check-label">
-                <span className="ventas-planillas-check-full">Incluir solo alumnos activos</span>
+                <span className="ventas-planillas-check-full">
+                  {esPlanillaDocentes ? "Incluir solo docentes activos" : "Incluir solo alumnos activos"}
+                </span>
                 <span className="ventas-planillas-check-short">Solo activos</span>
               </span>
             </label>

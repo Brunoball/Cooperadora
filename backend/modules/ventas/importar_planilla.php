@@ -413,6 +413,8 @@ try {
                 ]);
             }
 
+            ventas_sincronizar_orden_contable($pdo, $idOrden);
+
             $procesadas++;
             $cantidadVen += $ven;
             $cantidadGan += $gan;

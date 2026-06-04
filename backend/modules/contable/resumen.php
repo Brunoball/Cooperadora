@@ -26,6 +26,15 @@ try {
   $pdo->exec("SET NAMES utf8mb4");
   $pdo->exec("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
 
+  // Antes de calcular totales, impactar ventas aprobadas en ingresos.
+  $ventasHelper = __DIR__ . '/../ventas/helpers.php';
+  if (is_file($ventasHelper)) {
+    require_once $ventasHelper;
+    if (function_exists('ventas_sincronizar_contable_ventas_aprobadas')) {
+      ventas_sincronizar_contable_ventas_aprobadas($pdo);
+    }
+  }
+
   // Año
   $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
   if ($year < 2000 || $year > 2100) $year = (int)date('Y');
