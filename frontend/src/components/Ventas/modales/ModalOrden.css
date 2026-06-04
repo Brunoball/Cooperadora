@@ -2,7 +2,7 @@
    Nueva venta / Editar venta - pestaña Ventas registradas
    ========================================================= */
 .ventas-modal--orden {
-  width: min(1160px, calc(100vw - 32px));
+  width: min(1260px, calc(100vw - 32px));
 }
 
 .ventas-modal--orden .ventas-modal__head {
@@ -181,6 +181,13 @@
   background: #fbfcfe;
 }
 
+.ventas-modal--orden .ventas-orden-main-grid .ventas-orden-field.ventas-floating-field {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .ventas-modal--orden .ventas-orden-field {
   display: flex;
   flex-direction: column;
@@ -278,31 +285,37 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   overflow-x: auto;
   overflow-y: visible;
   padding: 2px 1px 8px;
-  scrollbar-width: thin;
-}
-
-.ventas-modal--orden .ventas-items-grid {
-  flex: 0 0 auto;
-  min-width: 1040px;
-  display: grid;
-  grid-template-columns: 86px minmax(205px, 1.34fr) minmax(180px, 1.1fr) 116px 112px 72px 118px 40px;
-  align-items: center;
-  gap: 9px;
-  padding: 9px;
   border: 1px solid #e8eef6;
   border-radius: 15px;
   background: #fbfcfe;
+  scrollbar-width: thin;
+}
+
+/* Estructura de grilla continua, conservando la paleta original del modal. */
+.ventas-modal--orden .ventas-items-grid {
+  flex: 0 0 auto;
+  min-width: 940px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.42fr) minmax(175px, 1.12fr) 118px 138px 76px 126px 46px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #e8eef6;
+  border-radius: 0;
+  background: #fbfcfe;
+}
+
+.ventas-modal--orden .ventas-items-grid:last-child {
+  border-bottom: 0;
 }
 
 .ventas-modal--orden .ventas-items-grid--head {
-  min-width: 1040px;
-  padding: 0 9px 5px;
-  border: 0;
-  border-radius: 0;
+  min-width: 940px;
   background: transparent;
   color: #718096;
   font-size: 0.69rem;
@@ -311,8 +324,31 @@
   text-transform: uppercase;
 }
 
+.ventas-modal--orden .ventas-items-grid--head > span {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  border-right: 1px solid #e8eef6;
+}
+
+.ventas-modal--orden .ventas-items-grid--head > span:last-child {
+  border-right: 0;
+}
+
+.ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > * {
+  min-width: 0;
+  padding: 6px 7px;
+  border-right: 1px solid #e8eef6;
+}
+
+.ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > *:last-child {
+  border-right: 0;
+}
+
 .ventas-modal--orden .ventas-item-field {
-  display: block;
+  display: flex;
+  align-items: center;
   min-width: 0;
   font-size: inherit;
   color: inherit;
@@ -342,12 +378,18 @@
   box-shadow: 0 0 0 3px rgba(29, 66, 138, 0.09);
 }
 
+.ventas-modal--orden .ventas-item-field--currency input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .ventas-modal--orden .ventas-item-subtotal {
-  min-height: 42px;
+  min-height: 54px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .ventas-modal--orden .ventas-item-subtotal strong {
@@ -356,9 +398,36 @@
   font-weight: 720;
 }
 
+/* Alineacion de columnas numericas/precio en la grilla de conceptos. */
+@media (min-width: 981px) {
+  .ventas-modal--orden .ventas-items-grid--head > span:nth-child(3),
+  .ventas-modal--orden .ventas-items-grid--head > span:nth-child(4),
+  .ventas-modal--orden .ventas-items-grid--head > span:nth-child(5),
+  .ventas-modal--orden .ventas-items-grid--head > span:nth-child(6) {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > :nth-child(3) select {
+    text-align: center;
+    text-align-last: center;
+  }
+
+  .ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > :nth-child(4) input,
+  .ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > :nth-child(5) input {
+    text-align: center;
+  }
+
+  .ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > :nth-child(6) {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
 .ventas-modal--orden .ventas-item-delete {
   width: 40px;
   height: 40px;
+  margin: auto;
   border: 1px solid #fee2e2;
   border-radius: 11px;
   background: #fff5f5;
@@ -535,6 +604,14 @@
   background: #fbfcfe;
 }
 
+.ventas-modal--orden .ventas-orden-persona-grid .ventas-orden-field.ventas-floating-field,
+.ventas-modal--orden .ventas-orden-observation.ventas-floating-field {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .ventas-modal--orden .ventas-orden-field--wide {
   grid-column: 1 / -1;
 }
@@ -597,7 +674,12 @@
   }
 
   .ventas-modal--orden .ventas-items-scroll {
+    gap: 8px;
     overflow-x: visible;
+    padding: 2px 1px 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .ventas-modal--orden .ventas-items-grid--head {
@@ -610,6 +692,14 @@
     align-items: end;
     gap: 10px;
     padding: 12px;
+    border: 1px solid #e8eef6;
+    border-radius: 15px;
+    background: #fbfcfe;
+  }
+
+  .ventas-modal--orden .ventas-items-grid:not(.ventas-items-grid--head) > * {
+    padding: 0;
+    border-right: 0;
   }
 
   .ventas-modal--orden .ventas-item-field {
@@ -629,8 +719,8 @@
     text-transform: uppercase;
   }
 
-  .ventas-modal--orden .ventas-item-field:nth-child(2),
-  .ventas-modal--orden .ventas-item-field:nth-child(3) {
+  .ventas-modal--orden .ventas-item-field:nth-child(1),
+  .ventas-modal--orden .ventas-item-field:nth-child(2) {
     grid-column: 1 / -1;
   }
 
@@ -644,6 +734,10 @@
 
   .ventas-modal--orden .ventas-item-delete {
     width: 100%;
+    height: 42px;
+    border: 1px solid #fee2e2;
+    border-radius: 11px;
+    background: #fff5f5;
   }
 }
 
@@ -708,8 +802,8 @@
     grid-template-columns: 1fr;
   }
 
-  .ventas-modal--orden .ventas-item-field:nth-child(2),
-  .ventas-modal--orden .ventas-item-field:nth-child(3) {
+  .ventas-modal--orden .ventas-item-field:nth-child(1),
+  .ventas-modal--orden .ventas-item-field:nth-child(2) {
     grid-column: auto;
   }
 

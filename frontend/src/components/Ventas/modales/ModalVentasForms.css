@@ -67,6 +67,67 @@
   box-shadow: 0 0 0 4px rgba(29, 66, 138, 0.12);
 }
 
+/* Floating label permanente: mantiene el rótulo visible y deja el placeholder como ayuda. */
+.ventas-modal .ventas-form label.ventas-floating-field {
+  position: relative;
+  display: block;
+  gap: 0;
+  min-width: 0;
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field > .ventas-floating-label {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  z-index: 2;
+  max-width: calc(100% - 25px);
+  overflow: hidden;
+  padding: 0 6px;
+  color: var(--blue-inst-gray-600, #52647a);
+  background: #ffffff;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  font-weight: 720;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: color 0.18s ease;
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field > input,
+.ventas-modal .ventas-form label.ventas-floating-field > select,
+.ventas-modal .ventas-form label.ventas-floating-field > textarea {
+  min-height: 52px;
+  padding: 17px 13px 10px;
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field > select {
+  padding-right: 38px;
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field > textarea {
+  min-height: 88px;
+  padding-top: 19px;
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field > input::placeholder,
+.ventas-modal .ventas-form label.ventas-floating-field > textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+  font-weight: 450;
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field:focus-within > .ventas-floating-label {
+  color: var(--blue-inst-primary, #1D428A);
+}
+
+.ventas-modal .ventas-form label.ventas-floating-field > small {
+  display: block;
+  margin-top: 7px;
+}
+
 .ventas-modal .ventas-form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

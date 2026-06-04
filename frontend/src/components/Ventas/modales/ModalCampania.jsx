@@ -84,8 +84,8 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
             </header>
 
             <div className="ventas-campania-fields">
-              <label className="ventas-campania-field">
-                <span>Nombre de la opción en el bot</span>
+              <label className="ventas-campania-field ventas-floating-field">
+                <span className="ventas-floating-label">Nombre de la opción en el bot</span>
                 <input
                   value={form.nombre}
                   onChange={(e) => setField("nombre", e.target.value)}
@@ -95,8 +95,8 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
                 />
               </label>
 
-              <label className="ventas-campania-field">
-                <span>Pregunta que verá el usuario en WhatsApp</span>
+              <label className="ventas-campania-field ventas-floating-field">
+                <span className="ventas-floating-label">Pregunta que verá el usuario en WhatsApp</span>
                 <textarea
                   value={form.pregunta_persona || ""}
                   rows={2}
@@ -117,8 +117,8 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
               </div>
             </header>
 
-            <label className="ventas-product-selector">
-              <span className="ventas-product-selector__label">
+            <label className="ventas-product-selector ventas-floating-field">
+              <span className="ventas-product-selector__label ventas-floating-label">
                 <FontAwesomeIcon icon={faBoxOpen} /> Producto de la venta
               </span>
               <select
@@ -126,7 +126,7 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
                 onChange={(e) => seleccionarProducto(e.target.value)}
                 required
               >
-                <option value="">Seleccionar producto</option>
+                <option value="">Seleccioná un producto...</option>
                 {productos.map((producto) => (
                   <option key={producto.id_producto} value={producto.id_producto}>
                     {producto.nombre} - Anticipada {money(precioProductoAnticipada(producto))} / Puerta {money(precioProductoPuerta(producto))}
@@ -189,8 +189,8 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
             </header>
 
             <div className="ventas-form-row ventas-campania-dates">
-              <label className="ventas-campania-field">
-                <span>Fecha inicio opcional</span>
+              <label className="ventas-campania-field ventas-floating-field">
+                <span className="ventas-floating-label">Fecha inicio opcional</span>
                 <input
                   type="date"
                   value={form.fecha_inicio || ""}
@@ -199,8 +199,8 @@ export default function ModalCampania({ abierto, form, setForm, productos = [], 
                   onChange={(e) => setField("fecha_inicio", e.target.value)}
                 />
               </label>
-              <label className="ventas-campania-field">
-                <span>Fecha fin opcional</span>
+              <label className="ventas-campania-field ventas-floating-field">
+                <span className="ventas-floating-label">Fecha fin opcional</span>
                 <input
                   type="date"
                   value={form.fecha_fin || ""}

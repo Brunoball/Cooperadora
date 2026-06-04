@@ -6,7 +6,6 @@ import "./ModalOrden.css";
 import {
   asBool,
   estadosOrden,
-  money,
   normalizarTipoPrecio,
   precioProductoPorTipo,
   precioTipoLabel,
@@ -37,6 +36,17 @@ const toNumber = (value) => {
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
 };
+
+const moneyConCentavos = (value) =>
+  toNumber(value).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const precioFormateado = (value) =>
+  String(value ?? "").trim() === "" ? "" : moneyConCentavos(value);
 
 const crearItemVacio = (codigo = "ITEM") => ({
   id_producto: "",
@@ -165,6 +175,7 @@ export default function ModalOrden({
   const [alumnoBusqueda, setAlumnoBusqueda] = useState("");
   const [personaBusqueda, setPersonaBusqueda] = useState("");
   const [selectorActivo, setSelectorActivo] = useState("");
+  const [precioActivo, setPrecioActivo] = useState(null);
   const alumnoComboRef = useRef(null);
   const personaComboRef = useRef(null);
 
@@ -173,6 +184,7 @@ export default function ModalOrden({
       setAlumnoBusqueda("");
       setPersonaBusqueda("");
       setSelectorActivo("");
+      setPrecioActivo(null);
     }
   }, [abierto]);
 
@@ -287,6 +299,11 @@ export default function ModalOrden({
     guardarItems(nuevos);
   };
 
+  const normalizarPrecioItem = (index, value) => {
+    const raw = String(value ?? "").trim();
+    actualizarItem(index, { precio_unitario: raw ? toNumber(raw).toFixed(2) : "" });
+  };
+
   const seleccionarProductoEnItem = (index, idProducto) => {
     const producto = productos.find((p) => String(p.id_producto) === String(idProducto));
 
@@ -370,18 +387,7 @@ export default function ModalOrden({
     >
       <form className="ventas-form" onSubmit={onSubmit}>
         <div className="ventas-modal__body ventas-orden-body">
-          <div className="ventas-orden-note" role="note">
-            <span className="ventas-orden-note__icon">
-              <FontAwesomeIcon icon={faInfoCircle} />
-            </span>
-            <div className="ventas-orden-note__copy">
-              <strong>{esEdicion ? "Edición de venta" : "Carga manual"}</strong>
-              <span>
-                Asociá el cobro a un DNI y cargá los productos o conceptos incluidos en la venta.
-              </span>
-            </div>
-            <span className="ventas-orden-note__tag">Venta registrada</span>
-          </div>
+
 
           <section className="ventas-orden-card ventas-orden-card--datos" aria-label="Datos principales de la venta">
             <div className="ventas-orden-card__head">
@@ -389,17 +395,14 @@ export default function ModalOrden({
                 <h3>Datos de la venta</h3>
                 <p>Definí el origen del cobro, su medio de pago y la fecha de registro.</p>
               </div>
-              <div className="ventas-orden-head-total">
-                <small>Total actual</small>
-                <strong>{money(total)}</strong>
-              </div>
+
             </div>
 
             <div className="ventas-orden-main-grid">
-              <label className="ventas-orden-field">
-                <span>Venta / campaña</span>
+              <label className="ventas-orden-field ventas-floating-field">
+                <span className="ventas-floating-label">Venta / campaña</span>
                 <select value={form.id_campania || ""} onChange={(e) => seleccionarCampania(e.target.value)} required>
-                  <option value="">Seleccionar venta</option>
+                  <option value="">Seleccioná una venta / campaña...</option>
                   {campanias.map((c) => (
                     <option key={c.id_campania} value={c.id_campania}>
                       {c.nombre}{!asBool(c.activo) ? " (inactiva)" : ""}
@@ -408,18 +411,18 @@ export default function ModalOrden({
                 </select>
               </label>
 
-              <label className="ventas-orden-field">
-                <span>Medio de pago</span>
+              <label className="ventas-orden-field ventas-floating-field">
+                <span className="ventas-floating-label">Medio de pago</span>
                 <select value={form.id_medio_pago || ""} onChange={(e) => setField("id_medio_pago", e.target.value)} required>
-                  <option value="">Seleccionar medio</option>
+                  <option value="">Seleccioná un medio de pago...</option>
                   {mediosPago.map((m) => (
                     <option key={m.id_medio_pago} value={m.id_medio_pago}>{m.medio_pago}</option>
                   ))}
                 </select>
               </label>
 
-              <label className="ventas-orden-field">
-                <span>Fecha de venta</span>
+              <label className="ventas-orden-field ventas-floating-field">
+                <span className="ventas-floating-label">Fecha de venta</span>
                 <input
                   type="date"
                   value={form.fecha_venta || today()}
@@ -429,8 +432,8 @@ export default function ModalOrden({
                 />
               </label>
 
-              <label className="ventas-orden-field">
-                <span>Estado</span>
+              <label className="ventas-orden-field ventas-floating-field">
+                <span className="ventas-floating-label">Estado</span>
                 <select value={form.estado || "aprobada"} onChange={(e) => setField("estado", e.target.value)}>
                   {estadosOrden.filter((e) => e.value).map((e) => (
                     <option key={e.value} value={e.value}>{e.label}</option>
@@ -456,7 +459,6 @@ export default function ModalOrden({
 
             <div className="ventas-items-scroll" aria-label="Conceptos cargados en la venta">
               <div className="ventas-items-grid ventas-items-grid--head">
-                <span>Columna</span>
                 <span>Producto / concepto</span>
                 <span>Nombre visible</span>
                 <span>Tipo precio</span>
@@ -473,22 +475,12 @@ export default function ModalOrden({
 
                 return (
                   <div className="ventas-items-grid" key={`item-${index}`}>
-                    <label className="ventas-item-field" data-label="Columna">
-                      <input
-                        value={item.columna_codigo || ""}
-                        onChange={(e) => actualizarItem(index, { columna_codigo: e.target.value.toUpperCase() })}
-                        placeholder="VEN"
-                        maxLength={30}
-                        required
-                      />
-                    </label>
-
                     <label className="ventas-item-field" data-label="Producto / concepto">
                       <select value={item.id_producto || ""} onChange={(e) => seleccionarProductoEnItem(index, e.target.value)}>
                         <option value="">Manual / sin catálogo</option>
                         {productos.map((p) => (
                           <option key={p.id_producto} value={p.id_producto}>
-                            {p.nombre} - Ant. {money(precioProductoPorTipo(p, "anticipada"))} / Puerta {money(precioProductoPorTipo(p, "puerta"))}{Number(p.activo) === 1 ? "" : " (inactivo)"}
+                            {p.nombre} - Ant. {moneyConCentavos(precioProductoPorTipo(p, "anticipada"))} / Puerta {moneyConCentavos(precioProductoPorTipo(p, "puerta"))}{Number(p.activo) === 1 ? "" : " (inactivo)"}
                           </option>
                         ))}
                       </select>
@@ -516,13 +508,30 @@ export default function ModalOrden({
                       </select>
                     </label>
 
-                    <label className="ventas-item-field" data-label="Precio">
+                    <label className="ventas-item-field ventas-item-field--currency" data-label="Precio">
                       <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.precio_unitario ?? ""}
+                        type="text"
+                        inputMode="decimal"
+                        value={precioActivo === index ? (item.precio_unitario ?? "") : precioFormateado(item.precio_unitario)}
+                        onFocus={(e) => {
+                          const input = e.currentTarget;
+                          setPrecioActivo(index);
+                          window.requestAnimationFrame(() => input.select());
+                        }}
                         onChange={(e) => actualizarItem(index, { precio_unitario: e.target.value })}
+                        onBlur={() => {
+                          normalizarPrecioItem(index, item.precio_unitario);
+                          setPrecioActivo(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            normalizarPrecioItem(index, item.precio_unitario);
+                            setPrecioActivo(null);
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        placeholder="$ 0,00"
                         required
                       />
                     </label>
@@ -539,7 +548,7 @@ export default function ModalOrden({
                     </label>
 
                     <div className="ventas-item-subtotal" data-label="Subtotal">
-                      <strong>{money(subtotal)}</strong>
+                      <strong>{moneyConCentavos(subtotal)}</strong>
                     </div>
 
                     <button type="button" className="ventas-item-delete" onClick={() => quitarItem(index)} title="Quitar concepto" aria-label="Quitar concepto">
@@ -555,7 +564,7 @@ export default function ModalOrden({
                 Conceptos <strong>{items.length}</strong>
               </span>
               <span className="ventas-orden-summary__chip ventas-orden-summary__chip--total">
-                Total de la venta <strong>{money(total)}</strong>
+                Total de la venta <strong>{moneyConCentavos(total)}</strong>
               </span>
             </div>
           </section>
@@ -569,14 +578,11 @@ export default function ModalOrden({
             </div>
 
             <div className="ventas-persona-selector-box">
-              <div className="ventas-persona-selector-box__head">
-                <strong>Buscar persona ya cargada</strong>
-                <span>Seleccioná una coincidencia y el DNI, nombre y referencia se completarán automáticamente.</span>
-              </div>
+
 
               <div className="ventas-form-row ventas-persona-search-grid">
-                <label className="ventas-orden-field ventas-search-combo" ref={alumnoComboRef}>
-                  <span>Alumno por DNI o nombre</span>
+                <label className="ventas-orden-field ventas-search-combo ventas-floating-field" ref={alumnoComboRef}>
+                  <span className="ventas-floating-label">Alumno por DNI o nombre</span>
                   <input
                     value={alumnoBusqueda}
                     onChange={(e) => {
@@ -608,8 +614,8 @@ export default function ModalOrden({
                   )}
                 </label>
 
-                <label className="ventas-orden-field ventas-search-combo" ref={personaComboRef}>
-                  <span>Persona de ventas</span>
+                <label className="ventas-orden-field ventas-search-combo ventas-floating-field" ref={personaComboRef}>
+                  <span className="ventas-floating-label">Persona de ventas</span>
                   <input
                     value={personaBusqueda}
                     onChange={(e) => {
@@ -644,8 +650,8 @@ export default function ModalOrden({
             </div>
 
             <div className="ventas-orden-persona-grid">
-              <label className="ventas-orden-field">
-                <span>DNI de la persona/alumno</span>
+              <label className="ventas-orden-field ventas-floating-field">
+                <span className="ventas-floating-label">DNI de la persona/alumno</span>
                 <input
                   value={form.persona_dni || form.dni || ""}
                   onChange={(e) => {
@@ -659,8 +665,8 @@ export default function ModalOrden({
                 />
               </label>
 
-              <label className="ventas-orden-field">
-                <span>Nombre y apellido</span>
+              <label className="ventas-orden-field ventas-floating-field">
+                <span className="ventas-floating-label">Nombre y apellido</span>
                 <input
                   value={form.persona_nombre || ""}
                   onChange={(e) => setField("persona_nombre", e.target.value)}
@@ -670,8 +676,8 @@ export default function ModalOrden({
                 />
               </label>
 
-              <label className="ventas-orden-field ventas-orden-field--wide">
-                <span>Detalle / referencia opcional</span>
+              <label className="ventas-orden-field ventas-orden-field--wide ventas-floating-field">
+                <span className="ventas-floating-label">Detalle / referencia opcional</span>
                 <input
                   value={form.persona_detalle || ""}
                   onChange={(e) => setField("persona_detalle", e.target.value)}
@@ -681,8 +687,8 @@ export default function ModalOrden({
               </label>
             </div>
 
-            <label className="ventas-orden-field ventas-orden-field--full ventas-orden-observation">
-              <span>Observación opcional</span>
+            <label className="ventas-orden-field ventas-orden-field--full ventas-orden-observation ventas-floating-field">
+              <span className="ventas-floating-label">Observación opcional</span>
               <textarea value={form.observacion || ""} rows={3} onChange={(e) => setField("observacion", e.target.value)} placeholder="Ej: transferencia, pagó en secretaría o recibió comprobante manual." />
             </label>
           </section>
@@ -691,7 +697,7 @@ export default function ModalOrden({
         <footer className="ventas-modal__footer ventas-orden-footer">
           <div className="ventas-orden-footer__total">
             <span>Total</span>
-            <strong>{money(total)}</strong>
+            <strong>{moneyConCentavos(total)}</strong>
           </div>
           <div className="ventas-orden-footer__actions">
             <button type="button" className="ventas-modal-cancel" onClick={onClose} disabled={saving}>

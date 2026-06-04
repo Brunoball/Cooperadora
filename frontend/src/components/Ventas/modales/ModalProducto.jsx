@@ -45,8 +45,8 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
                 </div>
               </div>
 
-              <label className="ventas-producto-field">
-                <span>Nombre del producto</span>
+              <label className="ventas-producto-field ventas-floating-field">
+                <span className="ventas-floating-label">Nombre del producto</span>
                 <input
                   value={form.nombre}
                   onChange={(e) => setField("nombre", e.target.value)}
@@ -56,8 +56,8 @@ export default function ModalProducto({ abierto, form, setForm, saving, onClose,
                 />
               </label>
 
-              <label className="ventas-producto-field ventas-producto-field--description">
-                <span>Descripción</span>
+              <label className="ventas-producto-field ventas-producto-field--description ventas-floating-field">
+                <span className="ventas-floating-label">Descripción</span>
                 <textarea
                   value={form.descripcion || ""}
                   rows={4}
