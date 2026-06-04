@@ -30,14 +30,9 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
 
-    // Mantener ventas aprobadas sincronizadas con ingresos contables.
-    $ventasHelper = __DIR__ . '/../ventas/helpers.php';
-    if (is_file($ventasHelper)) {
-        require_once $ventasHelper;
-        if (function_exists('ventas_sincronizar_contable_ventas_aprobadas')) {
-            ventas_sincronizar_contable_ventas_aprobadas($pdo);
-        }
-    }
+    // No sincronizar ventas en lecturas de ingresos/alumnos.
+    // La sincronización anterior podía insertar ingresos de ventas repetidos cada vez
+    // que el usuario entraba o cambiaba de pestaña.
 
     /* ========================= Helpers ========================= */
     $op = $_GET['op'] ?? $_POST['op'] ?? '';
@@ -86,6 +81,47 @@ try {
         }
         return number_format($float, 2, '.', '');
     };
+
+    /* ========================= Metadata rápida ========================= */
+    if (isset($_GET['meta']) && (int)$_GET['meta'] === 1) {
+        $anios = [(int)date('Y')];
+
+        $leerAnios = function(string $sql) use (&$anios, $pdo): void {
+            try {
+                $st = $pdo->query($sql);
+                while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
+                    if (!empty($r['anio'])) $anios[] = (int)$r['anio'];
+                }
+            } catch (Throwable $e) {
+                // Metadata no debe romper la pantalla.
+            }
+        };
+
+        if ($tableExists($pdo, 'pagos')) {
+            $leerAnios("SELECT DISTINCT YEAR(fecha_pago) AS anio FROM pagos WHERE fecha_pago IS NOT NULL");
+        }
+        if ($tableExists($pdo, 'ingresos')) {
+            $leerAnios("SELECT DISTINCT YEAR(fecha) AS anio FROM ingresos WHERE fecha IS NOT NULL");
+        }
+        if ($tableExists($pdo, 'egresos')) {
+            $leerAnios("SELECT DISTINCT YEAR(fecha) AS anio FROM egresos WHERE fecha IS NOT NULL");
+        }
+        if ($tableExists($pdo, 'ventas_ordenes')) {
+            $parts = [];
+            if ($columnExists($pdo, 'ventas_ordenes', 'aprobado_en')) $parts[] = 'aprobado_en';
+            if ($columnExists($pdo, 'ventas_ordenes', 'actualizado_en')) $parts[] = 'actualizado_en';
+            if ($columnExists($pdo, 'ventas_ordenes', 'creado_en')) $parts[] = 'creado_en';
+            if ($parts) {
+                $fechaExpr = 'COALESCE(' . implode(', ', $parts) . ')';
+                $excluido = $columnExists($pdo, 'ventas_ordenes', 'contable_excluido') ? 'AND COALESCE(contable_excluido, 0) = 0' : '';
+                $leerAnios("SELECT DISTINCT YEAR($fechaExpr) AS anio FROM ventas_ordenes WHERE LOWER(TRIM(CAST(estado AS CHAR))) = 'aprobada' $excluido");
+            }
+        }
+
+        $anios = array_values(array_unique(array_filter($anios)));
+        rsort($anios);
+        $json_ok(['anios_disponibles' => $anios, 'detalle' => []]);
+    }
 
     /* ========================= CRUD ingresos ========================= */
     if ($op === 'get' || $op === 'create' || $op === 'update') {
@@ -167,7 +203,7 @@ try {
             $idIngreso = (int)($in['id_ingreso'] ?? 0);
             if ($idIngreso <= 0) $json_err('id_ingreso inválido', 400);
 
-            if (function_exists('ventas_table_exists') && ventas_table_exists($pdo, 'ventas_ordenes') && function_exists('ventas_column_exists') && ventas_column_exists($pdo, 'ventas_ordenes', 'id_ingreso')) {
+            if ($tableExists($pdo, 'ventas_ordenes') && $columnExists($pdo, 'ventas_ordenes', 'id_ingreso')) {
                 $qVenta = $pdo->prepare('SELECT codigo_orden FROM ventas_ordenes WHERE id_ingreso = :id LIMIT 1');
                 $qVenta->execute([':id' => $idIngreso]);
                 $codigoVenta = $qVenta->fetchColumn();
@@ -235,7 +271,18 @@ try {
     ");
     $aniosIngresos = array_map(static fn($r) => (int)$r['anio'], $stYearsIngresos->fetchAll(PDO::FETCH_ASSOC));
 
-    $aniosDisponibles = array_unique(array_merge($aniosPagos, $aniosIngresos));
+    $aniosVentas = [];
+    if ($tableExists($pdo, 'ventas_ordenes')) {
+        $stYearsVentas = $pdo->query("
+            SELECT DISTINCT YEAR(COALESCE(aprobado_en, actualizado_en, creado_en)) AS anio
+            FROM ventas_ordenes
+            WHERE LOWER(TRIM(COALESCE(estado,''))) = 'aprobada'
+            ORDER BY anio DESC
+        ");
+        $aniosVentas = array_map(static fn($r) => (int)$r['anio'], $stYearsVentas->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    $aniosDisponibles = array_unique(array_merge($aniosPagos, $aniosIngresos, $aniosVentas, [(int)date('Y')]));
     rsort($aniosDisponibles);
     if (empty($aniosDisponibles)) $aniosDisponibles = [$year];
     if ($hasYearParam && !in_array($year, $aniosDisponibles, true)) {

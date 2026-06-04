@@ -20,6 +20,9 @@ import { IngresoCrearModal, IngresoEditarModal } from "./modalcontable/IngresoMo
 /* === Utilidades === */
 const hoy = new Date();
 const Y = hoy.getFullYear();
+const MES_ACTUAL_INDEX = hoy.getMonth(); // 0 = ENERO, 11 = DICIEMBRE
+const DEFAULT_YEAR = String(Y);
+const DEFAULT_MONTH = String(MES_ACTUAL_INDEX);
 const MESES = [
   "ENERO",
   "FEBRERO",
@@ -202,25 +205,13 @@ function ConfirmModal({
 
 /* ========= Componente principal ========= */
 export default function IngresosContable() {
-  const [anio, setAnio] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.year);
-      return saved || "ALL";
-    } catch {
-      return "ALL";
-    }
-  });
+  // Al entrar a Contable siempre arranca en el mes y año actual.
+  // No se restaura "TODOS" desde localStorage para evitar vistas mezcladas al volver.
+  const [anio, setAnio] = useState(DEFAULT_YEAR);
 
   const [anios, setAnios] = useState([Y]);
 
-  const [mes, setMes] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.month);
-      return saved || "ALL";
-    } catch {
-      return "ALL";
-    }
-  });
+  const [mes, setMes] = useState(DEFAULT_MONTH);
 
   // ✅ filtro especial (id_mes > 12)
   const [mesEspecial, setMesEspecial] = useState(() => {
@@ -245,7 +236,6 @@ export default function IngresosContable() {
   const [innerTab, setInnerTab] = useState("alumnos"); // "alumnos" | "manuales"
 
   const [catFiltro, setCatFiltro] = useState("");
-  const [alertasImportes, setAlertasImportes] = useState([]);
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -261,18 +251,6 @@ export default function IngresosContable() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.year, anio);
-    } catch {}
-  }, [anio]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.month, mes);
-    } catch {}
-  }, [mes]);
 
   useEffect(() => {
     try {
@@ -310,73 +288,27 @@ export default function IngresosContable() {
     return data;
   }, []);
 
-  const getPagoDetalleKey = (r, idx) => {
-    const idPago = r?.id_pago ?? r?.Id_pago ?? r?.ID_PAGO ?? r?.pago_id ?? r?.idPago;
-    if (idPago !== undefined && idPago !== null && String(idPago).trim() !== "") {
-      return `PAGO|${idPago}`;
-    }
+  const esPagoAlumnoValido = useCallback((r) => {
+    if (!r || typeof r !== "object") return false;
 
-    return [
-      r?.fecha_pago ?? "",
-      r?.Alumno ?? "",
-      r?.Mes_pagado_id ?? r?.id_mes ?? r?.Mes_pagado ?? "",
-      r?.Monto ?? r?.monto_pago ?? r?.importe ?? "",
-      r?.Medio ?? r?.medio ?? "",
-      idx,
-    ].join("|");
-  };
+    // Defensa: si el backend viejo mezcla ingresos/ventas dentro del detalle de alumnos,
+    // no los dejamos entrar a la pestaña Alumnos.
+    const tieneCamposIngreso =
+      r.id_ingreso != null ||
+      r.id_venta_orden != null ||
+      r.venta_codigo != null ||
+      r.origen_contable === "venta" ||
+      r.proveedor != null ||
+      r.descripcion != null ||
+      r.importe != null;
+    if (tieneCamposIngreso) return false;
 
-  const deduplicarDetallePagos = (items = []) => {
-    const map = new Map();
-    items.forEach((item, idx) => {
-      const key = getPagoDetalleKey(item, idx);
-      if (!map.has(key)) map.set(key, item);
-    });
-    return Array.from(map.values());
-  };
+    const alumno = String(r.Alumno ?? "").trim();
+    const fecha = String(r.fecha_pago ?? "").trim();
+    const monto = Number(r.Monto ?? 0);
 
-  const detectarImportesSospechosos = (rows = []) => {
-    const grupos = new Map();
-
-    rows.forEach((r) => {
-      const key = [r.fecha, r.alumno, r.categoria, r.medio].join("|");
-      const actual = grupos.get(key) || [];
-      actual.push(r);
-      grupos.set(key, actual);
-    });
-
-    const alertas = [];
-    grupos.forEach((items) => {
-      const meses = new Set(items.map((x) => Number(x.mesPagadoId || 0)).filter(Boolean));
-      if (items.length < 2 || meses.size < 2) return;
-
-      const montos = items.map((x) => Number(x.monto || 0)).filter((n) => Number.isFinite(n) && n > 0);
-      if (montos.length !== items.length) return;
-
-      const min = Math.min(...montos);
-      const max = Math.max(...montos);
-      if (min !== max) return;
-
-      const dividido = min / items.length;
-      const pareceTotalRepetido =
-        min >= 20000 &&
-        dividido >= 1000 &&
-        Number.isInteger(dividido) &&
-        dividido % 500 === 0;
-
-      if (!pareceTotalRepetido) return;
-
-      alertas.push({
-        alumno: items[0].alumno,
-        fecha: items[0].fecha,
-        cantidad: items.length,
-        monto: min,
-        posibleUnitario: dividido,
-      });
-    });
-
-    return alertas.slice(0, 5);
-  };
+    return Boolean(alumno && fecha && Number.isFinite(monto) && monto > 0);
+  }, []);
 
   /* ✅ Cargar meses especiales (FIJO, sin backend) */
   const loadMesesEspeciales = useCallback(() => {
@@ -395,7 +327,9 @@ export default function IngresosContable() {
       let url = `${BASE_URL}/api.php?action=contable_ingresos&detalle=1`;
       if (rango.start && rango.end) {
         url += `&start=${rango.start}&end=${rango.end}`;
-      } else if (anio !== "ALL") {
+      } else if (anio === "ALL") {
+        url += `&all=1`;
+      } else {
         url += `&year=${anio}`;
       }
       const raw = await fetchJSON(url);
@@ -407,32 +341,34 @@ export default function IngresosContable() {
       const detalleCompleto = raw?.detalle || {};
       const todosLosDatos = [];
       Object.keys(detalleCompleto).forEach((key) => {
+        const grupo = Array.isArray(detalleCompleto[key])
+          ? detalleCompleto[key].filter(esPagoAlumnoValido)
+          : [];
+
         if (anio === "ALL") {
-          todosLosDatos.push(...detalleCompleto[key]);
+          todosLosDatos.push(...grupo);
         } else if (key.startsWith(`${anio}-`)) {
           if (mes !== "ALL") {
             const mesIdx = Number(mes);
             const mm = String(mesIdx + 1).padStart(2, "0");
             if (key.endsWith(`-${mm}`)) {
-              todosLosDatos.push(...detalleCompleto[key]);
+              todosLosDatos.push(...grupo);
             }
           } else {
-            todosLosDatos.push(...detalleCompleto[key]);
+            todosLosDatos.push(...grupo);
           }
         }
       });
 
-      const detalleSinDuplicados = deduplicarDetallePagos(todosLosDatos);
-
       // ✅ Orden: más nuevo arriba (fecha DESC)
-      detalleSinDuplicados.sort((a, b) => {
+      todosLosDatos.sort((a, b) => {
         const ta = new Date(a?.fecha_pago || 0).getTime();
         const tb = new Date(b?.fecha_pago || 0).getTime();
         return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
       });
 
-      const rows = detalleSinDuplicados.map((r, i) => ({
-        id: r?.id_pago ? `PAGO|${r.id_pago}` : `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Mes_pagado_id || r?.id_mes || ""}|${r?.Monto || 0}|${i}`,
+      const rows = todosLosDatos.map((r, i) => ({
+        id: `${r?.fecha_pago || ""}|${r?.Alumno || ""}|${r?.Monto || 0}|${i}`,
         fecha: r?.fecha_pago ?? "",
         alumno: r?.Alumno ?? "",
         categoria: r?.Categoria ?? "-",
@@ -440,18 +376,17 @@ export default function IngresosContable() {
         mesPagado: r?.Mes_pagado || MESES[Number(r?.Mes_pagado_id || 0) - 1] || "-",
         mesPagadoId: Number(r?.Mes_pagado_id || r?.id_mes || 0),
         medio: r?.Medio || r?.medio || "—",
+        tipo: "alumno",
       }));
 
       setFilas(rows);
-      setAlertasImportes(detectarImportesSospechosos(rows));
     } catch (e) {
       console.error("Error al cargar ingresos alumnos:", e);
       setFilas([]);
-      setAlertasImportes([]);
     } finally {
       setCargando(false);
     }
-  }, [anio, mes, rango, fetchJSON]);
+  }, [anio, mes, rango, fetchJSON, esPagoAlumnoValido]);
 
   const loadIngresos = useCallback(async () => {
     setCargando(true);
@@ -459,20 +394,29 @@ export default function IngresosContable() {
       let url = `${BASE_URL}/api.php?action=ingresos_list`;
       if (rango.start && rango.end) {
         url += `&start=${rango.start}&end=${rango.end}`;
-      } else if (anio !== "ALL") {
+      } else if (anio === "ALL") {
+        url += `&all=1`;
+      } else {
         url += `&year=${anio}`;
       }
       const data = await fetchJSON(url);
+      if (Array.isArray(data?.anios_disponibles) && data.anios_disponibles.length) {
+        setAnios(data.anios_disponibles.map(String));
+      }
+
+      // El backend ya devuelve una lista única:
+      // ingresos reales de la tabla ingresos + ventas aprobadas faltantes como virtuales.
+      // No consultamos ventas_ordenes desde el front para no duplicar ni esconder registros.
       const list = Array.isArray(data?.items) ? data.items : [];
 
       let filteredList = list;
       if (anio !== "ALL" && mes !== "ALL") {
         filteredList = list.filter((item) => {
           if (!item.fecha) return false;
-          const fecha = new Date(item.fecha);
-          const itemAnio = fecha.getFullYear();
-          const itemMes = fecha.getMonth();
-          return itemAnio === Number(anio) && itemMes === Number(mes);
+          const partes = String(item.fecha).slice(0, 10).split("-").map(Number);
+          const itemAnio = partes[0];
+          const itemMesIndex = Number(partes[1] || 0) - 1;
+          return itemAnio === Number(anio) && itemMesIndex === Number(mes);
         });
       }
 
@@ -483,15 +427,18 @@ export default function IngresosContable() {
         return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
       });
 
-      const rows = filteredList.map((r) => {
-        const categoriaText = r.categoria || r.denominacion || "-";
+      let rows = filteredList.map((r, idx) => {
+        const origen = r.origen_contable || (r.id_venta_orden ? "venta" : "manual");
+        const idIngreso = r.id_ingreso ? Number(r.id_ingreso) : null;
+        const idVentaOrden = r.id_venta_orden ? Number(r.id_venta_orden) : null;
+        const categoriaText = origen === "venta" ? "VENTAS" : (r.categoria || r.denominacion || "-");
         const medioText = r.medio || r.medio_pago || "";
         const proveedorText = r.proveedor || r.nombre_proveedor || "";
         const imputacionText = r.imputacion || r.descripcion || r.descripcion_texto || "";
 
         return {
-          id: `I|${r.id_ingreso}`,
-          id_ingreso: Number(r.id_ingreso),
+          id: idIngreso ? `I|${idIngreso}` : `V|${idVentaOrden || r.venta_codigo || idx}`,
+          id_ingreso: idIngreso,
           id_medio_pago: Number(r.id_medio_pago || 0),
           fecha: r.fecha,
           categoria: categoriaText,
@@ -501,11 +448,30 @@ export default function IngresosContable() {
           medio: medioText,
           denominacion: categoriaText,
           descripcion: imputacionText,
-          origenContable: r.origen_contable || (r.id_venta_orden ? "venta" : "manual"),
-          idVentaOrden: r.id_venta_orden ? Number(r.id_venta_orden) : null,
+          origenContable: origen,
+          idVentaOrden,
           ventaCodigo: r.venta_codigo || "",
+          tipo: "ingreso",
         };
       });
+
+      // Si quedó algún ingreso legacy generado por ventas sin id_venta_orden,
+      // priorizamos la fila virtual de Ventas y ocultamos ese duplicado manual.
+      const clavesVentas = new Set(
+        rows
+          .filter((r) => r.origenContable === "venta")
+          .map((r) => `${String(r.fecha).slice(0, 10)}|${Math.round(Number(r.importe || 0) * 100)}|${String(r.proveedor || "").trim().toUpperCase()}`)
+      );
+      rows = rows.filter((r) => {
+        if (r.origenContable === "venta") return true;
+        const pareceVenta =
+          String(r.categoria || "").trim().toUpperCase().startsWith("VENTA") ||
+          String(r.imputacion || r.descripcion || "").trim().toUpperCase().startsWith("VENTA");
+        if (!pareceVenta) return true;
+        const clave = `${String(r.fecha).slice(0, 10)}|${Math.round(Number(r.importe || 0) * 100)}|${String(r.proveedor || "").trim().toUpperCase()}`;
+        return !clavesVentas.has(clave);
+      });
+
       setFilasIngresos(rows);
     } catch (e) {
       console.error("Error al cargar tabla ingresos:", e);
@@ -562,9 +528,11 @@ export default function IngresosContable() {
   const filasFiltradasAlu = useMemo(() => {
     const q = query.trim().toLowerCase();
 
+    const soloAlumnos = filas.filter((f) => f?.tipo === "alumno" && !f?.origenContable && !f?.id_ingreso && !f?.idVentaOrden);
+
     let base = !q
-      ? filas
-      : filas.filter((f) =>
+      ? soloAlumnos
+      : soloAlumnos.filter((f) =>
           (f.alumno || "").toLowerCase().includes(q) ||
           (f.categoria || "").toLowerCase().includes(q) ||
           (f.fecha || "").toLowerCase().includes(q) ||
@@ -605,7 +573,9 @@ export default function IngresosContable() {
   }, [filasFiltradasAlu, filasFiltradasIng, innerTab]);
 
   const categoriasMes = useMemo(() => {
-    const base = innerTab === "alumnos" ? filas : filasIngresos;
+    const base = innerTab === "alumnos"
+      ? filas.filter((f) => f?.tipo === "alumno" && !f?.id_ingreso && !f?.idVentaOrden)
+      : filasIngresos.filter((f) => f?.tipo === "ingreso");
     const map = new Map();
     base.forEach((f) => {
       const key = (f.categoria || "-").toString();
@@ -668,6 +638,10 @@ export default function IngresosContable() {
   };
 
   const askDelete = (row) => {
+    if (!row?.id_ingreso) {
+      addToast("advertencia", "Esa venta viene del módulo Ventas. No se borra desde ingresos para evitar inconsistencias.");
+      return;
+    }
     setToDelete(row);
     setConfirmOpen(true);
   };
@@ -809,17 +783,6 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            {innerTab === "alumnos" && alertasImportes.length > 0 && (
-              <div className="ing-alerta-contable" role="alert">
-                <strong>Revisar importes:</strong> hay pagos de varios períodos con el mismo importe repetido.
-                {alertasImportes.slice(0, 3).map((a, idx) => (
-                  <div key={`${a.alumno}-${a.fecha}-${idx}`}>
-                    {a.alumno} · {formatFechaDMY(a.fecha)} · {a.cantidad} períodos · figura {fmtMonto(a.monto)} por período.
-                  </div>
-                ))}
-              </div>
-            )}
-
             <div className="ing-divider" />
 
             <div className="ing-sectiontitle">
@@ -914,6 +877,7 @@ export default function IngresosContable() {
 
               {innerTab === "alumnos" ? (
                 <div
+                  key="tabla-alumnos"
                   className={`ing-tablewrap ${cargando ? "is-loading" : ""}`}
                   role="table"
                   aria-label="Listado de ingresos (alumnos)"
@@ -973,6 +937,7 @@ export default function IngresosContable() {
                 </div>
               ) : (
                 <div
+                  key="tabla-ingresos"
                   className={`ing-tablewrap is-manuales ${cargando ? "is-loading" : ""}`}
                   role="table"
                   aria-label="Listado de ingresos (tabla ingresos)"
@@ -1019,9 +984,11 @@ export default function IngresosContable() {
                             <FontAwesomeIcon icon={faEdit} />
                           </button>
                         )}
-                        <button className="act-btn is-del" title="Eliminar" onClick={() => askDelete(f)}>
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
+                        {f.id_ingreso && (
+                          <button className="act-btn is-del" title="Eliminar" onClick={() => askDelete(f)}>
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

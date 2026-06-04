@@ -849,39 +849,17 @@ const ModalPagos = ({ socio, onClose }) => {
     if (periodosSeleccionados.length === 0)
       return mostrarToast('advertencia', 'Seleccioná al menos un período (mes, anual o matrícula).');
 
-    // ✅ montos reales por período (mes a mes).
-    // Regla crítica: cada fila de `pagos` debe guardar el importe DEL PERÍODO,
-    // no el total de toda la operación. Ej.: MAR/ABR/MAY de $10.000 =>
-    // montos_por_periodo = {3:10000,4:10000,5:10000}.
+    // ✅ montos reales por período (mes a mes)
     const montosPorPeriodo = {};
     for (const id of periodosMesesOrdenados) {
-      montosPorPeriodo[Number(id)] = Math.round(getPrecioMes(id));
+      montosPorPeriodo[id] = Math.round(getPrecioMes(id));
     }
     if (anualSeleccionado && anualConfig?.idPeriodo) {
-      montosPorPeriodo[Number(anualConfig.idPeriodo)] = Math.round(Number(anualConfig.importe || 0));
+      montosPorPeriodo[anualConfig.idPeriodo] = Math.round(Number(anualConfig.importe || 0));
     }
     if (matriculaSeleccionada) {
       montosPorPeriodo[ID_MATRICULA] = Math.round(Number(montoMatriculaFinal || 0));
     }
-
-    const totalOperacionPorAlumno = Math.round(Number(total || 0));
-    const totalMontosPorPeriodo = periodosSeleccionados.reduce(
-      (acc, id) => acc + Math.round(Number(montosPorPeriodo[Number(id)] || 0)),
-      0
-    );
-
-    // Paracaídas anti-error contable: si el total por período no coincide con
-    // el total visual, no se registra. Esto evita que un total de $30.000 se
-    // replique como $30.000 en MAR, ABR y MAY.
-    if (!condonar && totalMontosPorPeriodo !== totalOperacionPorAlumno) {
-      return mostrarToast(
-        'error',
-        `No se registró: los importes por período (${formatearARS(totalMontosPorPeriodo)}) no coinciden con el total (${formatearARS(totalOperacionPorAlumno)}).`
-      );
-    }
-
-    const primerPeriodo = Number(periodosSeleccionados[0] || 0);
-    const montoPrimerPeriodo = Math.round(Number(montosPorPeriodo[primerPeriodo] || 0));
 
     setCargando(true);
     try {
@@ -893,14 +871,9 @@ const ModalPagos = ({ socio, onClose }) => {
         // ✅ fecha_pago elegida
         fecha_pago: fechaPagoSeleccionada,
 
-        // Compatibilidad, pero el backend DEBE priorizar montos_por_periodo.
-        // monto_unitario queda como referencia del primer período, nunca como total.
-        monto_unitario: montoPrimerPeriodo,
-        monto_total_operacion: totalOperacionPorAlumno,
-        monto_total_por_alumno: totalOperacionPorAlumno,
-        cantidad_periodos: periodosSeleccionados.length,
+        // compatibilidad (pero backend debería usar montos_por_periodo si existe)
+        monto_unitario: Math.round(getPrecioMes(periodosMesesOrdenados[0] || 1)),
         montos_por_periodo: montosPorPeriodo,
-        monto_por_periodo_estricto: true,
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
         ids_familia: idsFamiliaActivos,
         id_medio_pago: Number(medioSeleccionado),
@@ -916,12 +889,7 @@ const ModalPagos = ({ socio, onClose }) => {
           : null
       };
 
-      if (libreActivo && !condonar) {
-        // Mantengo monto_libre por compatibilidad, pero explícitamente es UNITARIO por período.
-        payload.monto_libre = Math.round(Number(libreValor) || 0);
-        payload.monto_libre_unitario = Math.round(Number(libreValor) || 0);
-        payload.monto_libre_total_operacion = totalOperacionPorAlumno;
-      }
+      if (libreActivo && !condonar) payload.monto_libre = Math.round(Number(libreValor) || 0);
 
       const res = await fetch(`${BASE_URL}/api.php?action=registrar_pago`, {
         method: 'POST',

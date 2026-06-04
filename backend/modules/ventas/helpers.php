@@ -270,7 +270,7 @@ function ventas_contable_bind_nullable_int(PDOStatement $st, string $param, ?int
 }
 
 function ventas_contable_buscar_ingreso_actual(PDO $pdo, string $fecha, float $total, int $idMedioPago, ?int $idCategoria, ?int $idProveedor, ?int $idDescripcion): int {
-    $buscar = $pdo->prepare("\n        SELECT id_ingreso\n        FROM ingresos\n        WHERE fecha = :fecha\n          AND importe = :importe\n          AND id_medio_pago <=> :medio\n          AND id_cont_categoria <=> :categoria\n          AND id_cont_proveedor <=> :proveedor\n          AND id_cont_descripcion <=> :descripcion\n        ORDER BY id_ingreso DESC\n        LIMIT 1\n    ");
+    $buscar = $pdo->prepare("\n        SELECT i.id_ingreso\n        FROM ingresos i\n        LEFT JOIN ventas_ordenes ov ON ov.id_ingreso = i.id_ingreso\n        WHERE i.fecha = :fecha\n          AND i.importe = :importe\n          AND i.id_medio_pago <=> :medio\n          AND i.id_cont_categoria <=> :categoria\n          AND i.id_cont_proveedor <=> :proveedor\n          AND i.id_cont_descripcion <=> :descripcion\n          AND ov.id_orden IS NULL\n        ORDER BY i.id_ingreso DESC\n        LIMIT 1\n    ");
     $buscar->bindValue(':fecha', $fecha, PDO::PARAM_STR);
     $buscar->bindValue(':importe', number_format($total, 2, '.', ''), PDO::PARAM_STR);
     ventas_contable_bind_nullable_int($buscar, ':medio', $idMedioPago);
@@ -301,6 +301,12 @@ function ventas_contable_legacy_patterns(string $codigo, string $campania, int $
         // Otra versión intermedia usaba "Ingreso por venta - Nombre de venta - ...".
         $patterns[] = array('like', 'Ingreso por venta - ' . $campania . '%');
         $patterns[] = array('like', 'INGRESO POR VENTA - ' . $campania . '%');
+
+        // Versión limpia anterior: "VENTA NOMBRE DE LA VENTA".
+        // Se conserva como legacy para poder enganchar ingresos viejos sin duplicarlos
+        // cuando ahora se agrega el código de orden al final.
+        $campaniaMayus = ventas_contable_recortar(mb_strtoupper($campania, 'UTF-8'), 100);
+        $patterns[] = array('eq', ventas_contable_recortar('VENTA ' . $campaniaMayus, 160));
     }
 
     // Versión intermedia errónea solicitada antes: todos quedaban como VENTA X.
@@ -437,7 +443,8 @@ function ventas_sincronizar_orden_contable(PDO $pdo, int $idOrden): ?int {
     $categoriaNombre = 'VENTAS';
     $proveedorNombre = $persona;
     // Imputación limpia: VENTA + nombre de la venta/campaña.
-    // Ejemplo: VENTA EJEMPLO - TALITAS / VENTA EJEMPLO - BAILE ESCOLAR.
+    // Ejemplo: VENTA TALITAS / VENTA BAILE ESCOLAR.
+    // La relación única se conserva por ventas_ordenes.id_ingreso, no ensuciando la imputación.
     $campaniaImputacion = ventas_contable_recortar(mb_strtoupper($campania, 'UTF-8'), 150);
     $descripcionNombre = $campaniaImputacion !== '' ? ('VENTA ' . $campaniaImputacion) : 'VENTA';
 
