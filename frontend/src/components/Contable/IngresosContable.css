@@ -396,7 +396,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
 @media (max-width: 720px){
   .is-manuales .ing-row.h,
   .is-manuales .ing-row{
-    grid-template-columns: 0.9fr 1.1fr 1fr 0.9fr 0.9fr 0.7fr; /* se ocultan acciones si hace falta via CSS del botón */
+    grid-template-columns: 0.9fr 1.05fr 1fr 0.9fr 1fr 0.85fr 0.7fr;
   }
 }
 
@@ -410,18 +410,99 @@ small { font-size: var(--fs-small); color: var(--muted); }
 /* ===== Divider ===== */
 .ing-divider { height: 1px; background: var(--border); margin: 6px 0; }
 
-/* ===== Estética de modal de confirmación (AJENA al de Ingresos) ===== */
-.logout-modal-overlay{ position:fixed; inset:0; background: rgba(15,23,42,.5); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
-.logout-modal-container{ width:min(420px, 96vw); background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 30px 60px rgba(2,6,23,.38), 0 2px 8px rgba(2,6,23,.08); padding:16px; display:flex; flex-direction:column; gap:10px; }
-.logout-modal--danger{ border-color:#fecaca; }
-.logout-modal-title{ margin:0; font-weight:900; color:#111827; }
-.logout-modal-title--danger{ color:#991b1b; }
-.logout-modal-text{ margin:0; color:#374151; }
-.logout-modal-buttons{ display:flex; gap:8px; justify-content:flex-end; }
-.logout-btn{ padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; border:1px solid var(--border); }
-.logout-btn--ghost{ background:#fff; }
-.logout-btn--solid-danger{ background:#b91c1c; color:#fff; border-color:#b91c1c; }
+/* ===== Modal de confirmación Contable: misma estética que Ventas ===== */
+.logout-modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.52);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  padding:18px;
+  backdrop-filter:blur(4px);
+}
+.logout-modal-container{
+  width:min(500px, 100%);
+  max-width:500px;
+  background:#fff;
+  border:0;
+  border-top:4px solid var(--soc-danger, #ef4444);
+  border-radius:var(--soc-border-radius-lg, 16px);
+  box-shadow:var(--soc-shadow-xl, 0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04));
+  padding:2rem;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:0;
+}
+.logout-modal--danger{ border-color:var(--soc-danger, #ef4444); }
+.logout-modal__icon{
+  margin:0 auto 1rem;
+  width:54px;
+  height:54px;
+  border-radius:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--soc-danger, #ef4444);
+  background:rgba(239,68,68,.10);
+  font-size:1.65rem;
+}
+.logout-modal-title{
+  margin:0 1.6rem 1rem;
+  color:var(--soc-dark, #0f172a);
+  font-size:1.4rem;
+  font-weight:600;
+  line-height:1.2;
+}
+.logout-modal-title--danger{ color:var(--soc-danger, #ef4444); }
+.logout-modal-text{
+  margin:0 0 1.5rem;
+  color:var(--soc-gray-700, #334155);
+  line-height:1.5;
+  font-size:.96rem;
+}
+.logout-modal-buttons{
+  display:flex;
+  justify-content:center;
+  gap:1rem;
+  margin-top:1.25rem;
+}
+.logout-btn{
+  flex:1 1 0;
+  max-width:200px;
+  padding:.75rem 1.25rem;
+  border-radius:var(--soc-border-radius, 12px);
+  font-weight:600;
+  cursor:pointer;
+  transition:var(--soc-transition, all .3s cubic-bezier(0.4, 0, 0.2, 1));
+}
+.logout-btn--ghost{
+  background:#fff;
+  color:var(--soc-gray-700, #334155);
+  border:1px solid var(--soc-gray-300, #cbd5e1);
+}
+.logout-btn--solid-danger{
+  background:var(--soc-danger, #ef4444);
+  color:#fff;
+  border:1px solid var(--soc-danger, #ef4444);
+  box-shadow:none;
+}
+.logout-btn--ghost:hover,
+.logout-btn--solid-danger:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--soc-shadow-md, 0 10px 18px rgba(0,0,0,.12));
+}
+.logout-btn--ghost:hover{ background:var(--soc-gray-100, #f1f5f9); }
 .logout-btn--solid-danger:hover{ filter:brightness(.95); }
+
+@media (max-width:576px){
+  .logout-modal-container{ padding:1.25rem; }
+  .logout-modal-buttons{ flex-direction:row; gap:.75rem; }
+  .logout-btn{ max-width:none; }
+}
 
 /* === Botones acciones redondos === */
 :root{
@@ -673,4 +754,145 @@ small { font-size: var(--fs-small); color: var(--muted); }
 /* Disabled */
 .ing-field.fl.is-disabled label{
   opacity: .6;
+}
+
+/* =====================================
+   Ingresos: botón/modal para ver contenido completo por columna
+   ===================================== */
+.ing-motivo-cell{
+  width:100%;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+.c-proveedor .ing-motivo-cell,
+.c-imputacion .ing-motivo-cell{
+  justify-content:flex-start;
+}
+
+.ing-motivo-cell__text{
+  min-width:0;
+  max-width:100%;
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.ing-btn-ver-motivo{
+  flex:0 0 auto;
+  width:24px;
+  height:24px;
+  border:0;
+  border-radius:999px;
+  background:#fff;
+  color:var(--primary);
+  display:inline-grid;
+  place-items:center;
+  cursor:pointer;
+  font-size:.78rem;
+  opacity:.9;
+  transition:background .16s ease, color .16s ease, transform .12s ease, box-shadow .16s ease;
+}
+
+.ing-btn-ver-motivo:hover{
+  background:color-mix(in srgb, var(--primary) 9%, #fff);
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(37,99,235,.16);
+}
+
+.ing-btn-ver-motivo:focus-visible{
+  outline:0;
+  box-shadow:0 0 0 3px rgba(37,99,235,.22);
+}
+
+.ing-modal-overlay-motivo{
+  position:fixed;
+  inset:0;
+  background-color:rgba(15,23,42,.52);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:1001;
+  backdrop-filter:blur(5px);
+  padding:18px;
+}
+
+.ing-modal-contenido-motivo{
+  background-color:#fff;
+  padding:2rem;
+  border-radius:16px;
+  box-shadow:0 24px 48px rgba(2,6,23,.24);
+  max-width:500px;
+  width:min(500px, 100%);
+  text-align:center;
+  border-top:4px solid var(--primary);
+}
+
+.ing-modal-icono-motivo{
+  width:54px;
+  height:54px;
+  margin:0 auto 1rem;
+  border-radius:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.65rem;
+  color:var(--primary);
+  background:color-mix(in srgb, var(--primary) 10%, #fff);
+}
+
+.ing-modal-titulo-motivo{
+  color:var(--primary);
+  margin:0 0 1rem;
+  font-size:1.4rem;
+  font-weight:600;
+}
+
+.ing-modal-texto-motivo{
+  color:#334155;
+  margin-bottom:1.5rem;
+  line-height:1.5;
+  text-align:left;
+  white-space:pre-wrap;
+  word-break:break-word;
+  max-height:50vh;
+  overflow-y:auto;
+  padding:1rem;
+  background-color:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+
+.ing-modal-botones-motivo{
+  display:flex;
+  justify-content:center;
+  margin-top:1.5rem;
+}
+
+.ing-boton-cerrar-motivo{
+  min-width:150px;
+  padding:.75rem 1.5rem;
+  border-radius:12px;
+  border:0;
+  background:var(--primary);
+  color:#fff;
+  font-weight:800;
+  cursor:pointer;
+  transition:background .16s ease, transform .12s ease, box-shadow .16s ease;
+}
+
+.ing-boton-cerrar-motivo:hover{
+  background:var(--primary-600);
+  transform:translateY(-2px);
+  box-shadow:0 4px 10px rgba(37,99,235,.24);
+}
+
+@media (max-width:768px){
+  .ing-motivo-cell{ justify-content:flex-start; }
+  .ing-btn-ver-motivo{ width:26px; height:26px; }
+  .ing-modal-contenido-motivo{ padding:1.5rem; width:94%; }
 }

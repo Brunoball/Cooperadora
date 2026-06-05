@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClipboardList, faPrint } from "@fortawesome/free-solid-svg-icons";
+import { faPrint } from "@fortawesome/free-solid-svg-icons";
 import { asBool, money } from "../ventasConfig";
 
 const obtenerCampaniaInicial = (campanias = []) => {
@@ -123,110 +123,70 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
   const campaniaActiva = campaniaSeleccionada && asBool(campaniaSeleccionada.activo);
   const esPlanillaDocentes = tipoPlanilla === "docentes";
   const tituloPlanilla = esPlanillaDocentes ? "Listado completo de profesores" : "Una hoja por curso y división";
-  const descripcionPlanilla = esPlanillaDocentes
-    ? "Incluye todos los docentes de la tabla nueva para anotar cuántas entradas o productos vende cada profesor."
-    : "Incluye el listado de alumnos y espacios para registrar la venta manualmente.";
 
   return (
     <section className="ventas-card ventas-full-card ventas-planillas-card">
       <div className="ventas-planillas-nav">{tableTabs}</div>
 
-      <div className="ventas-planillas-head">
-        <div className="ventas-planillas-heading">
-          <h2>Planillas para docentes</h2>
-          <p>Exportá hojas filtradas por curso/división o un listado general de profesores para completar ventas.</p>
-        </div>
-
-        <span className="ventas-planillas-format">
-          <FontAwesomeIcon icon={faPrint} />
-          A4 vertical
-        </span>
-      </div>
-
-      <div className="ventas-planillas-layout">
-        <div className="ventas-planillas-panel ventas-planillas-panel--main">
-          <div className="ventas-planillas-intro">
-            <div className="ventas-planillas-icon" aria-hidden="true">
-              <FontAwesomeIcon icon={faClipboardList} />
-            </div>
-
-            <div>
+      <div className="ventas-planillas-layout ventas-planillas-layout--single">
+        <div className="ventas-planillas-panel ventas-planillas-panel--single">
+          <div className="ventas-planillas-panel-head">
+            <div className="ventas-planillas-heading">
               <span className="ventas-planillas-eyebrow">Exportación masiva</span>
-              <h3>{tituloPlanilla}</h3>
-              <p>{descripcionPlanilla}</p>
+              <h2>{tituloPlanilla}</h2>
             </div>
+
+            <span className="ventas-planillas-format">
+              <FontAwesomeIcon icon={faPrint} />
+              A4 vertical
+            </span>
           </div>
 
-          <div className="ventas-planillas-columns" aria-label="Columnas de la planilla">
-            {esPlanillaDocentes ? (
+          <div className="ventas-planillas-form-grid">
+            <label className="ventas-planillas-field ventas-floating-field">
+              <span className="ventas-floating-label">Venta / campaña</span>
+              <select value={idCampania || ""} onChange={(e) => setIdCampania(e.target.value)}>
+                <option value="">Seleccionar venta</option>
+                {campanias.map((c) => (
+                  <option key={c.id_campania} value={c.id_campania}>
+                    {c.nombre}{asBool(c.activo) ? "" : " (inactiva)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="ventas-planillas-field ventas-floating-field">
+              <span className="ventas-floating-label">Tipo de planilla</span>
+              <select value={tipoPlanilla} onChange={(e) => setTipoPlanilla(e.target.value)}>
+                <option value="cursos">Cursos / alumnos</option>
+                <option value="docentes">Profesores / docentes</option>
+              </select>
+            </label>
+
+            {tipoPlanilla === "cursos" ? (
               <>
-                <span>Docente</span>
-                <span>Cantidad</span>
-                <span>Cobrado</span>
-                <span>Observaciones</span>
+                <label className="ventas-planillas-field ventas-floating-field">
+                  <span className="ventas-floating-label">Año</span>
+                  <select value={idAnio} onChange={(e) => setIdAnio(e.target.value)} disabled={cargandoOpciones}>
+                    <option value="">Todos los años</option>
+                    {opciones.anios.map((anio) => (
+                      <option key={anio.id_anio} value={anio.id_anio}>{anio.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="ventas-planillas-field ventas-floating-field">
+                  <span className="ventas-floating-label">División</span>
+                  <select value={idDivision} onChange={(e) => setIdDivision(e.target.value)} disabled={cargandoOpciones}>
+                    <option value="">Todas las divisiones</option>
+                    {opciones.divisiones.map((division) => (
+                      <option key={division.id_division} value={division.id_division}>{division.nombre}</option>
+                    ))}
+                  </select>
+                </label>
               </>
-            ) : (
-              <>
-                <span>VEN</span>
-                <span>GAN</span>
-                <span>Cobrado</span>
-                <span>Observaciones</span>
-              </>
-            )}
+            ) : null}
           </div>
-
-          <p className="ventas-planillas-note">
-            {esPlanillaDocentes
-              ? `Se toma desde la tabla docentes. Total cargado: ${opciones.total_docentes || 0} docentes. Número bot: `
-              : "Preparada para entregar a cada docente responsable. Número bot: "}
-            <strong>{NUMERO_BOT_PLANILLAS}</strong>
-          </p>
-        </div>
-
-        <div className="ventas-planillas-panel ventas-planillas-panel--controls">
-          <label className="ventas-planillas-field">
-            <span>Venta / campaña</span>
-            <select value={idCampania || ""} onChange={(e) => setIdCampania(e.target.value)}>
-              <option value="">Seleccionar venta</option>
-              {campanias.map((c) => (
-                <option key={c.id_campania} value={c.id_campania}>
-                  {c.nombre}{asBool(c.activo) ? "" : " (inactiva)"}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="ventas-planillas-field">
-            <span>Tipo de planilla</span>
-            <select value={tipoPlanilla} onChange={(e) => setTipoPlanilla(e.target.value)}>
-              <option value="cursos">Cursos / alumnos</option>
-              <option value="docentes">Profesores / docentes</option>
-            </select>
-          </label>
-
-          {tipoPlanilla === "cursos" ? (
-            <div className="ventas-planillas-filtros">
-              <label className="ventas-planillas-field">
-                <span>Año</span>
-                <select value={idAnio} onChange={(e) => setIdAnio(e.target.value)} disabled={cargandoOpciones}>
-                  <option value="">Todos los años</option>
-                  {opciones.anios.map((anio) => (
-                    <option key={anio.id_anio} value={anio.id_anio}>{anio.nombre}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="ventas-planillas-field">
-                <span>División</span>
-                <select value={idDivision} onChange={(e) => setIdDivision(e.target.value)} disabled={cargandoOpciones}>
-                  <option value="">Todas las divisiones</option>
-                  {opciones.divisiones.map((division) => (
-                    <option key={division.id_division} value={division.id_division}>{division.nombre}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : null}
 
           {errorOpciones ? (
             <div className="ventas-planillas-resumen ventas-planillas-resumen--warning">
@@ -260,7 +220,7 @@ export default function PlanillasTab({ tableTabs, campanias = [], apiUrl }) {
                 <span>
                   <small>Filtro</small>
                   {esPlanillaDocentes
-                    ? `${soloActivos ? "Docentes activos" : "Todos los docentes"}`
+                    ? `${soloActivos ? "Docentes activos" : "Todos los docentes"} · ${opciones.total_docentes || 0} docentes`
                     : `${anioSeleccionado?.nombre || "Todos los años"} · ${divisionSeleccionada?.nombre || "Todas las divisiones"}`}
                 </span>
               </div>

@@ -11,6 +11,7 @@ import {
   faFileExcel,
   faTrash,
   faEdit,
+  faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import Toast from "../Global/Toast";
@@ -203,6 +204,98 @@ function ConfirmModal({
   );
 }
 
+/* ===========================================================
+   Modal para ver contenido completo en columnas de Ingresos
+   =========================================================== */
+function IngresoDetalleCell({ valor, titulo, onShow }) {
+  const texto = String(valor ?? "").trim() || "-";
+  const puedeAbrir = texto !== "-";
+
+  const abrirDetalle = () => {
+    if (!puedeAbrir) return;
+    onShow?.(titulo || "Detalle", texto);
+  };
+
+  return (
+    <div
+      className={`ing-motivo-cell ${!puedeAbrir ? "is-empty" : ""}`}
+      title={texto}
+      onDoubleClick={abrirDetalle}
+    >
+      <span className="ing-motivo-cell__text">{texto}</span>
+
+      {puedeAbrir && (
+        <button
+          type="button"
+          className="ing-btn-ver-motivo"
+          onClick={abrirDetalle}
+          title={`Ver ${String(titulo || "detalle").toLowerCase()} completo`}
+          aria-label={`Ver ${String(titulo || "detalle").toLowerCase()} completo`}
+        >
+          <FontAwesomeIcon icon={faInfoCircle} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function IngresoDetalleModal({ open, titulo, contenido, onClose }) {
+  const cerrarBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    cerrarBtnRef.current?.focus();
+
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="ing-modal-overlay-motivo"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ing-modal-motivo-title"
+      onMouseDown={onClose}
+    >
+      <div
+        className="ing-modal-contenido-motivo"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="ing-modal-icono-motivo" aria-hidden="true">
+          <FontAwesomeIcon icon={faInfoCircle} />
+        </div>
+
+        <h3 id="ing-modal-motivo-title" className="ing-modal-titulo-motivo">
+          {titulo || "Detalle de ingreso"}
+        </h3>
+
+        <div className="ing-modal-texto-motivo">
+          {contenido || "No hay información para mostrar."}
+        </div>
+
+        <div className="ing-modal-botones-motivo">
+          <button
+            type="button"
+            className="ing-boton-cerrar-motivo"
+            onClick={onClose}
+            ref={cerrarBtnRef}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ========= Componente principal ========= */
 export default function IngresosContable() {
   // Al entrar a Contable siempre arranca en el mes y año actual.
@@ -251,6 +344,15 @@ export default function IngresosContable() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  const [detalleIngreso, setDetalleIngreso] = useState(null);
+
+  const abrirDetalleIngreso = useCallback((titulo, contenido) => {
+    setDetalleIngreso({ titulo, contenido });
+  }, []);
+
+  const cerrarDetalleIngreso = useCallback(() => {
+    setDetalleIngreso(null);
+  }, []);
 
   useEffect(() => {
     try {
@@ -967,9 +1069,13 @@ export default function IngresosContable() {
                       style={{ "--i": idx }}
                     >
                       <div className="c-fecha">{formatFechaDMY(f.fecha)}</div>
-                      <div className="c-medio">{f.medio}</div>
+                      <div className="c-medio">{f.medio || "-"}</div>
                       <div className="c-proveedor">
-                        <div>{f.proveedor || "-"}</div>
+                        <IngresoDetalleCell
+                          valor={f.proveedor || "-"}
+                          titulo="Persona / Proveedor"
+                          onShow={abrirDetalleIngreso}
+                        />
                       </div>
                       <div className="c-cat c-cat-aling">
                         <span className="pill">{f.categoria || "-"}</span>
@@ -1039,6 +1145,13 @@ export default function IngresosContable() {
           addToast("exito", "Ingreso actualizado correctamente.");
           await loadIngresos();
         }}
+      />
+
+      <IngresoDetalleModal
+        open={Boolean(detalleIngreso)}
+        titulo={detalleIngreso?.titulo}
+        contenido={detalleIngreso?.contenido}
+        onClose={cerrarDetalleIngreso}
       />
 
       <ConfirmModal
