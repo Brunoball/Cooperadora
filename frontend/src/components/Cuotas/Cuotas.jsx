@@ -505,6 +505,18 @@ const Cuotas = () => {
   const cantidadFiltradaPagados    = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('pagado')    : 0, [mesSeleccionado, soloCobrador, contarConFiltros]);
   const cantidadFiltradaCondonados = useMemo(() => (mesSeleccionado || soloCobrador) ? contarConFiltros('condonado') : 0, [mesSeleccionado, soloCobrador, contarConFiltros]);
 
+  const imprimirTodosDisabled =
+    !canPrint ||
+    loadingPrint ||
+    (!mesSeleccionado && !soloCobrador) ||
+    cuotasFiltradas.length === 0 ||
+    loading ||
+    !categoriaSeleccionada;
+
+  const imprimirTodosTitle = !canPrint
+    ? (soloCobrador ? 'Activá "Solo cobrador" para imprimir' : 'Disponible solo en Pagados')
+    : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo');
+
   const toggleOrden = useCallback((campo) => {
     setOrden(prev => ({ campo, ascendente: prev.campo === campo ? !prev.ascendente : true }));
     triggerCascade();
@@ -1270,6 +1282,15 @@ const Cuotas = () => {
                   <FontAwesomeIcon icon={faFilter} className="gcuotas-filter-icon" />
                   <span>Filtros</span>
                 </div>
+
+                <button
+                  className={`gcuotas-button gcuotas-button-print-all gcuotas-filter-print-compact ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
+                  onClick={handleImprimirTodos}
+                  disabled={imprimirTodosDisabled}
+                  title={imprimirTodosTitle}
+                >
+                  <FontAwesomeIcon icon={faPrint} /><span>{loadingPrint ? 'Generando...' : 'Imprimir'}</span>
+                </button>
               </div>
 
               <div className="gcuotas-select-container">
@@ -1452,21 +1473,10 @@ const Cuotas = () => {
               </button>
 
               <button
-                className={`gcuotas-button gcuotas-button-print-all ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
+                className={`gcuotas-button gcuotas-button-print-all gcuotas-actions-print-desktop ${loadingPrint ? 'gcuotas-button-loading' : ''}`}
                 onClick={handleImprimirTodos}
-                disabled={
-                  !canPrint ||
-                  loadingPrint ||
-                  (!mesSeleccionado && !soloCobrador) ||
-                  cuotasFiltradas.length === 0 ||
-                  loading ||
-                  !categoriaSeleccionada
-                }
-                title={
-                  !canPrint
-                    ? (soloCobrador ? 'Activá "Solo cobrador" para imprimir' : 'Disponible solo en Pagados')
-                    : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo')
-                }
+                disabled={imprimirTodosDisabled}
+                title={imprimirTodosTitle}
               >
                 <FontAwesomeIcon icon={faPrint} /><span>{loadingPrint ? 'Generando...' : 'Imprimir'}</span>
               </button>
@@ -1589,19 +1599,8 @@ const Cuotas = () => {
           <button
             className="gcuotas-mbar-btn mbar-imprimir"
             onClick={handleImprimirTodos}
-            disabled={
-              !canPrint ||
-              loadingPrint ||
-              (!mesSeleccionado && !soloCobrador) ||
-              cuotasFiltradas.length === 0 ||
-              loading ||
-              !categoriaSeleccionada
-            }
-            title={
-              !canPrint
-                ? (soloCobrador ? 'Activá "Solo cobrador" para imprimir' : 'Disponible solo en Pagados')
-                : (categoriaSeleccionada ? 'Imprimir' : 'Seleccioná categoría: Interno o Externo')
-            }
+            disabled={imprimirTodosDisabled}
+            title={imprimirTodosTitle}
           >
             <FontAwesomeIcon icon={faPrint} /><span>Imprimir</span>
           </button>

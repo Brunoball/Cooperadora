@@ -77,7 +77,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
   height: 100%; min-height: 0; display: flex; flex-direction: column;
 }
 .ing-side__inner {
-  padding: 16px; display: flex; flex-direction: column; gap: 14px;
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
   overflow: auto;   /* ← el scroll vive acá */
   min-height: 0;
 }
@@ -606,7 +606,7 @@ small { font-size: var(--fs-small); color: var(--muted); }
 .ing-side__inner{
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   overflow: hidden;     /* ← el panel deja de scrollear */
   min-height: 0;        /* ← habilita overflow en hijos */
 }
@@ -895,4 +895,46 @@ small { font-size: var(--fs-small); color: var(--muted); }
   .ing-motivo-cell{ justify-content:flex-start; }
   .ing-btn-ver-motivo{ width:26px; height:26px; }
   .ing-modal-contenido-motivo{ padding:1.5rem; width:94%; }
+}
+
+/* === Ajuste visual igual a Cuotas: tamaño de letra y centrado Fecha/Monto === */
+.ing-tablewrap{
+  font-size:15px;
+}
+
+.ing-row.h{
+  font-size:15px;
+  font-weight:800;
+  line-height:1.35;
+}
+
+.ing-row.data{
+  font-size:.85rem;
+  line-height:1.35;
+  color:var(--text);
+}
+
+.ing-row > .c-fecha,
+.ing-row > .c-monto,
+.ing-row > .c-importe{
+  text-align:center !important;
+}
+
+.ing-row > .c-fecha,
+.ing-row > .c-monto,
+.ing-row > .c-importe,
+.ing-row > .c-monto .strong-amount,
+.ing-row > .c-importe .strong-amount{
+  font-size:inherit;
+  line-height:1.35;
+}
+
+.ing-row > .c-monto .strong-amount,
+.ing-row > .c-importe .strong-amount{
+  font-weight:700;
+}
+
+.ing-row.data .name-small{
+  font-size:inherit;
+  line-height:1.35;
 }

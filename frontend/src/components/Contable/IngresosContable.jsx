@@ -885,7 +885,6 @@ export default function IngresosContable() {
               </div>
             </div>
 
-            <div className="ing-divider" />
 
             <div className="ing-sectiontitle">
               <FontAwesomeIcon icon={faChartPie} />

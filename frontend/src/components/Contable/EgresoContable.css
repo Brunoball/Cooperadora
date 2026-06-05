@@ -969,3 +969,28 @@ html, body, #root { height:100%; }
   .logout-modal-buttons{ flex-direction:row; gap:.75rem; }
   .logout-btn{ max-width:none; }
 }
+
+/* === Ajuste visual igual a Cuotas: tamaño de letra y centrado Fecha/Monto === */
+.ec_table__wrap,
+.gt_table{
+  font-size:15px;
+}
+
+.gt_headerd .gt_cell.h{
+  font-size:15px;
+  font-weight:800;
+  line-height:1.35;
+}
+
+.gt_rowd .gt_cell{
+  font-size:.85rem;
+  line-height:1.35;
+  color:var(--text);
+}
+
+.gt_headerd > .gt_cell:nth-child(1),
+.gt_headerd > .gt_cell:nth-child(7),
+.gt_rowd > .gt_cell:nth-child(1),
+.gt_rowd > .gt_cell:nth-child(7){
+  text-align:center !important;
+}

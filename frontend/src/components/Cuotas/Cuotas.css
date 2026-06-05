@@ -206,6 +206,32 @@
   font-size: 14px;
 }
 
+.gcuotas-filter-header {
+  justify-content: flex-start;
+}
+
+.gcuotas-filter-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gcuotas-filter-print-compact {
+  display: none;
+  width: auto !important;
+  min-width: 0;
+  max-width: max-content;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  flex: 0 0 auto;
+  box-shadow: none;
+  letter-spacing: .15px;
+  white-space: nowrap;
+}
+
 /* ======= FILTROS ======= */
 .gcuotas-select-container {
   padding: 14px;
@@ -786,6 +812,52 @@
 .gcuotas-modal-button.secondary:hover { background-color: #f1f3f5; }
 .gcuotas-modal-button.primary { background-color: var(--secondary-color); color: var(--text-on-primary); border: none; }
 .gcuotas-modal-button.primary:hover { background-color: var(--secondary-hover); }
+
+/* ===========================
+   Responsive <= 1500px
+=========================== */
+@media (max-width: 1500px) {
+  .gcuotas-filter-header {
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .gcuotas-filter-header-left {
+    flex: 0 0 auto;
+  }
+
+  .gcuotas-filter-print-compact {
+    display: inline-flex;
+    width: auto !important;
+    min-width: 124px;
+    max-width: 148px;
+    height: 38px;
+    padding: 0 14px;
+    background: var(--surface-secondary);
+    color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+  }
+
+  .gcuotas-filter-print-compact:hover:not(:disabled) {
+    background: var(--secondary-50);
+    color: var(--secondary-hover);
+    border-color: var(--secondary-200);
+    transform: translateY(-1px);
+  }
+
+  .gcuotas-filter-print-compact:disabled,
+  .gcuotas-filter-print-compact:disabled:hover {
+    background: var(--gray-100) !important;
+    color: var(--gray-500) !important;
+    border: 1px solid var(--gray-300) !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .gcuotas-actions-print-desktop {
+    display: none;
+  }
+}
 
 /* ===========================
    Mobile
