@@ -68,6 +68,7 @@ export default function Ventas() {
   const [mediosPago, setMediosPago] = useState([]);
   const [personasCatalogo, setPersonasCatalogo] = useState({ alumnos: [], personas: [] });
   const [personasCatalogoLoading, setPersonasCatalogoLoading] = useState(false);
+  const [ordenCatalogosLoading, setOrdenCatalogosLoading] = useState(false);
 
   const [campaniaForm, setCampaniaForm] = useState(emptyCampania);
   const [productoForm, setProductoForm] = useState(emptyProducto);
@@ -341,9 +342,9 @@ export default function Ventas() {
     }
   };
 
-  const pedirConfirmacion = ({ titulo, mensaje, confirmText, accion }) => {
+  const pedirConfirmacion = useCallback(({ titulo, mensaje, confirmText, accion }) => {
     setConfirmacion({ titulo, mensaje, confirmText, accion });
-  };
+  }, []);
 
   const ejecutarConfirmacion = async () => {
     if (!confirmacion?.accion) return;
@@ -428,11 +429,16 @@ export default function Ventas() {
     });
   };
 
-  const obtenerMedioPorDefecto = useCallback((preferido = "EFECTIVO") => {
+  const obtenerMedioPorDefectoEnLista = useCallback((lista = [], preferido = "EFECTIVO") => {
     const normalizar = (txt) => String(txt || "").trim().toUpperCase();
-    const encontrado = mediosPago.find((m) => normalizar(m.medio_pago) === preferido);
-    return encontrado?.id_medio_pago || mediosPago[0]?.id_medio_pago || "";
-  }, [mediosPago]);
+    const rows = Array.isArray(lista) ? lista : [];
+    const encontrado = rows.find((m) => normalizar(m.medio_pago) === preferido);
+    return encontrado?.id_medio_pago || rows[0]?.id_medio_pago || "";
+  }, []);
+
+  const obtenerMedioPorDefecto = useCallback((preferido = "EFECTIVO") => (
+    obtenerMedioPorDefectoEnLista(mediosPago, preferido)
+  ), [mediosPago, obtenerMedioPorDefectoEnLista]);
 
   const hoyInput = () => new Date().toISOString().slice(0, 10);
 
@@ -446,115 +452,139 @@ export default function Ventas() {
       .trim();
   };
 
-  const abrirNuevaOrden = async () => {
-    try {
-      const medios = mediosPago.length ? mediosPago : await cargarMediosPago();
-      const productosCatalogo = productos.length ? productos : await cargarProductosCatalogo();
-      if (!productos.length) setProductos(productosCatalogo);
-      await cargarPersonasCatalogo();
+  const cargarCatalogosOrdenEnSegundoPlano = useCallback((opciones = {}) => {
+    const { idOrdenActual = null, completarMedio = null } = opciones;
 
-      const ventaBase =
-        campaniaActual ||
-        campanias.find((c) => asBool(c.activo)) ||
-        campanias[0] ||
-        null;
-      const medioEfectivo = medios.find((m) => String(m.medio_pago || "").trim().toUpperCase() === "EFECTIVO")?.id_medio_pago || medios[0]?.id_medio_pago || "";
+    setOrdenCatalogosLoading(true);
 
-      const itemBase = {
-        id_producto: ventaBase?.id_producto_principal || "",
-        producto_nombre: ventaBase?.producto_principal_nombre || "",
-        columna_codigo: "VEN",
-        columna_nombre: ventaBase?.producto_principal_nombre || "Venta",
-        cantidad: 1,
-        precio_tipo: "anticipada",
-        precio_unitario: ventaBase?.producto_principal_precio_anticipada ?? ventaBase?.producto_principal_precio ?? "",
-      };
+    Promise.all([
+      mediosPago.length ? Promise.resolve(mediosPago) : cargarMediosPago(),
+      productos.length ? Promise.resolve(productos) : cargarProductosCatalogo(),
+      cargarPersonasCatalogo(),
+    ])
+      .then(([medios, productosCatalogo]) => {
+        if (!productos.length && Array.isArray(productosCatalogo)) {
+          setProductos(productosCatalogo);
+        }
 
-      setOrdenForm({
-        ...emptyOrden,
-        id_campania: ventaBase?.id_campania || "",
-        id_producto: itemBase.id_producto,
-        producto_nombre: itemBase.producto_nombre,
-        precio_tipo: "anticipada",
-        precio_unitario: itemBase.precio_unitario,
-        columna_codigo: "VEN",
-        columna_nombre: itemBase.columna_nombre,
-        items: [itemBase],
-        persona_tipo: "vendedor",
-        id_medio_pago: medioEfectivo,
-        fecha_venta: hoyInput(),
-        estado: "aprobada",
+        if (completarMedio) {
+          setOrdenForm((prev) => {
+            if (idOrdenActual !== null && String(prev.id_orden || "") !== String(idOrdenActual)) return prev;
+            if (prev.id_medio_pago) return prev;
+
+            return {
+              ...prev,
+              id_medio_pago: obtenerMedioPorDefectoEnLista(medios, completarMedio),
+            };
+          });
+        }
+      })
+      .catch((err) => {
+        showToast("error", err.message);
+      })
+      .finally(() => {
+        setOrdenCatalogosLoading(false);
       });
-      setModalOrden(true);
-    } catch (err) {
-      showToast("error", err.message);
-    }
-  };
+  }, [cargarMediosPago, cargarPersonasCatalogo, cargarProductosCatalogo, mediosPago, obtenerMedioPorDefectoEnLista, productos, showToast]);
 
-  const abrirEditarOrden = async (o) => {
-    try {
-      if (mediosPago.length === 0) await cargarMediosPago();
-      const productosCatalogo = productos.length ? productos : await cargarProductosCatalogo();
-      if (!productos.length) setProductos(productosCatalogo);
-      await cargarPersonasCatalogo();
+  const abrirNuevaOrden = useCallback(() => {
+    const ventaBase =
+      campaniaActual ||
+      campanias.find((c) => asBool(c.activo)) ||
+      campanias[0] ||
+      null;
 
-      const itemsOrden = Array.isArray(o.items) && o.items.length
-        ? o.items.map((item, index) => ({
-            id_producto: item.id_producto || "",
-            producto_nombre: item.producto_nombre || "",
-            columna_codigo: item.columna_codigo || (index === 0 ? "VEN" : "ITEM"),
-            columna_nombre: item.columna_nombre || item.producto_nombre || "",
-            cantidad: item.cantidad || 1,
-            precio_tipo: (() => {
-              try {
-                const metadata = typeof item.metadata_json === "string" && item.metadata_json.trim() !== "" ? JSON.parse(item.metadata_json) : item.metadata;
-                return metadata?.precio_tipo === "puerta" ? "puerta" : "anticipada";
-              } catch (_) {
-                return "anticipada";
-              }
-            })(),
-            precio_unitario: item.precio_unitario ?? "",
-          }))
-        : [{
-            id_producto: o.id_producto || "",
-            producto_nombre: o.producto_nombre || "",
-            columna_codigo: o.columna_codigo || "VEN",
-            columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
-            cantidad: o.cantidad || 1,
-            precio_tipo: "anticipada",
-            precio_unitario: o.precio_unitario ?? "",
-          }];
+    const itemBase = {
+      id_producto: ventaBase?.id_producto_principal || "",
+      producto_nombre: ventaBase?.producto_principal_nombre || "",
+      columna_codigo: "VEN",
+      columna_nombre: ventaBase?.producto_principal_nombre || "Venta",
+      cantidad: 1,
+      precio_tipo: "anticipada",
+      precio_unitario: ventaBase?.producto_principal_precio_anticipada ?? ventaBase?.producto_principal_precio ?? "",
+    };
 
-      setOrdenForm({
-        ...emptyOrden,
-        ...o,
-        id_orden: o.id_orden || "",
-        id_campania: o.id_campania || "",
-        id_producto: o.id_producto || "",
-        producto_nombre: o.producto_nombre || "",
-        precio_tipo: "anticipada",
-        precio_unitario: o.precio_unitario ?? "",
-        cantidad: o.cantidad || 1,
-        columna_codigo: o.columna_codigo || "VEN",
-        columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
-        items: itemsOrden,
-        persona_tipo: "vendedor",
-        persona_dni: o.persona_dni || o.dni || "",
-        dni: o.persona_dni || o.dni || "",
-        persona_nombre: o.persona_nombre || "",
-        persona_detalle: o.persona_detalle || "",
-        curso_manual: o.curso_manual || cursoDesdeDetalleVenta(o.persona_detalle),
-        comprador_telefono: o.comprador_telefono || "",
-        estado: o.estado || "aprobada",
-        id_medio_pago: o.id_medio_pago || obtenerMedioPorDefecto(o.origen === "manual" ? "EFECTIVO" : "TRANSFERENCIA"),
-        fecha_venta: String(o.aprobado_en || o.creado_en || hoyInput()).slice(0, 10),
-        observacion: o.observacion || "",
-      });
-      setModalOrden(true);
-    } catch (err) {
-      showToast("error", err.message);
-    }
-  };
+    setOrdenForm({
+      ...emptyOrden,
+      id_campania: ventaBase?.id_campania || "",
+      id_producto: itemBase.id_producto,
+      producto_nombre: itemBase.producto_nombre,
+      precio_tipo: "anticipada",
+      precio_unitario: itemBase.precio_unitario,
+      columna_codigo: "VEN",
+      columna_nombre: itemBase.columna_nombre,
+      items: [itemBase],
+      persona_tipo: "vendedor",
+      id_medio_pago: obtenerMedioPorDefecto("EFECTIVO"),
+      fecha_venta: hoyInput(),
+      estado: "aprobada",
+    });
+    setModalOrden(true);
+
+    cargarCatalogosOrdenEnSegundoPlano({ idOrdenActual: "", completarMedio: "EFECTIVO" });
+  }, [campaniaActual, campanias, cargarCatalogosOrdenEnSegundoPlano, obtenerMedioPorDefecto]);
+
+  const abrirEditarOrden = useCallback((o) => {
+    const preferenciaMedio = o.origen === "manual" ? "EFECTIVO" : "TRANSFERENCIA";
+    const itemsOrden = Array.isArray(o.items) && o.items.length
+      ? o.items.map((item, index) => ({
+          id_producto: item.id_producto || "",
+          producto_nombre: item.producto_nombre || "",
+          columna_codigo: item.columna_codigo || (index === 0 ? "VEN" : "ITEM"),
+          columna_nombre: item.columna_nombre || item.producto_nombre || "",
+          cantidad: item.cantidad || 1,
+          precio_tipo: (() => {
+            try {
+              const metadata = typeof item.metadata_json === "string" && item.metadata_json.trim() !== "" ? JSON.parse(item.metadata_json) : item.metadata;
+              return metadata?.precio_tipo === "puerta" ? "puerta" : "anticipada";
+            } catch (_) {
+              return "anticipada";
+            }
+          })(),
+          precio_unitario: item.precio_unitario ?? "",
+        }))
+      : [{
+          id_producto: o.id_producto || "",
+          producto_nombre: o.producto_nombre || "",
+          columna_codigo: o.columna_codigo || "VEN",
+          columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
+          cantidad: o.cantidad || 1,
+          precio_tipo: "anticipada",
+          precio_unitario: o.precio_unitario ?? "",
+        }];
+
+    setOrdenForm({
+      ...emptyOrden,
+      ...o,
+      id_orden: o.id_orden || "",
+      id_campania: o.id_campania || "",
+      id_producto: o.id_producto || "",
+      producto_nombre: o.producto_nombre || "",
+      precio_tipo: "anticipada",
+      precio_unitario: o.precio_unitario ?? "",
+      cantidad: o.cantidad || 1,
+      columna_codigo: o.columna_codigo || "VEN",
+      columna_nombre: o.columna_nombre || o.producto_nombre || "Venta",
+      items: itemsOrden,
+      persona_tipo: "vendedor",
+      persona_dni: o.persona_dni || o.dni || "",
+      dni: o.persona_dni || o.dni || "",
+      persona_nombre: o.persona_nombre || "",
+      persona_detalle: o.persona_detalle || "",
+      curso_manual: o.curso_manual || cursoDesdeDetalleVenta(o.persona_detalle),
+      comprador_telefono: o.comprador_telefono || "",
+      estado: o.estado || "aprobada",
+      id_medio_pago: o.id_medio_pago || obtenerMedioPorDefecto(preferenciaMedio),
+      fecha_venta: String(o.aprobado_en || o.creado_en || hoyInput()).slice(0, 10),
+      observacion: o.observacion || "",
+    });
+    setModalOrden(true);
+
+    cargarCatalogosOrdenEnSegundoPlano({
+      idOrdenActual: o.id_orden || "",
+      completarMedio: preferenciaMedio,
+    });
+  }, [cargarCatalogosOrdenEnSegundoPlano, obtenerMedioPorDefecto]);
 
   const guardarOrden = async (e) => {
     e.preventDefault();
@@ -577,9 +607,9 @@ export default function Ventas() {
   };
 
 
-  const abrirModalRetiroOrden = (orden) => {
+  const abrirModalRetiroOrden = useCallback((orden) => {
     setModalRetiro(orden || null);
-  };
+  }, []);
 
   const guardarRetiroOrden = async (nuevoRetirado) => {
     const idOrden = Number(modalRetiro?.id_orden || 0);
@@ -603,7 +633,7 @@ export default function Ventas() {
     }
   };
 
-  const eliminarOrden = (orden) => {
+  const eliminarOrden = useCallback((orden) => {
     const nombre = orden?.persona_nombre || orden?.codigo_orden || "esta venta";
     pedirConfirmacion({
       titulo: "Eliminar venta registrada",
@@ -618,7 +648,7 @@ export default function Ventas() {
         await Promise.all([cargarDashboard(), cargarOrdenes()]);
       },
     });
-  };
+  }, [cargarDashboard, cargarOrdenes, pedirConfirmacion, request, showToast]);
 
 
   const tabsControl = (
@@ -743,6 +773,7 @@ export default function Ventas() {
         alumnosCatalogo={personasCatalogo.alumnos}
         personasCatalogo={personasCatalogo.personas}
         personasCatalogoLoading={personasCatalogoLoading}
+        catalogosLoading={ordenCatalogosLoading}
         saving={saving}
         onClose={() => setModalOrden(false)}
         onSubmit={guardarOrden}

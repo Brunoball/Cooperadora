@@ -167,6 +167,7 @@ export default function ModalOrden({
   alumnosCatalogo = [],
   personasCatalogo = [],
   personasCatalogoLoading = false,
+  catalogosLoading = false,
   saving,
   onClose,
   onSubmit,
@@ -289,6 +290,7 @@ export default function ModalOrden({
 
   const esEdicion = Boolean(form?.id_orden);
   const titulo = esEdicion ? "Editar venta registrada" : "Nueva venta registrada";
+  const guardadoBloqueadoPorCatalogos = catalogosLoading && mediosPago.length === 0;
 
   const guardarItems = (nuevosItems) => {
     setForm((prev) => ({ ...prev, items: nuevosItems }));
@@ -401,8 +403,8 @@ export default function ModalOrden({
             <div className="ventas-orden-main-grid">
               <label className="ventas-orden-field ventas-floating-field">
                 <span className="ventas-floating-label">Venta / campaña</span>
-                <select value={form.id_campania || ""} onChange={(e) => seleccionarCampania(e.target.value)} required>
-                  <option value="">Seleccioná una venta / campaña...</option>
+                <select value={form.id_campania || ""} onChange={(e) => seleccionarCampania(e.target.value)} required disabled={catalogosLoading && campanias.length === 0}>
+                  <option value="">{catalogosLoading && campanias.length === 0 ? "Cargando ventas..." : "Seleccioná una venta / campaña..."}</option>
                   {campanias.map((c) => (
                     <option key={c.id_campania} value={c.id_campania}>
                       {c.nombre}{!asBool(c.activo) ? " (inactiva)" : ""}
@@ -413,8 +415,8 @@ export default function ModalOrden({
 
               <label className="ventas-orden-field ventas-floating-field">
                 <span className="ventas-floating-label">Medio de pago</span>
-                <select value={form.id_medio_pago || ""} onChange={(e) => setField("id_medio_pago", e.target.value)} required>
-                  <option value="">Seleccioná un medio de pago...</option>
+                <select value={form.id_medio_pago || ""} onChange={(e) => setField("id_medio_pago", e.target.value)} required disabled={catalogosLoading && mediosPago.length === 0}>
+                  <option value="">{catalogosLoading && mediosPago.length === 0 ? "Cargando medios..." : "Seleccioná un medio de pago..."}</option>
                   {mediosPago.map((m) => (
                     <option key={m.id_medio_pago} value={m.id_medio_pago}>{m.medio_pago}</option>
                   ))}
@@ -476,8 +478,8 @@ export default function ModalOrden({
                 return (
                   <div className="ventas-items-grid" key={`item-${index}`}>
                     <label className="ventas-item-field" data-label="Producto / concepto">
-                      <select value={item.id_producto || ""} onChange={(e) => seleccionarProductoEnItem(index, e.target.value)}>
-                        <option value="">Manual / sin catálogo</option>
+                      <select value={item.id_producto || ""} onChange={(e) => seleccionarProductoEnItem(index, e.target.value)} disabled={catalogosLoading && productos.length === 0}>
+                        <option value="">{catalogosLoading && productos.length === 0 ? "Cargando productos..." : "Manual / sin catálogo"}</option>
                         {productos.map((p) => (
                           <option key={p.id_producto} value={p.id_producto}>
                             {p.nombre} - Ant. {moneyConCentavos(precioProductoPorTipo(p, "anticipada"))} / Puerta {moneyConCentavos(precioProductoPorTipo(p, "puerta"))}{Number(p.activo) === 1 ? "" : " (inactivo)"}
@@ -573,7 +575,7 @@ export default function ModalOrden({
             <div className="ventas-orden-card__head ventas-orden-card__head--plain">
               <div>
                 <h3>Comprador o alumno</h3>
-                <p>Buscá una persona existente para completar sus datos o ingresalos manualmente.</p>
+                <p>{personasCatalogoLoading ? "El modal ya está listo. Estamos cargando alumnos y personas para el buscador..." : "Buscá una persona existente para completar sus datos o ingresalos manualmente."}</p>
               </div>
             </div>
 
@@ -692,8 +694,8 @@ export default function ModalOrden({
             <button type="button" className="ventas-modal-cancel" onClick={onClose} disabled={saving}>
               Cancelar
             </button>
-            <button className="ventas-primary" type="submit" disabled={saving || total <= 0}>
-              <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : esEdicion ? "Actualizar venta" : "Guardar venta"}
+            <button className="ventas-primary" type="submit" disabled={saving || guardadoBloqueadoPorCatalogos || total <= 0}>
+              <FontAwesomeIcon icon={faSave} /> {saving ? "Guardando..." : guardadoBloqueadoPorCatalogos ? "Cargando datos..." : esEdicion ? "Actualizar venta" : "Guardar venta"}
             </button>
           </div>
         </footer>

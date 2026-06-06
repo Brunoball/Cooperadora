@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faEdit, faEye, faPlus, faSearch, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { asBool, money, origenLabel } from "../ventasConfig";
@@ -31,6 +31,74 @@ const resumenItemsVenta = (orden) => {
   return orden?.items_resumen || `${orden?.items_cantidad || 0} concepto(s)`;
 };
 
+const OrdenFila = memo(function OrdenFila({ o, onOpenRetiro, onEdit, onDelete }) {
+  return (
+    <div className="ventas-div-row" role="row">
+      <div className="ventas-div-cell ventas-div-cell--main" role="cell">
+        <strong>{o.campania_nombre || "Sin venta"}</strong>
+        <span>{resumenItemsVenta(o)}</span>
+      </div>
+
+      <div className="ventas-div-cell ventas-div-cell--main" role="cell">
+        <strong>{o.persona_nombre || "Sin nombre"}</strong>
+        <span>{o.persona_dni ? `DNI: ${o.persona_dni}` : (o.persona_detalle || "Sin DNI")}</span>
+      </div>
+
+      <div className="ventas-div-cell ventas-div-cell--main ventas-orden-cell--medio" role="cell">
+        <strong>{o.medio_pago || "Sin medio"}</strong>
+      </div>
+
+      <div className="ventas-div-cell" role="cell">{money(o.total)}</div>
+
+      <div className="ventas-div-cell" role="cell">
+        <span className={`ventas-status ${o.estado === "aprobada" ? "ok" : "muted"}`}>
+          {o.estado}
+        </span>
+      </div>
+
+      <div className="ventas-div-cell ventas-div-cell--main ventas-retire-cell" role="cell">
+        <span className={`ventas-status ${asBool(o.retirado) ? "ok" : "pending"}`}>
+          {asBool(o.retirado) ? "Retirado" : "Pendiente"}
+        </span>
+      </div>
+
+      <div className="ventas-div-cell" role="cell">
+        <span className={`ventas-status ${o.origen === "manual" ? "manual" : "muted"}`}>
+          {origenLabel(o.origen)}
+        </span>
+      </div>
+
+      <div className="ventas-div-cell ventas-row-actions ventas-pdf-actions" role="cell">
+        {o.pdf_url ? (
+          <a href={o.pdf_url} target="_blank" rel="noreferrer" title="Ver PDF" aria-label="Ver PDF">
+            <FontAwesomeIcon icon={faEye} />
+          </a>
+        ) : (
+          <button type="button" disabled title="Sin PDF" aria-label="Sin PDF">
+            <FontAwesomeIcon icon={faEye} />
+          </button>
+        )}
+      </div>
+
+      <div className="ventas-div-cell ventas-div-cell--main ventas-orden-cell--fecha" role="cell">
+        <strong>{fechaSolo(o.aprobado_en || o.creado_en)}</strong>
+      </div>
+
+      <div className="ventas-div-cell ventas-row-actions" role="cell">
+        <button type="button" onClick={() => onOpenRetiro(o)} title="Cambiar estado de retiro" aria-label="Cambiar estado de retiro">
+          <FontAwesomeIcon icon={faCheckCircle} />
+        </button>
+        <button type="button" onClick={() => onEdit(o)} title="Editar venta registrada" aria-label="Editar venta registrada">
+          <FontAwesomeIcon icon={faEdit} />
+        </button>
+        <button type="button" className="danger" onClick={() => onDelete(o)} title="Eliminar venta registrada" aria-label="Eliminar venta registrada">
+          <FontAwesomeIcon icon={faTrash} />
+        </button>
+      </div>
+    </div>
+  );
+});
+
 export default function OrdenesTab({
   tableTabs,
   ordenes,
@@ -48,6 +116,18 @@ export default function OrdenesTab({
   filtroRetiro = "",
   onCambiarFiltroRetiro = () => {},
 }) {
+  const filasOrdenes = useMemo(() => (
+    ordenes.map((o) => (
+      <OrdenFila
+        key={o.id_orden}
+        o={o}
+        onOpenRetiro={onOpenRetiro}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    ))
+  ), [ordenes, onOpenRetiro, onEdit, onDelete]);
+
   return (
     <section className="ventas-card ventas-table-card ventas-full-card ventas-ordenes-card">
       <div className="ventas-card-head ventas-card-head--stack">
@@ -123,71 +203,7 @@ export default function OrdenesTab({
             ) : ordenes.length === 0 ? (
               <div className="ventas-empty-cell" role="row">Todavía no hay ventas aprobadas.</div>
             ) : (
-              ordenes.map((o) => (
-                <div key={o.id_orden} className="ventas-div-row" role="row">
-                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
-                    <strong>{o.campania_nombre || "Sin venta"}</strong>
-                    <span>{resumenItemsVenta(o)}</span>
-                  </div>
-
-                  <div className="ventas-div-cell ventas-div-cell--main" role="cell">
-                    <strong>{o.persona_nombre || "Sin nombre"}</strong>
-                    <span>{o.persona_dni ? `DNI: ${o.persona_dni}` : (o.persona_detalle || "Sin DNI")}</span>
-                  </div>
-
-                  <div className="ventas-div-cell ventas-div-cell--main ventas-orden-cell--medio" role="cell">
-                    <strong>{o.medio_pago || "Sin medio"}</strong>
-                  </div>
-
-                  <div className="ventas-div-cell" role="cell">{money(o.total)}</div>
-
-                  <div className="ventas-div-cell" role="cell">
-                    <span className={`ventas-status ${o.estado === "aprobada" ? "ok" : "muted"}`}>
-                      {o.estado}
-                    </span>
-                  </div>
-
-                  <div className="ventas-div-cell ventas-div-cell--main ventas-retire-cell" role="cell">
-                    <span className={`ventas-status ${asBool(o.retirado) ? "ok" : "pending"}`}>
-                      {asBool(o.retirado) ? "Retirado" : "Pendiente"}
-                    </span>
-                  </div>
-
-                  <div className="ventas-div-cell" role="cell">
-                    <span className={`ventas-status ${o.origen === "manual" ? "manual" : "muted"}`}>
-                      {origenLabel(o.origen)}
-                    </span>
-                  </div>
-
-                  <div className="ventas-div-cell ventas-row-actions ventas-pdf-actions" role="cell">
-                    {o.pdf_url ? (
-                      <a href={o.pdf_url} target="_blank" rel="noreferrer" title="Ver PDF" aria-label="Ver PDF">
-                        <FontAwesomeIcon icon={faEye} />
-                      </a>
-                    ) : (
-                      <button type="button" disabled title="Sin PDF" aria-label="Sin PDF">
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="ventas-div-cell ventas-div-cell--main ventas-orden-cell--fecha" role="cell">
-                    <strong>{fechaSolo(o.aprobado_en || o.creado_en)}</strong>
-                  </div>
-
-                  <div className="ventas-div-cell ventas-row-actions" role="cell">
-                    <button type="button" onClick={() => onOpenRetiro(o)} title="Cambiar estado de retiro" aria-label="Cambiar estado de retiro">
-                      <FontAwesomeIcon icon={faCheckCircle} />
-                    </button>
-                    <button type="button" onClick={() => onEdit(o)} title="Editar venta registrada" aria-label="Editar venta registrada">
-                      <FontAwesomeIcon icon={faEdit} />
-                    </button>
-                    <button type="button" className="danger" onClick={() => onDelete(o)} title="Eliminar venta registrada" aria-label="Eliminar venta registrada">
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </div>
-              ))
+filasOrdenes
             )}
           </div>
         </div>
