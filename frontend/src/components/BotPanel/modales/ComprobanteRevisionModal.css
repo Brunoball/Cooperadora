@@ -60,6 +60,63 @@
   background:var(--wp-card,rgba(0,168,132,.05));
   font-size:13px;
 }
+.bp-comp-preview{
+  display:grid;
+  grid-template-columns:116px minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+  padding:10px;
+  border:1px solid var(--wp-border-soft,rgba(15,23,42,.08));
+  border-radius:16px;
+  background:linear-gradient(135deg,var(--wp-card,rgba(0,168,132,.05)),transparent);
+  color:inherit;
+  text-decoration:none;
+}
+.bp-comp-preview:hover{
+  border-color:var(--wp-accent,rgba(0,168,132,.22));
+}
+.bp-comp-preview-media{
+  min-height:90px;
+  border-radius:13px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--wp-border-soft,rgba(15,23,42,.08));
+  background:var(--wp-card,rgba(0,168,132,.05));
+}
+.bp-comp-preview-media img{
+  width:100%;
+  height:100%;
+  min-height:90px;
+  object-fit:cover;
+  display:block;
+}
+.bp-comp-preview-media span{
+  min-width:54px;
+  min-height:54px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  border:1px solid var(--wp-accent,rgba(0,168,132,.22));
+  background:var(--wp-accent-2,rgba(0,168,132,.12));
+  color:var(--wp-brand-primary,#00a884);
+  font-size:12px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.bp-comp-preview-text{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.bp-comp-preview-text b{font-size:14px;line-height:1.2;}
+.bp-comp-preview-text span{
+  color:color-mix(in srgb,var(--wp-text,#111b21) 62%,transparent);
+  font-size:12.5px;
+  line-height:1.35;
+}
 .bp-comp-summary{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -151,7 +208,8 @@
 @media (max-width:620px){
   .bp-comp-overlay{padding:12px;}
   .bp-comp-head,.bp-comp-body{padding-left:16px;padding-right:16px;}
-  .bp-comp-summary,.bp-comp-edit-grid{grid-template-columns:1fr;}
+  .bp-comp-summary,.bp-comp-edit-grid,.bp-comp-preview{grid-template-columns:1fr;}
+  .bp-comp-preview-media,.bp-comp-preview-media img{min-height:120px;}
   .bp-comp-actions{flex-direction:column-reverse;}
   .bp-comp-btn{width:100%;}
 }

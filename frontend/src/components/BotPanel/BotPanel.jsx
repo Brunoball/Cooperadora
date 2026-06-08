@@ -64,6 +64,29 @@ const fmtHora = (ts) => {
   return `${hh}:${mm}`;
 };
 
+/** Fecha corta + hora para la lista de chats: DD/MM HH:MM */
+const fmtFechaHoraLista = (ts) => {
+  if (!Number.isFinite(Number(ts))) return "";
+  const d = new Date(ts);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm} ${hh}:${mi}`;
+};
+
+/** Fecha completa para tooltips: DD/MM/AAAA HH:MM */
+const fmtFechaHoraCompleta = (ts) => {
+  if (!Number.isFinite(Number(ts))) return "";
+  const d = new Date(ts);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+};
+
 const fmtDateKey = (ts) => {
   const d = new Date(ts);
   const y = d.getFullYear();
@@ -138,6 +161,27 @@ const toTs = (value) => {
 };
 
 const normStr = (v) => String(v ?? "").trim();
+
+const buildConsultaTemplateText = (respuesta, fallback = "Te escribimos desde la Cooperadora.") => {
+  const body = normStr(respuesta) || fallback;
+  return `Hola 👋
+
+Te respondemos desde la Cooperadora del IPET 50.
+
+${body}
+
+Si necesitás continuar, respondé este mensaje y te seguimos ayudando.`;
+};
+
+const CONSULTA_TEMPLATE_VARIABLE_PLACEHOLDER =
+  "Acá se va a insertar la respuesta que escribas abajo.";
+
+// ⚠️ TEMPORAL:
+// La plantilla consulta_manual_fuera_24h todavía está pendiente de aprobación en WhatsApp.
+// Mientras esté en false, las consultas manuales fuera de la ventana de 24hs quedan bloqueadas
+// y NO se ejecuta el envío de plantilla.
+// Cuando Meta la apruebe, cambiar a true para reactivar toda la estructura ya preparada.
+const CONSULTA_MANUAL_TEMPLATE_ENABLED = false;
 
 const pickNombre = (c) => {
   const candidates = [
@@ -261,6 +305,95 @@ const parseMoneyInput = (value) => {
    ✅ MODAL VISOR (IMG / PDF)
 ========================= */
 
+const fmtMoneyARS = (value, fallback = "Monto no detectado") => {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: n % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const firstText = (...values) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "object") continue;
+    const s = normStr(value);
+    if (s) return s;
+  }
+  return "";
+};
+
+const toNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const cantidadExactaPorMonto = (monto, precioUnitario) => {
+  const montoNum = toNumberOrNull(monto);
+  const precioNum = toNumberOrNull(precioUnitario);
+  if (!montoNum || !precioNum || montoNum <= 0 || precioNum <= 0) return null;
+
+  const cantidad = Math.round(montoNum / precioNum);
+  if (!Number.isFinite(cantidad) || cantidad <= 0) return null;
+
+  const totalEsperado = Number((precioNum * cantidad).toFixed(2));
+  const diferencia = Math.abs(Number(montoNum.toFixed(2)) - totalEsperado);
+  return diferencia <= 0.01 ? cantidad : null;
+};
+
+const pickComprobanteInfo = (ev = {}) => {
+  const ctx = ev?.contexto && typeof ev.contexto === "object" ? ev.contexto : {};
+  const archivo = ctx?.archivo && typeof ctx.archivo === "object" ? ctx.archivo : {};
+  const archivoUrl = firstText(ctx.archivo_url, ctx.url_archivo, archivo.url);
+  const mediaTipo = firstText(ctx.media_tipo, ctx.mime, archivo.mime);
+  const nombre = firstText(ctx.nombre_apellido, ctx.persona_nombre, ctx.nombre, ctx.comprador_nombre);
+  const dni = firstText(ctx.dni, ctx.persona_dni, ctx.comprador_dni);
+  const producto = firstText(ctx.producto_nombre, ctx.campania?.producto_nombre, ctx.producto);
+  const campania = firstText(ctx.campania_nombre, ctx.campania?.campania_nombre, ctx.venta, ctx.campania);
+  const monto = ctx.monto_detectado ?? ctx.monto_confirmado ?? ctx.monto ?? null;
+  const precioUnitario = ctx.precio_unitario ?? ctx.producto_precio ?? null;
+  const cantidadExacta = cantidadExactaPorMonto(monto, precioUnitario);
+  const cantidad = ctx.cantidad_estimada ?? ctx.cantidad_confirmada ?? ctx.cantidad_sugerida ?? cantidadExacta ?? null;
+  const estadoComprobante = firstText(ctx.estado_comprobante, ctx.estado);
+
+  // Algunos eventos viejos quedaron guardados con motivo_revision cuando el OCR había
+  // leído mal el monto. Si después el backend corrige a $12.000 y 1 entrada, no hay
+  // que seguir mostrando el cartel amarillo de “no coincide”.
+  const motivoRevisionRaw = firstText(ctx.motivo_revision, ctx.advertencia);
+  const motivoRevision = cantidadExacta ? "" : motivoRevisionRaw;
+
+  return {
+    id: Number(ctx.id_comprobante || 0),
+    archivoUrl,
+    mediaTipo,
+    nombre,
+    dni,
+    producto,
+    campania,
+    monto,
+    cantidad,
+    precioUnitario,
+    estadoComprobante,
+    motivoRevision,
+  };
+};
+
+const isImageComprobante = (url = "", mime = "") => {
+  const m = String(mime || "").toLowerCase();
+  const u = String(url || "").toLowerCase().split("?")[0];
+  return m.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(u);
+};
+
+const isPdfComprobante = (url = "", mime = "") => {
+  const m = String(mime || "").toLowerCase();
+  const u = String(url || "").toLowerCase().split("?")[0];
+  return m === "application/pdf" || u.endsWith(".pdf");
+};
+
 const BotEventosModal = ({
   open,
   onClose,
@@ -342,6 +475,15 @@ const BotEventosModal = ({
             const ctx = ev.contexto && typeof ev.contexto === "object" ? ev.contexto : {};
             const idComprobante = Number(ctx?.id_comprobante || 0);
             const esComprobanteVenta = String(ev.modulo || "") === "ventas_comprobante" && idComprobante > 0;
+            const comp = esComprobanteVenta ? pickComprobanteInfo(ev) : null;
+            const compArchivoUrl = comp?.archivoUrl || "";
+            const compEsImagen = isImageComprobante(compArchivoUrl, comp?.mediaTipo);
+            const compEsPdf = isPdfComprobante(compArchivoUrl, comp?.mediaTipo);
+            const compPersona = comp?.nombre || "Persona sin nombre detectado";
+            const compDni = comp?.dni || "sin DNI";
+            const compMonto = fmtMoneyARS(comp?.monto);
+            const compCantidad = Number(comp?.cantidad || 0) > 0 ? `${Number(comp?.cantidad)} entrada${Number(comp?.cantidad) === 1 ? "" : "s"}` : "Cantidad a revisar";
+            const compVenta = [comp?.campania, comp?.producto].filter(Boolean).join(" · ");
 
             return (
               <div key={ev.id_evento} className={`wp-event-card wp-event-card--${tipo} ${pendiente ? "is-pending" : "is-reviewed"}`}>
@@ -353,7 +495,49 @@ const BotEventosModal = ({
 
                 <div className="wp-event-title">{ev.titulo || "Evento del bot"}</div>
 
-                {ev.detalle ? <div className="wp-event-detail">{ev.detalle}</div> : null}
+                {esComprobanteVenta ? (
+                  <div className="wp-event-comprobante">
+                    {compArchivoUrl ? (
+                      <a
+                        className="wp-event-comprobante-preview"
+                        href={compArchivoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Abrir comprobante recibido"
+                      >
+                        {compEsImagen ? (
+                          <img src={compArchivoUrl} alt={`Comprobante ${idComprobante}`} loading="lazy" />
+                        ) : (
+                          <span className="wp-event-comprobante-file">{compEsPdf ? "PDF" : "Archivo"}</span>
+                        )}
+                      </a>
+                    ) : (
+                      <div className="wp-event-comprobante-preview is-empty">Sin archivo</div>
+                    )}
+
+                    <div className="wp-event-comprobante-info">
+                      <div className="wp-event-comprobante-title">Comprobante #{idComprobante}</div>
+                      <div className="wp-event-comprobante-person">
+                        <b>{compPersona}</b>
+                        <span>DNI: {compDni}</span>
+                      </div>
+
+                      {compVenta ? <div className="wp-event-comprobante-desc">{compVenta}</div> : null}
+
+                      <div className="wp-event-comprobante-chips">
+                        <span>{compMonto}</span>
+                        <span>{compCantidad}</span>
+                        {comp?.precioUnitario ? <span>Precio: {fmtMoneyARS(comp.precioUnitario, "-")}</span> : null}
+                      </div>
+
+                      {comp?.motivoRevision ? (
+                        <div className="wp-event-comprobante-warning">{comp.motivoRevision}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : ev.detalle ? (
+                  <div className="wp-event-detail">{ev.detalle}</div>
+                ) : null}
 
                 <div className="wp-event-meta">
                   {ev.wa_id ? (
@@ -362,6 +546,11 @@ const BotEventosModal = ({
                     </button>
                   ) : <span>Sin contacto asociado</span>}
                   <span>Estado: <b>{pendiente ? "pendiente" : "revisado"}</b></span>
+                  {esComprobanteVenta && compArchivoUrl ? (
+                    <a className="wp-event-link" href={compArchivoUrl} target="_blank" rel="noreferrer">
+                      Ver comprobante
+                    </a>
+                  ) : null}
                 </div>
 
                 {pendiente ? (
@@ -373,7 +562,7 @@ const BotEventosModal = ({
                           className="wp-events-btn wp-events-btn--approve"
                           onClick={() => onAprobarComprobante?.(idComprobante, ev.id_evento)}
                         >
-                          Aprobar
+                          Aprobar comprobante
                         </button>
                         <button
                           type="button"
@@ -778,7 +967,7 @@ const BotPanel = () => {
 
             online: !!c.online,
             ultimo: normStr(c.ultimo_mensaje || ""),
-            updatedAt: toTs(c.ultima_fecha) ?? Date.now(),
+            updatedAt: Number(c.ultima_ts || 0) > 0 ? Number(c.ultima_ts) : (toTs(c.ultima_fecha) ?? Date.now()),
             total: Number(c.total || 0),
             prioridad,
             unread,
@@ -1256,6 +1445,8 @@ const BotPanel = () => {
   );
 
   const isWindowExpired = selectedId ? !selectedWindow.valid : false;
+  const isConsultaManualBlockedByTemplatePending =
+    isWindowExpired && !CONSULTA_MANUAL_TEMPLATE_ENABLED;
 
   const openChat = (id) => {
     const c = chats.find((x) => x.id === id) || null;
@@ -1408,24 +1599,6 @@ const BotPanel = () => {
 
     const text = draft.trim();
 
-    if (isWindowExpired) {
-      setMensajes((prev) => [
-        ...prev,
-        {
-          id: `win-exp-${Date.now()}`,
-          wa_id: waId,
-          text: "⛔ Ventana de 24hs expirada. No se pueden enviar mensajes desde el panel.",
-          emisor: "Panel",
-          prioridad: "alta",
-          ts: Date.now(),
-        },
-      ]);
-      setDraft("");
-      setEmojiOpen(false);
-      clearAttached();
-      return;
-    }
-
     if (mode !== "manual") {
       setMensajes((prev) => [
         ...prev,
@@ -1438,6 +1611,38 @@ const BotPanel = () => {
           ts: Date.now(),
         },
       ]);
+      return;
+    }
+
+    if (isConsultaManualBlockedByTemplatePending) {
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: `win-exp-template-disabled-${Date.now()}`,
+          wa_id: waId,
+          text: "⛔ Ventana de 24hs expirada.",
+          emisor: "Panel",
+          prioridad: "alta",
+          ts: Date.now(),
+        },
+      ]);
+      clearAttached();
+      return;
+    }
+
+    if (isWindowExpired && attachedFile) {
+      setMensajes((prev) => [
+        ...prev,
+        {
+          id: `win-exp-media-${Date.now()}`,
+          wa_id: waId,
+          text: "⛔ Ventana de 24hs expirada. Fuera de la ventana solo se puede enviar una plantilla de texto, no imágenes ni PDF.",
+          emisor: "Panel",
+          prioridad: "alta",
+          ts: Date.now(),
+        },
+      ]);
+      clearAttached();
       return;
     }
 
@@ -1511,6 +1716,10 @@ const BotPanel = () => {
     if (!text) return;
 
     const tempId = `local-${Date.now()}`;
+    const optimisticText =
+      isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED
+        ? buildConsultaTemplateText(text)
+        : text;
     pendingScrollRef.current = "auto";
 
     setMensajes((prev) => [
@@ -1518,7 +1727,7 @@ const BotPanel = () => {
       {
         id: tempId,
         wa_id: waId,
-        text,
+        text: optimisticText,
         emisor: "Admin",
         prioridad: "normal",
         ts: Date.now(),
@@ -1533,6 +1742,9 @@ const BotPanel = () => {
       const { res, data } = await postJSON(`${PANEL_API}/panel_send.php`, {
         wa_id: waId,
         texto: text,
+        // ⚠️ TEMPORAL: dejar false hasta que Meta apruebe consulta_manual_fuera_24h.
+        // Cuando esté aprobada, cambiar CONSULTA_MANUAL_TEMPLATE_ENABLED a true.
+        usar_plantilla_si_ventana_expirada: CONSULTA_MANUAL_TEMPLATE_ENABLED,
       });
 
       if (!res.ok || !data?.success) {
@@ -1826,7 +2038,8 @@ const BotPanel = () => {
           {list.map((c) => {
             const active = c.id === selectedId;
             const nombreOk = c.nombre || "Sin nombre";
-            const hora = fmtHora(c.updatedAt || Date.now());
+            const fechaHora = fmtFechaHoraLista(c.updatedAt || Date.now());
+            const fechaHoraTitle = fmtFechaHoraCompleta(c.updatedAt || Date.now());
             const totalTxt = `${Number(c.total || 0)} msgs`;
             const urgent = !!c.urgente;
 
@@ -1876,7 +2089,7 @@ const BotPanel = () => {
                       ) : null}
                     </div>
 
-                    <div className="wp-chattime">{hora}</div>
+                    <div className="wp-chattime" title={fechaHoraTitle}>{fechaHora}</div>
                   </div>
 
                   <div className="wp-chatrow">
@@ -2001,7 +2214,9 @@ const BotPanel = () => {
                       onClick={() => setModeDB("manual")}
                       title={
                         isWindowExpired
-                          ? "Modo Manual (pero ventana expirada: no se puede enviar)"
+                          ? CONSULTA_MANUAL_TEMPLATE_ENABLED
+                            ? "Modo Manual (ventana expirada: podés enviar una plantilla de texto)"
+                            : "Modo Manual (ventana expirada)"
                           : "Modo Manual (el bot queda inhabilitado)"
                       }
                       aria-label="Modo Manual"
@@ -2202,7 +2417,43 @@ const BotPanel = () => {
             </div>
 
             {mode === "manual" ? (
-              <div className={`wp-composer ${isWindowExpired ? "is-disabled" : ""}`}>
+              <div
+                className={`wp-composer ${
+                  isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED ? "is-template-mode" : ""
+                } ${
+                  isWindowExpired && !CONSULTA_MANUAL_TEMPLATE_ENABLED ? "is-disabled" : ""
+                }`}
+              >
+                {isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED ? (
+                  <div className="wp-template-preview">
+                    <div className="wp-template-preview-head">
+                      <span>📨 Plantilla aprobada que se enviará</span>
+                      <small>Escribí solo la respuesta. El saludo y el cierre ya van incluidos.</small>
+                    </div>
+
+                    <div className="wp-template-preview-wrap">
+                      <div className="wp-template-preview-bubble">
+                        <div>Hola 👋</div>
+                        <br />
+                        <div>Te respondemos desde la Cooperadora del IPET 50.</div>
+                        <br />
+                        <div
+                          className={`wp-template-preview-var ${
+                            draft.trim() ? "has-text" : "is-empty"
+                          }`}
+                        >
+                          {draft.trim() || CONSULTA_TEMPLATE_VARIABLE_PLACEHOLDER}
+                        </div>
+                        <br />
+                        <div>
+                          Si necesitás continuar, respondé este mensaje y te seguimos
+                          ayudando.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="wp-composer-inner">
                   <input
                     ref={fileInputRef}
@@ -2215,7 +2466,13 @@ const BotPanel = () => {
                   <button
                     type="button"
                     className="wp-attach"
-                    title={isWindowExpired ? "Ventana expirada" : "Adjuntar imagen/PDF"}
+                    title={
+                      isConsultaManualBlockedByTemplatePending
+                        ? "Ventana de 24hs expirada"
+                        : isWindowExpired
+                        ? "Fuera de 24hs solo se puede enviar plantilla de texto"
+                        : "Adjuntar imagen/PDF"
+                    }
                     aria-label="Adjuntar imagen/PDF"
                     disabled={isWindowExpired || sendingMedia}
                     onClick={onAttachClick}
@@ -2227,15 +2484,15 @@ const BotPanel = () => {
                     ref={emojiBtnRef}
                     type="button"
                     className={`wp-emoji-btn ${emojiOpen ? "is-open" : ""}`}
-                    title={isWindowExpired ? "Ventana expirada" : "Emojis"}
+                    title={isConsultaManualBlockedByTemplatePending ? "Ventana de 24hs expirada" : "Emojis"}
                     aria-label="Emojis"
-                    disabled={isWindowExpired}
+                    disabled={sendingMedia || isConsultaManualBlockedByTemplatePending}
                     onClick={() => setEmojiOpen((v) => !v)}
                   >
                     <FontAwesomeIcon icon={faFaceSmile} />
                   </button>
 
-                  {emojiOpen && !isWindowExpired ? (
+                  {emojiOpen && !isConsultaManualBlockedByTemplatePending ? (
                     <div
                       ref={emojiPopRef}
                       className="wp-emoji-pop"
@@ -2265,30 +2522,45 @@ const BotPanel = () => {
                     placeholder={
                       attachedFile
                         ? `Adjunto: ${attachedFile.name} — escribí un texto opcional…`
+                        : isConsultaManualBlockedByTemplatePending
+                        ? "Ventana de 24hs expirada"
                         : isWindowExpired
-                        ? "Ventana expirada: no podés mandar mensajes desde el panel."
+                        ? "Escribí solo la respuesta; el saludo y el cierre ya están en la plantilla…"
                         : "Modo manual: escribir mensaje…"
                     }
                     rows={1}
-                    disabled={isWindowExpired || sendingMedia}
+                    disabled={sendingMedia || isConsultaManualBlockedByTemplatePending}
                   />
 
                   <button
                     type="button"
-                    className="wp-send"
+                    className={`wp-send ${
+                      isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED ? "is-template" : ""
+                    }`}
                     onClick={sendManual}
-                    aria-label="Enviar"
+                    aria-label={
+                      isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED
+                        ? "Enviar plantilla"
+                        : "Enviar"
+                    }
                     title={
-                      isWindowExpired
-                        ? "Ventana expirada"
+                      isConsultaManualBlockedByTemplatePending
+                        ? "Ventana de 24hs expirada"
+                        : isWindowExpired
+                        ? "Enviar plantilla"
                         : attachedFile
                         ? "Enviar archivo"
                         : "Enviar"
                     }
-                    disabled={isWindowExpired || sendingMedia}
+                    disabled={sendingMedia || isConsultaManualBlockedByTemplatePending}
                   >
                     {sendingMedia ? (
                       <FontAwesomeIcon icon={faSpinner} spin />
+                    ) : isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED ? (
+                      <>
+                        <FontAwesomeIcon icon={faPaperPlane} />
+                        <span>Enviar plantilla</span>
+                      </>
                     ) : (
                       <FontAwesomeIcon icon={faPaperPlane} />
                     )}

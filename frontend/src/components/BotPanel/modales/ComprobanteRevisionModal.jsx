@@ -18,6 +18,18 @@ const safeText = (value, fallback = "-") => {
   return s || fallback;
 };
 
+const isImageFile = (url = "", mime = "") => {
+  const m = String(mime || "").toLowerCase();
+  const u = String(url || "").toLowerCase().split("?")[0];
+  return m.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(u);
+};
+
+const isPdfFile = (url = "", mime = "") => {
+  const m = String(mime || "").toLowerCase();
+  const u = String(url || "").toLowerCase().split("?")[0];
+  return m === "application/pdf" || u.endsWith(".pdf");
+};
+
 const ComprobanteRevisionModal = ({
   open,
   accion,
@@ -41,6 +53,9 @@ const ComprobanteRevisionModal = ({
   const cantidad = Number.parseInt(String(cantidadManual || "0"), 10) || 0;
   const totalCalculado = precio > 0 && cantidad > 0 ? precio * cantidad : 0;
   const archivoUrl = detalle?.archivo_url || detalle?.archivo?.url || "";
+  const mediaTipo = detalle?.media_tipo || detalle?.archivo?.mime || "";
+  const archivoEsImagen = isImageFile(archivoUrl, mediaTipo);
+  const archivoEsPdf = isPdfFile(archivoUrl, mediaTipo);
 
   return (
     <div className="bp-comp-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
@@ -62,7 +77,24 @@ const ComprobanteRevisionModal = ({
           {loadingDetalle ? (
             <div className="bp-comp-loading">Cargando datos del comprobante…</div>
           ) : detalle ? (
-            <div className="bp-comp-summary">
+            <>
+              {archivoUrl ? (
+                <a className="bp-comp-preview" href={archivoUrl} target="_blank" rel="noreferrer">
+                  <div className="bp-comp-preview-media">
+                    {archivoEsImagen ? (
+                      <img src={archivoUrl} alt="Comprobante recibido" />
+                    ) : (
+                      <span>{archivoEsPdf ? "PDF" : "Archivo"}</span>
+                    )}
+                  </div>
+                  <div className="bp-comp-preview-text">
+                    <b>Comprobante recibido</b>
+                    <span>Abrir archivo original en otra pestaña</span>
+                  </div>
+                </a>
+              ) : null}
+
+              <div className="bp-comp-summary">
               <div><span>Venta</span><b>{safeText(detalle.campania_nombre, "Venta escolar")}</b></div>
               <div><span>Producto</span><b>{safeText(detalle.producto_nombre, "Producto")}</b></div>
               <div><span>Persona</span><b>{safeText(detalle.nombre_apellido)}</b></div>
@@ -77,7 +109,8 @@ const ComprobanteRevisionModal = ({
                 </div>
               ) : null}
               {detalle.advertencia ? <div className="bp-comp-warning">{detalle.advertencia}</div> : null}
-            </div>
+              </div>
+            </>
           ) : null}
 
           {esRechazo ? (

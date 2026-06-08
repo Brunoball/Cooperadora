@@ -1643,3 +1643,132 @@
   border-color: rgba(254,202,202,.75);
   color: #fff;
 }
+
+/* ==========================
+   PLANTILLA FUERA DE 24HS
+========================== */
+.wp-composer.is-template-mode {
+  opacity: 1;
+  filter: none;
+  pointer-events: auto;
+}
+
+.wp-composer.is-template-mode .wp-composer-inner {
+  grid-template-columns: 44px 44px 1fr minmax(132px, auto);
+}
+
+.wp-template-preview {
+  margin: 0 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+}
+
+.wp-template-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--wp-text);
+}
+
+.wp-template-preview-head span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wp-template-preview-head small {
+  font-size: 12px;
+  line-height: 1.25;
+  opacity: .78;
+  text-align: right;
+}
+
+.wp-template-preview-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wp-template-preview-bubble {
+  max-width: min(680px, 100%);
+  padding: 13px 15px;
+  border-radius: 18px 18px 4px 18px;
+  background: var(--wp-success-bg);
+  border: 1px solid var(--wp-success);
+  color: var(--wp-text);
+  font-size: 13px;
+  line-height: 1.38;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+}
+
+.wp-template-preview-var {
+  display: block;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(0, 188, 166, .10);
+  border: 1px dashed rgba(0, 188, 166, .55);
+  font-weight: 700;
+}
+
+.wp-template-preview-var.is-empty {
+  color: var(--wp-muted);
+  font-weight: 600;
+  font-style: italic;
+}
+
+.wp-template-preview-var.has-text {
+  color: var(--wp-text);
+}
+
+.wp-template-banner {
+  margin: 0 0 8px 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: var(--wp-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wp-send.is-template {
+  width: auto;
+  min-width: 132px;
+  padding: 0 14px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.wp-send.is-template span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 560px){
+  .wp-template-preview {
+    padding: 9px;
+    border-radius: 14px;
+  }
+
+  .wp-template-preview-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .wp-template-preview-head small {
+    text-align: left;
+  }
+
+  .wp-template-preview-bubble {
+    max-width: 100%;
+    font-size: 12.5px;
+  }
+}
