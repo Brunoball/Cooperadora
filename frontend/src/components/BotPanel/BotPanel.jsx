@@ -418,16 +418,25 @@ const BotEventosModal = ({
     <div className="wp-events-backdrop" role="dialog" aria-modal="true">
       <div className="wp-events-panel">
         <div className="wp-events-head">
-          <div>
-            <div className="wp-events-eyebrow">Actividad del sistema</div>
-            <div className="wp-events-title">
-              <FontAwesomeIcon icon={faTriangleExclamation} />
-              Alertas del bot
+          <div className="wp-events-head-main">
+            <div className="wp-events-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faRobot} />
             </div>
-            <div className="wp-events-sub">
-              {pendientes > 0
-                ? `${pendientes} evento${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"}`
-                : "No hay eventos pendientes"}
+
+            <div className="wp-events-heading-copy">
+              <div className="wp-events-eyebrow">Actividad del sistema</div>
+              <div className="wp-events-title">
+                Alertas del bot
+                <span className={`wp-events-status ${pendientes > 0 ? "is-hot" : "is-ok"}`}>
+                  <FontAwesomeIcon icon={pendientes > 0 ? faTriangleExclamation : faCircle} />
+                  {pendientes > 0 ? "Requiere revisión" : "Todo al día"}
+                </span>
+              </div>
+              <div className="wp-events-sub">
+                {pendientes > 0
+                  ? `${pendientes} evento${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"}`
+                  : "No hay eventos pendientes"}
+              </div>
             </div>
           </div>
 
@@ -437,6 +446,10 @@ const BotEventosModal = ({
         </div>
 
         <div className="wp-events-actions">
+          <div className="wp-events-actions-copy">
+            <b>Centro de seguimiento</b>
+            <span>Revisá errores, advertencias y comprobantes pendientes.</span>
+          </div>
           <button type="button" className="wp-events-btn" onClick={onRefresh} disabled={loading}>
             {loading ? <FontAwesomeIcon icon={faSpinner} spin /> : null}
             Actualizar
@@ -444,9 +457,9 @@ const BotEventosModal = ({
         </div>
 
         <div className="wp-events-summary">
-          <div className="wp-events-stat"><span>Errores pendientes</span><b>{Number(resumen?.errores_pendientes || 0)}</b></div>
-          <div className="wp-events-stat"><span>Advertencias</span><b>{Number(resumen?.warnings_pendientes || 0)}</b></div>
-          <div className="wp-events-stat"><span>Últimos 7 días</span><b>{Number(resumen?.total_ultimos_7_dias || 0)}</b></div>
+          <div className="wp-events-stat wp-events-stat--danger"><span>Errores pendientes</span><b>{Number(resumen?.errores_pendientes || 0)}</b></div>
+          <div className="wp-events-stat wp-events-stat--warning"><span>Advertencias</span><b>{Number(resumen?.warnings_pendientes || 0)}</b></div>
+          <div className="wp-events-stat wp-events-stat--info"><span>Últimos 7 días</span><b>{Number(resumen?.total_ultimos_7_dias || 0)}</b></div>
         </div>
 
         {error ? (
@@ -489,8 +502,7 @@ const BotEventosModal = ({
               <div key={ev.id_evento} className={`wp-event-card wp-event-card--${tipo} ${pendiente ? "is-pending" : "is-reviewed"}`}>
                 <div className="wp-event-top">
                   <span className="wp-event-badge">{tipo}</span>
-                  <span className="wp-event-module">{ev.modulo || "bot"}</span>
-                  <span className="wp-event-date">{fmtFechaEvento(ev.creado_en)}</span>
+                                    <span className="wp-event-date">{fmtFechaEvento(ev.creado_en)}</span>
                 </div>
 
                 <div className="wp-event-title">{ev.titulo || "Evento del bot"}</div>
