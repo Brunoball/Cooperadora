@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBroom, faEllipsisVertical, faImages, faPen, faTag, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faBroom, faEllipsisVertical, faEnvelope, faEnvelopeOpen, faImages, faPen, faTag, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import "./ChatOptionsMenu.css";
 
 const MENU_W = 218;
@@ -15,6 +15,9 @@ const ChatOptionsMenu = ({
   onCambiarEtiqueta,
   onVaciarChat,
   onEliminarContacto,
+  onMarcarNoLeido,
+  onMarcarLeido,
+  isUnread = false,
 
   onVerGaleria, // ✅ NUEVO
 }) => {
@@ -34,7 +37,7 @@ const ChatOptionsMenu = ({
     if (left > maxLeft) left = maxLeft;
     if (left < 8) left = 8;
 
-    const menuH = 250; // ✅ un poco más alto por "Ver galería"
+    const menuH = 302; // ✅ más alto por galería + marcar leído/no leído
     const maxTop = window.innerHeight - menuH - 8;
     if (top > maxTop) top = Math.max(8, r.top - menuH - GAP);
 
@@ -133,6 +136,22 @@ const ChatOptionsMenu = ({
           >
             <span className="chatopts-item-ico"><FontAwesomeIcon icon={faImages} /></span>
             <span>Ver galería</span>
+          </button>
+
+
+          <button
+            type="button"
+            className={`chatopts-item ${isUnread ? "chatopts-item--read" : "chatopts-item--unread"}`}
+            onClick={() => {
+              onClose?.();
+              if (isUnread) onMarcarLeido?.();
+              else onMarcarNoLeido?.();
+            }}
+          >
+            <span className="chatopts-item-ico">
+              <FontAwesomeIcon icon={isUnread ? faEnvelopeOpen : faEnvelope} />
+            </span>
+            <span>{isUnread ? "Marcar como leído" : "Marcar como no leído"}</span>
           </button>
 
           <button

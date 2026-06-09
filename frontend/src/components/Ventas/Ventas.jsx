@@ -23,6 +23,7 @@ import PlanillasTab from "./tabs/PlanillasTab";
 import ModalCampania from "./modales/ModalCampania";
 import ModalProducto from "./modales/ModalProducto";
 import ModalOrden from "./modales/ModalOrden";
+import ModalPersonaVenta from "./modales/ModalPersonaVenta";
 import ModalConfirmar from "./modales/ModalConfirmar";
 import ModalRetiro from "./modales/ModalRetiro";
 
@@ -73,10 +74,12 @@ export default function Ventas() {
   const [campaniaForm, setCampaniaForm] = useState(emptyCampania);
   const [productoForm, setProductoForm] = useState(emptyProducto);
   const [ordenForm, setOrdenForm] = useState(emptyOrden);
+  const [personaVentaForm, setPersonaVentaForm] = useState({ dni: "", nombre_apellido: "", observacion: "" });
 
   const [modalCampania, setModalCampania] = useState(false);
   const [modalProducto, setModalProducto] = useState(false);
   const [modalOrden, setModalOrden] = useState(false);
+  const [modalPersonaVenta, setModalPersonaVenta] = useState(false);
   const [modalRetiro, setModalRetiro] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null);
 
@@ -586,6 +589,52 @@ export default function Ventas() {
     });
   }, [cargarCatalogosOrdenEnSegundoPlano, obtenerMedioPorDefecto]);
 
+  const abrirNuevaPersonaVenta = useCallback((prefill = {}) => {
+    setPersonaVentaForm({
+      dni: String(prefill.dni || "").replace(/\D+/g, ""),
+      nombre_apellido: String(prefill.nombre_apellido || "").toUpperCase(),
+      observacion: "",
+    });
+    setModalPersonaVenta(true);
+  }, []);
+
+  const guardarPersonaVenta = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const data = await request("ventas_persona_guardar", { method: "POST", body: personaVentaForm });
+      const persona = data.persona || {};
+
+      setPersonasCatalogo((prev) => {
+        const actuales = Array.isArray(prev.personas) ? prev.personas : [];
+        const sinDuplicado = actuales.filter((p) => String(p.id_persona) !== String(persona.id_persona));
+        return {
+          ...prev,
+          personas: [persona, ...sinDuplicado],
+        };
+      });
+
+      setOrdenForm((prev) => ({
+        ...prev,
+        id_venta_persona: persona.id_persona || "",
+        persona_dni: persona.dni || "",
+        dni: persona.dni || "",
+        persona_nombre: persona.nombre_apellido || "",
+        persona_detalle: persona.observacion || (persona.id_alumno ? "Persona de ventas - alumno vinculado" : "Persona de ventas"),
+      }));
+
+      setModalPersonaVenta(false);
+      setPersonaVentaForm({ dni: "", nombre_apellido: "", observacion: "" });
+      showToast("exito", "Persona agregada y seleccionada correctamente.");
+
+      cargarPersonasCatalogo().catch((err) => showToast("error", err.message));
+    } catch (err) {
+      showToast("error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const guardarOrden = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -775,8 +824,18 @@ export default function Ventas() {
         personasCatalogoLoading={personasCatalogoLoading}
         catalogosLoading={ordenCatalogosLoading}
         saving={saving}
-        onClose={() => setModalOrden(false)}
+        onClose={modalPersonaVenta ? undefined : () => setModalOrden(false)}
         onSubmit={guardarOrden}
+        onOpenNuevaPersona={abrirNuevaPersonaVenta}
+      />
+
+      <ModalPersonaVenta
+        abierto={modalPersonaVenta}
+        form={personaVentaForm}
+        setForm={setPersonaVentaForm}
+        saving={saving}
+        onClose={() => setModalPersonaVenta(false)}
+        onSubmit={guardarPersonaVenta}
       />
 
       <ModalRetiro

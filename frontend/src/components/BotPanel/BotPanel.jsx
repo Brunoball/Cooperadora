@@ -24,6 +24,8 @@ import {
   faFilePdf,
   faSun,
   faMoon,
+  faEllipsisVertical,
+  faTag,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./BotPanel.css";
@@ -403,6 +405,7 @@ const BotEventosModal = ({
   error,
   onRefresh,
   onMarkOne,
+  onDeleteOne,
   onOpenChat,
   onAprobarComprobante,
   onRechazarComprobante,
@@ -583,12 +586,25 @@ const BotEventosModal = ({
                         >
                           Rechazar
                         </button>
+                        <button
+                          type="button"
+                          className="wp-events-btn wp-events-btn--delete"
+                          onClick={() => onDeleteOne?.(ev.id_evento)}
+                          title="Ocultar sin aprobar, rechazar ni enviar mensajes"
+                        >
+                          Eliminar alerta
+                        </button>
                       </>
                     ) : null}
                     {!esComprobanteVenta ? (
-                      <button type="button" className="wp-events-btn wp-events-btn--ok" onClick={() => onMarkOne?.(ev.id_evento)}>
-                        Marcar revisado
-                      </button>
+                      <>
+                        <button type="button" className="wp-events-btn wp-events-btn--ok" onClick={() => onMarkOne?.(ev.id_evento)}>
+                          Marcar revisado
+                        </button>
+                        <button type="button" className="wp-events-btn wp-events-btn--delete" onClick={() => onDeleteOne?.(ev.id_evento)}>
+                          Eliminar
+                        </button>
+                      </>
                     ) : null}
                   </div>
                 ) : null}
@@ -677,6 +693,8 @@ const BotPanel = () => {
   const navigate = useNavigate();
 
   const [q, setQ] = useState("");
+  const [tagFilter, setTagFilter] = useState("all");
+  const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const [chats, setChats] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [mensajes, setMensajes] = useState([]);
@@ -729,6 +747,7 @@ const BotPanel = () => {
   }, [selectedId]);
 
   const headerMenuBtnRef = useRef(null);
+  const tagFilterRef = useRef(null);
 
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
@@ -847,6 +866,25 @@ const BotPanel = () => {
     [fetchJSON]
   );
 
+  const markUnread = useCallback(
+    async (waId) => {
+      if (!waId) return { success: false, error: "wa_id requerido" };
+
+      const { res, data } = await fetchJSON(
+        `${PANEL_API}/panel_mark_unread.php?wa_id=${encodeURIComponent(
+          waId
+        )}&_=${Date.now()}`
+      );
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Error HTTP ${res.status}`);
+      }
+
+      return data;
+    },
+    [fetchJSON]
+  );
+
   // ==========================
   // ✅ TEMA CLARO / OSCURO
   // ==========================
@@ -889,6 +927,28 @@ const BotPanel = () => {
       setLoadingEtiquetas(false);
     }
   }, [fetchJSON]);
+
+  useEffect(() => {
+    if (!tagFilterOpen) return;
+
+    const onDocDown = (e) => {
+      if (tagFilterRef.current && !tagFilterRef.current.contains(e.target)) {
+        setTagFilterOpen(false);
+      }
+    };
+
+    const onEsc = (e) => {
+      if (e.key === "Escape") setTagFilterOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocDown);
+    document.addEventListener("keydown", onEsc);
+
+    return () => {
+      document.removeEventListener("mousedown", onDocDown);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [tagFilterOpen]);
 
 
   const fetchEventos = useCallback(
@@ -962,9 +1022,22 @@ const BotPanel = () => {
           const consultasPendientes = Number(
             c.consultas_pendientes || c.pending_consultas || 0
           );
+          const comprobantesPendientes = Number(
+            c.comprobantes_pendientes || c.pending_comprobantes || 0
+          );
+
+          const chatTone =
+            consultasPendientes > 0
+              ? "consulta"
+              : comprobantesPendientes > 0
+                ? "comprobante"
+                : prioridad === "alta"
+                  ? "danger"
+                  : "normal";
 
           const urgente =
             consultasPendientes > 0 ||
+            comprobantesPendientes > 0 ||
             (modo === "manual" && unread > 0) ||
             prioridad === "alta";
 
@@ -986,6 +1059,8 @@ const BotPanel = () => {
             modo,
             urgente,
             consultasPendientes,
+            comprobantesPendientes,
+            chatTone,
           };
         });
 
@@ -1029,6 +1104,31 @@ const BotPanel = () => {
       }
     },
     [fetchJSON, playUrgentSound]
+  );
+
+  const eliminarEventoSinAccion = useCallback(
+    async (idEvento = 0, options = {}) => {
+      try {
+        setLoadingEventos(true);
+        setErrorEventos("");
+        const { res, data } = await postJSON(`${PANEL_API}/panel_eventos.php`, {
+          accion: "eliminar_alerta",
+          id_evento: Number(idEvento || 0),
+        });
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || `Error HTTP ${res.status}`);
+        }
+        await fetchEventos(true);
+        await fetchChats(true);
+      } catch (e) {
+        const msg = e?.message || "No se pudo eliminar la alerta";
+        setErrorEventos(msg);
+        if (options?.throwOnError) throw e;
+      } finally {
+        setLoadingEventos(false);
+      }
+    },
+    [postJSON, fetchEventos, fetchChats]
   );
 
   // ==========================
@@ -1254,6 +1354,7 @@ const BotPanel = () => {
             text: normStr(m.mensaje),
             emisor: normStr(m.emisor),
             prioridad: normStr(m.prioridad || "normal"),
+            notificacion_tipo: normStr(m.notificacion_tipo || m.tipo_notificacion || "normal"),
             ts: toTs(m.fecha) ?? Date.now(),
 
             es_consulta: Number(m.es_consulta || 0) === 1,
@@ -1428,23 +1529,88 @@ const BotPanel = () => {
     return () => clearInterval(t);
   }, [fetchEventos]);
 
+  const tagCounts = useMemo(() => {
+    const counts = { all: chats.length, sin: 0, byId: {}, byName: {} };
+
+    chats.forEach((c) => {
+      const etiquetaId = normStr(c.etiqueta_id);
+      const etiquetaNombre = normStr(c.etiqueta).toLowerCase();
+
+      if (!etiquetaId && !etiquetaNombre) {
+        counts.sin += 1;
+        return;
+      }
+
+      if (etiquetaId) {
+        counts.byId[etiquetaId] = (counts.byId[etiquetaId] || 0) + 1;
+      }
+
+      if (etiquetaNombre) {
+        counts.byName[etiquetaNombre] = (counts.byName[etiquetaNombre] || 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [chats]);
+
+  const activeTagFilterLabel = useMemo(() => {
+    if (tagFilter === "sin") return "sin etiqueta";
+    if (String(tagFilter).startsWith("id:")) {
+      const id = String(tagFilter).slice(3);
+      const found = etiquetas.find((e) => normStr(e?.id_etiqueta) === id);
+      return normStr(found?.nombre) || "etiqueta";
+    }
+    if (String(tagFilter).startsWith("name:")) {
+      return String(tagFilter).slice(5) || "etiqueta";
+    }
+    return "todas";
+  }, [tagFilter, etiquetas]);
+
   const list = useMemo(() => {
     const qq = q.trim().toLowerCase();
+    const selectedEtiquetaId = String(tagFilter).startsWith("id:")
+      ? String(tagFilter).slice(3)
+      : "";
+    const selectedEtiquetaNameDirect = String(tagFilter).startsWith("name:")
+      ? String(tagFilter).slice(5).toLowerCase()
+      : "";
+    const selectedEtiqueta = selectedEtiquetaId
+      ? etiquetas.find((e) => normStr(e?.id_etiqueta) === selectedEtiquetaId)
+      : null;
+    const selectedEtiquetaNombre = selectedEtiquetaNameDirect || normStr(selectedEtiqueta?.nombre).toLowerCase();
+
     const arr = [...chats].sort((a, b) => {
       if (!!b.urgente !== !!a.urgente) return b.urgente ? 1 : -1;
       return (b.updatedAt || 0) - (a.updatedAt || 0);
     });
 
-    if (!qq) return arr;
-
     return arr.filter((c) => {
+      const chatEtiquetaId = normStr(c.etiqueta_id);
+      const chatEtiquetaNombre = normStr(c.etiqueta).toLowerCase();
+
+      if (tagFilter === "sin" && (chatEtiquetaId || chatEtiquetaNombre)) {
+        return false;
+      }
+
+      if (selectedEtiquetaId || selectedEtiquetaNameDirect) {
+        const matchesById =
+          selectedEtiquetaId && chatEtiquetaId && chatEtiquetaId === selectedEtiquetaId;
+        const matchesByName =
+          selectedEtiquetaNombre && chatEtiquetaNombre === selectedEtiquetaNombre;
+
+        if (!matchesById && !matchesByName) return false;
+      }
+
+      if (!qq) return true;
+
       return (
         String(c.nombre || "").toLowerCase().includes(qq) ||
         String(c.id || "").toLowerCase().includes(qq) ||
-        String(c.etiqueta || "").toLowerCase().includes(qq)
+        String(c.etiqueta || "").toLowerCase().includes(qq) ||
+        String(c.ultimo || "").toLowerCase().includes(qq)
       );
     });
-  }, [chats, q]);
+  }, [chats, q, tagFilter, etiquetas]);
 
   const selected = useMemo(
     () => chats.find((c) => c.id === selectedId) || null,
@@ -1812,6 +1978,11 @@ const BotPanel = () => {
   const [modalEliminarLoading, setModalEliminarLoading] = useState(false);
   const [modalEliminarError, setModalEliminarError] = useState("");
 
+  const [modalEliminarAlertaOpen, setModalEliminarAlertaOpen] = useState(false);
+  const [modalEliminarAlertaId, setModalEliminarAlertaId] = useState(null);
+  const [modalEliminarAlertaLoading, setModalEliminarAlertaLoading] = useState(false);
+  const [modalEliminarAlertaError, setModalEliminarAlertaError] = useState("");
+
   const [modalTagOpen, setModalTagOpen] = useState(false);
   const [modalTagWa, setModalTagWa] = useState("");
   const [modalTagLoading, setModalTagLoading] = useState(false);
@@ -1838,10 +2009,70 @@ const BotPanel = () => {
     setModalEliminarOpen(true);
   };
 
+  const openEliminarAlerta = (idEvento) => {
+    setModalEliminarAlertaError("");
+    setModalEliminarAlertaId(Number(idEvento || 0));
+    setModalEliminarAlertaOpen(true);
+  };
+
   const openCambiarEtiqueta = (waId) => {
     setModalTagError("");
     setModalTagWa(waId);
     setModalTagOpen(true);
+  };
+
+  const marcarChatComoNoLeido = async (waId) => {
+    if (!waId) return;
+
+    setErrorMsgs("");
+    try {
+      const data = await markUnread(waId);
+
+      if (Number(data?.unread || 0) > 0) {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === waId
+              ? {
+                  ...c,
+                  unread: Number(data.unread || 1),
+                  urgente:
+                    Number(data.unread || 1) > 0 &&
+                    (c.modo === "manual" || c.prioridad === "alta" || Number(c.consultasPendientes || 0) > 0 || Number(c.comprobantesPendientes || 0) > 0),
+                }
+              : c
+          )
+        );
+      } else if (data?.no_user_messages) {
+        setErrorMsgs("Este chat todavía no tiene mensajes entrantes para marcar como no leído.");
+      }
+
+      await fetchChats(true);
+    } catch (e) {
+      setErrorMsgs(e?.message || "No se pudo marcar el chat como no leído");
+    }
+  };
+
+  const marcarChatComoLeido = async (waId) => {
+    if (!waId) return;
+
+    setErrorMsgs("");
+    try {
+      await markSeen(waId);
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === waId
+            ? {
+                ...c,
+                unread: 0,
+                urgente: Number(c.consultasPendientes || 0) > 0 || Number(c.comprobantesPendientes || 0) > 0 || c.prioridad === "alta",
+              }
+            : c
+        )
+      );
+      await fetchChats(true);
+    } catch (e) {
+      setErrorMsgs(e?.message || "No se pudo marcar el chat como leído");
+    }
   };
 
   const saveNombre = async (waId, nombre) => {
@@ -1883,6 +2114,11 @@ const BotPanel = () => {
       setModalTagLoading(false);
     }
   };
+
+  const refreshEtiquetasYChats = useCallback(async () => {
+    await fetchEtiquetas();
+    await fetchChats(true);
+  }, [fetchEtiquetas, fetchChats]);
 
   const doVaciarChat = async () => {
     const waId = modalVaciarWa;
@@ -1940,6 +2176,23 @@ const BotPanel = () => {
       setModalEliminarError(e?.message || "No se pudo eliminar el contacto");
     } finally {
       setModalEliminarLoading(false);
+    }
+  };
+
+  const doEliminarAlerta = async () => {
+    const idEvento = Number(modalEliminarAlertaId || 0);
+    if (idEvento <= 0) return;
+
+    setModalEliminarAlertaLoading(true);
+    setModalEliminarAlertaError("");
+    try {
+      await eliminarEventoSinAccion(idEvento, { throwOnError: true });
+      setModalEliminarAlertaOpen(false);
+      setModalEliminarAlertaId(null);
+    } catch (e) {
+      setModalEliminarAlertaError(e?.message || "No se pudo eliminar la alerta");
+    } finally {
+      setModalEliminarAlertaLoading(false);
     }
   };
 
@@ -2020,16 +2273,106 @@ const BotPanel = () => {
           </button>
         </div>
 
-        <div className="wp-search">
-          <span className="wp-search-ico" aria-hidden="true">
-            <FontAwesomeIcon icon={faMagnifyingGlass} />
-          </span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="wp-search-input"
-            placeholder="Buscar por nombre, número, mensaje…"
-          />
+        <div className="wp-searchbar" ref={tagFilterRef}>
+          <div className="wp-search">
+            <span className="wp-search-ico" aria-hidden="true">
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
+            </span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="wp-search-input"
+              placeholder="Buscar por nombre, número, mensaje…"
+            />
+          </div>
+
+          <div className="wp-tag-filter">
+            <button
+              type="button"
+              className={`wp-tag-filter-btn ${tagFilterOpen ? "is-open" : ""} ${tagFilter !== "all" ? "has-filter" : ""}`}
+              onClick={() => setTagFilterOpen((v) => !v)}
+              title={`Filtrar por etiqueta: ${activeTagFilterLabel}`}
+              aria-label={`Filtrar por etiqueta: ${activeTagFilterLabel}`}
+              aria-expanded={tagFilterOpen}
+            >
+              <FontAwesomeIcon icon={faEllipsisVertical} />
+              {tagFilter !== "all" ? <span className="wp-tag-filter-dot" aria-hidden="true" /> : null}
+            </button>
+
+            {tagFilterOpen ? (
+              <div className="wp-tag-filter-menu" role="menu" aria-label="Filtrar chats por etiqueta">
+                <div className="wp-tag-filter-title">
+                  <FontAwesomeIcon icon={faTag} />
+                  <span>Filtrar por etiqueta</span>
+                </div>
+
+                <button
+                  type="button"
+                  className={`wp-tag-filter-item ${tagFilter === "all" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setTagFilter("all");
+                    setTagFilterOpen(false);
+                  }}
+                >
+                  <span>Todas</span>
+                  <b>{tagCounts.all}</b>
+                </button>
+
+                <button
+                  type="button"
+                  className={`wp-tag-filter-item ${tagFilter === "sin" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setTagFilter("sin");
+                    setTagFilterOpen(false);
+                  }}
+                >
+                  <span>Sin etiqueta</span>
+                  <b>{tagCounts.sin}</b>
+                </button>
+
+                <div className="wp-tag-filter-sep" />
+
+                {loadingEtiquetas ? (
+                  <div className="wp-tag-filter-state">Cargando etiquetas…</div>
+                ) : null}
+
+                {!loadingEtiquetas && errorEtiquetas ? (
+                  <div className="wp-tag-filter-state is-error">{errorEtiquetas}</div>
+                ) : null}
+
+                {!loadingEtiquetas && !errorEtiquetas && etiquetas.length === 0 ? (
+                  <div className="wp-tag-filter-state">No hay etiquetas creadas.</div>
+                ) : null}
+
+                {!loadingEtiquetas && !errorEtiquetas
+                  ? etiquetas.map((et) => {
+                      const etId = normStr(et?.id_etiqueta);
+                      const etNombre = normStr(et?.nombre) || "Etiqueta";
+                      const value = etId ? `id:${etId}` : `name:${etNombre.toLowerCase()}`;
+                      const count =
+                        (etId ? tagCounts.byId[etId] : undefined) ??
+                        tagCounts.byName[etNombre.toLowerCase()] ??
+                        0;
+
+                      return (
+                        <button
+                          key={etId || etNombre}
+                          type="button"
+                          className={`wp-tag-filter-item ${tagFilter === value ? "is-active" : ""}`}
+                          onClick={() => {
+                            setTagFilter(value);
+                            setTagFilterOpen(false);
+                          }}
+                        >
+                          <span>{etNombre}</span>
+                          <b>{count}</b>
+                        </button>
+                      );
+                    })
+                  : null}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {errorChats ? (
@@ -2054,21 +2397,22 @@ const BotPanel = () => {
             const fechaHoraTitle = fmtFechaHoraCompleta(c.updatedAt || Date.now());
             const totalTxt = `${Number(c.total || 0)} msgs`;
             const urgent = !!c.urgente;
+            const comprobantesPendientes = Number(c.comprobantesPendientes || 0);
+            const tone = c.chatTone || (Number(c.consultasPendientes || 0) > 0
+              ? "consulta"
+              : comprobantesPendientes > 0
+                ? "comprobante"
+                : c.prioridad === "alta"
+                  ? "danger"
+                  : "normal");
+            const toneClass = tone !== "normal" ? `wp-chatitem--${tone}` : "";
 
             return (
               <button
                 key={c.id}
                 type="button"
-                className={`wp-chatitem ${active ? "is-active" : ""}`}
+                className={`wp-chatitem ${active ? "is-active" : ""} ${urgent ? "is-urgent" : ""} ${toneClass}`}
                 onClick={() => openChat(c.id)}
-                style={
-                  urgent
-                    ? {
-                        border: "1px solid rgba(239,68,68,.45)",
-                        boxShadow: "0 0 0 1px rgba(239,68,68,.12) inset",
-                      }
-                    : undefined
-                }
               >
                 <div className="wp-avatar" aria-hidden="true">
                   <FontAwesomeIcon icon={faUser} />
@@ -2078,20 +2422,14 @@ const BotPanel = () => {
                   <div className="wp-chatrow" style={{ alignItems: "center" }}>
                     <div className="wp-chatname">
                       {nombreOk}
-                      {urgent ? (
-                        <span
-                          style={{
-                            marginLeft: 8,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "#f87171",
-                          }}
-                        >
-                        </span>
-                      ) : null}
                       {Number(c.consultasPendientes || 0) > 0 ? (
                         <span className="wp-consulta-flag">
                           • CONSULTA
+                        </span>
+                      ) : null}
+                      {comprobantesPendientes > 0 ? (
+                        <span className="wp-comprobante-flag">
+                          • APROBACIÓN COMPROBANTE
                         </span>
                       ) : null}
                       {c.online ? (
@@ -2107,26 +2445,21 @@ const BotPanel = () => {
                   <div className="wp-chatrow">
                     <div className="wp-chatlast">
                       {c.id} • {totalTxt}
-                      {c.prioridad === "alta" ? " • ⚠️" : ""}
+                      {comprobantesPendientes > 0 ? " • 🧾 aprobación comprobante" : c.prioridad === "alta" && Number(c.consultasPendientes || 0) === 0 ? " • ⚠️" : ""}
                       {c.modo === "manual" ? " • ✋ manual" : ""}
                     </div>
 
-                    {c.unread > 0 && !active ? (
+                    {c.unread > 0 ? (
                       <span
-                        className="wp-unread"
+                        className={`wp-unread ${tone !== "normal" ? `wp-unread--${tone}` : ""}`}
                         title={
-                          urgent
-                            ? "Mensaje urgente: manual activo"
-                            : "Mensajes sin ver"
-                        }
-                        style={
-                          urgent
-                            ? {
-                                background: "#dc2626",
-                                color: "#fff",
-                                boxShadow: "0 0 0 2px rgba(220,38,38,.25)",
-                              }
-                            : undefined
+                          tone === "consulta"
+                            ? "Consulta manual pendiente"
+                            : tone === "comprobante"
+                              ? "Aprobación de comprobante pendiente"
+                              : tone === "danger"
+                                ? "Alerta importante"
+                                : "Mensajes sin ver"
                         }
                       >
                         {c.unread > 99 ? "99+" : c.unread}
@@ -2137,14 +2470,6 @@ const BotPanel = () => {
                           /\s/g,
                           ""
                         )}`}
-                        style={
-                          urgent
-                            ? {
-                                borderColor: "rgba(239,68,68,.4)",
-                                color: "#fca5a5",
-                              }
-                            : undefined
-                        }
                       >
                         {c.etiqueta || "sin etiqueta"}
                       </span>
@@ -2244,6 +2569,9 @@ const BotPanel = () => {
                       onEditarNombre={() => openEditarNombre(selectedId)}
                       onCambiarEtiqueta={() => openCambiarEtiqueta(selectedId)}
                       onVerGaleria={() => openGaleria()}
+                      onMarcarNoLeido={() => marcarChatComoNoLeido(selectedId)}
+                      onMarcarLeido={() => marcarChatComoLeido(selectedId)}
+                      isUnread={Number(selected?.unread || 0) > 0}
                       onVaciarChat={() => openVaciarChat(selectedId)}
                       onEliminarContacto={() => openEliminarContacto(selectedId)}
                     />
@@ -2315,12 +2643,28 @@ const BotPanel = () => {
 
                 const side = mapEmisorToSide(m.emisor);
 
+                const notificationType = String(m.notificacion_tipo || "normal").toLowerCase();
+                const prioridadMsg = String(m.prioridad || "normal").toLowerCase();
+                const isComprobanteNotification =
+                  notificationType.startsWith("comprobante") ||
+                  prioridadMsg === "aprobacion_comprobante" ||
+                  prioridadMsg === "comprobante_aprobado" ||
+                  prioridadMsg === "comprobante_rechazado";
+                const comprobanteLabel =
+                  notificationType === "comprobante_rechazado" || prioridadMsg === "comprobante_rechazado"
+                    ? "Rechazo comprobante"
+                    : notificationType === "comprobante_aprobado" || prioridadMsg === "comprobante_aprobado"
+                      ? "Aprobación comprobante"
+                      : "Aprobación comprobante";
+
                 const isPendingConsult =
-                  m.es_consulta === true && m.consulta_atendida === false;
+                  !isComprobanteNotification &&
+                  m.es_consulta === true &&
+                  m.consulta_atendida === false;
 
                 const danger =
                   String(m.text || "").startsWith("ERROR") ||
-                  (m.prioridad === "alta" && !isPendingConsult);
+                  (prioridadMsg === "alta" && !isPendingConsult && !isComprobanteNotification);
 
                 const hasMedia = !!m.media_url;
                 const mime =
@@ -2340,7 +2684,7 @@ const BotPanel = () => {
                       <div
                         className={`wp-bubble ${danger ? "wp-bubble--danger" : ""} ${
                           isPendingConsult ? "wp-bubble--consulta" : ""
-                        }`}
+                        } ${isComprobanteNotification ? "wp-bubble--comprobante" : ""}`}
                       >
                         {isPendingConsult ? (
                           <button
@@ -2353,6 +2697,20 @@ const BotPanel = () => {
                             title="Ver pendientes"
                           >
                             👩‍💼 Consulta pendiente
+                          </button>
+                        ) : null}
+
+                        {isComprobanteNotification ? (
+                          <button
+                            type="button"
+                            className="wp-comprobante-pill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              abrirPanelAlertas();
+                            }}
+                            title="Ver comprobantes pendientes"
+                          >
+                            🧾 {comprobanteLabel}
                           </button>
                         ) : null}
                         
@@ -2625,6 +2983,7 @@ const BotPanel = () => {
         error={errorEventos}
         onRefresh={() => fetchEventos(false)}
         onMarkOne={(idEvento) => marcarEventoRevisado(idEvento)}
+        onDeleteOne={(idEvento) => openEliminarAlerta(idEvento)}
         onAprobarComprobante={(idComprobante, idEvento) => aprobarComprobanteVenta(idComprobante, idEvento)}
         onRechazarComprobante={(idComprobante, idEvento) => rechazarComprobanteVenta(idComprobante, idEvento)}
         onOpenChat={(waId) => {
@@ -2679,6 +3038,25 @@ const BotPanel = () => {
         onSave={saveEtiqueta}
         puntosBaseUrl={PANEL_PUNTOS}
         onRefreshEtiquetas={fetchEtiquetas}
+        onLabelsChanged={refreshEtiquetasYChats}
+      />
+
+      <ConfirmActionModal
+        open={modalEliminarAlertaOpen}
+        title="Eliminar alerta"
+        description="La alerta va a desaparecer del panel. No se aprueba, no se rechaza y no se envía ningún mensaje por WhatsApp."
+        confirmText="Eliminar alerta"
+        cancelText="Cancelar"
+        danger
+        loading={modalEliminarAlertaLoading}
+        error={modalEliminarAlertaError}
+        onClose={() => {
+          if (modalEliminarAlertaLoading) return;
+          setModalEliminarAlertaOpen(false);
+          setModalEliminarAlertaId(null);
+          setModalEliminarAlertaError("");
+        }}
+        onConfirm={doEliminarAlerta}
       />
 
       <ConfirmActionModal

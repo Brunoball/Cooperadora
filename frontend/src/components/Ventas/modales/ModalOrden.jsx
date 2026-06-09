@@ -171,6 +171,7 @@ export default function ModalOrden({
   saving,
   onClose,
   onSubmit,
+  onOpenNuevaPersona,
 }) {
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
   const [alumnoBusqueda, setAlumnoBusqueda] = useState("");
@@ -230,6 +231,7 @@ export default function ModalOrden({
 
     setForm((prev) => ({
       ...prev,
+      id_venta_persona: "",
       persona_dni: dni,
       dni,
       persona_nombre: nombre,
@@ -246,6 +248,7 @@ export default function ModalOrden({
 
     setForm((prev) => ({
       ...prev,
+      id_venta_persona: persona?.id_persona || prev.id_venta_persona || "",
       persona_dni: dni,
       dni,
       persona_nombre: nombre,
@@ -265,6 +268,33 @@ export default function ModalOrden({
     aplicarPersonaVenta(persona);
     setSelectorActivo("");
   };
+
+  const abrirAltaPersonaDesdeSelector = () => {
+    const texto = String(personaBusqueda || "").trim();
+    const dni = limpiarDni(texto);
+    const nombreSugerido = texto
+      .replace(/\d+/g, " ")
+      .replace(/[()\-–—_.:,;]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+
+    setSelectorActivo("");
+
+    if (typeof onOpenNuevaPersona === "function") {
+      onOpenNuevaPersona({
+        dni,
+        nombre_apellido: nombreSugerido,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!abierto) return;
+    if (!form?.id_venta_persona || !form?.persona_dni || !form?.persona_nombre) return;
+
+    setPersonaBusqueda(`${limpiarDni(form.persona_dni)} - ${String(form.persona_nombre || "").trim()}`.trim());
+  }, [abierto, form?.id_venta_persona, form?.persona_dni, form?.persona_nombre]);
 
   const alumnosFiltrados = useMemo(
     () => filtrarOpcionesCatalogo(alumnosCatalogo, opcionAlumno, alumnoBusqueda),
@@ -632,6 +662,16 @@ export default function ModalOrden({
                   />
                   {selectorActivo === "personas" && !personasCatalogoLoading && (
                     <div className="ventas-search-dropdown" role="listbox" onMouseDown={(e) => e.preventDefault()}>
+                      <button
+                        type="button"
+                        className="ventas-search-add-person"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={abrirAltaPersonaDesdeSelector}
+                      >
+                        <strong><FontAwesomeIcon icon={faPlus} /> Agregar nueva persona</strong>
+                        <span>{personaBusqueda.trim() ? "Usar lo escrito como sugerencia para el alta" : "Cargar una persona manual y seleccionarla en esta venta"}</span>
+                      </button>
+
                       {personasFiltradas.length > 0 ? personasFiltradas.map((persona) => (
                         <button
                           type="button"
@@ -643,7 +683,7 @@ export default function ModalOrden({
                           <span>{[limpiarDni(persona?.dni) && `DNI ${limpiarDni(persona?.dni)}`, persona?.origen || "Persona de ventas"].filter(Boolean).join(" · ")}</span>
                         </button>
                       )) : (
-                        <div className="ventas-search-empty">No hay personas que coincidan.</div>
+                        <div className="ventas-search-empty">No hay personas guardadas que coincidan. Podés agregarla con la primera opción.</div>
                       )}
                     </div>
                   )}

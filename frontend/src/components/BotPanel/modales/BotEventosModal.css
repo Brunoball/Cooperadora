@@ -556,3 +556,18 @@
   .wp-events-actions-copy{ width:100%; }
   .wp-events-actions .wp-events-btn{ width:100%; }
 }
+
+/* Permite descartar advertencias/comprobantes sin aprobar/rechazar ni enviar mensajes */
+.wp-event-foot{
+  flex-wrap:wrap;
+}
+.wp-events-btn--delete{
+  background:rgba(148,163,184,.12);
+  border-color:rgba(148,163,184,.30);
+  color:color-mix(in srgb, var(--wp-text, #111b21) 82%, transparent);
+}
+.wp-events-btn--delete:hover:not(:disabled){
+  background:rgba(239,68,68,.10);
+  border-color:rgba(239,68,68,.35);
+  color:color-mix(in srgb, var(--blue-inst-danger, #D32F2F) 82%, var(--wp-text, #111b21));
+}

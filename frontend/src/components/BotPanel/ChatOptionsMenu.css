@@ -89,6 +89,17 @@
   background:var(--wp-accent-3, rgba(0,168,132,.25));
   color:var(--wp-brand-primary, #00a884);
 }
+.chatopts-item--unread{
+  margin:3px 0;
+}
+.chatopts-item--unread .chatopts-item-ico,
+.chatopts-item--read .chatopts-item-ico{
+  background:rgba(245,158,11,.14);
+  color:#f59e0b;
+}
+.chatopts-item--read{
+  margin:3px 0;
+}
 .chatopts-item--danger{
   margin-top:5px;
   border-top:1px solid var(--wp-border-soft, rgba(255,255,255,.06));

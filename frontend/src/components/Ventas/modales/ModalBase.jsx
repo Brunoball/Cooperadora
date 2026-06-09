@@ -4,7 +4,28 @@ import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import "./ModalVentas.css";
 import "./ModalVentasForms.css";
 
+const MODAL_STACK_KEY = "ventasModalOpenCount";
+
+const getModalOpenCount = () => {
+  const raw = Number(document.body?.dataset?.[MODAL_STACK_KEY] || 0);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+};
+
+const setModalOpenCount = (value) => {
+  const next = Math.max(0, value);
+  if (!document.body) return;
+
+  if (next === 0) {
+    delete document.body.dataset[MODAL_STACK_KEY];
+    document.body.style.overflow = "";
+  } else {
+    document.body.dataset[MODAL_STACK_KEY] = String(next);
+    document.body.style.overflow = "hidden";
+  }
+};
+
 export default class ModalBase extends React.PureComponent {
+  modalActivo = false;
   componentDidMount() {
     if (this.props.abierto) this.activarModal();
   }
@@ -32,12 +53,20 @@ export default class ModalBase extends React.PureComponent {
   activarModal() {
     document.removeEventListener("keydown", this.onKeyDown);
     document.addEventListener("keydown", this.onKeyDown);
-    document.body.style.overflow = "hidden";
+
+    if (!this.modalActivo) {
+      this.modalActivo = true;
+      setModalOpenCount(getModalOpenCount() + 1);
+    }
   }
 
   desactivarModal() {
     document.removeEventListener("keydown", this.onKeyDown);
-    document.body.style.overflow = "";
+
+    if (this.modalActivo) {
+      this.modalActivo = false;
+      setModalOpenCount(getModalOpenCount() - 1);
+    }
   }
 
   render() {

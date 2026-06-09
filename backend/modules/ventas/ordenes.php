@@ -182,6 +182,65 @@ try {
         ventas_json(['exito' => true, 'items' => $items]);
     }
 
+    if ($action === 'ventas_persona_guardar') {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
+        }
+
+        $in = ventas_body();
+        $dni = ventas_normalizar_dni($in['dni'] ?? ($in['persona_dni'] ?? ''));
+        $nombre = ventas_text($in['nombre_apellido'] ?? ($in['persona_nombre'] ?? ''), 160, true);
+        $observacion = ventas_nullable_text($in['observacion'] ?? '', 255, false);
+
+        if ($dni === '' || strlen($dni) < 6) {
+            throw new InvalidArgumentException('Ingresá el DNI de la persona, solo números, con mínimo 6 dígitos.');
+        }
+
+        if ($nombre === '') {
+            throw new InvalidArgumentException('Ingresá el nombre y apellido de la persona.');
+        }
+
+        ventas_asegurar_esquema_personas($pdo);
+
+        $alumno = ventas_buscar_alumno_por_dni($pdo, $dni);
+        $idAlumno = $alumno ? (int)($alumno['id_alumno'] ?? 0) : 0;
+        $origen = $idAlumno > 0 ? 'alumno' : 'manual';
+
+        $st = $pdo->prepare("
+            INSERT INTO ventas_personas
+                (dni, nombre_apellido, id_alumno, origen, observacion, creado_en, actualizado_en)
+            VALUES
+                (:dni, :nombre, :id_alumno, :origen, :observacion, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                nombre_apellido = VALUES(nombre_apellido),
+                id_alumno = COALESCE(VALUES(id_alumno), id_alumno),
+                origen = VALUES(origen),
+                observacion = VALUES(observacion),
+                actualizado_en = NOW()
+        ");
+        $st->execute([
+            ':dni' => $dni,
+            ':nombre' => $nombre,
+            ':id_alumno' => $idAlumno > 0 ? $idAlumno : null,
+            ':origen' => $origen,
+            ':observacion' => $observacion,
+        ]);
+
+        $st = $pdo->prepare('SELECT id_persona, dni, nombre_apellido, id_alumno, origen, observacion, actualizado_en FROM ventas_personas WHERE dni = :dni LIMIT 1');
+        $st->execute([':dni' => $dni]);
+        $persona = $st->fetch(PDO::FETCH_ASSOC);
+
+        if (!$persona) {
+            throw new RuntimeException('No se pudo guardar la persona de ventas.');
+        }
+
+        ventas_json([
+            'exito' => true,
+            'persona' => $persona,
+            'mensaje' => 'Persona agregada correctamente.',
+        ]);
+    }
+
     if ($action === 'ventas_personas_catalogo') {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
             ventas_json(['exito' => false, 'mensaje' => 'Método no permitido.'], 405);
