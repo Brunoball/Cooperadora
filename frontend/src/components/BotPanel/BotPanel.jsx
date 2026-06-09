@@ -1612,6 +1612,8 @@ const BotPanel = () => {
     [chats, selectedId]
   );
 
+  const selectedConsultasPendientes = Number(selected?.consultasPendientes || 0);
+
   const selectedWindow = useMemo(
     () => calcWindow(selected?.ventana24hTs, nowTs),
     [selected?.ventana24hTs, nowTs]
@@ -2607,6 +2609,8 @@ const BotPanel = () => {
                 </div>
 
                 <div className="wp-chat-status">
+                  
+
                   {mode === "manual" ? (
                     <span className="wp-chip wp-chip--manual">
                       Manual activo • bot pausado
@@ -2629,9 +2633,20 @@ const BotPanel = () => {
             ) : null}
 
             {mode === "manual" ? (
-              <div className="wp-manual-banner">
-                ✋ Conversación manual activa: el bot no va a responder automáticamente
-                hasta que vuelvas a modo bot.
+              <div className={`wp-manual-banner ${selectedConsultasPendientes > 0 ? "is-consulta-pending" : ""}`}>
+                <div className="wp-manual-banner-icon" aria-hidden="true">✋</div>
+                <div className="wp-manual-banner-copy">
+                  <strong>
+                    {selectedConsultasPendientes > 0
+                      ? "Consulta pendiente en atención manual"
+                      : "Conversación manual activa"}
+                  </strong>
+                  <span>
+                    {selectedConsultasPendientes > 0
+                      ? "El usuario está esperando respuesta. El bot queda pausado mientras atendés este chat."
+                      : "El bot no va a responder automáticamente hasta que vuelvas a modo bot."}
+                  </span>
+                </div>
               </div>
             ) : null}
 
@@ -2803,6 +2818,8 @@ const BotPanel = () => {
                   isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED ? "is-template-mode" : ""
                 } ${
                   isWindowExpired && !CONSULTA_MANUAL_TEMPLATE_ENABLED ? "is-disabled" : ""
+                } ${
+                  selectedConsultasPendientes > 0 ? "has-consulta-pending" : ""
                 }`}
               >
                 {isWindowExpired && CONSULTA_MANUAL_TEMPLATE_ENABLED ? (
