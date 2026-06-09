@@ -809,13 +809,6 @@ const BotPanel = () => {
     });
   }, []);
 
-  const isNearBottom = useCallback((threshold = 140) => {
-    const el = messagesRef.current;
-    if (!el) return true;
-
-    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-    return remaining <= threshold;
-  }, []);
 
   useLayoutEffect(() => {
     const behavior = pendingScrollRef.current;
@@ -823,7 +816,17 @@ const BotPanel = () => {
 
     scrollToBottom(behavior);
     pendingScrollRef.current = null;
-  }, [mensajes, scrollToBottom]);
+
+    // Algunas burbujas terminan de medir después del render (imágenes/PDFs),
+    // por eso repetimos el ajuste para que quede realmente pegado abajo.
+    const raf = window.requestAnimationFrame(() => scrollToBottom("auto"));
+    const t = window.setTimeout(() => scrollToBottom("auto"), 120);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
+  }, [mensajes, selectedId, scrollToBottom]);
 
   const fetchJSON = useCallback(async (url) => {
     const res = await fetch(url, { method: "GET", cache: "no-store" });
@@ -1313,8 +1316,6 @@ const BotPanel = () => {
     async (waId, { silent = false } = {}) => {
       if (!waId) return;
 
-      const wasNearBottom = isNearBottom();
-
       if (!silent) setLoadingMsgs(true);
       setErrorMsgs("");
 
@@ -1371,11 +1372,8 @@ const BotPanel = () => {
 
         if (selectedIdRef.current !== waId) return;
 
-        if (!silent) {
-          pendingScrollRef.current = "auto";
-        } else if (wasNearBottom) {
-          pendingScrollRef.current = "auto";
-        }
+        // Mantener el chat siempre pegado al último mensaje, incluso en refrescos silenciosos.
+        pendingScrollRef.current = "auto";
 
         setMensajes(mapped);
 
@@ -1388,7 +1386,7 @@ const BotPanel = () => {
         if (!silent) setLoadingMsgs(false);
       }
     },
-    [fetchJSON, markSeen, fetchChats, isNearBottom]
+    [fetchJSON, markSeen, fetchChats]
   );
 
   const getHash = useCallback(
@@ -1644,6 +1642,23 @@ const BotPanel = () => {
     setMensajes([]);
     setSelectedId(id);
   };
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    pendingScrollRef.current = "auto";
+    scrollToBottom("auto");
+
+    const raf = window.requestAnimationFrame(() => scrollToBottom("auto"));
+    const t1 = window.setTimeout(() => scrollToBottom("auto"), 80);
+    const t2 = window.setTimeout(() => scrollToBottom("auto"), 220);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [selectedId, scrollToBottom]);
 
   // ==========================
   // ✅ EMOJIS
@@ -2429,7 +2444,7 @@ const BotPanel = () => {
                       ) : null}
                       {comprobantesPendientes > 0 ? (
                         <span className="wp-comprobante-flag">
-                          • APROBACIÓN COMPROBANTE
+                          • COMPROBANTE
                         </span>
                       ) : null}
                       {c.online ? (
@@ -2445,7 +2460,7 @@ const BotPanel = () => {
                   <div className="wp-chatrow">
                     <div className="wp-chatlast">
                       {c.id} • {totalTxt}
-                      {comprobantesPendientes > 0 ? " • 🧾 aprobación comprobante" : c.prioridad === "alta" && Number(c.consultasPendientes || 0) === 0 ? " • ⚠️" : ""}
+                      {comprobantesPendientes > 0 ? " • 🧾 comprobante" : c.prioridad === "alta" && Number(c.consultasPendientes || 0) === 0 ? " • ⚠️" : ""}
                       {c.modo === "manual" ? " • ✋ manual" : ""}
                     </div>
 
@@ -2456,7 +2471,7 @@ const BotPanel = () => {
                           tone === "consulta"
                             ? "Consulta manual pendiente"
                             : tone === "comprobante"
-                              ? "Aprobación de comprobante pendiente"
+                              ? "Comprobante pendiente"
                               : tone === "danger"
                                 ? "Alerta importante"
                                 : "Mensajes sin ver"
@@ -2652,10 +2667,10 @@ const BotPanel = () => {
                   prioridadMsg === "comprobante_rechazado";
                 const comprobanteLabel =
                   notificationType === "comprobante_rechazado" || prioridadMsg === "comprobante_rechazado"
-                    ? "Rechazo comprobante"
+                    ? "Comprobante"
                     : notificationType === "comprobante_aprobado" || prioridadMsg === "comprobante_aprobado"
-                      ? "Aprobación comprobante"
-                      : "Aprobación comprobante";
+                      ? "Comprobante"
+                      : "Comprobante";
 
                 const isPendingConsult =
                   !isComprobanteNotification &&
