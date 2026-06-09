@@ -178,12 +178,9 @@ Si necesitás continuar, respondé este mensaje y te seguimos ayudando.`;
 const CONSULTA_TEMPLATE_VARIABLE_PLACEHOLDER =
   "Acá se va a insertar la respuesta que escribas abajo.";
 
-// ⚠️ TEMPORAL:
-// La plantilla consulta_manual_fuera_24h todavía está pendiente de aprobación en WhatsApp.
-// Mientras esté en false, las consultas manuales fuera de la ventana de 24hs quedan bloqueadas
-// y NO se ejecuta el envío de plantilla.
-// Cuando Meta la apruebe, cambiar a true para reactivar toda la estructura ya preparada.
-const CONSULTA_MANUAL_TEMPLATE_ENABLED = false;
+// ✅ Plantilla aprobada en WhatsApp.
+// Habilita el envío de consulta_manual_fuera_24h cuando la ventana de 24hs está expirada.
+const CONSULTA_MANUAL_TEMPLATE_ENABLED = true;
 
 const pickNombre = (c) => {
   const candidates = [
@@ -1935,8 +1932,7 @@ const BotPanel = () => {
       const { res, data } = await postJSON(`${PANEL_API}/panel_send.php`, {
         wa_id: waId,
         texto: text,
-        // ⚠️ TEMPORAL: dejar false hasta que Meta apruebe consulta_manual_fuera_24h.
-        // Cuando esté aprobada, cambiar CONSULTA_MANUAL_TEMPLATE_ENABLED a true.
+        // Si la ventana de 24hs está expirada, el backend envía la plantilla aprobada.
         usar_plantilla_si_ventana_expirada: CONSULTA_MANUAL_TEMPLATE_ENABLED,
       });
 

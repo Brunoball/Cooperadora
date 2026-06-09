@@ -81,6 +81,7 @@ const calcularBadgesDesdeChats = (rows) => {
 
   let normal = 0;
   let urgent = 0;
+  let approval = 0;
 
   for (const c of chats) {
     const unread = Math.max(0, toNum(c?.unread || 0));
@@ -88,15 +89,42 @@ const calcularBadgesDesdeChats = (rows) => {
       0,
       toNum(c?.consultas_pendientes || c?.pending_consultas || 0)
     );
+    const comprobantesPendientes = Math.max(
+      0,
+      toNum(c?.comprobantes_pendientes || c?.pending_comprobantes || 0)
+    );
+
+    const prioridad = String(
+      c?.prioridad || c?.notificacion_tipo || c?.tipo_notificacion || ""
+    ).toLowerCase();
+
+    const esAlertaComprobante =
+      prioridad === "aprobacion_comprobante" ||
+      prioridad === "comprobante_pendiente" ||
+      prioridad.includes("comprobante");
+
+    // El backend ya manda comprobantes_pendientes. El fallback por prioridad evita
+    // que el indicador azul desaparezca si llega un chat viejo sin ese contador.
+    const aprobacionesChat =
+      comprobantesPendientes > 0
+        ? comprobantesPendientes
+        : esAlertaComprobante
+          ? Math.max(1, Math.min(unread, 1))
+          : 0;
 
     const urgentesChat = Math.min(unread, consultasPendientes);
-    const normalesChat = Math.max(0, unread - urgentesChat);
+    const clasificadosChat = Math.min(
+      unread,
+      urgentesChat + Math.min(unread, aprobacionesChat)
+    );
+    const normalesChat = Math.max(0, unread - clasificadosChat);
 
     urgent += urgentesChat;
+    approval += aprobacionesChat;
     normal += normalesChat;
   }
 
-  return { normal, urgent };
+  return { normal, urgent, approval };
 };
 
 const pathMatches = (pathname, paths = []) => {
@@ -192,6 +220,7 @@ const Principal = () => {
 
   const [normalUnread, setNormalUnread] = useState(0);
   const [urgentUnread, setUrgentUnread] = useState(0);
+  const [approvalUnread, setApprovalUnread] = useState(0);
 
   useEffect(() => {
     setUsuario(safeUsuario());
@@ -230,10 +259,11 @@ const Principal = () => {
         if (!alive) return;
 
         if (res.ok && data?.success) {
-          const { normal, urgent } = calcularBadgesDesdeChats(data.chats);
+          const { normal, urgent, approval } = calcularBadgesDesdeChats(data.chats);
 
           setNormalUnread(Math.max(0, toNum(normal)));
           setUrgentUnread(Math.max(0, toNum(urgent)));
+          setApprovalUnread(Math.max(0, toNum(approval)));
         }
       } catch {
         // silencio
@@ -700,6 +730,23 @@ const Principal = () => {
         title="Panel interno del Bot (WhatsApp)"
       >
         <FontAwesomeIcon icon={faRobot} />
+
+        {approvalUnread > 0 ? (
+          <span
+            className="bot-fab-badge bot-fab-badge--approval"
+            aria-label={`Comprobantes pendientes de aprobación: ${approvalUnread}`}
+            title={`Comprobantes para aprobar: ${approvalUnread}`}
+            style={{
+              background: "#2563eb",
+              color: "#fff",
+              top: "-6px",
+              left: "-8px",
+              right: "auto",
+            }}
+          >
+            {fmtBadge(approvalUnread)}
+          </span>
+        ) : null}
 
         {normalUnread > 0 ? (
           <span
