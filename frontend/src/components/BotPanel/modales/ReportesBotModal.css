@@ -989,3 +989,78 @@
   .wp-report-payment-item { grid-template-columns: 1fr; gap: 8px; }
   .wp-report-payment-side { min-width: 0; align-items: flex-start; text-align: left; }
 }
+
+/* ======================================================
+   SUPERFICIES SÓLIDAS Y CONTRASTE
+   - En modo oscuro, todas las pestañas usan superficies sólidas.
+   - En modo claro, las tarjetas no muestran borde oscuro.
+   - En Pagos/Ventas, el importe mantiene chip verde con texto blanco.
+====================================================== */
+:root[data-botpanel-theme="dark"] .wp-report-card,
+:root[data-botpanel-theme="dark"] .wp-report-reminder-card {
+  background: #182229;
+  border-color: #2a3942;
+}
+
+:root[data-botpanel-theme="dark"] .wp-report-summary-strip,
+:root[data-botpanel-theme="dark"] .wp-report-panel,
+:root[data-botpanel-theme="dark"] .wp-report-payment-history {
+  background: #111b21;
+  border-color: #2a3942;
+}
+
+:root[data-botpanel-theme="dark"] .wp-report-panel > h4,
+:root[data-botpanel-theme="dark"] .wp-report-payment-history-head {
+  background: #202c33;
+}
+
+:root[data-botpanel-theme="dark"] .wp-report-summary-strip > div,
+:root[data-botpanel-theme="dark"] .wp-report-detail-row,
+:root[data-botpanel-theme="dark"] .wp-report-payment-item {
+  border-color: #2a3942;
+}
+
+:root[data-botpanel-theme="dark"] .wp-report-payment-item {
+  background: #182229;
+}
+
+:root[data-botpanel-theme="dark"] .wp-report-payment-item:hover {
+  background: #202c33;
+}
+
+:root[data-botpanel-theme="dark"] .wp-report-info-box,
+:root[data-botpanel-theme="dark"] .wp-report-meta-note {
+  background: #182229;
+}
+
+:root[data-botpanel-theme="light"] .wp-report-card,
+:root[data-botpanel-theme="light"] .wp-report-reminder-card {
+  background: #fff;
+  border-color: transparent;
+  box-shadow: 0 1px 1px rgba(17,27,33,.08), 0 6px 18px rgba(17,27,33,.06);
+}
+
+:root[data-botpanel-theme="light"] .wp-report-summary-strip,
+:root[data-botpanel-theme="light"] .wp-report-panel,
+:root[data-botpanel-theme="light"] .wp-report-payment-history {
+  border-color: rgba(84, 101, 111, .12);
+}
+
+:root[data-botpanel-theme="light"] .wp-report-info-box,
+:root[data-botpanel-theme="light"] .wp-report-meta-note {
+  border-color: rgba(0, 128, 105, .14);
+}
+
+.wp-report-section.is-payments-tab .wp-report-payment-side > strong,
+.wp-report-payment-side > strong {
+  color: #fff;
+  background: #008069;
+  border: 1px solid #00a884;
+  box-shadow: 0 4px 12px rgba(0, 128, 105, .22);
+}
+
+:root[data-botpanel-theme="light"] .wp-report-payment-side > strong {
+  color: #fff;
+  background: #008069;
+  border-color: #008f72;
+}

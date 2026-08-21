@@ -413,7 +413,7 @@ const ReportesBotModal = ({ open, onClose }) => {
           ) : null}
 
           {!error && data && tab === "pagos" ? (
-            <div className="wp-report-section">
+            <div className="wp-report-section is-payments-tab">
               <div className="wp-report-section-title">
                 <div>
                   <h3>Pagos gestionados desde WhatsApp</h3>

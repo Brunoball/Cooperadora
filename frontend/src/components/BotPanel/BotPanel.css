@@ -129,7 +129,7 @@
 
 .wp-side-top{
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 40px minmax(0, 1fr) 40px 40px;
   align-items: center;
   gap: 8px;
   padding: 12px 12px 10px;
@@ -1004,7 +1004,19 @@
 ====================================================== */
 .wp-side-top{
   padding: 14px 14px 11px;
-  gap: 10px;
+  gap: 8px;
+}
+
+.wp-side-top > .wp-back,
+.wp-side-top > .wp-alertbtn{
+  align-self: center;
+  justify-self: center;
+}
+
+.wp-side-top > .wp-brand{
+  width: 100%;
+  min-width: 0;
+  align-self: center;
 }
 
 .wp-brand-title{
