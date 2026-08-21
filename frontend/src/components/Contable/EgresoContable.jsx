@@ -384,7 +384,9 @@ export default function EgresoContable() {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
-  }, [anio, mes, fCat, fMedio, q]);
+    // No incluimos `q`: al escribir/borrar en el buscador se reiniciaba
+    // la animación de todas las filas en cada tecla y generaba el bug visual del input.
+  }, [anio, mes, fCat, fMedio]);
 
   /* 🔐 Persistir filtros */
   useEffect(() => {

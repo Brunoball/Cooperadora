@@ -1,16 +1,28 @@
 // src/components/Cuotas/modales/ModalEliminarCondonacion.jsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FaExclamationTriangle } from 'react-icons/fa';
 import BASE_URL from '../../../config/config';
 import Toast from '../../Global/Toast';
 import './ModalEliminarCondonacion.css';
 
-const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEliminado }) => {
+const ModalEliminarCondonacion = ({
+  socio,
+  periodo,
+  periodoTexto,
+  anioPago,
+  onClose,
+  onEliminado,
+}) => {
   const [toast, setToast] = useState(null);
   const [cargando, setCargando] = useState(false);
 
   const mostrarToast = (tipo, mensaje, duracion = 3000) =>
     setToast({ tipo, mensaje, duracion });
+
+  const anio = useMemo(() => {
+    const n = Number(anioPago);
+    return Number.isFinite(n) && n > 0 ? n : new Date().getFullYear();
+  }, [anioPago]);
 
   const handleEliminar = async () => {
     setCargando(true);
@@ -19,7 +31,7 @@ const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEli
       const id_alumno = socio?.id_alumno ?? socio?.id_socio ?? socio?.id ?? 0;
       const id_mes = Number(periodo ?? socio?.id_mes ?? socio?.id_periodo ?? 0);
 
-      if (!id_alumno || !id_mes) {
+      if (!id_alumno || !id_mes || !anio) {
         mostrarToast('error', 'Faltan datos para eliminar la condonación.');
         setCargando(false);
         return;
@@ -28,13 +40,27 @@ const ModalEliminarCondonacion = ({ socio, periodo, periodoTexto, onClose, onEli
       const res = await fetch(`${BASE_URL}/api.php?action=eliminar_pago`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_alumno, id_mes }),
+        body: JSON.stringify({
+          id_alumno,
+          id_mes,
+          anio,
+          // El backend solo aplica este filtro cuando viene informado.
+          // El modal de pago normal no lo envía y conserva su comportamiento previo.
+          estado_esperado: 'condonado',
+        }),
       });
 
-      // Ignoramos el mensaje del backend (puede decir “Pago eliminado…”)
-      await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
 
-      mostrarToast('exito', 'Condonación eliminada correctamente');
+      if (!res.ok || !data?.exito) {
+        mostrarToast(
+          'error',
+          data?.mensaje || 'No se pudo eliminar la condonación.'
+        );
+        return;
+      }
+
+      mostrarToast('exito', data?.mensaje || 'Condonación eliminada correctamente');
       setTimeout(() => {
         onEliminado?.();
         onClose?.();

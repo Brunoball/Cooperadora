@@ -41,6 +41,13 @@ try {
   $anio        = (int)($body['anio'] ?? 0);
   $id_mes_real = (int)($body['id_mes_real'] ?? 0);
 
+  // Filtro opcional. Si no se envía, el flujo histórico de eliminar pagos
+  // conserva exactamente el mismo comportamiento.
+  $estadoEsperado = strtolower(trim((string)($body['estado_esperado'] ?? '')));
+  if (!in_array($estadoEsperado, ['pagado', 'condonado'], true)) {
+    $estadoEsperado = '';
+  }
+
   if ($id_alumno <= 0 || ($id_mes <= 0 && $id_mes_real <= 0) || $anio <= 0) {
     json_out([
       'exito' => false,
@@ -51,21 +58,28 @@ try {
   $mesObjetivo = $id_mes_real > 0 ? $id_mes_real : $id_mes;
 
   $sqlFind = "
-    SELECT id_pago
+    SELECT id_pago, estado
     FROM pagos
     WHERE id_alumno = :id_alumno
       AND id_mes = :id_mes
       AND anio_aplicado = :anio
-    ORDER BY id_pago DESC
-    LIMIT 1
   ";
 
-  $st = $pdo->prepare($sqlFind);
-  $st->execute([
+  $paramsFind = [
     ':id_alumno' => $id_alumno,
     ':id_mes' => $mesObjetivo,
     ':anio' => $anio,
-  ]);
+  ];
+
+  if ($estadoEsperado !== '') {
+    $sqlFind .= " AND estado = :estado_esperado ";
+    $paramsFind[':estado_esperado'] = $estadoEsperado;
+  }
+
+  $sqlFind .= " ORDER BY id_pago DESC LIMIT 1 ";
+
+  $st = $pdo->prepare($sqlFind);
+  $st->execute($paramsFind);
 
   $row = $st->fetch(PDO::FETCH_ASSOC);
 
@@ -83,12 +97,22 @@ try {
     $placeholders = implode(',', array_fill(0, count($idsCandidatos), '?'));
 
     $sqlFallback = "
-      SELECT id_pago
+      SELECT id_pago, estado
       FROM pagos
       WHERE id_alumno = ?
         AND anio_aplicado = ?
         AND id_mes IN ($placeholders)
-      ORDER BY 
+    ";
+
+    $params = [$id_alumno, $anio, ...$idsCandidatos];
+
+    if ($estadoEsperado !== '') {
+      $sqlFallback .= " AND estado = ? ";
+      $params[] = $estadoEsperado;
+    }
+
+    $sqlFallback .= "
+      ORDER BY
         CASE id_mes
           WHEN 15 THEN 1
           WHEN 16 THEN 2
@@ -99,8 +123,6 @@ try {
       LIMIT 1
     ";
 
-    $params = [$id_alumno, $anio, ...$idsCandidatos];
-
     $st2 = $pdo->prepare($sqlFallback);
     $st2->execute($params);
 
@@ -110,7 +132,9 @@ try {
   if (!$row) {
     json_out([
       'exito' => false,
-      'mensaje' => 'No se encontró un pago para eliminar en el año aplicado ' . $anio . '.',
+      'mensaje' => $estadoEsperado === 'condonado'
+        ? 'No se encontró una condonación para eliminar en el año aplicado ' . $anio . '.'
+        : 'No se encontró un pago para eliminar en el año aplicado ' . $anio . '.',
       'debug' => [
         'id_alumno' => $id_alumno,
         'id_mes' => $id_mes,
@@ -122,6 +146,15 @@ try {
   }
 
   $id_pago = (int)$row['id_pago'];
+  $estadoReal = strtolower((string)($row['estado'] ?? ''));
+
+  // Defensa adicional: una eliminación de condonación nunca puede borrar un pago normal.
+  if ($estadoEsperado !== '' && $estadoReal !== $estadoEsperado) {
+    json_out([
+      'exito' => false,
+      'mensaje' => 'El registro encontrado no coincide con el estado solicitado.',
+    ], 409);
+  }
 
   $pdo->beginTransaction();
 
@@ -138,11 +171,17 @@ try {
   $del = $pdo->prepare("DELETE FROM pagos WHERE id_pago = :id_pago LIMIT 1");
   $del->execute([':id_pago' => $id_pago]);
 
+  if ($del->rowCount() !== 1) {
+    throw new RuntimeException('El registro no pudo eliminarse de la base de datos.');
+  }
+
   $pdo->commit();
 
   json_out([
     'exito' => true,
-    'mensaje' => 'Pago eliminado correctamente.',
+    'mensaje' => $estadoEsperado === 'condonado'
+      ? 'Condonación eliminada correctamente.'
+      : 'Pago eliminado correctamente.',
     'id_pago_eliminado' => $id_pago,
     'egresos_cobrador_eliminados' => $egresosEliminados,
     'anio_aplicado' => $anio,

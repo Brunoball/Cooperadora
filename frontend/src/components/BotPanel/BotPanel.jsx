@@ -19,6 +19,7 @@ import {
   faUser,
   faSpinner,
   faTriangleExclamation,
+  faChartColumn,
   faXmark,
   faFaceSmile,
   faFilePdf,
@@ -45,6 +46,7 @@ import EditNombreModal from "./modales/EditNombreModal";
 import EditEtiquetaModal from "./modales/EditEtiquetaModal";
 import ConfirmActionModal from "./modales/ConfirmActionModal";
 import ComprobanteRevisionModal from "./modales/ComprobanteRevisionModal";
+import ReportesBotModal from "./modales/ReportesBotModal";
 
 // ✅ NUEVO: modal galería
 import GaleriaModal from "./modales/GaleriaModal";
@@ -703,6 +705,7 @@ const BotPanel = () => {
   const [errorChats, setErrorChats] = useState("");
   const [errorMsgs, setErrorMsgs] = useState("");
 
+  const [reportesOpen, setReportesOpen] = useState(false);
   const [eventosOpen, setEventosOpen] = useState(false);
   const [eventos, setEventos] = useState([]);
   const [eventosResumen, setEventosResumen] = useState({
@@ -2272,6 +2275,16 @@ const BotPanel = () => {
 
           <button
             type="button"
+            className="wp-alertbtn"
+            onClick={() => setReportesOpen(true)}
+            title="Ver resumen mensual del bot"
+            aria-label="Ver resumen mensual del bot"
+          >
+            <FontAwesomeIcon icon={faChartColumn} />
+          </button>
+
+          <button
+            type="button"
             className={`wp-alertbtn ${Number(eventosResumen?.pendientes || 0) > 0 ? "is-danger" : ""}`}
             onClick={abrirPanelAlertas}
             title="Ver alertas y errores del bot"
@@ -3067,6 +3080,11 @@ const BotPanel = () => {
         puntosBaseUrl={PANEL_PUNTOS}
         onRefreshEtiquetas={fetchEtiquetas}
         onLabelsChanged={refreshEtiquetasYChats}
+      />
+
+      <ReportesBotModal
+        open={reportesOpen}
+        onClose={() => setReportesOpen(false)}
       />
 
       <ConfirmActionModal

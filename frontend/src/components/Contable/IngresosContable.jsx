@@ -625,7 +625,9 @@ export default function IngresosContable() {
     setCascading(true);
     const t = setTimeout(() => setCascading(false), 500);
     return () => clearTimeout(t);
-  }, [anio, mes, query, innerTab, catFiltro, mesEspecial]);
+    // No incluimos `query`: al borrar/escribir en el buscador se reiniciaba
+    // la animación cascada en cada tecla y hacía que las últimas letras parezcan trabadas.
+  }, [anio, mes, innerTab, catFiltro, mesEspecial]);
 
   const filasFiltradasAlu = useMemo(() => {
     const q = query.trim().toLowerCase();

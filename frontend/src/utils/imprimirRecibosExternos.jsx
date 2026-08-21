@@ -257,20 +257,28 @@ export const imprimirRecibosExternos = async (listaSocios, periodoActual = '', v
     const idCat = s?.id_categoria ?? null;
     const precioListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
 
-    const candidatos = [
-      Number(s?.importe_total),
-      Number(s?.precio_total),
-      Number(s?.monto_total),
-      Number(s?.precio_unitario * (Array.isArray(s?.periodos) ? s.periodos.length : 0)),
-      Number(s?.precio_unitario),
-      Number(s?.monto_mensual),
-      Number(s?.precio_categoria),
-      Number(s?.monto),
-      Number(s?.importe),
-      precioListas
-    ].filter(v => Number.isFinite(v) && v > 0);
+    // Si el caller envía un total explícito, incluso 0 (condonación),
+    // ese valor es la fuente de verdad. Solo hacemos fallback cuando no existe.
+    const totalesExplicitos = [s?.importe_total, s?.precio_total, s?.monto_total];
+    const totalExplicito = totalesExplicitos.find((v) =>
+      v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) && Number(v) >= 0
+    );
 
-    const precio = candidatos.length ? candidatos[0] : 0;
+    let precio;
+    if (totalExplicito !== undefined) {
+      precio = Number(totalExplicito);
+    } else {
+      const candidatos = [
+        Number(s?.precio_unitario * (Array.isArray(s?.periodos) ? s.periodos.length : 0)),
+        Number(s?.precio_unitario),
+        Number(s?.monto_mensual),
+        Number(s?.precio_categoria),
+        Number(s?.monto),
+        Number(s?.importe),
+        precioListas
+      ].filter(v => Number.isFinite(v) && v > 0);
+      precio = candidatos.length ? candidatos[0] : 0;
+    }
 
     // 🔹 PERÍODO: usar full si llega, si no usar “Mes Año”
     const periodoTexto =

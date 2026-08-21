@@ -388,10 +388,11 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const puedeConfirmarPago = useMemo(() => {
     const tienePeriodosSeleccionados = seleccionados.length > 0 || anualSeleccionado || matriculaSeleccionada;
-    const tieneMedioPagoSeleccionado = !!medioSeleccionado;
+    // ✅ Si es condonación, el medio de pago NO es obligatorio (no hubo cobro real)
+    const tieneMedioPagoSeleccionado = condonar || !!medioSeleccionado;
     const fechaOk = isValidYMD(fechaPagoSeleccionada);
     return tienePeriodosSeleccionados && tieneMedioPagoSeleccionado && !cargando && fechaOk;
-  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, cargando, fechaPagoSeleccionada]);
+  }, [seleccionados.length, anualSeleccionado, matriculaSeleccionada, medioSeleccionado, condonar, cargando, fechaPagoSeleccionada]);
 
   /* ================= Efectos ================= */
 
@@ -833,7 +834,8 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const confirmarPago = async () => {
     if (!idAlumno) return mostrarToast('error', 'Falta ID del alumno.');
-    if (!medioSeleccionado) return mostrarToast('error', 'Debés seleccionar un medio de pago antes de continuar.');
+    // ✅ Si es condonación no se pide medio de pago (no hubo cobro real, no hay medio que informar)
+    if (!condonar && !medioSeleccionado) return mostrarToast('error', 'Debés seleccionar un medio de pago antes de continuar.');
 
     // ✅ validar fecha de pago
     if (!isValidYMD(fechaPagoSeleccionada)) {
@@ -876,7 +878,8 @@ const ModalPagos = ({ socio, onClose }) => {
         montos_por_periodo: montosPorPeriodo,
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
         ids_familia: idsFamiliaActivos,
-        id_medio_pago: Number(medioSeleccionado),
+        // ✅ Condonado no tiene medio de pago (no hubo cobro): se manda null
+        id_medio_pago: condonar ? null : Number(medioSeleccionado),
         meta_anual: anualSeleccionado
           ? { tipo: anualConfig.tipo, id_periodo: anualConfig.idPeriodo, importe: anualConfig.importe, manual: anualManualActivo ? 1 : 0 }
           : null,
@@ -1057,7 +1060,9 @@ const ModalPagos = ({ socio, onClose }) => {
     const tituloExito = condonar ? '¡Condonación registrada!' : '¡Pago registrado!';
     const subExito = condonar ? 'El período seleccionado quedó marcado como Condonado.' : 'Generá o imprimí los comprobantes cuando quieras.';
     const etiquetaAnualResumen = anualSeleccionado && anualConfig?.etiqueta ? anualConfig.etiqueta : null;
-    const medioNombre = mediosPago.find((m) => String(m.id) === String(medioSeleccionado))?.nombre || '—';
+    const medioNombre = condonar
+      ? 'No aplica (condonado)'
+      : (mediosPago.find((m) => String(m.id) === String(medioSeleccionado))?.nombre || '—');
 
     return (
       <>
@@ -1389,7 +1394,17 @@ const ModalPagos = ({ socio, onClose }) => {
             <div className="condonarAño-montoLibre">
               <div className={`condonar-box ${condonar ? 'is-active' : ''}`}>
                 <label className="condonar-check">
-                  <input type="checkbox" checked={condonar} onChange={(e) => setCondonar(e.target.checked)} disabled={cargando} />
+                  <input
+                    type="checkbox"
+                    checked={condonar}
+                    onChange={(e) => {
+                      const val = e.target.checked;
+                      setCondonar(val);
+                      // ✅ Un pago condonado no tiene medio de pago (no hubo cobro real)
+                      if (val) setMedioSeleccionado('');
+                    }}
+                    disabled={cargando}
+                  />
                   <span className="switch"><span className="switch-thumb" /></span>
                   <span className="switch-label">Marcar como <strong>Condonado</strong>(no genera cobro)</span>
                 </label>
@@ -1616,28 +1631,36 @@ const ModalPagos = ({ socio, onClose }) => {
                 </>
               )}
 
-              {/* Medio de pago inline */}
+              {/* Medio de pago inline (no aplica si se condona: no hubo cobro real) */}
               <div className="medio-pago-inline">
-                <label className="medio-pago-inline-label" htmlFor="medio-pago-select">Medio de pago *</label>
+                <label className="medio-pago-inline-label" htmlFor="medio-pago-select">
+                  Medio de pago {!condonar && '*'}
+                </label>
                 <div className="medio-pago-input">
                   <select
                     id="medio-pago-select"
                     className="medio-pago-select"
-                    value={medioSeleccionado || ''}
+                    value={condonar ? '' : (medioSeleccionado || '')}
                     onChange={(e) => setMedioSeleccionado(e.target.value)}
-                    disabled={cargando}
-                    required
+                    disabled={cargando || condonar}
+                    required={!condonar}
                   >
-                    <option value="" disabled>Seleccionar...</option>
+                    <option value="" disabled>{condonar ? 'No aplica (condonado)' : 'Seleccionar...'}</option>
                     {mediosPago.length === 0 && <option value="">(Sin datos)</option>}
                     {mediosPago.map((mp) => (
                       <option key={mp.id} value={String(mp.id)}>{mp.nombre}</option>
                     ))}
                   </select>
-                  {!medioSeleccionado && (
-                    <div className="hint" style={{ marginTop: 4, color: 'var(--danger)' }}>
-                      * Campo obligatorio para registrar el pago
+                  {condonar ? (
+                    <div className="hint" style={{ marginTop: 4 }}>
+                      No aplica: al condonar no hay cobro, así que no se registra medio de pago.
                     </div>
+                  ) : (
+                    !medioSeleccionado && (
+                      <div className="hint" style={{ marginTop: 4, color: 'var(--danger)' }}>
+                        * Campo obligatorio para registrar el pago
+                      </div>
+                    )
                   )}
                 </div>
               </div>
@@ -1743,7 +1766,7 @@ const ModalPagos = ({ socio, onClose }) => {
                 </div>
               )}
 
-              {!medioSeleccionado && (
+              {!condonar && !medioSeleccionado && (
                 <span className="total-badge total-badge-warning">
                   Medio de pago requerido
                 </span>

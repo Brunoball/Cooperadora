@@ -289,19 +289,28 @@ export const imprimirRecibos = async (listaSocios, periodoActual = '', ventana, 
     // 🔹 MONTO: priorizar total (multi-mes) > otros
     const idCat = s?.id_categoria ?? null;
     const precioDesdeListas = Number(categoriasById[String(idCat)]?.monto ?? 0);
-    const candidatos = [
-      Number(s?.importe_total),                         // TOTAL de meses
-      Number(s?.precio_total),                          // por si lo envías así
-      Number(s?.monto_total),
-      Number(s?.precio_unitario * (Array.isArray(s?.periodos) ? s.periodos.length : 0)), // fallback multiplicado
-      Number(s?.precio_unitario),                       // unitario
-      Number(s?.monto_mensual),
-      Number(s?.precio_categoria),
-      Number(s?.monto),
-      Number(s?.importe),
-      precioDesdeListas
-    ].filter(v => Number.isFinite(v) && v > 0);
-    const precio = candidatos.length ? candidatos[0] : 0;
+    // Si el caller envía un total explícito, incluso 0 (condonación),
+    // ese valor es la fuente de verdad. Solo hacemos fallback cuando no existe.
+    const totalesExplicitos = [s?.importe_total, s?.precio_total, s?.monto_total];
+    const totalExplicito = totalesExplicitos.find((v) =>
+      v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) && Number(v) >= 0
+    );
+
+    let precio;
+    if (totalExplicito !== undefined) {
+      precio = Number(totalExplicito);
+    } else {
+      const candidatos = [
+        Number(s?.precio_unitario * (Array.isArray(s?.periodos) ? s.periodos.length : 0)),
+        Number(s?.precio_unitario),
+        Number(s?.monto_mensual),
+        Number(s?.precio_categoria),
+        Number(s?.monto),
+        Number(s?.importe),
+        precioDesdeListas
+      ].filter(v => Number.isFinite(v) && v > 0);
+      precio = candidatos.length ? candidatos[0] : 0;
+    }
 
     const mesesCantidad = Array.isArray(s?.periodos) ? s.periodos.length : 1;
 

@@ -1245,6 +1245,7 @@ const Cuotas = () => {
           socio={socioParaPagar}
           periodo={Number(mesSeleccionado)}
           periodoTexto={getNombreMes(mesSeleccionado)}
+          anioPago={anioPagoSeleccionado}
           onClose={() => setMostrarModalEliminarCond(false)}
           onEliminado={async () => {
             const idAlumno = socioParaPagar?.id_alumno ?? socioParaPagar?.id_socio ?? socioParaPagar?.id;
