@@ -40,8 +40,14 @@ try {
     ? (int)$payload['id_medio_pago']
     : null;
 
-  $montoLibre = isset($payload['monto_libre']) ? (int)$payload['monto_libre'] : 0;
-  $montoUI = isset($payload['monto_unitario']) ? (int)$payload['monto_unitario'] : null;
+  // Los montos configurados para grupos pueden tener centavos (ej. 20.000 / 3 = 6.666,67).
+  // Se conservan como decimales hasta el momento de registrar; `pagos.monto_pago` sigue siendo entero.
+  $montoLibre = isset($payload['monto_libre']) && is_numeric($payload['monto_libre'])
+    ? max(0.0, (float)$payload['monto_libre'])
+    : 0.0;
+  $montoUI = isset($payload['monto_unitario']) && is_numeric($payload['monto_unitario'])
+    ? max(0.0, (float)$payload['monto_unitario'])
+    : null;
 
   $fechaPagoPayload = isset($payload['fecha_pago']) ? trim((string)$payload['fecha_pago']) : '';
 
@@ -50,11 +56,13 @@ try {
   if (!empty($payload['montos_por_periodo']) && is_array($payload['montos_por_periodo'])) {
     foreach ($payload['montos_por_periodo'] as $k => $v) {
       $kk = (int)$k;
-      $vv = (int)$v;
-
-      if ($kk > 0) {
-        $montosPorPeriodo[$kk] = max(0, $vv);
+      if ($kk <= 0 || !is_numeric($v)) {
+        continue;
       }
+
+      $vv = max(0.0, (float)$v);
+      // La configuración de categoria_hermanos es DECIMAL(12,2).
+      $montosPorPeriodo[$kk] = round($vv, 2);
     }
   }
 
@@ -154,29 +162,29 @@ try {
      ========================================================== */
   $resolverMonto = function (
     bool $condonar,
-    ?int $montoUI,
-    int $montoLibre,
+    ?float $montoUI,
+    float $montoLibre,
     array $montosPorPeriodo,
     int $periodo
-  ): int {
+  ): float {
     if ($condonar) {
       return 0;
     }
 
     if (
       isset($montosPorPeriodo[$periodo]) &&
-      is_int($montosPorPeriodo[$periodo]) &&
-      $montosPorPeriodo[$periodo] >= 0
+      is_numeric($montosPorPeriodo[$periodo]) &&
+      (float)$montosPorPeriodo[$periodo] >= 0
     ) {
-      return (int)$montosPorPeriodo[$periodo];
+      return round((float)$montosPorPeriodo[$periodo], 2);
     }
 
     if (!is_null($montoUI) && $montoUI > 0) {
-      return (int)$montoUI;
+      return round((float)$montoUI, 2);
     }
 
     if ($montoLibre > 0) {
-      return (int)$montoLibre;
+      return round((float)$montoLibre, 2);
     }
 
     return 0;
@@ -195,7 +203,7 @@ try {
       } elseif ($p === 14) {
         $matricula = true;
       } elseif ($p === 13 || $p === 15 || $p === 16) {
-        $total = isset($montosPorPeriodo[$p]) ? (int)$montosPorPeriodo[$p] : 0;
+        $total = isset($montosPorPeriodo[$p]) ? (float)$montosPorPeriodo[$p] : 0.0;
 
         $segmentos[] = [
           'id_mes' => $p,
@@ -217,8 +225,8 @@ try {
     array $mesesExplicitos,
     array $montosPorPeriodo,
     bool $condonar,
-    ?int $montoUI,
-    int $montoLibre
+    ?float $montoUI,
+    float $montoLibre
   ) use ($resolverMonto): array {
     $map = [];
 
@@ -461,6 +469,52 @@ try {
     sort($alumnosObjetivo);
   }
 
+  /*
+   * Si un monto por alumno tiene centavos y se paga el grupo completo,
+   * redondeamos UNA sola vez el total familiar y repartimos pesos enteros.
+   *
+   * Ejemplo:
+   *   6.666,67 x 3 = 20.000,01 -> total familiar = 20.000
+   *   reparto estable: 6.667 + 6.667 + 6.666 = 20.000
+   *
+   * Esto evita guardar $20.001 en pagos por redondear cada alumno por separado.
+   */
+  $asignacionesGrupo = [];
+  $resolverMontoRegistro = function (
+    int $idA,
+    int $periodo,
+    float $montoUnitario
+  ) use (
+    &$asignacionesGrupo,
+    $alumnosObjetivo,
+    $aplicarFamilia,
+    $condonar
+  ): int {
+    if ($condonar) {
+      return 0;
+    }
+
+    $unitario = max(0.0, $montoUnitario);
+    $n = count($alumnosObjetivo);
+
+    if (!$aplicarFamilia || $n <= 1) {
+      return max(0, (int)round($unitario));
+    }
+
+    if (!isset($asignacionesGrupo[$periodo])) {
+      $totalGrupo = max(0, (int)round($unitario * $n));
+      $base = intdiv($totalGrupo, $n);
+      $resto = $totalGrupo - ($base * $n);
+
+      $asignacionesGrupo[$periodo] = [];
+      foreach (array_values($alumnosObjetivo) as $idx => $idGrupo) {
+        $asignacionesGrupo[$periodo][(int)$idGrupo] = $base + ($idx < $resto ? 1 : 0);
+      }
+    }
+
+    return (int)($asignacionesGrupo[$periodo][$idA] ?? max(0, (int)round($unitario)));
+  };
+
   /* ==========================================================
      8) Registrar
      ========================================================== */
@@ -588,7 +642,7 @@ try {
         continue;
       }
 
-      $registrarItem($mes, (int)$monto);
+      $registrarItem($mes, $resolverMontoRegistro($idA, $mes, (float)$monto));
     }
 
     if ($matriculaSel) {
@@ -608,13 +662,13 @@ try {
           $mesMat
         );
 
-        $registrarItem($mesMat, (int)$montoMatricula);
+        $registrarItem($mesMat, $resolverMontoRegistro($idA, $mesMat, (float)$montoMatricula));
       }
     }
 
     foreach ($segmentos as $seg) {
       $idMesSeg = (int)($seg['id_mes'] ?? 0);
-      $montoSeg = (int)($seg['total'] ?? 0);
+      $montoSeg = (float)($seg['total'] ?? 0);
 
       if (!$idMesSeg) {
         continue;
@@ -629,7 +683,7 @@ try {
         continue;
       }
 
-      $registrarItem($idMesSeg, $montoSeg);
+      $registrarItem($idMesSeg, $resolverMontoRegistro($idA, $idMesSeg, $montoSeg));
     }
 
     $detallePorAlumno[] = [
@@ -658,6 +712,8 @@ try {
       'monto_neto_cooperadora' => $totalNetoCooperadora,
       'monto_comision_cobrador' => $totalComisionCobrador,
       'porcentaje_cobrador' => PORCENTAJE_COBRADOR,
+      'redondeo_grupo_aplicado' => $aplicarFamilia && count($alumnosObjetivo) > 1,
+      'asignaciones_grupo_por_periodo' => $asignacionesGrupo,
       'egreso_cobrador' => [
         'descripcion' => DESCRIPCION_COBRADOR,
         'id_medio_pago_usado_al_crear' => (!$condonar && $idMedioPago && $idMedioPago > 0) ? $idMedioPago : null,

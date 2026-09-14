@@ -142,6 +142,10 @@ const ReportesBotModal = ({ open, onClose }) => {
   useEffect(() => {
     if (!open) return;
     setTab("resumen");
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     fetchReport(period);
   }, [open, period, fetchReport]);
 

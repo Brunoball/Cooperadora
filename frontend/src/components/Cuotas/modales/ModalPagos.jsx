@@ -88,9 +88,16 @@ const dentroVentanaAnual = (hoy = new Date()) => {
   return hoy >= inicioAnterior && hoy < finEsteAnio;
 };
 
-// Redondeo a centenas
-const roundToHundreds = (n) => {
-  const v = Math.round((Number(n) || 0) / 100) * 100;
+// Dinero de configuración: conserva hasta 2 decimales.
+// Al registrar/mostrar el TOTAL de un pago se redondea al peso entero.
+const roundMoney2 = (n) => {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.round((v + Number.EPSILON) * 100) / 100);
+};
+
+const roundToPeso = (n) => {
+  const v = Math.round(Number(n) || 0);
   return v < 0 ? 0 : v;
 };
 
@@ -199,7 +206,12 @@ const ModalPagos = ({ socio, onClose }) => {
   };
 
   const formatearARS = (monto) =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(monto);
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(Number(monto) || 0);
 
   const mesesGrid = useMemo(() => meses.filter((m) => Number(m.id) >= 3 && Number(m.id) <= 12), [meses]);
 
@@ -223,7 +235,7 @@ const ModalPagos = ({ socio, onClose }) => {
       const v = Number(libreValor);
       return Number.isFinite(v) && v > 0 ? v : 0;
     }
-    return Math.max(0, Math.round(Number(precioMensual || 0)));
+    return roundMoney2(precioMensual);
   }, [condonar, libreActivo, libreValor, precioMensual]);
 
   // ===== Monto anual FINAL (sin % descuento: lo define la DB) =====
@@ -322,11 +334,11 @@ const ModalPagos = ({ socio, onClose }) => {
     if (condonar) return 0;
     if (libreActivo) {
       const v = Number(libreValor);
-      return Number.isFinite(v) && v > 0 ? Math.round(v) : 0;
+      return Number.isFinite(v) && v > 0 ? roundMoney2(v) : 0;
     }
     const v = Number(preciosPorPeriodoDB?.[Number(idMes)]);
-    if (Number.isFinite(v) && v > 0) return Math.round(v);
-    return Math.round(Number(precioMensualFinal || 0));
+    if (Number.isFinite(v) && v > 0) return roundMoney2(v);
+    return roundMoney2(precioMensualFinal);
   };
 
   // ✅ Totales (por persona) usando precio real por mes
@@ -814,7 +826,8 @@ const ModalPagos = ({ socio, onClose }) => {
 
   const totalParaMostrar = useMemo(() => {
     const n = esPagoGrupo ? cantidadRegistrosLista : 1;
-    return roundToHundreds((Number(total) || 0) * n);
+    // Ej.: 6.666,67 x 3 = 20.000,01 -> el pago familiar real queda en $20.000.
+    return roundToPeso((Number(total) || 0) * n);
   }, [total, esPagoGrupo, cantidadRegistrosLista]);
 
   // ✅ Cálculo de comisión para cobrador (solo visual)
@@ -854,7 +867,7 @@ const ModalPagos = ({ socio, onClose }) => {
     // ✅ montos reales por período (mes a mes)
     const montosPorPeriodo = {};
     for (const id of periodosMesesOrdenados) {
-      montosPorPeriodo[id] = Math.round(getPrecioMes(id));
+      montosPorPeriodo[id] = roundMoney2(getPrecioMes(id));
     }
     if (anualSeleccionado && anualConfig?.idPeriodo) {
       montosPorPeriodo[anualConfig.idPeriodo] = Math.round(Number(anualConfig.importe || 0));
@@ -874,7 +887,7 @@ const ModalPagos = ({ socio, onClose }) => {
         fecha_pago: fechaPagoSeleccionada,
 
         // compatibilidad (pero backend debería usar montos_por_periodo si existe)
-        monto_unitario: Math.round(getPrecioMes(periodosMesesOrdenados[0] || 1)),
+        monto_unitario: roundMoney2(getPrecioMes(periodosMesesOrdenados[0] || 1)),
         montos_por_periodo: montosPorPeriodo,
         aplicar_a_familia: !!(aplicarFamilia && idsFamiliaActivos.length > 0),
         ids_familia: idsFamiliaActivos,
@@ -892,7 +905,7 @@ const ModalPagos = ({ socio, onClose }) => {
           : null
       };
 
-      if (libreActivo && !condonar) payload.monto_libre = Math.round(Number(libreValor) || 0);
+      if (libreActivo && !condonar) payload.monto_libre = roundMoney2(Number(libreValor) || 0);
 
       const res = await fetch(`${BASE_URL}/api.php?action=registrar_pago`, {
         method: 'POST',
@@ -937,7 +950,7 @@ const ModalPagos = ({ socio, onClose }) => {
     const periodoCodigo = periodos[0] || 0;
 
     const montosBase = {
-      ...Object.fromEntries(periodosMesesOrdenados.map((id) => [id, Math.round(getPrecioMes(id))])),
+      ...Object.fromEntries(periodosMesesOrdenados.map((id) => [id, roundMoney2(getPrecioMes(id))])),
       ...(anualSeleccionado && anualConfig?.idPeriodo ? { [anualConfig.idPeriodo]: Math.round(Number(anualConfig.importe || 0)) } : {}),
       ...(matriculaSeleccionada ? { [ID_MATRICULA]: Math.round(Number(montoMatriculaFinal || 0)) } : {})
     };
@@ -973,7 +986,7 @@ const ModalPagos = ({ socio, onClose }) => {
       periodos,
       periodo_texto: periodoTextoCustom,
       // precio_unitario queda como "referencial", pero para impresión real tenés montos_por_periodo
-      precio_unitario: Math.round(getPrecioMes(periodosMesesOrdenados[0] || 1)),
+      precio_unitario: roundMoney2(getPrecioMes(periodosMesesOrdenados[0] || 1)),
       importe_total: total,
       precio_total: total,
       anio: anioTrabajo,
@@ -994,7 +1007,7 @@ const ModalPagos = ({ socio, onClose }) => {
       try {
         if (aplicarFamilia && lista.length > 1) {
           const nombres = lista.map((p) => p.apellido_nombre || p.nombre || `#${p.id_alumno}`).join(' / ');
-          const totalGrupo = roundToHundreds(lista.reduce((acc, p) => acc + (Number(p.precio_total) || 0), 0));
+          const totalGrupo = roundToPeso(lista.reduce((acc, p) => acc + (Number(p.precio_total) || 0), 0));
 
           const combinado = {
             ...lista[0],
@@ -1019,7 +1032,7 @@ const ModalPagos = ({ socio, onClose }) => {
           });
         } else {
           const p = lista[0];
-          const totalRedondeado = roundToHundreds(Number(p.precio_total) || 0);
+          const totalRedondeado = roundToPeso(Number(p.precio_total) || 0);
           const personaPDF = { ...p, precio_total: totalRedondeado, importe_total: totalRedondeado };
           await generarComprobanteAlumnoPDF(personaPDF, {
             anio: personaPDF.anio,

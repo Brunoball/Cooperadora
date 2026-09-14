@@ -43,7 +43,8 @@ try {
             p.id_alumno,
             p.id_mes                              AS id_mes_pagado,
             p.fecha_pago,
-            a.apellido_nombre,
+            a.apellido                          AS alumno_apellido,
+            a.nombre                            AS alumno_nombre,
             a.id_categoria,
             c.nombre_categoria                    AS categoria_nombre,
             MONTH(p.fecha_pago)                   AS mes_id_cobro,
@@ -81,25 +82,9 @@ try {
         $precio = (isset($conteoPorAlumnoMesCalendario[$keyAM]) && (int)$conteoPorAlumnoMesCalendario[$keyAM] === 6)
                 ? 3500 : 4000;
 
-        // Separar apellido / nombre desde 'apellido_nombre'
-        $apellido = '';
-        $nombre   = '';
-        $apNom    = trim((string)$row['apellido_nombre']);
-        if ($apNom !== '') {
-            if (strpos($apNom, ',') !== false) {          // "APELLIDO, Nombre"
-                [$ap, $no] = array_map('trim', explode(',', $apNom, 2));
-                $apellido = $ap;
-                $nombre   = $no;
-            } else {                                       // "Nombre Apellido"
-                $partes = preg_split('/\s+/', $apNom);
-                if (count($partes) >= 2) {
-                    $apellido = array_pop($partes);
-                    $nombre   = implode(' ', $partes);
-                } else {
-                    $nombre = $apNom;
-                }
-            }
-        }
+        // El esquema actual de alumnos guarda apellido y nombre por separado.
+        $apellido = trim((string)($row['alumno_apellido'] ?? ''));
+        $nombre   = trim((string)($row['alumno_nombre'] ?? ''));
 
         $idMesCobro  = (int)($row['mes_id_cobro'] ?? 0);
         $nomMesCobro = (string)($row['mes_nombre_cobro'] ?? '');

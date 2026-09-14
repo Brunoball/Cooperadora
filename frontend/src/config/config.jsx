@@ -9,3 +9,5 @@ export default BASE_URL;
 //php -c "C:\php\php.ini" -S localhost:3001
 
 
+//npx playwright test --project=chromium --workers=1 --reporter=list
+

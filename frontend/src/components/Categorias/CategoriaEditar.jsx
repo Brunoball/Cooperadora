@@ -434,7 +434,8 @@ const CategoriaEditar = () => {
                                 className="cat_edi_input"
                                 type="number"
                                 min="0"
-                                step="1"
+                                step="0.01"
+                                inputMode="decimal"
                                 value={h.monto_mensual}
                                 onChange={(e) => cambiarFila(idx, 'monto_mensual', e.target.value)}
                                 disabled={saving}
@@ -447,7 +448,8 @@ const CategoriaEditar = () => {
                                 className="cat_edi_input"
                                 type="number"
                                 min="0"
-                                step="1"
+                                step="0.01"
+                                inputMode="decimal"
                                 value={h.monto_anual}
                                 onChange={(e) => cambiarFila(idx, 'monto_anual', e.target.value)}
                                 disabled={saving}

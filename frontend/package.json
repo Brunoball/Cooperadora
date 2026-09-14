@@ -5,10 +5,6 @@
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
     "chart.js": "^4.5.0",
     "emoji-mart": "^5.6.0",
     "file-saver": "^2.0.5",
@@ -29,8 +25,12 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "test:e2e": "node tests/helpers/run-testing.js",
+    "test:e2e:headed": "node tests/helpers/run-testing.js --headed",
+    "test:e2e:ui": "node tests/helpers/run-testing.js --ui",
+    "test:e2e:list": "node tests/helpers/run-testing.js --list",
+    "test:e2e:report": "playwright show-report"
   },
   "eslintConfig": {
     "extends": [
@@ -49,5 +49,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

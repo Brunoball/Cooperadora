@@ -21,3 +21,15 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Playwright / entorno local de testing
+.env.test
+/test-results/
+/playwright-report/
+
+# Playwright Cooperadora
+/.env.test
+/tests/.auth/*
+!/tests/.auth/.gitkeep
+/blob-report/
+/package.json.before-e2e.bak

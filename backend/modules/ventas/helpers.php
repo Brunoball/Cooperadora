@@ -98,8 +98,24 @@ function ventas_date_or_null($value) {
 }
 
 function ventas_column_exists($pdo, $table, $column) {
-    $st = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :column");
-    $st->execute(array(':column' => $column));
+    // SHOW COLUMNS ... LIKE no admite placeholders con prepares nativos de MySQL.
+    // Consultar information_schema evita que PDO envíe un "?" inválido al servidor.
+    $sql = "
+        SELECT
+            COLUMN_NAME AS `Field`,
+            COLUMN_TYPE AS `Type`,
+            IS_NULLABLE AS `Null`,
+            COLUMN_KEY AS `Key`,
+            COLUMN_DEFAULT AS `Default`,
+            EXTRA AS `Extra`
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+          AND COLUMN_NAME = :column_name
+        LIMIT 1
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute(array(':table_name' => $table, ':column_name' => $column));
     return $st->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
@@ -120,9 +136,18 @@ function ventas_foreign_key_for_column($pdo, $table, $column) {
 }
 
 function ventas_index_exists($pdo, $table, $indexName) {
-    $st = $pdo->prepare("SHOW INDEX FROM `$table` WHERE Key_name = :idx");
-    $st->execute(array(':idx' => $indexName));
-    return (bool)$st->fetch(PDO::FETCH_ASSOC);
+    // Igual que columnas: evitamos SHOW INDEX con parámetros preparados.
+    $sql = "
+        SELECT 1
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = :table_name
+          AND INDEX_NAME = :index_name
+        LIMIT 1
+    ";
+    $st = $pdo->prepare($sql);
+    $st->execute(array(':table_name' => $table, ':index_name' => $indexName));
+    return (bool)$st->fetchColumn();
 }
 
 function ventas_constraint_exists($pdo, $table, $constraintName) {
