@@ -35,6 +35,7 @@ test('editar alumno carga el registro actual y todas sus relaciones', async ({ p
   await expect(page.locator('#apellido')).toHaveValue('BENAVIDEZ');
   await expect(page.locator('#nombre')).toHaveValue('JOAQUÍN RAMÓN');
   await expect(page.locator('#num_documento')).toHaveValue('49080302');
+  await expect(page.locator('#domicilio')).toHaveValue(alumno.domicilio);
   await expect(page.locator('#id_tipo_documento')).toHaveValue('1');
   await expect(page.locator('#id_sexo')).toHaveValue('2');
 
@@ -58,15 +59,19 @@ test('editar alumno valida fecha de ingreso y obligatorios antes del POST', asyn
 });
 
 test('editar alumno normaliza mayúsculas y conserva id_cat_monto', async ({ page }) => {
+  const domicilio = `calle Nº 15 N° 450 / s/n #4, d'angelo – dto. \"A\" & <fondo> 🏠`;
   const api = await mockEditar(page);
   await page.goto('/alumnos/editar/101');
   await page.locator('#apellido').fill('benavidez actualizado');
   await page.locator('#localidad').fill('rafaela');
+  await page.locator('#domicilio').fill(domicilio);
+  await expect(page.locator('#domicilio')).toHaveValue(domicilio.toUpperCase());
   await page.getByLabel('Guardar').click();
   await expect.poll(() => api.byAction('editar_alumno').filter(c => c.method === 'POST').length).toBe(1);
   const call = api.byAction('editar_alumno').find(c => c.method === 'POST');
   expect(call.data.apellido).toBe('BENAVIDEZ ACTUALIZADO');
   expect(call.data.localidad).toBe('RAFAELA');
+  expect(call.data.domicilio).toBe(domicilio.toUpperCase());
   expect(String(call.data.id_cat_monto)).toBe('1');
   expect(call.data.ingreso).toBe('2026-03-01');
 });

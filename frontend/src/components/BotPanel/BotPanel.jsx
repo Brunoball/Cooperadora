@@ -27,6 +27,7 @@ import {
   faMoon,
   faEllipsisVertical,
   faTag,
+  faBullhorn,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./BotPanel.css";
@@ -47,6 +48,7 @@ import EditEtiquetaModal from "./modales/EditEtiquetaModal";
 import ConfirmActionModal from "./modales/ConfirmActionModal";
 import ComprobanteRevisionModal from "./modales/ComprobanteRevisionModal";
 import ReportesBotModal from "./modales/ReportesBotModal";
+import CampaniasRecordatorioModal from "./modales/CampaniasRecordatorioModal";
 
 // ✅ NUEVO: modal galería
 import GaleriaModal from "./modales/GaleriaModal";
@@ -706,6 +708,7 @@ const BotPanel = () => {
   const [errorMsgs, setErrorMsgs] = useState("");
 
   const [reportesOpen, setReportesOpen] = useState(false);
+  const [campaniasOpen, setCampaniasOpen] = useState(false);
   const [eventosOpen, setEventosOpen] = useState(false);
   const [eventos, setEventos] = useState([]);
   const [eventosResumen, setEventosResumen] = useState({
@@ -2285,6 +2288,16 @@ const BotPanel = () => {
 
           <button
             type="button"
+            className="wp-alertbtn"
+            onClick={() => setCampaniasOpen(true)}
+            title="Campañas de mensajes programados"
+            aria-label="Campañas de mensajes programados"
+          >
+            <FontAwesomeIcon icon={faBullhorn} />
+          </button>
+
+          <button
+            type="button"
             className={`wp-alertbtn ${Number(eventosResumen?.pendientes || 0) > 0 ? "is-danger" : ""}`}
             onClick={abrirPanelAlertas}
             title="Ver alertas y errores del bot"
@@ -3085,6 +3098,11 @@ const BotPanel = () => {
       <ReportesBotModal
         open={reportesOpen}
         onClose={() => setReportesOpen(false)}
+      />
+
+      <CampaniasRecordatorioModal
+        open={campaniasOpen}
+        onClose={() => setCampaniasOpen(false)}
       />
 
       <ConfirmActionModal

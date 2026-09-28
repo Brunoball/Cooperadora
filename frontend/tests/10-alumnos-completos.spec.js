@@ -170,6 +170,17 @@ test('agregar alumno recorre el wizard y no envía datos incompletos', async ({ 
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
 
   await expect(page.locator('[name="domicilio"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
+  await expect(page.getByText('Completá: Domicilio', { exact: true })).toBeVisible();
+  await expect(page.locator('[name="domicilio"]')).toBeVisible();
+  expect(api.byAction('agregar_alumno')).toHaveLength(0);
+
+  await page.locator('[name="domicilio"]').fill('A'.repeat(151));
+  await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
+  await expect(page.getByText('Domicilio: máximo 150 caracteres.', { exact: true })).toBeVisible();
+  await expect(page.locator('[name="domicilio"]')).toBeVisible();
+  expect(api.byAction('agregar_alumno')).toHaveLength(0);
+
   await page.locator('[name="domicilio"]').fill('CALLE TEST 123');
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
 
@@ -193,6 +204,7 @@ test('eliminar alumno confirma una sola eliminación real', async ({ page }) => 
 });
 
 test('agregar alumno completo envía todos los campos obligatorios', async ({ page }) => {
+  const domicilio = `calle Nº 15 N° 450 / s/n #4, d'angelo – dto. \"A\" & <fondo> 🏠`;
   const api = await mockAlumnos(page);
   await page.goto('/alumnos/agregar');
   await page.locator('[name="apellido"]').fill('PRUEBA');
@@ -201,7 +213,7 @@ test('agregar alumno completo envía todos los campos obligatorios', async ({ pa
   await page.locator('[name="num_documento"]').fill('49999998');
   await page.locator('[name="id_sexo"]').selectOption('2');
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
-  await page.locator('[name="domicilio"]').fill('CALLE TEST 123');
+  await page.locator('[name="domicilio"]').fill(domicilio);
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
   await page.locator('[name="id_año"]').selectOption('1');
   await page.locator('[name="id_division"]').selectOption('1');
@@ -212,5 +224,6 @@ test('agregar alumno completo envía todos los campos obligatorios', async ({ pa
   const payload = api.last('agregar_alumno').data;
   expect(payload.apellido).toBe('PRUEBA');
   expect(payload.nombre).toBe('ALUMNO');
+  expect(payload.domicilio).toBe(domicilio.toUpperCase());
   expect(String(payload.id_cat_monto)).toBe('1');
 });

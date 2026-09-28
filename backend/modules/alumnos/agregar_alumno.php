@@ -71,9 +71,8 @@ try {
     } elseif (strlen($num_documento) > 20) {
         $errors['num_documento'] = 'Documento máximo 20 caracteres.';
     }
-    if ($domicilio && !preg_match('/^[A-ZÑÁÉÍÓÚ0-9\s.,-]+$/u', $domicilio)) {
-        $errors['domicilio'] = 'Domicilio con caracteres inválidos.';
-    }
+    // Domicilio libre: admite cualquier carácter Unicode.
+    // $toUpper mantiene la normalización y el límite de 150 caracteres.
     if ($localidad && !preg_match('/^[A-ZÑÁÉÍÓÚ0-9\s.,-]+$/u', $localidad)) {
         $errors['localidad'] = 'Localidad con caracteres inválidos.';
     }
@@ -106,7 +105,6 @@ try {
 
     // Normalizar vacíos a null
     $nombre    = ($nombre && trim($nombre) !== '') ? $nombre : null;
-    $domicilio = $domicilio ?: null;
     $localidad = $localidad ?: null;
     $telefono  = $telefono  ?: null;
 

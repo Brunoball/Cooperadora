@@ -159,8 +159,8 @@ const AgregarAlumno = () => {
         break;
       case 'domicilio':
         if (!value || !value.trim()) return 'obligatorio';
-        if (value && !textoValido.test(value)) return 'caracteres inválidos';
-        if (value && value.length > 150) return 'máximo 150 caracteres';
+        // Domicilio admite cualquier carácter Unicode; solo se limita la longitud.
+        if (Array.from(value).length > 150) return 'máximo 150 caracteres';
         break;
       case 'localidad':
         if (value && !textoValido.test(value)) return 'caracteres inválidos';
@@ -210,7 +210,7 @@ const AgregarAlumno = () => {
   const validarPaso2 = () => {
     const errDom = validarCampo('domicilio', formData.domicilio);
     if (errDom) {
-      showToast('Completá: Domicilio', 'error');
+      showToast(errDom === 'obligatorio' ? 'Completá: Domicilio' : `Domicilio: ${errDom}.`, 'error');
       return false;
     }
     return true;

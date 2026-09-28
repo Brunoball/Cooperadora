@@ -5,6 +5,14 @@ import BASE_URL from '../config/config';
 
 const NORMALIZAR = (s = '') => String(s || '').trim();
 
+// Mostrar el domicilio como texto, incluso si contiene símbolos HTML.
+const escaparDomicilio = (valor) => String(valor)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 const fechaHoy = () => new Date().toLocaleDateString('es-AR');
 
 const nombreMes = (idMes) => {
@@ -85,7 +93,7 @@ function renderCupon({
 
       ${lineSinEtiqueta(dni ? dni : '')}
       ${lineSinEtiqueta(nombreCompleto)}
-      ${lineSinEtiqueta(NORMALIZAR(domicilio).toUpperCase())}
+      ${lineSinEtiqueta(escaparDomicilio(NORMALIZAR(domicilio).toUpperCase()))}
       ${lineSinEtiqueta(NORMALIZAR(barrio).toUpperCase() || '')}
       ${lineConEtiqueta('Curso :', NORMALIZAR(curso).toUpperCase())}
 
