@@ -416,7 +416,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
               ) : (
                 <div className="wp-campaign-list">
                   {campanias.map((campaign) => {
-                    const editable = ["programada", "error", "cancelada"].includes(campaign.estado);
+                    const editable = ["programada", "error", "cancelada"].includes(campaign.estado) && Number(campaign.total_enviados || 0) === 0;
                     return (
                       <article className="wp-campaign-card" key={campaign.id_campania}>
                         <div className="wp-campaign-card-main">
@@ -427,7 +427,15 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                           <strong>{filterLabel(campaign)}</strong>
                           <p>{campaign.mensaje}</p>
                           <div className="wp-campaign-card-meta">
-                            <span><FontAwesomeIcon icon={faUsers} /> {Number(campaign.destinatarios_estimados || 0)} teléfonos estimados</span>
+                            <span><FontAwesomeIcon icon={faUsers} /> {Number(campaign.destinatarios_estimados || 0)} teléfonos</span>
+                            {campaign.estado !== "programada" ? (
+                              <>
+                                <span>{Number(campaign.total_enviados || 0)} enviados</span>
+                                <span>{Number(campaign.total_pendientes || 0)} pendientes</span>
+                                {Number(campaign.total_errores || 0) > 0 ? <span>{Number(campaign.total_errores || 0)} con error</span> : null}
+                                {Number(campaign.total_omitidos || 0) > 0 ? <span>{Number(campaign.total_omitidos || 0)} omitidos</span> : null}
+                              </>
+                            ) : null}
                           </div>
                         </div>
                         {editable ? (
@@ -542,8 +550,8 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                     ) : destinatarios ? (
                       <>
                         <strong><FontAwesomeIcon icon={faUsers} /> {Number(destinatarios.telefonos_unicos || 0)} teléfonos únicos</strong>
-                        <span>{Number(destinatarios.total_alumnos || 0)} alumnos · {Number(destinatarios.sin_telefono || 0)} sin teléfono</span>
-                        <button type="button" onClick={() => setActiveTab("destinatarios")}>Ver y editar destinatarios</button>
+                        <span>{Number(destinatarios.total_alumnos || 0)} alumnos · {Number(destinatarios.sin_telefono || 0)} sin teléfono válido</span>
+                        <button type="button" onClick={() => setActiveTab("destinatarios")}>Ver destinatarios</button>
                       </>
                     ) : (
                       <span>No se pudo calcular la audiencia.</span>
@@ -594,7 +602,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                         <span><FontAwesomeIcon icon={faSpinner} spin /> Actualizando lista…</span>
                       ) : destinatarios ? (
                         <span>
-                          <b>{Number(destinatarios.total_alumnos || 0)}</b> alumnos · <b>{Number(destinatarios.telefonos_unicos || 0)}</b> teléfonos únicos · <b>{Number(destinatarios.sin_telefono || 0)}</b> sin teléfono
+                          <b>{Number(destinatarios.total_alumnos || 0)}</b> alumnos · <b>{Number(destinatarios.telefonos_unicos || 0)}</b> teléfonos únicos · <b>{Number(destinatarios.sin_telefono || 0)}</b> sin teléfono válido
                         </span>
                       ) : null}
                     </div>
@@ -623,7 +631,15 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                           {(destinatarios.alumnos || []).map((alumno) => (
                             <tr key={alumno.id_alumno} className={!alumno.tiene_telefono ? "is-missing-phone" : ""}>
                               <td>{alumno.nombre_completo || `${alumno.apellido || ""} ${alumno.nombre || ""}`.trim() || "—"}</td>
-                              <td>{alumno.telefono || <span className="wp-campaign-missing-phone">Sin teléfono</span>}</td>
+                              <td>
+                                {alumno.tiene_telefono ? (
+                                  alumno.telefono || "—"
+                                ) : alumno.telefono ? (
+                                  <span className="wp-campaign-missing-phone">{alumno.telefono} · inválido</span>
+                                ) : (
+                                  <span className="wp-campaign-missing-phone">Sin teléfono</span>
+                                )}
+                              </td>
                               <td>{alumno.anio || "—"}</td>
                               <td>{alumno.division || "—"}</td>
                               <td>{alumno.categoria || "—"}</td>
