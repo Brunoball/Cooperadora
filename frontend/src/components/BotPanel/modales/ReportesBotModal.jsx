@@ -51,6 +51,23 @@ const formatMoneyArs = (value) => {
   }).format(Number(value));
 };
 
+const formatMoneyUsd = (value, digits = 4) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: digits,
+  }).format(Number(value));
+};
+
+const COST_FILTERS = [
+  ["todos", "Todos"],
+  ["inicio_mes", "Principio de mes"],
+  ["deudores_mes", "Mitad de mes"],
+  ["campania", "Campañas"],
+];
+
 const formatDate = (value) => {
   if (!value) return "—";
   const raw = String(value).slice(0, 10);
@@ -110,6 +127,7 @@ const ReportesBotModal = ({ open, onClose }) => {
     normalizePeriod(now.getFullYear(), now.getMonth() + 1)
   );
   const [tab, setTab] = useState("resumen");
+  const [costFilter, setCostFilter] = useState("todos");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -142,6 +160,7 @@ const ReportesBotModal = ({ open, onClose }) => {
   useEffect(() => {
     if (!open) return;
     setTab("resumen");
+    setCostFilter("todos");
   }, [open]);
 
   useEffect(() => {
@@ -202,6 +221,12 @@ const ReportesBotModal = ({ open, onClose }) => {
   const pagos = data?.pagos || {};
   const ventas = data?.ventas || {};
   const comprobantes = ventas?.comprobantes || {};
+  const costos = data?.costos_whatsapp || {};
+  const costosTotales = costos?.totales || {};
+  const costosDetalle = Array.isArray(costos?.detalle) ? costos.detalle : [];
+  const costosFiltrados = costFilter === "todos"
+    ? costosDetalle
+    : costosDetalle.filter((item) => item?.tipo === costFilter);
   const warnings = Array.isArray(data?.advertencias) ? data.advertencias : [];
 
   return (
@@ -277,6 +302,7 @@ const ReportesBotModal = ({ open, onClose }) => {
             ["actividad", "Actividad"],
             ["pagos", "Pagos"],
             ["ventas", "Ventas"],
+            ["costos", "Mensajes y costos"],
           ].map(([key, label]) => (
             <button
               type="button"
@@ -382,6 +408,11 @@ const ReportesBotModal = ({ open, onClose }) => {
                   <span>Alertas del mes</span>
                   <b>{formatNumber(resumen.alertas_mes)}</b>
                   <small>Errores y advertencias generados durante el período</small>
+                </div>
+                <div>
+                  <span>Costo de mensajes cobrables</span>
+                  <b>{formatMoneyArs(resumen.costo_whatsapp_ars_total)}</b>
+                  <small>{formatMoneyUsd(resumen.costo_whatsapp_usd)} · impuestos incluidos</small>
                 </div>
               </div>
             </div>
@@ -494,6 +525,151 @@ const ReportesBotModal = ({ open, onClose }) => {
                   <div>
                     <b>Sin pagos registrados desde el bot en este período</b>
                     <span>No hay pagos aprobados por Mercado Pago desde el bot para el mes seleccionado.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {!error && data && tab === "costos" ? (
+            <div className="wp-report-section is-costs-tab">
+              <div className="wp-report-section-title">
+                <div>
+                  <h3>Mensajes programados y costos de WhatsApp</h3>
+                  <p>Recordatorios y campañas enviados en producción, con tarifa Meta, dólar del día e impuestos.</p>
+                </div>
+              </div>
+
+              <div className="wp-report-grid is-costs">
+                <MetricCard
+                  icon={faCircleCheck}
+                  label="Entregados / cobrables"
+                  value={formatNumber(costosTotales.facturables)}
+                  detail={`${formatNumber(costosTotales.aceptados)} aceptados · ${formatNumber(costosTotales.sin_cargo)} sin cargo`}
+                  tone="good"
+                />
+                <MetricCard
+                  icon={faComments}
+                  label="Pendientes de entrega"
+                  value={formatNumber(costosTotales.pendientes)}
+                  detail={`${formatNumber(costosTotales.fallidos)} fallidos`}
+                />
+                <MetricCard
+                  icon={faFileInvoiceDollar}
+                  label="Costo Meta"
+                  value={formatMoneyUsd(costosTotales.costo_usd)}
+                  detail="Sólo mensajes confirmados como entregados"
+                />
+                <MetricCard
+                  icon={faMoneyBillTransfer}
+                  label="Pesos antes de impuestos"
+                  value={formatMoneyArs(costosTotales.costo_ars_base)}
+                  detail="Conversión con dólar oficial venta del día"
+                />
+                <MetricCard
+                  icon={faReceipt}
+                  label="Impuestos / percepción"
+                  value={formatMoneyArs(costosTotales.impuestos_ars)}
+                  detail={`${Number(costos.impuesto_pct_default || 0).toLocaleString("es-AR")} % configurado`}
+                />
+                <MetricCard
+                  icon={faCreditCard}
+                  label="Costo final estimado"
+                  value={formatMoneyArs(costosTotales.costo_ars_total)}
+                  detail="Meta + conversión + impuestos"
+                  tone="good"
+                />
+              </div>
+
+              <div className="wp-report-cost-rates">
+                <div>
+                  <span>Recordatorios · Utility</span>
+                  <b>{formatMoneyUsd(costos?.tarifas_actuales?.utility_usd, 5)} / mensaje</b>
+                </div>
+                <div>
+                  <span>Campañas · Marketing</span>
+                  <b>{formatMoneyUsd(costos?.tarifas_actuales?.marketing_usd, 5)} / mensaje</b>
+                </div>
+                <div>
+                  <span>Criterio de costo</span>
+                  <b>Entregados por Meta</b>
+                </div>
+              </div>
+
+              <div className="wp-report-cost-filters" role="tablist" aria-label="Tipo de mensaje">
+                {COST_FILTERS.map(([key, label]) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={costFilter === key ? "is-active" : ""}
+                    onClick={() => setCostFilter(key)}
+                    role="tab"
+                    aria-selected={costFilter === key}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {costosFiltrados.length ? (
+                <div className="wp-report-cost-history">
+                  <div className="wp-report-cost-history-head">
+                    <div>
+                      <h4>Detalle por fecha de envío</h4>
+                      <span>Se conserva la tarifa, la cotización usada y el porcentaje de impuestos de cada envío.</span>
+                    </div>
+                    <b>{formatNumber(costosFiltrados.length)}</b>
+                  </div>
+
+                  <div className="wp-report-cost-list">
+                    {costosFiltrados.map((item, index) => (
+                      <article
+                        className="wp-report-cost-item"
+                        key={`${item.fecha || "fecha"}-${item.tipo || "tipo"}-${item.template_name || index}-${index}`}
+                      >
+                        <div className="wp-report-cost-item-head">
+                          <div>
+                            <strong>{item.tipo_label || "Mensaje"}</strong>
+                            <span>{formatDate(item.fecha)} · {item.categoria || "—"}</span>
+                          </div>
+                          <div className="wp-report-cost-item-total">
+                            <span>Total con impuestos</span>
+                            <b>{formatMoneyArs(item.costo_ars_total)}</b>
+                          </div>
+                        </div>
+
+                        <div className="wp-report-cost-item-grid">
+                          <div><span>Entregados</span><b>{formatNumber(item.facturables)}</b></div>
+                          <div><span>Aceptados</span><b>{formatNumber(item.aceptados)}</b></div>
+                          <div><span>Pendientes</span><b>{formatNumber(item.pendientes)}</b></div>
+                          <div><span>Fallidos</span><b>{formatNumber(item.fallidos)}</b></div>
+                          <div><span>Entregados sin cargo</span><b>{formatNumber(item.sin_cargo)}</b></div>
+                          <div><span>Tarifa unitaria</span><b>{formatMoneyUsd(item.precio_unitario_usd, 5)}</b></div>
+                          <div><span>Costo USD</span><b>{formatMoneyUsd(item.costo_usd, 5)}</b></div>
+                          <div><span>Dólar usado</span><b>{item.cotizacion_usd_ars ? formatMoneyArs(item.cotizacion_usd_ars) : "Pendiente"}</b></div>
+                          <div><span>Base en pesos</span><b>{formatMoneyArs(item.costo_ars_base)}</b></div>
+                          <div><span>Impuestos ({Number(item.impuesto_pct || 0).toLocaleString("es-AR")} %)</span><b>{formatMoneyArs(item.impuestos_ars)}</b></div>
+                        </div>
+
+                        <div className="wp-report-cost-item-foot">
+                          <span className="wp-report-cost-template">{item.template_name || "Plantilla"}</span>
+                          <span>
+                            Cotización: {item.fecha_cotizacion ? formatDate(item.fecha_cotizacion) : "pendiente"}
+                            {item.fuente_cotizacion && item.fuente_cotizacion !== "sin_cotizacion"
+                              ? ` · ${item.fuente_cotizacion}`
+                              : ""}
+                          </span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="wp-report-info-box">
+                  <FontAwesomeIcon icon={faCircleCheck} />
+                  <div>
+                    <b>Sin mensajes cobrables de este tipo en el período</b>
+                    <span>Cuando Meta confirme entregas de recordatorios o campañas, aparecerán aquí con su costo.</span>
                   </div>
                 </div>
               )}

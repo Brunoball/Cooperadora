@@ -523,7 +523,7 @@
 /* Resumen inferior: bloque estilo info de conversación */
 .wp-report-summary-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid var(--report-border);
   border-radius: 10px;
@@ -730,6 +730,228 @@
 
 .wp-report-cost-secondary b { color: var(--report-text); font-size: 16px; }
 .wp-report-cost-secondary small { max-width: 240px; color: color-mix(in srgb, var(--report-text) 72%, var(--report-muted)); font-size: 9.5px; line-height: 1.35; }
+
+/* Historial de costos de WhatsApp */
+.wp-report-grid.is-costs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wp-report-cost-rates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--report-border);
+  border-radius: 10px;
+  background: var(--report-panel);
+  box-shadow: 0 1px 1px rgba(0,0,0,.08);
+}
+
+.wp-report-cost-rates > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 13px;
+  border-right: 1px solid var(--report-border);
+}
+
+.wp-report-cost-rates > div:last-child { border-right: 0; }
+.wp-report-cost-rates span { color: var(--report-muted); font-size: 9.5px; font-weight: 650; }
+.wp-report-cost-rates b { color: var(--report-text); font-size: 12px; font-weight: 730; }
+
+.wp-report-cost-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 3px 0;
+}
+
+.wp-report-cost-filters button {
+  appearance: none;
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 1px solid var(--report-border);
+  border-radius: 999px;
+  color: var(--report-muted);
+  background: var(--report-panel);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+.wp-report-cost-filters button:hover {
+  color: var(--report-text);
+  border-color: color-mix(in srgb, var(--report-green) 42%, var(--report-border));
+}
+
+.wp-report-cost-filters button.is-active {
+  color: #fff;
+  border-color: var(--report-green);
+  background: var(--report-green);
+}
+
+.wp-report-cost-history {
+  overflow: hidden;
+  border: 1px solid var(--report-border);
+  border-radius: 10px;
+  background: var(--report-panel);
+  box-shadow: 0 1px 1px rgba(0,0,0,.08);
+}
+
+.wp-report-cost-history-head {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--report-border);
+  background: var(--wp-card, rgba(255,255,255,.04));
+}
+
+.wp-report-cost-history-head > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wp-report-cost-history-head h4 {
+  margin: 0;
+  color: var(--report-text);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.wp-report-cost-history-head span {
+  color: var(--report-muted);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.wp-report-cost-history-head > b {
+  flex: 0 0 auto;
+  min-width: 31px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--report-green-bright);
+  background: var(--report-green-soft);
+  font-size: 11px;
+  text-align: center;
+}
+
+.wp-report-cost-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.wp-report-cost-item {
+  padding: 13px;
+  border-bottom: 1px solid var(--report-border-soft);
+}
+
+.wp-report-cost-item:last-child { border-bottom: 0; }
+
+.wp-report-cost-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 11px;
+}
+
+.wp-report-cost-item-head > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wp-report-cost-item-head strong {
+  color: var(--report-text);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.wp-report-cost-item-head span {
+  color: var(--report-muted);
+  font-size: 9.5px;
+}
+
+.wp-report-cost-item-total {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.wp-report-cost-item-total b {
+  color: var(--report-green-bright);
+  font-size: 15px;
+  font-weight: 780;
+}
+
+.wp-report-cost-item-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.wp-report-cost-item-grid > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 9px;
+  border: 1px solid var(--report-border-soft);
+  border-radius: 8px;
+  background: var(--report-card);
+}
+
+.wp-report-cost-item-grid span {
+  overflow: hidden;
+  color: var(--report-muted);
+  font-size: 8.8px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wp-report-cost-item-grid b {
+  overflow: hidden;
+  color: var(--report-text);
+  font-size: 10.5px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wp-report-cost-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--report-muted);
+  font-size: 9px;
+}
+
+.wp-report-cost-template {
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px 7px;
+  border: 1px solid var(--report-border-soft);
+  border-radius: 6px;
+  color: var(--report-text);
+  background: var(--report-card);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Error / loading */
 .wp-report-error {
@@ -962,9 +1184,14 @@
 
 @media (max-width: 900px) {
   .wp-report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .wp-report-summary-strip { grid-template-columns: 1fr; }
-  .wp-report-summary-strip > div { border-right: 0; border-bottom: 1px solid var(--report-border); }
-  .wp-report-summary-strip > div:last-child { border-bottom: 0; }
+  .wp-report-grid.is-costs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wp-report-cost-rates { grid-template-columns: 1fr; }
+  .wp-report-cost-rates > div { border-right: 0; border-bottom: 1px solid var(--report-border); }
+  .wp-report-cost-rates > div:last-child { border-bottom: 0; }
+  .wp-report-cost-item-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wp-report-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wp-report-summary-strip > div:nth-child(2n) { border-right: 0; }
+  .wp-report-summary-strip > div:nth-child(-n+2) { border-bottom: 1px solid var(--report-border); }
   .wp-report-tabs button { min-width: 112px; }
 }
 
@@ -982,6 +1209,14 @@
   .wp-report-tabs button { min-width: 102px; padding: 0 8px; }
   .wp-report-body { padding: 14px 12px 18px; }
   .wp-report-grid { grid-template-columns: 1fr; }
+  .wp-report-grid.is-costs { grid-template-columns: 1fr; }
+  .wp-report-cost-item-head { flex-direction: column; }
+  .wp-report-cost-item-total { align-items: flex-start; text-align: left; }
+  .wp-report-cost-item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wp-report-cost-item-foot { align-items: flex-start; flex-direction: column; }
+  .wp-report-summary-strip { grid-template-columns: 1fr; }
+  .wp-report-summary-strip > div { border-right: 0; border-bottom: 1px solid var(--report-border); }
+  .wp-report-summary-strip > div:last-child { border-bottom: 0; }
   .wp-report-reminder-grid { grid-template-columns: 1fr; }
   .wp-report-cost-formula { grid-template-columns: 1fr; }
   .wp-report-cost-secondary { min-width: 0; padding: 10px 0 0; border-top: 1px solid color-mix(in srgb, var(--report-text) 16%, transparent); border-left: 0; }
