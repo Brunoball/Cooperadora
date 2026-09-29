@@ -129,7 +129,7 @@
 
 .wp-side-top{
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px 40px;
+  grid-template-columns: 40px minmax(0, 1fr) repeat(3, 40px);
   align-items: center;
   gap: 8px;
   padding: 12px 12px 10px;
@@ -154,7 +154,7 @@
 .wp-brand{
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   min-width: 0;
 }
 .wp-brand-ico{
@@ -2197,4 +2197,46 @@
 :root[data-botpanel-theme="light"] .wp-composer.has-consulta-pending .wp-input{
   border-color:rgba(217,119,6,.28);
   box-shadow:0 0 0 3px rgba(251,191,36,.16);
+}
+
+
+/* ======================================================
+   HEADER BOT · BOTONERA COMPLETA EN UNA SOLA FILA
+   Sin ícono de robot junto al título para liberar espacio.
+====================================================== */
+.wp-side-top{
+  grid-template-columns: 40px minmax(0, 1fr) repeat(3, 40px);
+}
+
+.wp-side-top > .wp-brand{
+  overflow: hidden;
+}
+
+.wp-side-top .wp-brand-txt{
+  width: 100%;
+  min-width: 0;
+}
+
+.wp-side-top .wp-brand-title{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 430px){
+  .wp-side-top{
+    grid-template-columns: 38px minmax(0, 1fr) repeat(3, 38px);
+    gap: 6px;
+    padding-inline: 9px;
+  }
+
+  .wp-side-top > .wp-back,
+  .wp-side-top > .wp-alertbtn{
+    width: 38px;
+    height: 38px;
+  }
+
+  .wp-side-top .wp-brand-title{
+    font-size: 14px;
+  }
 }

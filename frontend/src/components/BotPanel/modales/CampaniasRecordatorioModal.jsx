@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBullhorn,
@@ -165,8 +165,14 @@ const MultiChoice = ({ label, allLabel, options, selected, onChange }) => {
           const checked = selectedSet.has(id);
           return (
             <label key={id} className={checked ? "is-checked" : ""}>
-              <input type="checkbox" checked={checked} onChange={() => toggle(id)} />
-              <span>{option.nombre}</span>
+              <input
+                className="wp-campaign-checkbox"
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggle(id)}
+              />
+              <span className="wp-campaign-checkbox-ui" aria-hidden="true" />
+              <span className="wp-campaign-choice-name">{option.nombre}</span>
             </label>
           );
         })}
@@ -191,6 +197,20 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   const [formError, setFormError] = useState("");
   const [recipientsError, setRecipientsError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const dateTimeInputRef = useRef(null);
+
+  const openDateTimePicker = useCallback((event) => {
+    const input = event?.currentTarget || dateTimeInputRef.current;
+    if (!input || input.disabled) return;
+
+    // En navegadores Chromium (Chrome/Edge/Opera) abre el selector nativo
+    // al hacer click en cualquier parte del campo, no solo en el icono.
+    try {
+      if (typeof input.showPicker === "function") input.showPicker();
+    } catch (_) {
+      // Fallback: el input sigue funcionando con el comportamiento nativo.
+    }
+  }, []);
 
   useModalEscapeStack(open, () => {
     if (view === "form" && !saving) {
@@ -521,10 +541,19 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                   <label>
                     <span>Fecha y hora de envío</span>
                     <input
+                      ref={dateTimeInputRef}
+                      className="wp-campaign-datetime"
                       type="datetime-local"
                       value={form.programada_para}
                       min={minDateTime()}
                       step="300"
+                      onClick={openDateTimePicker}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openDateTimePicker(e);
+                        }
+                      }}
                       onChange={(e) => {
                         const nextValue = e.target.value;
                         if (!nextValue) {

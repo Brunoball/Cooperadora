@@ -2268,9 +2268,6 @@ const BotPanel = () => {
           </button>
 
           <div className="wp-brand">
-            <span className="wp-brand-ico" aria-hidden="true">
-              <FontAwesomeIcon icon={faRobot} />
-            </span>
             <div className="wp-brand-txt">
               <div className="wp-brand-title">Panel Bot WhatsApp</div>
             </div>
