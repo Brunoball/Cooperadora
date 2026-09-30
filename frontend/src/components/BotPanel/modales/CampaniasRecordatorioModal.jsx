@@ -483,7 +483,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
 
   return (
     <div className="wp-campaign-backdrop" role="dialog" aria-modal="true" aria-label="Campañas de mensajes">
-      <div className="wp-campaign-modal">
+      <div className={`wp-campaign-modal${view === "list" && !loading && campanias.length === 0 ? " is-empty-list" : ""}`}>
         <header className="wp-campaign-head">
           <div className="wp-campaign-title">
             <span className="wp-campaign-head-icon"><FontAwesomeIcon icon={faBullhorn} /></span>

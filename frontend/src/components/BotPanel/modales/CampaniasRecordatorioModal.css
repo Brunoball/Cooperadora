@@ -67,6 +67,23 @@
   animation: wpCampaignModalIn .14s cubic-bezier(.2,.8,.2,1);
 }
 
+/* Listado vacío: no ocupa toda la altura de la pantalla innecesariamente. */
+.wp-campaign-modal.is-empty-list {
+  height: auto;
+  min-height: 0;
+  max-height: calc(100dvh - 36px);
+}
+
+.wp-campaign-modal.is-empty-list .wp-campaign-content {
+  flex: 0 1 auto;
+}
+
+.wp-campaign-modal.is-empty-list .wp-campaign-empty {
+  min-height: 220px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
 /* =========================
    CABECERA
    ========================= */
@@ -1019,12 +1036,24 @@
   flex: 1;
   height: 38px;
   padding: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
   color: var(--campaign-text);
   font: inherit;
   font-size: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.wp-campaign-recipient-search input:focus,
+.wp-campaign-recipient-search input:focus-visible,
+.wp-campaign-recipient-search input:active {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .wp-campaign-recipient-search input::placeholder {
@@ -1288,6 +1317,12 @@
     height: calc(100dvh - 16px);
     min-height: 0;
     border-radius: 13px;
+  }
+
+  .wp-campaign-modal.is-empty-list {
+    height: auto;
+    min-height: 0;
+    max-height: calc(100dvh - 16px);
   }
 
   .wp-campaign-message-grid,
