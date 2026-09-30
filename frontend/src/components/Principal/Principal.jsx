@@ -26,6 +26,7 @@ import {
 import logoRH from "../../imagenes/Escudo.png";
 import "./principal.css";
 import "../Global/roots.css";
+import BASE_URL from "../../config/config";
 
 const PANEL_API =
   process.env.REACT_APP_BOT_PANEL_URL ||
@@ -472,6 +473,13 @@ const Principal = () => {
 
   const confirmarCierreSesion = useCallback(() => {
     setClosingUI(true);
+
+    // Cierre real del lado servidor; no dependemos sólo de localStorage.
+    fetch(`${BASE_URL}/api.php?action=logout`, {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+    }).catch(() => {});
 
     setTimeout(() => {
       try {

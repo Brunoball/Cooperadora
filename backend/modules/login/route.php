@@ -13,6 +13,10 @@ function route_login(string $action): bool
         case 'registro':
             require __DIR__ . '/registro.php';
             return true;
+
+        case 'logout':
+            require __DIR__ . '/logout.php';
+            return true;
     }
 
     return false;

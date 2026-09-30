@@ -1,11 +1,19 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
+    exit;
+}
+
+require_once(__DIR__ . '/../../config/session_auth.php');
+
+$authRegistro = app_require_session();
+if (strtolower((string)($authRegistro['rol'] ?? '')) !== 'admin') {
+    http_response_code(403);
+    echo json_encode(['exito' => false, 'mensaje' => 'No tenés permisos para registrar usuarios.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -67,13 +75,16 @@ try {
 
     if ($ok) {
         $id = $pdo->lastInsertId();
+        $usuarioSesion = [
+            'idUsuario'       => (int)$id,
+            'Nombre_Completo' => $nombre,
+            'rol'             => $rol
+        ];
+        app_session_login($usuarioSesion);
+
         echo json_encode([
             'exito' => true,
-            'usuario' => [
-                'idUsuario'       => (int)$id,
-                'Nombre_Completo' => $nombre,
-                'rol'             => $rol
-            ]
+            'usuario' => $usuarioSesion
         ]);
     } else {
         echo json_encode(['exito' => false, 'mensaje' => 'Error al registrar usuario.']);

@@ -35,6 +35,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 date_default_timezone_set('America/Argentina/Cordoba');
 mb_internal_encoding('UTF-8');
 
+require_once __DIR__ . '/../config/session_auth.php';
+app_session_touch_if_present();
+
 /* =========================
    Helpers
    ========================= */

@@ -1,7 +1,6 @@
 <?php
 // backend/routes/inicio.php
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -12,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../../config/db.php'; // debe definir $pdo (PDO conectado)
+require_once __DIR__ . '/../../config/session_auth.php';
 
 define('DEBUG_LOGIN', false); // true para ver detalle en 'detalle'
 
@@ -100,14 +100,18 @@ try {
         exit;
     }
 
-    // Éxito
+    // Éxito: además del estado del frontend, se crea una sesión HTTP real
+    // para proteger endpoints sensibles del panel (campañas/reportes).
+    $usuarioSesion = [
+        'idUsuario'       => $idUsuario,
+        'Nombre_Completo' => $display,
+        'rol'             => $rol,
+    ];
+    app_session_login($usuarioSesion);
+
     echo json_encode([
         'exito'   => true,
-        'usuario' => [
-            'idUsuario'       => $idUsuario,
-            'Nombre_Completo' => $display,
-            'rol'             => $rol,
-        ],
+        'usuario' => $usuarioSesion,
         // 'token' => '...' // si luego agregás JWT
     ], JSON_UNESCAPED_UNICODE);
 

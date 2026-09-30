@@ -144,7 +144,7 @@ const ReportesBotModal = ({ open, onClose }) => {
     setError("");
     try {
       const url = `${PANEL_API}/panel_reportes.php?anio=${encodeURIComponent(anio)}&mes=${encodeURIComponent(mes)}&_=${Date.now()}`;
-      const res = await fetch(url, { method: "GET", cache: "no-store" });
+      const res = await fetch(url, { method: "GET", cache: "no-store", credentials: "include" });
       const response = await res.json().catch(() => null);
       if (!res.ok || !response || response.success === false) {
         throw new Error(response?.error || "No se pudo cargar el reporte");
@@ -630,7 +630,13 @@ const ReportesBotModal = ({ open, onClose }) => {
                         <div className="wp-report-cost-item-head">
                           <div>
                             <strong>{item.tipo_label || "Mensaje"}</strong>
-                            <span>{formatDate(item.fecha)} · {item.categoria || "—"}</span>
+                            <span>
+                              {formatDateTime(item.primer_envio_en || item.fecha)}
+                              {item.ultimo_envio_en && item.ultimo_envio_en !== item.primer_envio_en
+                                ? ` → ${formatDateTime(item.ultimo_envio_en)}`
+                                : ""}
+                              {` · ${item.categoria || "—"}`}
+                            </span>
                           </div>
                           <div className="wp-report-cost-item-total">
                             <span>Total con impuestos</span>

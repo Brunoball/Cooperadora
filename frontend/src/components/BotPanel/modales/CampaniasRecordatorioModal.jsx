@@ -7,6 +7,7 @@ import {
   faFloppyDisk,
   faPen,
   faPlus,
+  faMagnifyingGlass,
   faSpinner,
   faTrash,
   faUsers,
@@ -123,6 +124,14 @@ const joinNames = (names, allLabel, prefix = "") => {
   return names.map((name) => `${prefix}${name}`).join(", ");
 };
 
+const normalizeSearchText = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
 const filterLabel = (campaign) => {
   const anios = Array.isArray(campaign?.anios_nombres) ? campaign.anios_nombres : [];
   const divisiones = Array.isArray(campaign?.divisiones_nombres) ? campaign.divisiones_nombres : [];
@@ -189,6 +198,8 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   const [template, setTemplate] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [destinatarios, setDestinatarios] = useState(null);
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [recipientSearch, setRecipientSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -198,6 +209,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   const [recipientsError, setRecipientsError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const dateTimeInputRef = useRef(null);
+  const selectionSeedRef = useRef(null);
 
   const openDateTimePicker = useCallback((event) => {
     const input = event?.currentTarget || dateTimeInputRef.current;
@@ -220,7 +232,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   });
 
   const fetchJson = useCallback(async (url, options = {}) => {
-    const res = await fetch(url, { cache: "no-store", ...options });
+    const res = await fetch(url, { cache: "no-store", credentials: "include", ...options });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.success) {
       throw new Error(data?.error || `Error HTTP ${res.status}`);
@@ -250,6 +262,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
     if (!open) return;
     setView("list");
     setActiveTab("mensaje");
+    setRecipientSearch("");
     setConfirmDelete(null);
     loadAll();
   }, [open, loadAll]);
@@ -263,9 +276,28 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
       if (targetForm.divisiones?.length) qs.set("id_divisiones", targetForm.divisiones.join(","));
       if (targetForm.categorias?.length) qs.set("id_categorias", targetForm.categorias.join(","));
       const data = await fetchJson(`${ENDPOINT}?${qs.toString()}`);
-      setDestinatarios(data.destinatarios || null);
+      const nextRecipients = data.destinatarios || null;
+      setDestinatarios(nextRecipients);
+
+      const validIds = normalizeIds(
+        (nextRecipients?.alumnos || [])
+          .filter((alumno) => Boolean(alumno.tiene_telefono))
+          .map((alumno) => alumno.id_alumno)
+      );
+      const validSet = new Set(validIds);
+      const seed = selectionSeedRef.current;
+      if (seed?.mode === "saved") {
+        setSelectedStudentIds(normalizeIds(seed.ids).filter((id) => validSet.has(id)));
+      } else {
+        // Al crear una campaña o cambiar filtros, todos los alumnos con teléfono
+        // válido quedan seleccionados por defecto.
+        setSelectedStudentIds(validIds);
+      }
+      selectionSeedRef.current = null;
     } catch (e) {
       setDestinatarios(null);
+      setSelectedStudentIds([]);
+      selectionSeedRef.current = null;
       setRecipientsError(e?.message || "No se pudieron calcular los destinatarios.");
     } finally {
       setLoadingRecipients(false);
@@ -286,6 +318,9 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   }, [open, view, filtersKey, loadRecipients]);
 
   const openCreate = () => {
+    selectionSeedRef.current = { mode: "all" };
+    setSelectedStudentIds([]);
+    setRecipientSearch("");
     setForm({ ...emptyForm(), programada_para: defaultDateTime() });
     setDestinatarios(null);
     setFormError("");
@@ -295,6 +330,11 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   };
 
   const openEdit = (campaign) => {
+    selectionSeedRef.current = Array.isArray(campaign.alumnos_seleccionados_ids)
+      ? { mode: "saved", ids: normalizeIds(campaign.alumnos_seleccionados_ids) }
+      : { mode: "all" };
+    setSelectedStudentIds([]);
+    setRecipientSearch("");
     setForm({
       id_campania: Number(campaign.id_campania),
       anios: normalizeIds(campaign.anios_ids?.length ? campaign.anios_ids : campaign.id_anio),
@@ -328,8 +368,8 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
       setActiveTab("mensaje");
       return;
     }
-    if (!destinatarios || Number(destinatarios.telefonos_unicos || 0) < 1) {
-      setFormError("Los filtros seleccionados no tienen destinatarios con teléfono.");
+    if (!destinatarios || selectedStudentIds.length < 1) {
+      setFormError("Seleccioná al menos un alumno con teléfono válido para recibir la campaña.");
       setActiveTab("destinatarios");
       return;
     }
@@ -345,6 +385,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
           id_anios: form.anios,
           id_divisiones: form.divisiones,
           id_categorias: form.categorias,
+          alumnos_seleccionados: selectedStudentIds,
           mensaje: form.mensaje.trim(),
           programada_para: serverDate(form.programada_para),
         }),
@@ -375,6 +416,52 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
       setDeletingId(null);
     }
   };
+
+  const selectedStudentSet = useMemo(
+    () => new Set(normalizeIds(selectedStudentIds)),
+    [selectedStudentIds]
+  );
+
+  const selectedAudience = useMemo(() => {
+    const alumnos = Array.isArray(destinatarios?.alumnos) ? destinatarios.alumnos : [];
+    const selected = alumnos.filter(
+      (alumno) => alumno.tiene_telefono && selectedStudentSet.has(Number(alumno.id_alumno))
+    );
+    const phones = new Set();
+    selected.forEach((alumno) => {
+      (alumno.telefonos_normalizados || []).forEach((phone) => {
+        const value = String(phone || "").trim();
+        if (value) phones.add(value);
+      });
+    });
+    return { alumnos: selected.length, telefonos: phones.size };
+  }, [destinatarios, selectedStudentSet]);
+
+  const filteredRecipients = useMemo(() => {
+    const alumnos = Array.isArray(destinatarios?.alumnos) ? destinatarios.alumnos : [];
+    const query = normalizeSearchText(recipientSearch);
+    if (!query) return alumnos;
+
+    return alumnos.filter((alumno) => {
+      const nombre = String(alumno?.nombre || "").trim();
+      const apellido = String(alumno?.apellido || "").trim();
+      const nombreCompleto = String(alumno?.nombre_completo || "").trim();
+      const searchable = normalizeSearchText(
+        [nombreCompleto, `${nombre} ${apellido}`, `${apellido} ${nombre}`].filter(Boolean).join(" ")
+      );
+      return searchable.includes(query);
+    });
+  }, [destinatarios, recipientSearch]);
+
+  const toggleStudentSelection = useCallback((alumno) => {
+    if (!alumno?.tiene_telefono) return;
+    const id = Number(alumno.id_alumno);
+    if (!Number.isInteger(id) || id <= 0) return;
+    setSelectedStudentIds((current) => {
+      const ids = normalizeIds(current);
+      return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+    });
+  }, []);
 
   const previewText = useMemo(() => {
     const middle = form.mensaje.trim() || "Acá va el texto libre que escribas para esta campaña.";
@@ -578,8 +665,8 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                       <span><FontAwesomeIcon icon={faSpinner} spin /> Calculando audiencia…</span>
                     ) : destinatarios ? (
                       <>
-                        <strong><FontAwesomeIcon icon={faUsers} /> {Number(destinatarios.telefonos_unicos || 0)} teléfonos únicos</strong>
-                        <span>{Number(destinatarios.total_alumnos || 0)} alumnos · {Number(destinatarios.sin_telefono || 0)} sin teléfono válido</span>
+                        <strong><FontAwesomeIcon icon={faUsers} /> {selectedAudience.telefonos} teléfonos seleccionados</strong>
+                        <span>{selectedAudience.alumnos} alumnos seleccionados · {Number(destinatarios.sin_telefono || 0)} sin teléfono válido</span>
                         <button type="button" onClick={() => setActiveTab("destinatarios")}>Ver destinatarios</button>
                       </>
                     ) : (
@@ -631,7 +718,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                         <span><FontAwesomeIcon icon={faSpinner} spin /> Actualizando lista…</span>
                       ) : destinatarios ? (
                         <span>
-                          <b>{Number(destinatarios.total_alumnos || 0)}</b> alumnos · <b>{Number(destinatarios.telefonos_unicos || 0)}</b> teléfonos únicos · <b>{Number(destinatarios.sin_telefono || 0)}</b> sin teléfono válido
+                          <b>{selectedAudience.alumnos}</b> seleccionados de <b>{Number(destinatarios.total_alumnos || 0)}</b> alumnos · <b>{selectedAudience.telefonos}</b> teléfonos únicos · <b>{Number(destinatarios.sin_telefono || 0)}</b> sin teléfono válido
                         </span>
                       ) : null}
                     </div>
@@ -645,10 +732,41 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                   ) : null}
 
                   {(destinatarios?.alumnos || []).length ? (
-                    <div className="wp-campaign-table-wrap">
-                      <table className="wp-campaign-table">
+                    <>
+                      <div className="wp-campaign-recipient-search">
+                        <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
+                        <input
+                          type="search"
+                          value={recipientSearch}
+                          onChange={(event) => setRecipientSearch(event.target.value)}
+                          placeholder="Buscar alumno por nombre y apellido…"
+                          aria-label="Buscar alumno por nombre y apellido"
+                          autoComplete="off"
+                        />
+                        {recipientSearch ? (
+                          <button
+                            type="button"
+                            onClick={() => setRecipientSearch("")}
+                            aria-label="Limpiar búsqueda"
+                            title="Limpiar búsqueda"
+                          >
+                            <FontAwesomeIcon icon={faXmark} />
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {recipientSearch && filteredRecipients.length === 0 ? (
+                        <div className="wp-campaign-no-recipients wp-campaign-no-search-results">
+                          No se encontraron alumnos con ese nombre o apellido.
+                        </div>
+                      ) : null}
+
+                      {filteredRecipients.length ? (
+                        <div className="wp-campaign-table-wrap">
+                          <table className="wp-campaign-table">
                         <thead>
                           <tr>
+                            <th aria-label="Enviar" />
                             <th>Nombre y apellido</th>
                             <th>Teléfono</th>
                             <th>Curso</th>
@@ -657,26 +775,57 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                           </tr>
                         </thead>
                         <tbody>
-                          {(destinatarios.alumnos || []).map((alumno) => (
-                            <tr key={alumno.id_alumno} className={!alumno.tiene_telefono ? "is-missing-phone" : ""}>
-                              <td>{alumno.nombre_completo || `${alumno.apellido || ""} ${alumno.nombre || ""}`.trim() || "—"}</td>
-                              <td>
-                                {alumno.tiene_telefono ? (
-                                  alumno.telefono || "—"
-                                ) : alumno.telefono ? (
-                                  <span className="wp-campaign-missing-phone">{alumno.telefono} · inválido</span>
-                                ) : (
-                                  <span className="wp-campaign-missing-phone">Sin teléfono</span>
-                                )}
-                              </td>
-                              <td>{alumno.anio || "—"}</td>
-                              <td>{alumno.division || "—"}</td>
-                              <td>{alumno.categoria || "—"}</td>
-                            </tr>
-                          ))}
+                          {filteredRecipients.map((alumno) => {
+                            const checked = alumno.tiene_telefono && selectedStudentSet.has(Number(alumno.id_alumno));
+                            const rowClass = [
+                              !alumno.tiene_telefono ? "is-missing-phone" : "",
+                              alumno.tiene_telefono && !checked ? "is-excluded" : "",
+                            ].filter(Boolean).join(" ");
+                            return (
+                              <tr
+                                key={alumno.id_alumno}
+                                className={rowClass}
+                                onClick={(event) => {
+                                  if (!alumno.tiene_telefono) return;
+                                  if (event.target.closest(".wp-campaign-recipient-check")) return;
+                                  toggleStudentSelection(alumno);
+                                }}
+                                aria-selected={checked}
+                              >
+                                <td>
+                                  <label className={`wp-campaign-recipient-check ${!alumno.tiene_telefono ? "is-disabled" : ""}`}>
+                                    <input
+                                      className="wp-campaign-checkbox"
+                                      type="checkbox"
+                                      checked={checked}
+                                      disabled={!alumno.tiene_telefono}
+                                      onChange={() => toggleStudentSelection(alumno)}
+                                      aria-label={`Enviar campaña a ${alumno.nombre_completo || "este alumno"}`}
+                                    />
+                                    <span className="wp-campaign-checkbox-ui" aria-hidden="true" />
+                                  </label>
+                                </td>
+                                <td>{alumno.nombre_completo || `${alumno.apellido || ""} ${alumno.nombre || ""}`.trim() || "—"}</td>
+                                <td>
+                                  {alumno.tiene_telefono ? (
+                                    alumno.telefono || "—"
+                                  ) : alumno.telefono ? (
+                                    <span className="wp-campaign-missing-phone">{alumno.telefono} · inválido</span>
+                                  ) : (
+                                    <span className="wp-campaign-missing-phone">Sin teléfono</span>
+                                  )}
+                                </td>
+                                <td>{alumno.anio || "—"}</td>
+                                <td>{alumno.division || "—"}</td>
+                                <td>{alumno.categoria || "—"}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
-                      </table>
-                    </div>
+                          </table>
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
                 </section>
               </div>

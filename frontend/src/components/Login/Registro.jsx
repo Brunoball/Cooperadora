@@ -60,6 +60,7 @@ const Registro = () => {
 
       const respuesta = await fetch(`${BASE_URL}/api.php?action=registro`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombre: nombreTrim, contrasena, rol })
       });

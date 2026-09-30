@@ -83,6 +83,7 @@ const Inicio = () => {
     try {
       const res = await fetch(`${BASE_URL}/api.php?action=inicio`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombre, contrasena }),
       });

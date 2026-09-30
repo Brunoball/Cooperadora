@@ -14,6 +14,7 @@ import Registro from "./components/Login/Registro";
 
 import BotPanel from "./components/BotPanel/BotPanel";
 import notificationSound from "./components/BotPanel/notificacion/notificacion.mp3";
+import BASE_URL from "./config/config";
 
 // 🧑‍🎓 Alumnos
 import Alumnos from "./components/Alumnos/Alumno";
@@ -89,6 +90,13 @@ function InactivityLogout() {
     };
 
     const doLogout = () => {
+      // Invalidar también la sesión HTTP usada por endpoints sensibles.
+      fetch(`${BASE_URL}/api.php?action=logout`, {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+      }).catch(() => {});
+
       try {
         sessionStorage.clear();
       } catch {}
