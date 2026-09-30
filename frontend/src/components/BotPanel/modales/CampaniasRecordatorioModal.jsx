@@ -707,11 +707,19 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
           </>
         ) : view === "history" ? (
           <div className="wp-campaign-history-wrap">
-            <div className="wp-campaign-form-title">
+            <div className="wp-campaign-form-title wp-campaign-history-titlebar">
               <div>
                 <strong>Historial de campaña</strong>
                 <small>Detalle congelado de lo que ocurrió durante el envío.</small>
               </div>
+              <button
+                type="button"
+                className="wp-campaign-secondary wp-campaign-history-back"
+                onClick={() => { setHistoryData(null); setHistoryError(""); setView("list"); }}
+                disabled={loadingHistory}
+              >
+                Volver a campañas
+              </button>
             </div>
 
             {loadingHistory ? (
@@ -727,21 +735,21 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                       <strong>{filterLabel(historyData.campania)}</strong>
                     </div>
                     <div className="wp-campaign-history-metrics">
-                      <span><b>{Number(historyData.campania.destinatarios_estimados || 0)}</b> teléfonos</span>
-                      <span><b>{Number(historyData.campania.total_enviados || 0)}</b> enviados</span>
-                      <span><b>{Number(historyData.campania.total_errores || 0)}</b> errores</span>
-                      <span><b>{Number(historyData.campania.total_omitidos || 0)}</b> omitidos</span>
+                      <span className="is-total"><b>{Number(historyData.campania.destinatarios_estimados || 0)}</b> teléfonos</span>
+                      <span className="is-success"><b>{Number(historyData.campania.total_enviados || 0)}</b> enviados</span>
+                      <span className="is-danger"><b>{Number(historyData.campania.total_errores || 0)}</b> errores</span>
+                      <span className="is-muted"><b>{Number(historyData.campania.total_omitidos || 0)}</b> omitidos</span>
                     </div>
                   </div>
                 </section>
 
                 <div className="wp-campaign-history-grid">
-                  <section className="wp-campaign-section">
+                  <section className="wp-campaign-section wp-campaign-history-message-section">
                     <h3>Mensaje enviado</h3>
                     <div className="wp-campaign-history-message">{historyData.campania.mensaje || "—"}</div>
                   </section>
 
-                  <section className="wp-campaign-section">
+                  <section className="wp-campaign-section wp-campaign-history-times-section">
                     <h3>Fechas y horarios</h3>
                     <dl className="wp-campaign-history-times">
                       <div><dt>Programada para</dt><dd>{formatDateTime(historyData.campania.programada_para)}</dd></div>
@@ -763,7 +771,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
 
                   {(historyData.envios || []).length ? (
                     <div className="wp-campaign-table-wrap">
-                      <table className="wp-campaign-table wp-campaign-history-table">
+                      <table className="wp-campaign-table wp-campaign-history-table is-sends">
                         <thead>
                           <tr>
                             <th>Alumno/s</th>
@@ -776,11 +784,11 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                         <tbody>
                           {(historyData.envios || []).map((envio) => (
                             <tr key={envio.id_envio}>
-                              <td>{historyStudentNames(envio)}</td>
-                              <td>{envio.telefono_original || "—"}</td>
-                              <td>{envio.wa_id ? `+${envio.wa_id}` : "—"}</td>
-                              <td><span className={`wp-campaign-history-state is-${envio.estado}`}>{envio.estado}</span></td>
-                              <td>{formatDateTime(envio.enviado_en || envio.procesado_en || envio.actualizado_en)}</td>
+                              <td data-label="Alumno/s">{historyStudentNames(envio)}</td>
+                              <td data-label="Teléfono cargado">{envio.telefono_original || "—"}</td>
+                              <td data-label="WhatsApp">{envio.wa_id ? `+${envio.wa_id}` : "—"}</td>
+                              <td data-label="Estado"><span className={`wp-campaign-history-state is-${envio.estado}`}>{envio.estado}</span></td>
+                              <td data-label="Hora de envío">{formatDateTime(envio.enviado_en || envio.procesado_en || envio.actualizado_en)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -801,7 +809,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                       <strong>{historyData.omitidos.length} omitidos</strong>
                     </div>
                     <div className="wp-campaign-table-wrap">
-                      <table className="wp-campaign-table wp-campaign-history-table">
+                      <table className="wp-campaign-table wp-campaign-history-table is-omitted">
                         <thead>
                           <tr>
                             <th>Alumno</th>
@@ -814,11 +822,11 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                         <tbody>
                           {historyData.omitidos.map((omitido) => (
                             <tr key={omitido.id_omitido}>
-                              <td>{omitido.alumno?.nombre_completo || `Alumno #${omitido.id_alumno || "—"}`}</td>
-                              <td>{omitido.telefono_original || omitido.alumno?.telefono || "—"}</td>
-                              <td>{omittedReasonLabel(omitido.motivo)}</td>
-                              <td>{omitido.detalle || "—"}</td>
-                              <td>{formatDateTime(omitido.creado_en)}</td>
+                              <td data-label="Alumno">{omitido.alumno?.nombre_completo || `Alumno #${omitido.id_alumno || "—"}`}</td>
+                              <td data-label="Teléfono">{omitido.telefono_original || omitido.alumno?.telefono || "—"}</td>
+                              <td data-label="Motivo">{omittedReasonLabel(omitido.motivo)}</td>
+                              <td data-label="Detalle">{omitido.detalle || "—"}</td>
+                              <td data-label="Registrado">{formatDateTime(omitido.creado_en)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -829,7 +837,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
               </div>
             ) : null}
 
-            <div className="wp-campaign-form-actions">
+            <div className="wp-campaign-form-actions wp-campaign-history-actions">
               <button
                 type="button"
                 className="wp-campaign-secondary"

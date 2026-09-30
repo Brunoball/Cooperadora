@@ -1724,3 +1724,422 @@
     text-align: left;
   }
 }
+
+/* =========================================================
+   HISTORIAL · VISTA DEL OJO
+   Ajustes visuales específicos para que la vista de detalle
+   no herede los anchos de la tabla seleccionable de alumnos.
+   ========================================================= */
+.wp-campaign-history-titlebar {
+  min-height: 64px;
+}
+
+.wp-campaign-history-back {
+  min-width: 132px;
+  white-space: nowrap;
+}
+
+.wp-campaign-history-content {
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--campaign-green) 7%, transparent), transparent 34%),
+    var(--campaign-bg);
+}
+
+.wp-campaign-history-summary {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--campaign-green) 28%, var(--campaign-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--campaign-green) 9%, var(--campaign-panel)), var(--campaign-panel) 52%);
+  box-shadow: inset 4px 0 0 var(--campaign-green);
+}
+
+.wp-campaign-history-summary::before {
+  content: none;
+}
+
+.wp-campaign-history-heading > div:first-child > strong {
+  max-width: 690px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.wp-campaign-history-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(88px, 1fr));
+  min-width: min(100%, 430px);
+  gap: 8px;
+}
+
+.wp-campaign-history-metrics span {
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--campaign-bg);
+  line-height: 1.15;
+}
+
+.wp-campaign-history-metrics span::before {
+  content: "";
+  width: 20px;
+  height: 3px;
+  margin-bottom: 3px;
+  border-radius: 999px;
+  background: var(--campaign-muted);
+  opacity: .62;
+}
+
+.wp-campaign-history-metrics span.is-total::before { background: var(--campaign-green); opacity: 1; }
+.wp-campaign-history-metrics span.is-success::before { background: #25d366; opacity: 1; }
+.wp-campaign-history-metrics span.is-danger::before { background: #ff7676; opacity: 1; }
+.wp-campaign-history-metrics span.is-muted::before { background: var(--campaign-muted); opacity: .75; }
+
+.wp-campaign-history-metrics b {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.wp-campaign-history-message-section,
+.wp-campaign-history-times-section,
+.wp-campaign-history-table-section {
+  border-color: var(--campaign-border);
+  background: color-mix(in srgb, var(--campaign-panel) 97%, var(--campaign-bg));
+}
+
+.wp-campaign-history-message-section h3,
+.wp-campaign-history-times-section h3,
+.wp-campaign-history-table-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wp-campaign-history-message-section h3::before,
+.wp-campaign-history-times-section h3::before,
+.wp-campaign-history-table-section h3::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--campaign-green);
+  box-shadow: 0 0 0 3px var(--campaign-green-soft);
+}
+
+.wp-campaign-history-message {
+  position: relative;
+  min-height: 126px;
+  padding: 14px 15px 24px;
+  border-color: color-mix(in srgb, var(--campaign-green) 24%, var(--campaign-border));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--campaign-green) 8%, var(--campaign-bg));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--campaign-green) 72%, transparent);
+}
+
+.wp-campaign-history-message::after {
+  content: "mensaje enviado";
+  position: absolute;
+  right: 11px;
+  bottom: 7px;
+  color: var(--campaign-muted);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .72;
+}
+
+.wp-campaign-history-times {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wp-campaign-history-times > div,
+.wp-campaign-history-times > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 68px;
+  padding: 10px 11px;
+  border: 1px solid var(--campaign-border-soft);
+  border-radius: 9px;
+  background: var(--campaign-bg);
+}
+
+.wp-campaign-history-times dt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+}
+
+.wp-campaign-history-times dd {
+  margin-top: auto;
+  font-size: 11.5px;
+  text-align: left;
+}
+
+.wp-campaign-history-table-section .wp-campaign-section-heading {
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.wp-campaign-history-table-section .wp-campaign-section-heading h3,
+.wp-campaign-history-table-section .wp-campaign-section-heading p {
+  margin-bottom: 0;
+}
+
+.wp-campaign-history-table-section .wp-campaign-section-heading > strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--campaign-border);
+  border-radius: 999px;
+  background: var(--campaign-card-2);
+  color: var(--campaign-text);
+  font-weight: 750;
+}
+
+/* Restablece la primera columna: la regla general de .wp-campaign-table
+   la reserva para el checkbox de destinatarios y acá no existe checkbox. */
+.wp-campaign-history-table th:first-child,
+.wp-campaign-history-table td:first-child {
+  width: auto;
+  padding-left: 12px;
+  padding-right: 12px;
+  text-align: left;
+}
+
+.wp-campaign-history-table th,
+.wp-campaign-history-table td {
+  padding: 10px 12px;
+}
+
+.wp-campaign-history-table th {
+  color: color-mix(in srgb, var(--campaign-muted) 88%, var(--campaign-text));
+  background: color-mix(in srgb, var(--campaign-topbar) 94%, var(--campaign-green) 6%);
+}
+
+.wp-campaign-history-table tbody tr {
+  cursor: default;
+}
+
+.wp-campaign-history-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--campaign-green) 6%, var(--campaign-card));
+}
+
+.wp-campaign-history-table.is-sends th:nth-child(1),
+.wp-campaign-history-table.is-sends td:nth-child(1) { width: 30%; text-align: left; }
+.wp-campaign-history-table.is-sends th:nth-child(2),
+.wp-campaign-history-table.is-sends td:nth-child(2) { width: 17%; text-align: center; }
+.wp-campaign-history-table.is-sends th:nth-child(3),
+.wp-campaign-history-table.is-sends td:nth-child(3) { width: 17%; text-align: center; }
+.wp-campaign-history-table.is-sends th:nth-child(4),
+.wp-campaign-history-table.is-sends td:nth-child(4) { width: 14%; text-align: center; }
+.wp-campaign-history-table.is-sends th:nth-child(5),
+.wp-campaign-history-table.is-sends td:nth-child(5) { width: 22%; text-align: center; }
+
+.wp-campaign-history-table.is-omitted th:nth-child(1),
+.wp-campaign-history-table.is-omitted td:nth-child(1) { width: 25%; text-align: left; }
+.wp-campaign-history-table.is-omitted th:nth-child(2),
+.wp-campaign-history-table.is-omitted td:nth-child(2) { width: 16%; text-align: center; }
+.wp-campaign-history-table.is-omitted th:nth-child(3),
+.wp-campaign-history-table.is-omitted td:nth-child(3) { width: 17%; text-align: center; }
+.wp-campaign-history-table.is-omitted th:nth-child(4),
+.wp-campaign-history-table.is-omitted td:nth-child(4) { width: 25%; text-align: left; }
+.wp-campaign-history-table.is-omitted th:nth-child(5),
+.wp-campaign-history-table.is-omitted td:nth-child(5) { width: 17%; text-align: center; }
+
+.wp-campaign-history-state {
+  justify-content: center;
+  min-width: 66px;
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 9.5px;
+  letter-spacing: .025em;
+}
+
+@media (max-width: 980px) {
+  .wp-campaign-history-heading {
+    flex-direction: column;
+  }
+
+  .wp-campaign-history-metrics {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .wp-campaign-history-titlebar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wp-campaign-history-back {
+    width: 100%;
+  }
+
+  .wp-campaign-history-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wp-campaign-history-times {
+    grid-template-columns: 1fr;
+  }
+
+  .wp-campaign-history-table-section {
+    padding: 12px;
+  }
+
+  .wp-campaign-history-table-section .wp-campaign-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wp-campaign-history-table,
+  .wp-campaign-history-table tbody,
+  .wp-campaign-history-table tr,
+  .wp-campaign-history-table td {
+    display: block;
+    width: 100% !important;
+  }
+
+  .wp-campaign-history-table thead {
+    display: none;
+  }
+
+  .wp-campaign-history-table {
+    table-layout: auto;
+  }
+
+  .wp-campaign-history-table tbody {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .wp-campaign-history-table tbody tr {
+    overflow: hidden;
+    border: 1px solid var(--campaign-border);
+    border-radius: 10px;
+    background: var(--campaign-panel);
+  }
+
+  .wp-campaign-history-table td,
+  .wp-campaign-history-table td:first-child,
+  .wp-campaign-history-table.is-sends td,
+  .wp-campaign-history-table.is-omitted td {
+    display: grid;
+    grid-template-columns: minmax(105px, .78fr) minmax(0, 1.22fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--campaign-border-soft);
+    text-align: right;
+  }
+
+  .wp-campaign-history-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .wp-campaign-history-table td::before {
+    content: attr(data-label);
+    color: var(--campaign-muted);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .035em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .wp-campaign-history-table td .wp-campaign-history-state {
+    justify-self: end;
+  }
+}
+
+
+/* =========================================================
+   HISTORIAL · CORRECCIÓN DE RECORTES
+   El contenido del historial vive dentro de un contenedor flex
+   con scroll propio. Estos ajustes evitan que las secciones se
+   achiquen para entrar en pantalla y terminen cortando contenido.
+   ========================================================= */
+.wp-campaign-history-content > * {
+  flex: 0 0 auto;
+}
+
+.wp-campaign-history-summary {
+  min-height: 88px;
+  overflow: visible;
+}
+
+.wp-campaign-history-heading {
+  min-height: 58px;
+  align-items: center;
+}
+
+.wp-campaign-history-heading > div:first-child {
+  flex: 1 1 auto;
+}
+
+.wp-campaign-history-metrics {
+  flex: 0 0 auto;
+}
+
+.wp-campaign-history-grid,
+.wp-campaign-history-message-section,
+.wp-campaign-history-times-section,
+.wp-campaign-history-table-section {
+  min-height: max-content;
+}
+
+/* En historial el pie no debe comportarse como el pie sticky del
+   formulario de alta/edición: queda fuera del área scrolleable. */
+.wp-campaign-history-actions {
+  position: relative;
+  inset: auto;
+  z-index: 3;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 18px;
+  border-top: 1px solid var(--campaign-border-soft);
+  background: var(--campaign-panel);
+  backdrop-filter: none;
+}
+
+.wp-campaign-history-actions .wp-campaign-secondary {
+  min-width: 126px;
+}
+
+/* Deja una separación real entre la última tabla y el pie fijo del modal. */
+.wp-campaign-history-content {
+  scroll-padding-bottom: 18px;
+}
+
+@media (max-width: 680px) {
+  .wp-campaign-history-summary {
+    min-height: 0;
+  }
+
+  .wp-campaign-history-heading {
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .wp-campaign-history-actions {
+    padding: 10px 12px;
+  }
+
+  .wp-campaign-history-actions .wp-campaign-secondary {
+    width: 100%;
+  }
+}
