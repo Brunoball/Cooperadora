@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Picker from "@emoji-mart/react";
+import data from "../emojiDataEs";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBullhorn,
   faCalendarDays,
   faClock,
   faFloppyDisk,
+  faFaceSmile,
+  faEye,
   faPen,
   faPlus,
   faMagnifyingGlass,
@@ -13,6 +17,7 @@ import {
   faUsers,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
+import Toast from "../../Global/Toast";
 import { useModalEscapeStack } from "./useModalEscapeStack";
 import "./CampaniasRecordatorioModal.css";
 
@@ -144,6 +149,23 @@ const filterLabel = (campaign) => {
   ].join(" · ");
 };
 
+const omittedReasonLabel = (reason) => {
+  const labels = {
+    sin_telefono: "Sin teléfono",
+    telefono_invalido: "Teléfono inválido",
+    excluido_manual: "Excluido manualmente",
+  };
+  return labels[String(reason || "")] || String(reason || "Omitido").replace(/_/g, " ");
+};
+
+const historyStudentNames = (envio) => {
+  const alumnos = Array.isArray(envio?.alumnos) ? envio.alumnos : [];
+  const names = alumnos
+    .map((alumno) => String(alumno?.nombre_completo || "").trim())
+    .filter(Boolean);
+  return names.length ? names.join(" / ") : String(envio?.nombre_contacto || "—");
+};
+
 const MultiChoice = ({ label, allLabel, options, selected, onChange }) => {
   const selectedIds = normalizeIds(selected);
   const selectedSet = new Set(selectedIds);
@@ -195,11 +217,11 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   const [activeTab, setActiveTab] = useState("mensaje");
   const [campanias, setCampanias] = useState([]);
   const [opciones, setOpciones] = useState({ anios: [], divisiones: [], categorias: [] });
-  const [template, setTemplate] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [destinatarios, setDestinatarios] = useState(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [recipientSearch, setRecipientSearch] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -208,8 +230,30 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   const [formError, setFormError] = useState("");
   const [recipientsError, setRecipientsError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [historyData, setHistoryData] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [toast, setToast] = useState({ mostrar: false, tipo: "", mensaje: "", key: 0 });
   const dateTimeInputRef = useRef(null);
+  const messageTextareaRef = useRef(null);
+  const emojiButtonRef = useRef(null);
+  const emojiPopoverRef = useRef(null);
   const selectionSeedRef = useRef(null);
+
+  const showToast = useCallback((tipo, mensaje) => {
+    setToast({ mostrar: true, tipo, mensaje, key: Date.now() });
+  }, []);
+
+  const closeToast = useCallback(() => {
+    setToast({ mostrar: false, tipo: "", mensaje: "", key: 0 });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    closeToast();
+    setEmojiOpen(false);
+    setConfirmDelete(null);
+    onClose?.();
+  }, [closeToast, onClose]);
 
   const openDateTimePicker = useCallback((event) => {
     const input = event?.currentTarget || dateTimeInputRef.current;
@@ -224,11 +268,57 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
     }
   }, []);
 
+  const insertEmojiAtCursor = useCallback((emoji) => {
+    const nativeEmoji = String(emoji || "");
+    if (!nativeEmoji) return;
+
+    const textarea = messageTextareaRef.current;
+    const current = String(form.mensaje || "");
+    const start = textarea && Number.isInteger(textarea.selectionStart) ? textarea.selectionStart : current.length;
+    const end = textarea && Number.isInteger(textarea.selectionEnd) ? textarea.selectionEnd : start;
+    const next = `${current.slice(0, start)}${nativeEmoji}${current.slice(end)}`.slice(0, MAX_MESSAGE);
+    const nextCursor = Math.min(start + nativeEmoji.length, next.length);
+
+    setForm((prev) => ({ ...prev, mensaje: next }));
+    window.requestAnimationFrame(() => {
+      const target = messageTextareaRef.current;
+      if (!target) return;
+      target.focus();
+      try { target.setSelectionRange(nextCursor, nextCursor); } catch (_) {}
+    });
+  }, [form.mensaje]);
+
+  useEffect(() => {
+    if (!emojiOpen) return undefined;
+
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (emojiButtonRef.current?.contains(target)) return;
+      if (emojiPopoverRef.current?.contains(target)) return;
+      setEmojiOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [emojiOpen]);
+
   useModalEscapeStack(open, () => {
+    if (emojiOpen) {
+      setEmojiOpen(false);
+      return;
+    }
     if (view === "form" && !saving) {
       setView("list");
       setFormError("");
-    } else if (!saving && !deletingId) onClose?.();
+    } else if (view === "history" && !loadingHistory) {
+      setView("list");
+      setHistoryData(null);
+      setHistoryError("");
+    } else if (!saving && !deletingId) closeModal();
   });
 
   const fetchJson = useCallback(async (url, options = {}) => {
@@ -249,7 +339,6 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
         fetchJson(`${ENDPOINT}?accion=opciones&_=${Date.now()}`),
       ]);
       setCampanias(Array.isArray(list.campanias) ? list.campanias : []);
-      setTemplate(list.template || null);
       setOpciones(opts.opciones || { anios: [], divisiones: [], categorias: [] });
     } catch (e) {
       setError(e?.message || "No se pudieron cargar las campañas.");
@@ -259,13 +348,27 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
   }, [fetchJson]);
 
   useEffect(() => {
-    if (!open) return;
+    // El toast pertenece a una apertura puntual del modal. Si el modal se
+    // cierra (incluso desde el padre), se limpia para que nunca reaparezca
+    // al volver a abrirlo.
+    closeToast();
+
+    if (!open) {
+      setEmojiOpen(false);
+      setConfirmDelete(null);
+      return;
+    }
+
     setView("list");
     setActiveTab("mensaje");
     setRecipientSearch("");
+    setEmojiOpen(false);
     setConfirmDelete(null);
+    setHistoryData(null);
+    setHistoryError("");
+    setLoadingHistory(false);
     loadAll();
-  }, [open, loadAll]);
+  }, [open, loadAll, closeToast]);
 
   const loadRecipients = useCallback(async (targetForm) => {
     setLoadingRecipients(true);
@@ -321,6 +424,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
     selectionSeedRef.current = { mode: "all" };
     setSelectedStudentIds([]);
     setRecipientSearch("");
+    setEmojiOpen(false);
     setForm({ ...emptyForm(), programada_para: defaultDateTime() });
     setDestinatarios(null);
     setFormError("");
@@ -335,6 +439,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
       : { mode: "all" };
     setSelectedStudentIds([]);
     setRecipientSearch("");
+    setEmojiOpen(false);
     setForm({
       id_campania: Number(campaign.id_campania),
       anios: normalizeIds(campaign.anios_ids?.length ? campaign.anios_ids : campaign.id_anio),
@@ -350,8 +455,29 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
     setView("form");
   };
 
+  const openHistory = async (campaign) => {
+    const id = Number(campaign?.id_campania || 0);
+    if (!id) return;
+
+    setEmojiOpen(false);
+    setHistoryData(null);
+    setHistoryError("");
+    setLoadingHistory(true);
+    setView("history");
+
+    try {
+      const data = await fetchJson(`${ENDPOINT}?accion=detalle&id_campania=${id}&_=${Date.now()}`);
+      setHistoryData(data.detalle || null);
+    } catch (e) {
+      setHistoryError(e?.message || "No se pudo cargar el historial de la campaña.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const save = async () => {
     setFormError("");
+    const isEditing = Boolean(form.id_campania);
     if (!form.mensaje.trim()) {
       setFormError("Escribí el texto que querés insertar en la plantilla.");
       setActiveTab("mensaje");
@@ -392,8 +518,14 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
       });
       await loadAll();
       setView("list");
+      showToast(
+        "exito",
+        isEditing ? "Campaña actualizada correctamente." : "Campaña creada correctamente."
+      );
     } catch (e) {
-      setFormError(e?.message || "No se pudo guardar la campaña.");
+      const message = e?.message || "No se pudo guardar la campaña.";
+      setFormError(message);
+      showToast("error", message);
     } finally {
       setSaving(false);
     }
@@ -410,8 +542,11 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
       });
       setConfirmDelete(null);
       await loadAll();
+      showToast("exito", "Campaña eliminada correctamente.");
     } catch (e) {
-      setError(e?.message || "No se pudo eliminar la campaña.");
+      const message = e?.message || "No se pudo eliminar la campaña.";
+      setError(message);
+      showToast("error", message);
     } finally {
       setDeletingId(null);
     }
@@ -493,7 +628,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
               <p>Programá avisos y elegí libremente cursos, divisiones y categorías.</p>
             </div>
           </div>
-          <button type="button" className="wp-campaign-close" onClick={onClose} disabled={saving || Boolean(deletingId)} aria-label="Cerrar">
+          <button type="button" className="wp-campaign-close" onClick={closeModal} disabled={saving || Boolean(deletingId)} aria-label="Cerrar">
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </header>
@@ -524,6 +659,9 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                 <div className="wp-campaign-list">
                   {campanias.map((campaign) => {
                     const editable = ["programada", "error", "cancelada"].includes(campaign.estado) && Number(campaign.total_enviados || 0) === 0;
+                    const hasHistory = ["procesando", "enviada"].includes(campaign.estado)
+                      || Number(campaign.total_enviados || 0) > 0
+                      || Number(campaign.total_omitidos || 0) > 0;
                     return (
                       <article className="wp-campaign-card" key={campaign.id_campania}>
                         <div className="wp-campaign-card-main">
@@ -545,10 +683,19 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                             ) : null}
                           </div>
                         </div>
-                        {editable ? (
+                        {editable || hasHistory ? (
                           <div className="wp-campaign-actions">
-                            <button type="button" onClick={() => openEdit(campaign)} title="Editar campaña"><FontAwesomeIcon icon={faPen} /></button>
-                            <button type="button" className="is-danger" onClick={() => setConfirmDelete(Number(campaign.id_campania))} title="Eliminar campaña"><FontAwesomeIcon icon={faTrash} /></button>
+                            {hasHistory ? (
+                              <button type="button" onClick={() => openHistory(campaign)} title="Ver historial" aria-label="Ver historial de campaña">
+                                <FontAwesomeIcon icon={faEye} />
+                              </button>
+                            ) : null}
+                            {editable ? (
+                              <>
+                                <button type="button" onClick={() => openEdit(campaign)} title="Editar campaña"><FontAwesomeIcon icon={faPen} /></button>
+                                <button type="button" className="is-danger" onClick={() => setConfirmDelete(Number(campaign.id_campania))} title="Eliminar campaña"><FontAwesomeIcon icon={faTrash} /></button>
+                              </>
+                            ) : null}
                           </div>
                         ) : null}
                       </article>
@@ -558,6 +705,141 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
               )}
             </div>
           </>
+        ) : view === "history" ? (
+          <div className="wp-campaign-history-wrap">
+            <div className="wp-campaign-form-title">
+              <div>
+                <strong>Historial de campaña</strong>
+                <small>Detalle congelado de lo que ocurrió durante el envío.</small>
+              </div>
+            </div>
+
+            {loadingHistory ? (
+              <div className="wp-campaign-empty"><FontAwesomeIcon icon={faSpinner} spin /> Cargando historial…</div>
+            ) : historyError ? (
+              <div className="wp-campaign-error">{historyError}</div>
+            ) : historyData?.campania ? (
+              <div className="wp-campaign-history-content">
+                <section className="wp-campaign-section wp-campaign-history-summary">
+                  <div className="wp-campaign-history-heading">
+                    <div>
+                      <span className={`wp-campaign-status is-${historyData.campania.estado}`}>{historyData.campania.estado}</span>
+                      <strong>{filterLabel(historyData.campania)}</strong>
+                    </div>
+                    <div className="wp-campaign-history-metrics">
+                      <span><b>{Number(historyData.campania.destinatarios_estimados || 0)}</b> teléfonos</span>
+                      <span><b>{Number(historyData.campania.total_enviados || 0)}</b> enviados</span>
+                      <span><b>{Number(historyData.campania.total_errores || 0)}</b> errores</span>
+                      <span><b>{Number(historyData.campania.total_omitidos || 0)}</b> omitidos</span>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="wp-campaign-history-grid">
+                  <section className="wp-campaign-section">
+                    <h3>Mensaje enviado</h3>
+                    <div className="wp-campaign-history-message">{historyData.campania.mensaje || "—"}</div>
+                  </section>
+
+                  <section className="wp-campaign-section">
+                    <h3>Fechas y horarios</h3>
+                    <dl className="wp-campaign-history-times">
+                      <div><dt>Programada para</dt><dd>{formatDateTime(historyData.campania.programada_para)}</dd></div>
+                      <div><dt>Inicio del proceso</dt><dd>{formatDateTime(historyData.campania.iniciado_en)}</dd></div>
+                      <div><dt>Finalización</dt><dd>{formatDateTime(historyData.campania.enviado_en)}</dd></div>
+                      <div><dt>Creada</dt><dd>{formatDateTime(historyData.campania.creado_en)}</dd></div>
+                    </dl>
+                  </section>
+                </div>
+
+                <section className="wp-campaign-section wp-campaign-history-table-section">
+                  <div className="wp-campaign-section-heading">
+                    <div>
+                      <h3>Destinatarios enviados</h3>
+                      <p>Estos son los teléfonos que realmente fueron procesados por la campaña.</p>
+                    </div>
+                    <strong>{(historyData.envios || []).filter((envio) => envio.estado === "enviado").length} envíos</strong>
+                  </div>
+
+                  {(historyData.envios || []).length ? (
+                    <div className="wp-campaign-table-wrap">
+                      <table className="wp-campaign-table wp-campaign-history-table">
+                        <thead>
+                          <tr>
+                            <th>Alumno/s</th>
+                            <th>Teléfono cargado</th>
+                            <th>WhatsApp</th>
+                            <th>Estado</th>
+                            <th>Hora de envío</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(historyData.envios || []).map((envio) => (
+                            <tr key={envio.id_envio}>
+                              <td>{historyStudentNames(envio)}</td>
+                              <td>{envio.telefono_original || "—"}</td>
+                              <td>{envio.wa_id ? `+${envio.wa_id}` : "—"}</td>
+                              <td><span className={`wp-campaign-history-state is-${envio.estado}`}>{envio.estado}</span></td>
+                              <td>{formatDateTime(envio.enviado_en || envio.procesado_en || envio.actualizado_en)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="wp-campaign-no-recipients">No hay envíos registrados para esta campaña.</div>
+                  )}
+                </section>
+
+                {(historyData.omitidos || []).length ? (
+                  <section className="wp-campaign-section wp-campaign-history-table-section">
+                    <div className="wp-campaign-section-heading">
+                      <div>
+                        <h3>Omitidos</h3>
+                        <p>Personas que no entraron al envío y el motivo exacto.</p>
+                      </div>
+                      <strong>{historyData.omitidos.length} omitidos</strong>
+                    </div>
+                    <div className="wp-campaign-table-wrap">
+                      <table className="wp-campaign-table wp-campaign-history-table">
+                        <thead>
+                          <tr>
+                            <th>Alumno</th>
+                            <th>Teléfono</th>
+                            <th>Motivo</th>
+                            <th>Detalle</th>
+                            <th>Registrado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {historyData.omitidos.map((omitido) => (
+                            <tr key={omitido.id_omitido}>
+                              <td>{omitido.alumno?.nombre_completo || `Alumno #${omitido.id_alumno || "—"}`}</td>
+                              <td>{omitido.telefono_original || omitido.alumno?.telefono || "—"}</td>
+                              <td>{omittedReasonLabel(omitido.motivo)}</td>
+                              <td>{omitido.detalle || "—"}</td>
+                              <td>{formatDateTime(omitido.creado_en)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="wp-campaign-form-actions">
+              <button
+                type="button"
+                className="wp-campaign-secondary"
+                onClick={() => { setHistoryData(null); setHistoryError(""); setView("list"); }}
+                disabled={loadingHistory}
+              >
+                Cerrar detalle
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="wp-campaign-form-wrap">
             <div className="wp-campaign-form-title">
@@ -565,7 +847,6 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                 <strong>{form.id_campania ? "Editar campaña" : "Nueva campaña"}</strong>
                 <small>{currentFilterSummary}</small>
               </div>
-              <button type="button" className="wp-campaign-secondary" onClick={() => setView("list")} disabled={saving}>Volver</button>
             </div>
 
             <div className="wp-campaign-tabs" role="tablist" aria-label="Configuración de campaña">
@@ -583,10 +864,10 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                 role="tab"
                 aria-selected={activeTab === "destinatarios"}
                 className={activeTab === "destinatarios" ? "is-active" : ""}
-                onClick={() => setActiveTab("destinatarios")}
+                onClick={() => { setActiveTab("destinatarios"); setEmojiOpen(false); }}
               >
                 Destinatarios
-                <span>{loadingRecipients ? "…" : Number(destinatarios?.total_alumnos || 0)}</span>
+                <span>{loadingRecipients ? "…" : selectedAudience.alumnos}</span>
               </button>
             </div>
 
@@ -600,18 +881,47 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                     <label className="wp-campaign-message-field">
                       <span>Texto libre de la campaña</span>
                       <textarea
+                        ref={messageTextareaRef}
                         rows={8}
                         value={form.mensaje}
                         maxLength={MAX_MESSAGE}
                         onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
                         placeholder="Ej.: Mañana se realizará la reunión informativa para las familias…"
                       />
-                      <small>{form.mensaje.length}/{MAX_MESSAGE} caracteres · Este texto ocupa la variable {"{{1}}"} de la plantilla.</small>
                     </label>
 
-                    <div className="wp-campaign-template-note">
-                      <strong>Plantilla de WhatsApp</strong>
-                      <span>{template?.name || "aviso_informativo_cooperadora"} · Marketing · {template?.language_code || "es_AR"}</span>
+                    <div className="wp-campaign-message-tools">
+                      <div className="wp-campaign-emoji-wrap">
+                        <button
+                          ref={emojiButtonRef}
+                          type="button"
+                          className={`wp-campaign-emoji-btn${emojiOpen ? " is-open" : ""}`}
+                          onClick={() => setEmojiOpen((value) => !value)}
+                          title="Agregar emoji"
+                          aria-label="Agregar emoji"
+                          aria-expanded={emojiOpen}
+                        >
+                          <FontAwesomeIcon icon={faFaceSmile} />
+                        </button>
+                        {emojiOpen ? (
+                          <div
+                            ref={emojiPopoverRef}
+                            className="wp-campaign-emoji-pop"
+                            role="dialog"
+                            aria-label="Selector de emojis"
+                          >
+                            <Picker
+                              data={data}
+                              locale="es"
+                              previewPosition="none"
+                              navPosition="bottom"
+                              theme={typeof document !== "undefined" && document.documentElement.getAttribute("data-botpanel-theme") === "light" ? "light" : "dark"}
+                              onEmojiSelect={(event) => insertEmojiAtCursor(event?.native || "")}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      <small>{form.mensaje.length}/{MAX_MESSAGE} caracteres</small>
                     </div>
                   </section>
 
@@ -667,7 +977,7 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
                       <>
                         <strong><FontAwesomeIcon icon={faUsers} /> {selectedAudience.telefonos} teléfonos seleccionados</strong>
                         <span>{selectedAudience.alumnos} alumnos seleccionados · {Number(destinatarios.sin_telefono || 0)} sin teléfono válido</span>
-                        <button type="button" onClick={() => setActiveTab("destinatarios")}>Ver destinatarios</button>
+                        <button type="button" onClick={() => { setEmojiOpen(false); setActiveTab("destinatarios"); }}>Ver destinatarios</button>
                       </>
                     ) : (
                       <span>No se pudo calcular la audiencia.</span>
@@ -832,13 +1142,23 @@ const CampaniasRecordatorioModal = ({ open, onClose }) => {
             )}
 
             <div className="wp-campaign-form-actions">
-              <button type="button" className="wp-campaign-secondary" onClick={() => setView("list")} disabled={saving}>Cancelar</button>
+              <button type="button" className="wp-campaign-secondary" onClick={() => { setEmojiOpen(false); setView("list"); }} disabled={saving}>Cancelar</button>
               <button type="button" className="wp-campaign-primary" onClick={save} disabled={saving || loadingRecipients}>
                 <FontAwesomeIcon icon={saving ? faSpinner : faFloppyDisk} spin={saving} /> {saving ? "Guardando…" : "Guardar campaña"}
               </button>
             </div>
           </div>
         )}
+
+        {toast.mostrar ? (
+          <Toast
+            key={toast.key}
+            tipo={toast.tipo}
+            mensaje={toast.mensaje}
+            duracion={3000}
+            onClose={closeToast}
+          />
+        ) : null}
 
         {confirmDelete ? (
           <div className="wp-campaign-confirm-layer">

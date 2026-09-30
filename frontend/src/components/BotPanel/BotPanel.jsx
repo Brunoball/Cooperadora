@@ -37,7 +37,7 @@ import notificationSound from "./notificacion/notificacion.mp3";
 
 // ✅ emoji-mart (v5)
 import Picker from "@emoji-mart/react";
-import data from "@emoji-mart/data";
+import data from "./emojiDataEs";
 
 // ✅ Menu ahora se usa SOLO en barra superior (no en lista)
 import ChatOptionsMenu from "./ChatOptionsMenu";
@@ -2922,6 +2922,7 @@ const BotPanel = () => {
                     >
                       <Picker
                         data={data}
+                        locale="es"
                         previewPosition="none"
                         navPosition="bottom"
                         theme={theme}
