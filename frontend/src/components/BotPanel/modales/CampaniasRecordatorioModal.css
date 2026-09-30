@@ -1137,8 +1137,30 @@
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
+  border-radius: 9px;
   color: var(--campaign-text);
   font-size: 11.5px;
+}
+
+/*
+ * Redondeo real de las tablas del modal.
+ * El wrapper debe seguir con overflow: visible para que no vuelva a aparecer
+ * un scroll interno; por eso redondeamos las celdas de las cuatro esquinas.
+ */
+.wp-campaign-table thead tr:first-child th:first-child {
+  border-top-left-radius: 9px;
+}
+
+.wp-campaign-table thead tr:first-child th:last-child {
+  border-top-right-radius: 9px;
+}
+
+.wp-campaign-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 9px;
+}
+
+.wp-campaign-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 9px;
 }
 
 .wp-campaign-table th,
