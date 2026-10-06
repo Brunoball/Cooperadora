@@ -21,6 +21,7 @@ import Alumnos from "./components/Alumnos/Alumno";
 import AgregarAlumno from "./components/Alumnos/AgregarAlumno";
 import EditarAlumno from "./components/Alumnos/EditarAlumno";
 import AlumnoBaja from "./components/Alumnos/AlumnoBaja";
+import Ingresantes from "./components/Alumnos/Ingresantes/Ingresantes";
 
 // 💵 Cuotas
 import Cuotas from "./components/Cuotas/Cuotas";
@@ -303,6 +304,10 @@ function App() {
         <Route
           path="/alumnos/baja"
           element={<RutaProtegida componente={<AlumnoBaja />} />}
+        />
+        <Route
+          path="/alumnos/ingresantes"
+          element={<RutaProtegida componente={<Ingresantes />} />}
         />
 
         <Route

@@ -36,6 +36,7 @@ const ROUTE_PREFETCH = {
   "/alumnos": () => import("../Alumnos/Alumno"),
   "/alumnos/agregar": () => import("../Alumnos/AgregarAlumno"),
   "/alumnos/baja": () => import("../Alumnos/AlumnoBaja"),
+  "/alumnos/ingresantes": () => import("../Alumnos/Ingresantes/Ingresantes"),
   "/familias": () => import("../Alumnos/Familias"),
   "/cuotas": () => import("../Cuotas/Cuotas"),
   "/ventas": () => import("../Ventas/Ventas"),
@@ -326,6 +327,7 @@ const Principal = () => {
         ruta: "/alumnos",
         children: [
           { label: "Gestionar alumnos", ruta: "/alumnos" },
+          { label: "Ingresantes", ruta: "/alumnos/ingresantes" },
           { label: "Familias", ruta: "/familias" },
           { label: "Dados de baja", ruta: "/alumnos/baja" },
         ],

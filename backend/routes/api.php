@@ -84,6 +84,7 @@ try {
      ========================= */
   require_once __DIR__ . '/../modules/login/route.php';
   require_once __DIR__ . '/../modules/alumnos/route.php';
+  require_once __DIR__ . '/../modules/ingresantes/route.php';
   require_once __DIR__ . '/../modules/global/route.php';
   require_once __DIR__ . '/../modules/cuotas/route.php';
   require_once __DIR__ . '/../modules/contable/route.php';
@@ -96,6 +97,7 @@ try {
      ========================= */
   if (function_exists('route_login') && route_login($action)) exit;
   if (function_exists('route_alumnos') && route_alumnos($action)) exit;
+  if (function_exists('route_ingresantes') && route_ingresantes($action)) exit;
   if (function_exists('route_global') && route_global($action)) exit;
   if (function_exists('route_cuotas') && route_cuotas($action)) exit;
   if (function_exists('route_contable') && route_contable($action)) exit;

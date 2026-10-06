@@ -23,6 +23,7 @@ import {
   FaUserPlus,
   FaFileExcel,
   FaUserSlash,
+  FaUserGraduate,
   FaSearch,
   FaTimes,
   FaUsers,
@@ -1502,6 +1503,16 @@ const Alumnos = () => {
             >
               <FaFileExcel className="alu-alumno-icon-button" />
               <p>Exportar a Excel</p>
+            </button>
+
+            <button
+              className="alu-alumno-button alu-hover-effect"
+              onClick={() => navigate('/alumnos/ingresantes')}
+              aria-label="Ingresantes"
+              title="Ingresantes 2027"
+            >
+              <FaUserGraduate className="alu-alumno-icon-button" />
+              <p>Ingresantes</p>
             </button>
 
             <button
