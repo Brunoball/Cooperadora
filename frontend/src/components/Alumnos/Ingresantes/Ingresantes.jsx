@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft,
@@ -16,6 +16,7 @@ import '../../Global/roots.css';
 import './Ingresantes.css';
 
 const CICLO_LECTIVO = 2027;
+const MAX_CASCADE_ITEMS = 15;
 
 const normalizar = (value = '') =>
   String(value)
@@ -64,6 +65,10 @@ export default function Ingresantes() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState(emptyForm(0));
   const [toast, setToast] = useState({ mostrar: false, tipo: '', mensaje: '' });
+  const [animacionActiva, setAnimacionActiva] = useState(false);
+  const [preCascada, setPreCascada] = useState(false);
+  const animacionActivaRef = useRef(false);
+  const cascadeTimerRef = useRef(null);
 
   const usuario = useMemo(() => {
     try {
@@ -77,6 +82,40 @@ export default function Ingresantes() {
 
   const showToast = useCallback((mensaje, tipo = 'exito') => {
     setToast({ mostrar: true, tipo, mensaje });
+  }, []);
+
+  const dispararCascadaUnaVez = useCallback(() => {
+    const duracionMs = 400 + (MAX_CASCADE_ITEMS - 1) * 30 + 300;
+    if (animacionActivaRef.current) return;
+
+    animacionActivaRef.current = true;
+    setAnimacionActiva(true);
+
+    if (cascadeTimerRef.current) {
+      window.clearTimeout(cascadeTimerRef.current);
+    }
+
+    cascadeTimerRef.current = window.setTimeout(() => {
+      animacionActivaRef.current = false;
+      setAnimacionActiva(false);
+      cascadeTimerRef.current = null;
+    }, duracionMs);
+  }, []);
+
+  const triggerCascadaConPreMask = useCallback(() => {
+    setPreCascada(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        dispararCascadaUnaVez();
+        setPreCascada(false);
+      });
+    });
+  }, [dispararCascadaUnaVez]);
+
+  useEffect(() => () => {
+    if (cascadeTimerRef.current) {
+      window.clearTimeout(cascadeTimerRef.current);
+    }
   }, []);
 
   const loadRows = useCallback(async () => {
@@ -94,6 +133,7 @@ export default function Ingresantes() {
 
       const monto = Number(data?.monto_matricula_actual || 0);
       setRows(Array.isArray(data?.ingresantes) ? data.ingresantes : []);
+      triggerCascadaConPreMask();
       setMontoActual(monto);
       setForm((prev) =>
         prev.id_ingresante === null && (!prev.monto_matricula || Number(prev.monto_matricula) === 0)
@@ -105,7 +145,7 @@ export default function Ingresantes() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, triggerCascadaConPreMask]);
 
   useEffect(() => {
     loadRows();
@@ -234,7 +274,7 @@ export default function Ingresantes() {
   };
 
   return (
-    <div className="ing-page">
+    <div className="ingresante-page">
       {toast.mostrar && (
         <Toast
           tipo={toast.tipo}
@@ -244,183 +284,265 @@ export default function Ingresantes() {
         />
       )}
 
-      <header className="ing-header">
-        <div>
-          <div className="ing-eyebrow">Alumnos</div>
-          <h1>Ingresantes {CICLO_LECTIVO}</h1>
-          <p>Registro provisorio de chicos que ingresan a 1° o 2° año.</p>
-        </div>
+      <div className="ingresante-shell">
+        <header className="ingresante-topbar">
+          <h1 className="ingresante-title">Ingresantes {CICLO_LECTIVO}</h1>
 
-        {!isReadOnly && (
-          <button className="ing-btn ing-btn-primary" onClick={openNew}>
-            <FaPlus />
-            Nuevo ingresante
-          </button>
-        )}
-      </header>
+          <div className="ingresante-search-wrap">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                triggerCascadaConPreMask();
+              }}
+              placeholder="Buscar por apellido, nombre o DNI"
+              className="ingresante-search-input"
+              aria-label="Buscar ingresante"
+            />
+            {search ? (
+              <button
+                type="button"
+                className="ingresante-search-clear"
+                onClick={() => {
+                  setSearch('');
+                  triggerCascadaConPreMask();
+                }}
+                aria-label="Limpiar búsqueda"
+                title="Limpiar búsqueda"
+              >
+                <FaTimes />
+              </button>
+            ) : null}
+            <span className="ingresante-search-icon" aria-hidden="true"><FaSearch /></span>
+          </div>
 
-      <main className="ing-main">
-        <section className="ing-stats" aria-label="Resumen de ingresantes">
-          <div className="ing-stat">
-            <span>Total</span>
-            <strong>{stats.total}</strong>
-          </div>
-          <div className="ing-stat">
-            <span>1° año</span>
-            <strong>{stats.primero}</strong>
-          </div>
-          <div className="ing-stat">
-            <span>2° año</span>
-            <strong>{stats.segundo}</strong>
-          </div>
-          <div className="ing-stat ing-stat-paid">
-            <span>Matrículas pagadas</span>
-            <strong>{stats.pagadas}</strong>
-            <small>{formatMoney(stats.totalCobrado)}</small>
-          </div>
-        </section>
-
-        <section className="ing-card">
-          <div className="ing-toolbar">
-            <div className="ing-search">
-              <FaSearch />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por apellido, nombre o DNI"
-                aria-label="Buscar ingresante"
-              />
-              {search && (
-                <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda">
-                  <FaTimes />
-                </button>
-              )}
-            </div>
-
-            <div className="ing-filter-group" aria-label="Filtrar por año">
+          <div className="ingresante-header-actions">
+            <div className="ingresante-year-tabs" aria-label="Filtrar por año">
               {[
                 ['todos', 'Todos'],
-                ['1', '1°'],
-                ['2', '2°'],
+                ['1', '1° año'],
+                ['2', '2° año'],
               ].map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
                   className={yearFilter === value ? 'is-active' : ''}
-                  onClick={() => setYearFilter(value)}
+                  onClick={() => {
+                    setYearFilter(value);
+                    triggerCascadaConPreMask();
+                  }}
                 >
                   {label}
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="ing-count">
-            <FaUserGraduate />
-            {filteredRows.length} ingresante{filteredRows.length === 1 ? '' : 's'} visible{filteredRows.length === 1 ? '' : 's'}
+            {!isReadOnly && (
+              <button className="ingresante-new-button" type="button" onClick={openNew}>
+                <FaPlus />
+                <span>Nuevo ingresante</span>
+              </button>
+            )}
           </div>
+        </header>
 
-          {loading ? (
-            <div className="ing-empty">Cargando ingresantes...</div>
-          ) : filteredRows.length === 0 ? (
-            <div className="ing-empty">
-              <FaUserGraduate />
-              <strong>No hay ingresantes para mostrar.</strong>
-              <span>{rows.length === 0 ? 'Podés cargar el primero con “Nuevo ingresante”.' : 'Probá cambiando la búsqueda o el filtro.'}</span>
+        <main className="ingresante-content">
+          <div className="ingresante-summary-row" aria-label="Resumen de ingresantes">
+            <div className="ingresante-indicator is-total">
+              <span className="ingresante-indicator-icon"><FaUserGraduate /></span>
+              <span className="ingresante-indicator-copy">
+                <small>Total ingresantes</small>
+                <strong>{stats.total}</strong>
+              </span>
             </div>
-          ) : (
-            <>
-              <div className="ing-table-wrap">
-                <table className="ing-table">
-                  <thead>
-                    <tr>
-                      <th>Apellido y nombre</th>
-                      <th>DNI</th>
-                      <th>Ingresa a</th>
-                      <th>Matrícula</th>
-                      <th>Monto</th>
-                      <th>Fecha</th>
-                      <th className="ing-actions-col">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((row) => (
-                      <tr key={row.id_ingresante}>
-                        <td data-label="Alumno">
-                          <strong>{row.apellido} {row.nombre}</strong>
-                          {row.observaciones ? <small>{row.observaciones}</small> : null}
-                        </td>
-                        <td data-label="DNI" className="ing-mono">{row.dni}</td>
-                        <td data-label="Ingresa a">
-                          <span className="ing-year-badge">{row.anio_ingreso}° año</span>
-                        </td>
-                        <td data-label="Matrícula">
-                          {Number(row.matricula_pagada) === 1 ? (
-                            <span className="ing-paid"><FaCheckCircle /> Pagada</span>
-                          ) : (
-                            <span className="ing-pending">Pendiente</span>
-                          )}
-                        </td>
-                        <td data-label="Monto">{formatMoney(row.monto_matricula)}</td>
-                        <td data-label="Fecha">{formatDate(row.fecha_inscripcion)}</td>
-                        <td data-label="Acciones" className="ing-actions-col">
-                          {!isReadOnly ? (
-                            <div className="ing-row-actions">
-                              <button className="ing-icon-btn edit" onClick={() => openEdit(row)} title="Editar" aria-label="Editar">
-                                <FaEdit />
-                              </button>
-                              <button className="ing-icon-btn delete" onClick={() => setDeleteTarget(row)} title="Eliminar" aria-label="Eliminar">
-                                <FaTrash />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="ing-readonly">Solo lectura</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </section>
-      </main>
 
-      <footer className="ing-footer">
-        <button className="ing-btn ing-btn-secondary" onClick={() => navigate('/alumnos')}>
-          <FaArrowLeft />
-          Volver a Alumnos
-        </button>
-      </footer>
+            <div className="ingresante-indicator is-first">
+              <span className="ingresante-indicator-number">1°</span>
+              <span className="ingresante-indicator-copy">
+                <small>Ingresan a primer año</small>
+                <strong>{stats.primero}</strong>
+              </span>
+            </div>
+
+            <div className="ingresante-indicator is-second">
+              <span className="ingresante-indicator-number">2°</span>
+              <span className="ingresante-indicator-copy">
+                <small>Ingresan a segundo año</small>
+                <strong>{stats.segundo}</strong>
+              </span>
+            </div>
+
+            <div className="ingresante-indicator is-paid">
+              <span className="ingresante-indicator-icon"><FaCheckCircle /></span>
+              <span className="ingresante-indicator-copy">
+                <small>Matrículas pagadas</small>
+                <strong>{stats.pagadas}</strong>
+                <em>{formatMoney(stats.totalCobrado)}</em>
+              </span>
+            </div>
+          </div>
+
+          <section className="ingresante-table-card" aria-label="Listado de ingresantes">
+            {loading ? (
+              <div className="ingresante-state">
+                <div className="ingresante-spinner" aria-label="Cargando ingresantes" />
+              </div>
+            ) : (
+              <div className="ingresante-table-wrap">
+                <div className="ingresante-table" role="table" aria-label="Listado de ingresantes">
+                  <div className="ingresante-table-head" role="rowgroup">
+                    <div className="ingresante-table-head-row" role="row">
+                      <div className="ingresante-table-head-cell" role="columnheader">Apellido y nombre</div>
+                      <div className="ingresante-table-head-cell" role="columnheader">DNI</div>
+                      <div className="ingresante-table-head-cell" role="columnheader">Ingresa a</div>
+                      <div className="ingresante-table-head-cell" role="columnheader">Matrícula</div>
+                      <div className="ingresante-table-head-cell" role="columnheader">Monto</div>
+                      <div className="ingresante-table-head-cell" role="columnheader">Fecha</div>
+                      <div className="ingresante-table-head-cell ingresante-actions-col" role="columnheader">Acciones</div>
+                    </div>
+                  </div>
+
+                  <div className="ingresante-table-body" role="rowgroup">
+                    {filteredRows.length === 0 ? (
+                      <div className="ingresante-table-empty ingresante-empty">
+                        <FaUserGraduate />
+                        <strong>No hay ingresantes para mostrar</strong>
+                        <span>
+                          {rows.length === 0
+                            ? 'Podés cargar el primero con “Nuevo ingresante”.'
+                            : 'Probá cambiando la búsqueda o el filtro.'}
+                        </span>
+                      </div>
+                    ) : (
+                      filteredRows.map((row, index) => {
+                        const willAnimate = animacionActiva && index < MAX_CASCADE_ITEMS;
+                        const preMask = preCascada && index < MAX_CASCADE_ITEMS;
+
+                        return (
+                          <div
+                            className={`ingresante-table-row ${index % 2 === 0 ? 'ingresante-even-row' : 'ingresante-odd-row'} ${willAnimate ? 'ingresante-cascade' : ''}`}
+                            role="row"
+                            key={row.id_ingresante}
+                            style={{
+                              animationDelay: willAnimate ? `${index * 0.03}s` : '0s',
+                              opacity: preMask ? 0 : undefined,
+                              transform: preMask ? 'translateY(8px)' : undefined,
+                            }}
+                          >
+                          <div className="ingresante-table-cell ingresante-name-cell" role="cell" data-label="Alumno">
+                            <strong>{row.apellido} {row.nombre}</strong>
+                            {row.observaciones ? <small>{row.observaciones}</small> : null}
+                          </div>
+                          <div className="ingresante-table-cell ingresante-mono" role="cell" data-label="DNI">{row.dni}</div>
+                          <div className="ingresante-table-cell" role="cell" data-label="Ingresa a">
+                            <span className="ingresante-year-badge">{row.anio_ingreso}° año</span>
+                          </div>
+                          <div className="ingresante-table-cell" role="cell" data-label="Matrícula">
+                            {Number(row.matricula_pagada) === 1 ? (
+                              <span className="ingresante-paid"><FaCheckCircle /> Pagada</span>
+                            ) : (
+                              <span className="ingresante-pending">Pendiente</span>
+                            )}
+                          </div>
+                          <div className="ingresante-table-cell" role="cell" data-label="Monto">{formatMoney(row.monto_matricula)}</div>
+                          <div className="ingresante-table-cell" role="cell" data-label="Fecha">{formatDate(row.fecha_inscripcion)}</div>
+                          <div className="ingresante-table-cell ingresante-actions-col" role="cell" data-label="Acciones">
+                            {!isReadOnly ? (
+                              <div className="ingresante-row-actions">
+                                <button
+                                  className="ingresante-icon-btn edit"
+                                  type="button"
+                                  onClick={() => openEdit(row)}
+                                  title="Editar"
+                                  aria-label={`Editar a ${row.apellido} ${row.nombre}`}
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  className="ingresante-icon-btn delete"
+                                  type="button"
+                                  onClick={() => setDeleteTarget(row)}
+                                  title="Eliminar"
+                                  aria-label={`Eliminar a ${row.apellido} ${row.nombre}`}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="ingresante-readonly">Solo lectura</span>
+                            )}
+                          </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        </main>
+
+        <footer className="ingresante-bottom-bar">
+          <button className="ingresante-bottom-button is-back" type="button" onClick={() => navigate('/panel')}>
+            <FaArrowLeft />
+            <span>Volver al panel</span>
+          </button>
+
+          {!isReadOnly && (
+            <button className="ingresante-bottom-button is-new" type="button" onClick={openNew}>
+              <FaPlus />
+              <span>Nuevo ingresante</span>
+            </button>
+          )}
+        </footer>
+      </div>
 
       {modalOpen && (
-        <div className="ing-modal-backdrop" role="presentation" onMouseDown={closeModal}>
-          <div className="ing-modal" role="dialog" aria-modal="true" aria-labelledby="ing-modal-title" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="ing-modal-head">
-              <div>
-                <span>{form.id_ingresante ? 'Editar registro' : 'Registro provisorio'}</span>
-                <h2 id="ing-modal-title">{form.id_ingresante ? 'Editar ingresante' : 'Nuevo ingresante'}</h2>
+        <div className="ingresante-modal-backdrop" role="presentation">
+          <div className="ingresante-modal" role="dialog" aria-modal="true" aria-labelledby="ingresante-modal-title">
+            <div className="ingresante-modal-head">
+              <div className="ingresante-modal-title-wrap">
+                <FaUserGraduate className="ingresante-modal-title-icon" />
+                <div>
+                  <span>{form.id_ingresante ? 'Editar registro' : 'Registro provisorio'}</span>
+                  <h2 id="ingresante-modal-title">{form.id_ingresante ? 'Editar ingresante' : 'Nuevo ingresante'}</h2>
+                </div>
               </div>
-              <button type="button" className="ing-close" onClick={closeModal} aria-label="Cerrar">
+              <button type="button" className="ingresante-close" onClick={closeModal} aria-label="Cerrar" title="Cerrar">
                 <FaTimes />
               </button>
             </div>
 
-            <form onSubmit={save} className="ing-form">
-              <div className="ing-form-grid">
-                <label>
+            <form onSubmit={save} className="ingresante-form">
+              <div className="ingresante-form-grid">
+                <label className="ingresante-floatingresante-field">
+                  <input
+                    name="apellido"
+                    value={form.apellido}
+                    onChange={handleChange}
+                    maxLength={100}
+                    autoFocus
+                    required
+                    placeholder="Ej. González"
+                  />
                   <span>Apellido *</span>
-                  <input name="apellido" value={form.apellido} onChange={handleChange} maxLength={100} autoFocus required />
                 </label>
 
-                <label>
+                <label className="ingresante-floatingresante-field">
+                  <input
+                    name="nombre"
+                    value={form.nombre}
+                    onChange={handleChange}
+                    maxLength={100}
+                    required
+                    placeholder="Ej. Martina"
+                  />
                   <span>Nombre *</span>
-                  <input name="nombre" value={form.nombre} onChange={handleChange} maxLength={100} required />
                 </label>
 
-                <label>
-                  <span>DNI *</span>
+                <label className="ingresante-floatingresante-field">
                   <input
                     name="dni"
                     value={form.dni}
@@ -428,58 +550,71 @@ export default function Ingresantes() {
                     inputMode="numeric"
                     maxLength={20}
                     required
+                    placeholder="Ej. 48123456"
                   />
+                  <span>DNI *</span>
                 </label>
 
-                <label>
-                  <span>Ingresa a *</span>
+                <label className="ingresante-floatingresante-field ingresante-select-field">
                   <select name="anio_ingreso" value={form.anio_ingreso} onChange={handleChange}>
                     <option value="1">1° año</option>
                     <option value="2">2° año</option>
                   </select>
+                  <span>Ingresa a *</span>
                 </label>
 
-                <label className="ing-check-card">
+                <label className="ingresante-check-card">
                   <input
                     type="checkbox"
                     name="matricula_pagada"
                     checked={form.matricula_pagada}
                     onChange={handleChange}
                   />
-                  <span>
+                  <span className="ingresante-check-copy">
                     <strong>Matrícula pagada</strong>
-                    <small>Queda marcada por defecto.</small>
+                    <small>Desmarcá esta opción si queda pendiente.</small>
                   </span>
                 </label>
 
-                <label>
-                  <span>Monto matrícula</span>
+                <label className={`ingresante-floatingresante-field ${!form.matricula_pagada ? 'is-disabled' : ''}`}>
                   <input
                     name="monto_matricula"
                     value={form.monto_matricula}
                     onChange={(e) => setForm((prev) => ({ ...prev, monto_matricula: soloDigitos(e.target.value) }))}
                     inputMode="numeric"
                     disabled={!form.matricula_pagada}
+                    placeholder="Ej. 25000"
                   />
-                  <small className="ing-help">Actual configurado: {formatMoney(montoActual)}</small>
+                  <span>Monto matrícula</span>
+                  <small className="ingresante-help">Valor configurado: {formatMoney(montoActual)}</small>
                 </label>
               </div>
 
-              <label className="ing-observations">
+              <label className="ingresante-floatingresante-field ingresante-observations">
+                <textarea
+                  name="observaciones"
+                  value={form.observaciones}
+                  onChange={handleChange}
+                  maxLength={255}
+                  rows={3}
+                  placeholder="Ej. Documentación pendiente o aclaraciones del ingreso"
+                />
                 <span>Observaciones</span>
-                <textarea name="observaciones" value={form.observaciones} onChange={handleChange} maxLength={255} rows={3} />
               </label>
 
-              <div className="ing-cycle-note">
-                Este registro queda guardado como ingresante del ciclo <strong>{CICLO_LECTIVO}</strong> y no crea un alumno definitivo.
+              <div className="ingresante-cycle-note">
+                <FaUserGraduate />
+                <span>
+                  Se guarda como ingresante del ciclo <strong>{CICLO_LECTIVO}</strong> y todavía no crea un alumno definitivo.
+                </span>
               </div>
 
-              <div className="ing-modal-actions">
-                <button type="button" className="ing-btn ing-btn-secondary" onClick={closeModal} disabled={saving}>
+              <div className="ingresante-modal-actions">
+                <button type="button" className="ingresante-btn ingresante-btn-secondary" onClick={closeModal} disabled={saving}>
                   Cancelar
                 </button>
-                <button type="submit" className="ing-btn ing-btn-primary" disabled={saving}>
-                  {saving ? 'Guardando...' : form.id_ingresante ? 'Guardar cambios' : 'Registrar ingresante'}
+                <button type="submit" className="ingresante-btn ingresante-btn-primary" disabled={saving}>
+                  {form.id_ingresante ? 'Guardar cambios' : 'Registrar ingresante'}
                 </button>
               </div>
             </form>
@@ -488,16 +623,20 @@ export default function Ingresantes() {
       )}
 
       {deleteTarget && (
-        <div className="ing-modal-backdrop" role="presentation" onMouseDown={() => setDeleteTarget(null)}>
-          <div className="ing-confirm" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="ing-confirm-icon"><FaTrash /></div>
-            <h2>Eliminar ingresante</h2>
+        <div className="ingresante-modal-backdrop" role="presentation">
+          <div className="ingresante-confirm" role="dialog" aria-modal="true" aria-labelledby="ingresante-delete-title">
+            <div className="ingresante-confirm-icon"><FaTrash /></div>
+            <h2 id="ingresante-delete-title">Eliminar ingresante</h2>
             <p>
-              ¿Eliminar a <strong>{deleteTarget.apellido} {deleteTarget.nombre}</strong> del registro provisorio?
+              ¿Querés eliminar a <strong>{deleteTarget.apellido} {deleteTarget.nombre}</strong> del registro provisorio?
             </p>
-            <div className="ing-modal-actions">
-              <button className="ing-btn ing-btn-secondary" onClick={() => setDeleteTarget(null)}>Cancelar</button>
-              <button className="ing-btn ing-btn-danger" onClick={confirmDelete}>Eliminar</button>
+            <div className="ingresante-modal-actions">
+              <button type="button" className="ingresante-btn ingresante-btn-secondary" onClick={() => setDeleteTarget(null)}>
+                Cancelar
+              </button>
+              <button type="button" className="ingresante-btn ingresante-btn-danger" onClick={confirmDelete}>
+                Eliminar
+              </button>
             </div>
           </div>
         </div>

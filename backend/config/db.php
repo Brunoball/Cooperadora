@@ -10,7 +10,7 @@ $dbname = getenv('COOP_DB_NAME') ?: 'cooperadora';
 $user   = getenv('COOP_DB_USER') ?: 'root';
 $pass   = getenv('COOP_DB_PASS');
 if ($pass === false) {
-    $pass = 'brunoball516'; // compatibilidad con el entorno local actual
+    $pass = 'Gastex2233'; // compatibilidad con el entorno local actual
 }
 
 $testMode = getenv('COOP_TEST_MODE') === '1';

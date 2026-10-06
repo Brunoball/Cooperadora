@@ -15,6 +15,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import BASE_URL from "../../config/config";
 import Toast from "../Global/Toast";
+import "../Global/roots.css";
 import "./IngresosContable.css";
 import { IngresoCrearModal, IngresoEditarModal } from "./modalcontable/IngresoModal";
 

@@ -1506,7 +1506,7 @@ const Alumnos = () => {
             </button>
 
             <button
-              className="alu-alumno-button alu-hover-effect"
+              className="alu-alumno-button alu-hover-effect alu-btn-ingresantes"
               onClick={() => navigate('/alumnos/ingresantes')}
               aria-label="Ingresantes"
               title="Ingresantes 2027"

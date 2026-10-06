@@ -1,7 +1,7 @@
 /* ====== Estilos ESPECÍFICOS del Modal de Ingresos ====== */
 
 /* Overlay y contenedor */
-.ing-modal-overlay{
+.ing-wrap .ing-modal-overlay{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.35);
@@ -11,7 +11,7 @@
   z-index: 50;
   padding: 16px;
 }
-.ing-modal{
+.ing-wrap .ing-modal{
   width: min(640px, 100%);
   background: #fff;
   border: 1px solid var(--border, #e5e7eb);
@@ -21,7 +21,7 @@
 }
 
 /* Cabezal del modal */
-.ing-modal__head{
+.ing-wrap .ing-modal__head{
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -31,7 +31,7 @@
 }
 
 /* Versión elevada */
-.ing-modal--elev{
+.ing-wrap .ing-modal--elev{
   border-radius: 18px;
   border: 1px solid var(--border, #e5e7eb);
   box-shadow:
@@ -40,8 +40,8 @@
   overflow: hidden;
 }
 
-/* Head con franja roja (sólo dentro del modal) */
-.ing-modal__head.gradient--brand-red{
+/* Head con franja institucional (sólo dentro del modal) */
+.ing-wrap .ing-modal__head.gradient--brand-red{
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -49,13 +49,13 @@
   padding: 14px 16px;
   color: #fff;
   border-bottom: 1px solid rgba(255,255,255,.18);
-  background: var(--reg-primary, #b91c1c); /* degradado simplificado */
+  background: var(--reg-primary, var(--blue-inst-primary, #1D428A));
 }
 
 /* Título y badge del modal */
-.ing-modal__title{ display: flex; align-items: center; gap: 10px; }
-.ing-modal__title h3{ margin: 0; font-weight: 900; letter-spacing: .2px; color: inherit; }
-.ing-modal__badge{
+.ing-wrap .ing-modal__title{ display: flex; align-items: center; gap: 10px; }
+.ing-wrap .ing-modal__title h3{ margin: 0; font-weight: 900; letter-spacing: .2px; color: inherit; }
+.ing-wrap .ing-modal__badge{
   width: 34px; height: 34px; border-radius: 12px;
   display: grid; place-items: center;
   background: rgba(255,255,255,.16);
@@ -63,7 +63,7 @@
 }
 
 /* Botón fantasma claro (X) dentro del header del modal */
-.ghost-btn--light{
+.ing-wrap .ghost-btn--light{
   color: #fff;
   border: 1px solid rgba(255,255,255,.28);
   background: transparent;
@@ -72,17 +72,17 @@
   cursor: pointer;
   transition: background .16s ease, box-shadow .2s ease;
 }
-.ghost-btn--light:hover{ background: rgba(255,255,255,.16); }
-.ghost-btn--light:focus-visible{ outline: none; box-shadow: 0 0 0 3px rgba(255,255,255,.32); }
+.ing-wrap .ghost-btn--light:hover{ background: rgba(255,255,255,.16); }
+.ing-wrap .ghost-btn--light:focus-visible{ outline: none; box-shadow: 0 0 0 3px rgba(255,255,255,.32); }
 
 /* Cuerpo y pie del modal */
-.ing-modal__body{
+.ing-wrap .ing-modal__body{
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.ing-modal__foot{
+.ing-wrap .ing-modal__foot{
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -92,23 +92,22 @@
 }
 
 /* Grid corto dentro del modal */
-.ing-modal .grid2{
+.ing-wrap .ing-modal .grid2{
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
 /* Campos sólo dentro del modal (scope para no pisar otros) */
-.ing-modal .field{ margin-bottom: 6px; }
-.ing-modal .field label{
+.ing-wrap .ing-modal .field{ margin-bottom: 6px; }
+.ing-wrap .ing-modal .field label{
   display: block;
   font-size: .82rem;
   font-weight: 800;
   color: var(--muted, #6b7280);
   margin: 0 0 6px;
 }
-.ing-modal .field input,
-.ing-modal .field select{
+.ing-wrap .ing-modal .field input, .ing-wrap .ing-modal .field select{
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border, #e5e7eb);
@@ -116,20 +115,19 @@
   background: #fff;
   transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
-.ing-modal .field input:focus,
-.ing-modal .field select:focus{
+.ing-wrap .ing-modal .field input:focus, .ing-wrap .ing-modal .field select:focus{
   outline: none;
   border-color: #60a5fa;
   box-shadow: 0 0 0 3px rgba(96,165,250,.22);
 }
 
 /* Icono embebido a la izquierda de inputs/selects */
-.ing-modal .field--icon .control{
+.ing-wrap .ing-modal .field--icon .control{
   position: relative;
   display: grid;
   align-items: center;
 }
-.ing-modal .field--icon .control .i{
+.ing-wrap .ing-modal .field--icon .control .i{
   position: absolute;
   left: 10px; top: 50%;
   transform: translateY(-50%);
@@ -137,50 +135,49 @@
   display: grid; place-items: center;
   color: #6b7280; pointer-events: none;
 }
-.ing-modal .field--icon input,
-.ing-modal .field--icon select{
+.ing-wrap .ing-modal .field--icon input, .ing-wrap .ing-modal .field--icon select{
   padding-left: 38px !important;
   height: 40px;
 }
 
 /* Date input + open picker por click en contenedor */
-.ing-modal .field--date .control--clickable{ cursor: pointer; }
-.ing-modal .field--date input[type="date"]{
+.ing-wrap .ing-modal .field--date .control--clickable{ cursor: pointer; }
+.ing-wrap .ing-modal .field--date input[type="date"]{
   -webkit-appearance: none; appearance: none; background-image: none;
 }
-.ing-modal .field--date input[type="date"]::-webkit-clear-button{ display: none; }
-.ing-modal .field--date input[type="date"]::-webkit-inner-spin-button{ display: none; }
-.ing-modal .field--date input[type="date"]::-webkit-calendar-picker-indicator{
+.ing-wrap .ing-modal .field--date input[type="date"]::-webkit-clear-button{ display: none; }
+.ing-wrap .ing-modal .field--date input[type="date"]::-webkit-inner-spin-button{ display: none; }
+.ing-wrap .ing-modal .field--date input[type="date"]::-webkit-calendar-picker-indicator{
   opacity: 0 !important; display: none !important; pointer-events: none !important;
 }
 
 /* Estado disabled del botón principal en el modal */
-.ing-modal .btn.solid[disabled]{
+.ing-wrap .ing-modal .btn.solid[disabled]{
   opacity: .8;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 /* Ajustes menores */
-.lc_panel{ border-radius: 0 !important; } /* preservado si lo usás dentro del modal */
+.ing-wrap .lc_panel{ border-radius: 0 !important; } /* preservado si lo usás dentro del modal */
 
 /* Responsive del modal */
 @media (max-width:560px){
-  .ing-modal__head{ padding: 12px; }
-  .ing-modal__body{ padding: 12px; }
-  .ing-modal__foot{ padding-top: 8px; }
-  .ing-modal .grid2{ grid-template-columns: 1fr; }
+  .ing-wrap .ing-modal__head{ padding: 12px; }
+  .ing-wrap .ing-modal__body{ padding: 12px; }
+  .ing-wrap .ing-modal__foot{ padding-top: 8px; }
+  .ing-wrap .ing-modal .grid2{ grid-template-columns: 1fr; }
 }
 
-/* ===== Opcional: compatibilidad con cabecera roja del modal ===== */
+/* ===== Compatibilidad con la clase legacy de cabecera ===== */
 @supports (background: color-mix(in oklch, red, white)){
-  .ing-modal__head.gradient--brand-red{
-    background: var(--reg-primary, #b91c1c);
+  .ing-wrap .ing-modal__head.gradient--brand-red{
+    background: var(--reg-primary, var(--blue-inst-primary, #1D428A));
   }
 }
-.ing-modal .span-2 { grid-column: 1 / -1; }
+.ing-wrap .ing-modal .span-2{ grid-column: 1 / -1; }
 /* === Limitar altura del modal y habilitar scroll interno === */
-.ing-modal{
+.ing-wrap .ing-modal{
   width: min(640px, 100%);
   max-height: 80vh;          /* ⬅️ límite al 80% del viewport */
   display: flex;             /* para separar head/body/foot en columna */
@@ -190,7 +187,7 @@
 }
 
 /* El body es el que scrollea */
-.ing-modal__body{
+.ing-wrap .ing-modal__body{
   overflow: auto;            /* ⬅️ scroll vertical cuando haga falta */
   -webkit-overflow-scrolling: touch; /* mejor inercia en móvil */
   flex: 1;                   /* ocupa el espacio disponible */
@@ -198,20 +195,20 @@
 }
 
 /* Header y footer “pegados” mientras scrolleás el cuerpo */
-.ing-modal__head{
+.ing-wrap .ing-modal__head{
   position: sticky;
   top: 0;
   z-index: 2;
   background: inherit;       /* mantiene el fondo (o el gradiente) */
 }
 
-.ing-modal__head.gradient--brand-red{
+.ing-wrap .ing-modal__head.gradient--brand-red{
   position: sticky;          /* si usás la variante con franja roja */
   top: 0;
   z-index: 2;
 }
 
-.ing-modal__foot{
+.ing-wrap .ing-modal__foot{
   position: sticky;
   bottom: 0;
   z-index: 2;
@@ -219,12 +216,12 @@
 }
 
 /* (Opcional) si querés un borde superior sutil en el foot cuando aparece */
-.ing-modal__foot{
+.ing-wrap .ing-modal__foot{
   border-top: 1px solid var(--border, #e5e7eb);
 }
 
 /* Grid responsivo, sin cambios */
 @media (max-width:560px){
-  .ing-modal__body{ padding: 12px; }
-  .ing-modal .grid2{ grid-template-columns: 1fr; }
+  .ing-wrap .ing-modal__body{ padding: 12px; }
+  .ing-wrap .ing-modal .grid2{ grid-template-columns: 1fr; }
 }
